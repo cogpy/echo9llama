@@ -367,6 +367,11 @@ func New(modelPath string, params ml.BackendParams) (ml.Backend, error) {
 		bbs[c] = b
 	}
 
+	for bs := range maps.Values(bbs) {
+		slog.Log(context.TODO(), logutil.LevelTrace, "model weights", "buffer", C.GoString(C.ggml_backend_buffer_name(bs)),
+			"size", format.HumanBytes2(uint64(C.ggml_backend_buffer_get_size(bs))))
+	}
+
 	// map tensor names to tensors for easy lookup later
 	tensors := make(map[string]*C.struct_ggml_tensor)
 	for _, c := range ctxs {
@@ -460,17 +465,6 @@ func (b *Backend) Close() {
 func (b *Backend) Load(ctx context.Context, progress func(float32)) error {
 	if !b.allocMemory {
 		return errors.New("cannot load model without memory allocation")
-	}
-
-	for bs := range maps.Values(b.weightBuffers) {
-		slog.Info("model weights", "buffer", C.GoString(C.ggml_backend_buffer_name(bs)), "size", format.HumanBytes2(uint64(C.ggml_backend_buffer_get_size(bs))))
-	}
-
-	for i := range b.schedBackends {
-		size := C.ggml_backend_sched_get_buffer_size(b.sched, b.schedBackends[i])
-
-		slog.Info("compute graph", "backend", C.GoString(C.ggml_backend_name(b.schedBackends[i])), "buffer_type", C.GoString(C.ggml_backend_buft_name(b.schedBufts[i])),
-			"size", format.HumanBytes2(uint64(size)))
 	}
 
 	// Mimic llama runner logs summarizing layers and memory
@@ -715,6 +709,9 @@ func (c *Context) Reserve() {
 				graph.Status = ml.Failed
 			}
 		}
+
+		slog.Log(context.TODO(), logutil.LevelTrace, "compute graph", "backend", C.GoString(C.ggml_backend_name(c.b.schedBackends[i])),
+			"buffer_type", C.GoString(C.ggml_backend_buft_name(c.b.schedBufts[i])), "size", format.HumanBytes2(uint64(bufferStatus.size)))
 	}
 
 	if !reserved {

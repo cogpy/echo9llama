@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ollama/ollama/format"
 	"github.com/ollama/ollama/fs"
 )
 
@@ -284,6 +285,58 @@ func (m BackendMemory) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(attrs...)
+}
+
+func sumMemory(mem []Memory) uint64 {
+	var sum uint64
+
+	for _, m := range mem {
+		sum += m.Size
+	}
+
+	return sum
+}
+
+// Log prints a high level summary of the memory (allocated or not)
+func (m BackendMemory) Log(level slog.Level) {
+	var total uint64
+
+	for _, gpu := range m.GPUs {
+		if sum := sumMemory(gpu.Weights); sum > 0 {
+			slog.Log(context.TODO(), level, "model weights", "device", gpu.Name, "size", format.HumanBytes2(sum))
+			total += sum
+		}
+	}
+	if sum := m.InputWeights.Size + sumMemory(m.CPU.Weights); sum > 0 {
+		slog.Log(context.TODO(), level, "model weights", "device", m.CPU.Name, "size", format.HumanBytes2(sum))
+		total += sum
+	}
+
+	for _, gpu := range m.GPUs {
+		if sum := sumMemory(gpu.Cache); sum > 0 {
+			slog.Log(context.TODO(), level, "kv cache", "device", gpu.Name, "size", format.HumanBytes2(sum))
+			total += sum
+		}
+	}
+	if sum := sumMemory(m.CPU.Cache); sum > 0 {
+		slog.Log(context.TODO(), level, "kv cache", "device", m.CPU.Name, "size", format.HumanBytes2(sum))
+		total += sum
+	}
+
+	for _, gpu := range m.GPUs {
+		if sum := gpu.Graph.Size; sum > 0 {
+			slog.Log(context.TODO(), level, "compute graph", "device", gpu.Name, "size", format.HumanBytes2(sum))
+			total += sum
+		}
+	}
+	if sum := m.CPU.Graph.Size; sum > 0 {
+		slog.Log(context.TODO(), level, "compute graph", "device", m.CPU.Name, "size", format.HumanBytes2(sum))
+		total += sum
+	}
+
+	if total > 0 {
+		slog.Log(context.TODO(), level, "total memory", "size", format.HumanBytes2(total))
+	}
 }
 
 var backends = make(map[string]func(string, BackendParams) (Backend, error))

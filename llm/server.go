@@ -637,6 +637,7 @@ func (s *ollamaServer) Load(ctx context.Context, gpus discover.GpuInfoList, requ
 		if !success {
 			s.initModel(ctx, LoadRequest{}, LoadOperationClose)
 		}
+		s.mem.Log(slog.LevelInfo)
 	}()
 
 	slog.Info("loading model", "model layers", s.totalLayers, "requested", s.options.NumGPU)
@@ -677,6 +678,7 @@ nextOperation:
 				return err
 			}
 
+			resp.Memory.Log(slog.LevelDebug)
 			slog.Debug("memory", "success", resp.Success, "required", resp.Memory)
 
 			pastAllocations[gpuLayers.Hash()] = struct{}{}
@@ -730,6 +732,7 @@ nextOperation:
 							return err
 						}
 
+						resp.Memory.Log(slog.LevelDebug)
 						slog.Debug("memory", "success", resp.Success, "required", resp.Memory)
 
 						if resp.Success {
