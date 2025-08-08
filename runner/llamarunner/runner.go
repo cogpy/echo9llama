@@ -728,6 +728,8 @@ func (s *Server) health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// loadModel allocates memory based on the given parameters and loads the weights. The
+// memory allocated is worst case for text models but not for vision.
 func (s *Server) loadModel(
 	params llama.ModelParams,
 	mpath string,
@@ -775,6 +777,8 @@ func (s *Server) loadModel(
 	s.ready.Done()
 }
 
+// load is the handler called by the Ollama server to process different
+// load operations
 func (s *Server) load(w http.ResponseWriter, r *http.Request) {
 	s.loadMu.Lock()
 	defer s.loadMu.Unlock()

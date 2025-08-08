@@ -236,7 +236,7 @@ func estimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 
 	// Reduce set of GPUs to only those that have sufficient space to fit overhead and at least one layer
 	var layerCount int
-	layerCounts := make([]int, len(gpus))
+	tensorSplit := make([]int, len(gpus))
 	gpuAllocations := make([]uint64, len(gpus))
 	type gs struct {
 		i int
@@ -300,7 +300,7 @@ func estimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 			used := gpuAllocations[g.i] + max(graphPartialOffload, graphFullOffload)
 			if g.g.FreeMemory > overhead+used+layerSize {
 				gpuAllocations[g.i] += layerSize
-				layerCounts[g.i]++
+				tensorSplit[g.i]++
 				layerCount++
 				break
 			} else {
@@ -325,7 +325,7 @@ func estimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 				used := gpuAllocations[g.i] + max(graphPartialOffload, graphFullOffload)
 				if g.g.FreeMemory > overhead+used+memoryLastLayer {
 					gpuAllocations[g.i] += memoryLastLayer
-					layerCounts[g.i]++
+					tensorSplit[g.i]++
 					layerCount++
 					break
 				}
@@ -340,7 +340,7 @@ func estimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 
 	// Add the applicable (full or partial) graph allocations
 	for i := range gpus {
-		if layerCounts[i] <= 0 {
+		if tensorSplit[i] <= 0 {
 			continue
 		}
 		if fullyLoaded {
@@ -399,7 +399,7 @@ func estimateGPULayers(gpus []discover.GpuInfo, f *ggml.GGML, projectors []strin
 	estimate.Graph = graphOffload
 	estimate.VRAMSize = memoryRequiredPartial
 	estimate.TotalSize = memoryRequiredTotal
-	estimate.TensorSplit = layerCounts
+	estimate.TensorSplit = tensorSplit
 	estimate.GPUSizes = gpuAllocations
 	return estimate
 }

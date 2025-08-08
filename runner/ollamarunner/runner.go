@@ -828,6 +828,8 @@ func (s *Server) reserveWorstCaseGraph() error {
 	return nil
 }
 
+// allocModel pre-allocates the maximum needed memory for a model
+// based on the given parameters
 func (s *Server) allocModel(
 	mpath string,
 	params ml.BackendParams,
@@ -876,6 +878,7 @@ func (s *Server) allocModel(
 	return s.reserveWorstCaseGraph()
 }
 
+// closeModel frees all memory associated with a model
 func (s *Server) closeModel() {
 	s.cache.Close()
 	s.cache = nil
@@ -885,6 +888,8 @@ func (s *Server) closeModel() {
 	}
 }
 
+// loadModel loads the weights for a model. The memory must already
+// have been allocated with allocModel
 func (s *Server) loadModel() {
 	err := s.model.Backend().Load(context.TODO(),
 		func(progress float32) {
@@ -898,6 +903,8 @@ func (s *Server) loadModel() {
 	s.ready.Done()
 }
 
+// load is the handler called by the Ollama server to process different
+// load operations
 func (s *Server) load(w http.ResponseWriter, r *http.Request) {
 	s.loadMu.Lock()
 	defer s.loadMu.Unlock()

@@ -98,6 +98,7 @@ func (l GPULayersList) String() string {
 	return fmt.Sprintf("%v%v", l.Sum(), []GPULayers(l))
 }
 
+// Sum is the total number of layers assigned across all GPUs
 func (l GPULayersList) Sum() int {
 	var sum int
 
@@ -110,6 +111,7 @@ func (l GPULayersList) Sum() int {
 
 var h maphash.Hash
 
+// Hash is an identifier of this layer assignment
 func (l GPULayersList) Hash() uint64 {
 	h.Reset()
 	for _, g := range l {
@@ -206,7 +208,9 @@ type DeviceMemory struct {
 	Graph Memory
 }
 
-func (m DeviceMemory) SumAllocated() uint64 {
+// Allocated returns the total size of the memory that has been successfully
+// allocated on this device
+func (m DeviceMemory) Allocated() uint64 {
 	var mem uint64
 
 	for _, w := range m.Weights {

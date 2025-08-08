@@ -218,10 +218,10 @@ func NewLlamaServer(gpus discover.GpuInfoList, modelPath string, f *ggml.GGML, a
 		slog.Warn("quantized kv cache requested but flash attention disabled", "type", kvct)
 	}
 
-	avilableLibs := make(map[string]string)
+	availableLibs := make(map[string]string)
 	if entries, err := os.ReadDir(discover.LibOllamaPath); err == nil {
 		for _, entry := range entries {
-			avilableLibs[entry.Name()] = filepath.Join(discover.LibOllamaPath, entry.Name())
+			availableLibs[entry.Name()] = filepath.Join(discover.LibOllamaPath, entry.Name())
 		}
 	}
 
@@ -231,7 +231,7 @@ func NewLlamaServer(gpus discover.GpuInfoList, modelPath string, f *ggml.GGML, a
 	}
 
 	requested := envconfig.LLMLibrary()
-	if avilableLibs[requested] != "" {
+	if availableLibs[requested] != "" {
 		slog.Info("using requested gpu library", "requested", requested)
 		gpuLibs = []string{requested}
 	}
@@ -239,7 +239,7 @@ func NewLlamaServer(gpus discover.GpuInfoList, modelPath string, f *ggml.GGML, a
 	var compatible []string
 	for _, gpuLib := range gpuLibs {
 		var matchingLibs []string
-		for k := range avilableLibs {
+		for k := range availableLibs {
 			// exact match first
 			if k == gpuLib {
 				matchingLibs = append([]string{k}, matchingLibs...)
@@ -310,7 +310,7 @@ func NewLlamaServer(gpus discover.GpuInfoList, modelPath string, f *ggml.GGML, a
 
 		ggmlPaths := []string{discover.LibOllamaPath}
 		for _, c := range compatible {
-			if libpath, ok := avilableLibs[c]; ok {
+			if libpath, ok := availableLibs[c]; ok {
 				slog.Debug("adding gpu library", "path", libpath)
 				libraryPaths = append([]string{libpath}, libraryPaths...)
 				ggmlPaths = append(ggmlPaths, libpath)
@@ -574,6 +574,8 @@ func (s *llamaServer) Load(ctx context.Context, gpus discover.GpuInfoList, requi
 	}
 }
 
+// createGPULayers maps from the tensor splits assigned by the memory estimates to explicit assignment
+// of particular layers onto GPUs
 func createGPULayers(estimate MemoryEstimate, ggml *ggml.GGML, gpus discover.GpuInfoList, numGPU int) ml.GPULayersList {
 	if numGPU <= 0 {
 		return nil
@@ -590,6 +592,10 @@ func createGPULayers(estimate MemoryEstimate, ggml *ggml.GGML, gpus discover.Gpu
 	for i := range splits {
 		sum += float32(estimate.TensorSplit[i])
 		splits[i] = sum
+	}
+
+	if sum <= 0 {
+		return nil
 	}
 
 	// normalize splits
@@ -616,6 +622,15 @@ func createGPULayers(estimate MemoryEstimate, ggml *ggml.GGML, gpus discover.Gpu
 	return gpuLayers
 }
 
+// Load finds the optimal layout of layers to offload on GPUs based on no initial information about the size of the model
+// It does this by:
+// 1. Assigning the full model to the GPU with the largest available free memory
+// 2. Attempting to allocate the layout and receiving the memory requirements in response
+// 3. Creating a new layout based on the updated memory information
+// 4. Going back to step 2 and looping until we either stabilize on a particular layout or discover that we have entered a cycle
+//
+// This process is repeated for higher levels of loading the model (fit, allocate, commit). The earlier levels are quicker,
+// allowing for faster iteration, but may return less information.
 func (s *ollamaServer) Load(ctx context.Context, gpus discover.GpuInfoList, requireFull bool) error {
 	var success bool
 	defer func() {
@@ -643,7 +658,7 @@ func (s *ollamaServer) Load(ctx context.Context, gpus discover.GpuInfoList, requ
 	pastAllocations := make(map[uint64]struct{})
 	var backoff float32
 
-	gpuLayers, err := s.fitGPU(systemInfo, gpus, s.mem, requireFull, backoff)
+	gpuLayers, err := s.createLayout(systemInfo, gpus, s.mem, requireFull, backoff)
 	if err != nil {
 		return err
 	}
@@ -668,7 +683,7 @@ nextOperation:
 			s.mem = &resp.Memory
 
 			for {
-				newGPULayers, err := s.fitGPU(systemInfo, gpus, s.mem, requireFull, backoff)
+				newGPULayers, err := s.createLayout(systemInfo, gpus, s.mem, requireFull, backoff)
 				if err != nil {
 					return err
 				}
@@ -701,7 +716,7 @@ nextOperation:
 						slog.Debug("exploring intermediate layers", "layer", i)
 
 						s.options.NumGPU = i
-						newGPULayers, err = s.fitGPU(systemInfo, gpus, s.mem, requireFull, backoff)
+						newGPULayers, err = s.createLayout(systemInfo, gpus, s.mem, requireFull, backoff)
 						s.options.NumGPU = -1
 						if err != nil {
 							return err
@@ -718,7 +733,7 @@ nextOperation:
 						slog.Debug("memory", "success", resp.Success, "required", resp.Memory)
 
 						if resp.Success {
-							verifyGPULayers, err := s.fitGPU(systemInfo, gpus, &resp.Memory, requireFull, backoff)
+							verifyGPULayers, err := s.createLayout(systemInfo, gpus, &resp.Memory, requireFull, backoff)
 							if err != nil {
 								return err
 							}
@@ -784,7 +799,13 @@ nextOperation:
 	return nil
 }
 
-func (s *ollamaServer) fitGPU(systemInfo discover.SystemInfo, systemGPUs discover.GpuInfoList, memory *ml.BackendMemory, requireFull bool, backoff float32) (ml.GPULayersList, error) {
+// createLayout uses the current best view of memory requirements and creates a layout of model layers on GPUs.
+// It does this by:
+// - Calculating how much space each layer requires
+// - Calculating how much space each GPU has available for layers, based on free memory and space occupied by the graph
+// - Assigning layers
+// - Ensuring that we don't exceed limits, such as requirements about partial offloading or system memory
+func (s *ollamaServer) createLayout(systemInfo discover.SystemInfo, systemGPUs discover.GpuInfoList, memory *ml.BackendMemory, requireFull bool, backoff float32) (ml.GPULayersList, error) {
 	if s.totalLayers == 0 || s.options.NumGPU == 0 || len(systemGPUs) == 0 || (len(systemGPUs) == 1 && systemGPUs[0].Library == "cpu") {
 		return ml.GPULayersList{}, nil
 	}
@@ -913,6 +934,7 @@ nextLayer:
 	return gpuLayers, nil
 }
 
+// assignLayers packs the maximum number of layers onto the smallest set of GPUs and comes up with a layer assignment
 func assignLayers(layers []uint64, gpus discover.GpuInfoList, requestedLayers int, lastUsedGPU int) (gpuLayers ml.GPULayersList) {
 	// If we can't fit everything then prefer offloading layers other than the output layer
 	for range 2 {
@@ -976,6 +998,7 @@ func findBestFit(layers []uint64, gpus discover.GpuInfoList, requestedLayers int
 	return bestAssignments
 }
 
+// greedyFit assigns layers incrementally to GPUs, spilling over as each runs out of free space
 func greedyFit(layers []uint64, gpus discover.GpuInfoList, capacity float32, requestedLayers int) (gpuLayers ml.GPULayersList) {
 	device := len(gpus) - 1
 	gpuLayers = ml.GPULayersList{{ID: gpus[device].ID}}
@@ -1004,6 +1027,8 @@ func greedyFit(layers []uint64, gpus discover.GpuInfoList, capacity float32, req
 	return gpuLayers
 }
 
+// waitUntilRunnerLaunched sleeps until the runner subprocess is alive enough
+// to respond to status requests
 func (s *llmServer) waitUntilRunnerLaunched(ctx context.Context) error {
 	for {
 		_, err := s.getServerStatus(ctx)
@@ -1023,6 +1048,8 @@ func (s *llmServer) waitUntilRunnerLaunched(ctx context.Context) error {
 	return nil
 }
 
+// initModel sends a load request to the runner based on the request operation (fit, alloc, commit)
+// and parameters
 func (s *llmServer) initModel(ctx context.Context, req LoadRequest, operation LoadOperation) (*LoadResponse, error) {
 	req.Operation = operation
 
@@ -1658,7 +1685,7 @@ func (s *ollamaServer) VRAMSize() uint64 {
 	var mem uint64
 
 	for _, g := range s.mem.GPUs {
-		mem += g.SumAllocated()
+		mem += g.Allocated()
 	}
 
 	// Some elements are always on CPU. However, if we have allocated all layers
@@ -1684,9 +1711,9 @@ func (s *ollamaServer) TotalSize() uint64 {
 	}
 
 	mem := s.mem.InputWeights.Size
-	mem += s.mem.CPU.SumAllocated()
+	mem += s.mem.CPU.Allocated()
 	for _, g := range s.mem.GPUs {
-		mem += g.SumAllocated()
+		mem += g.Allocated()
 	}
 
 	return mem
@@ -1699,7 +1726,7 @@ func (s *ollamaServer) VRAMByGPU(gpuID string) uint64 {
 
 	for _, g := range s.mem.GPUs {
 		if g.ID == gpuID {
-			return g.SumAllocated()
+			return g.Allocated()
 		}
 	}
 
