@@ -257,13 +257,11 @@ func New(modelPath string, params ml.BackendParams) (ml.Backend, error) {
 			if tt := C.ggml_get_tensor(ctxs[bt], cname); tt != nil {
 				return tt
 			}
+
 			if t.source.Kind == 4 {
-				slog.Info("XXX mapping MXFP4 type", "name", name)
+				// HACK: transition from original mxfp4 implementation to ggml implementation
 				t.source.Kind = 39
-			}
-			// SUPER HACKY!  bf16->fp32
-			if strings.HasSuffix(t.source.Name, "_exps.bias") && t.source.Kind == uint32(fsggml.TensorTypeBF16) {
-				slog.Info("XXX mapping bf16 to fp32", "name", name, "offset", t.source.Offset, "elements", t.source.Elements())
+			} else if strings.HasSuffix(t.source.Name, "_exps.bias") && t.source.Kind == uint32(fsggml.TensorTypeBF16) {
 				t.source.Kind = uint32(fsggml.TensorTypeF32)
 			}
 
@@ -490,13 +488,10 @@ func (b *Backend) Load(ctx context.Context, progress func(float32)) error {
 			if t.Kind == 39 {
 				var s uint64
 				buf := make([]byte, t.Size())
-				_, err := io.ReadFull(sr, buf)
-				if err != nil {
-					slog.Info("XXX error", "name", t.Name, "error", err)
+				if _, err := io.ReadFull(sr, buf); err != nil {
 					return err
 				}
 				for j := 0; j < len(buf)/17; j++ {
-
 					for i := 0; i < 16; i++ {
 						// swap nibbles
 						t_lo := buf[j*17+i+1] & 0x0F
@@ -543,9 +538,7 @@ func (b *Backend) Load(ctx context.Context, progress func(float32)) error {
 				// data is bf16 but we need to convert to fp32
 				// TODO do this in blocks to put less memory pressure on the system
 				buf := make([]byte, t.Elements()*2)
-				_, err := io.ReadFull(sr, buf)
-				if err != nil {
-					slog.Info("XXX error", "name", t.Name, "error", err)
+				if _, err := io.ReadFull(sr, buf); err != nil {
 					return err
 				}
 				fp32 := ConvertToF32(buf, uint32(fsggml.TensorTypeBF16), t.Elements())
