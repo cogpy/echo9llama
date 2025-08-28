@@ -1576,6 +1576,59 @@ func NewCLI() *cobra.Command {
 		RunE:    DeleteHandler,
 	}
 
+	// Orchestration commands
+	orchestrateCmd := &cobra.Command{
+		Use:   "orchestrate",
+		Short: "Orchestration agent management",
+	}
+
+	createAgentCmd := &cobra.Command{
+		Use:     "create-agent NAME",
+		Short:   "Create an orchestration agent",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: checkServerHeartbeat,
+		RunE:    CreateAgentHandler,
+	}
+	createAgentCmd.Flags().StringSlice("models", []string{}, "Models for the agent")
+	createAgentCmd.Flags().String("description", "", "Description of the agent")
+
+	listAgentsCmd := &cobra.Command{
+		Use:     "list-agents",
+		Short:   "List orchestration agents",
+		PreRunE: checkServerHeartbeat,
+		RunE:    ListAgentsHandler,
+	}
+
+	deleteAgentCmd := &cobra.Command{
+		Use:     "delete-agent ID",
+		Short:   "Delete an orchestration agent",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: checkServerHeartbeat,
+		RunE:    DeleteAgentHandler,
+	}
+
+	runTasksCmd := &cobra.Command{
+		Use:     "run-tasks AGENT_ID",
+		Short:   "Run orchestrated tasks",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: checkServerHeartbeat,
+		RunE:    RunTasksHandler,
+	}
+	runTasksCmd.Flags().StringSlice("tasks", []string{}, "Tasks to run (format: type:input)")
+	runTasksCmd.Flags().Bool("sequential", false, "Run tasks sequentially")
+	runTasksCmd.Flags().String("keepalive", "", "Duration to keep models loaded")
+
+	runWorkflowCmd := &cobra.Command{
+		Use:     "run-workflow AGENT_ID",
+		Short:   "Run a multi-step workflow",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: checkServerHeartbeat,
+		RunE:    RunWorkflowHandler,
+	}
+	runWorkflowCmd.Flags().StringSlice("steps", []string{}, "Workflow steps (format: name:type:input)")
+
+	orchestrateCmd.AddCommand(createAgentCmd, listAgentsCmd, deleteAgentCmd, runTasksCmd, runWorkflowCmd)
+
 	runnerCmd := &cobra.Command{
 		Use:    "runner",
 		Hidden: true,
@@ -1643,6 +1696,7 @@ func NewCLI() *cobra.Command {
 		psCmd,
 		copyCmd,
 		deleteCmd,
+		orchestrateCmd,
 		runnerCmd,
 	)
 
@@ -1714,4 +1768,178 @@ func renderToolCalls(toolCalls []api.ToolCall, plainText bool) string {
 		out += readline.ColorDefault
 	}
 	return out
+}
+
+// Orchestration Handlers
+
+func CreateAgentHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	name := args[0]
+	models, _ := cmd.Flags().GetStringSlice("models")
+	description, _ := cmd.Flags().GetString("description")
+
+	req := api.CreateAgentRequest{
+		Name:        name,
+		Description: description,
+		Models:      models,
+		Config:      make(map[string]interface{}),
+	}
+
+	// Make API call to create agent
+	// For now, we'll just simulate this since we need proper HTTP client setup
+	fmt.Printf("Creating agent '%s' with models: %v\n", name, models)
+	if description != "" {
+		fmt.Printf("Description: %s\n", description)
+	}
+
+	// TODO: Make actual HTTP request to /api/orchestration/agents
+	_ = req
+	_ = client
+
+	return nil
+}
+
+func ListAgentsHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	// TODO: Make actual HTTP request to /api/orchestration/agents
+	_ = client
+
+	fmt.Println("Listing orchestration agents:")
+	fmt.Println("(No agents found - this is a placeholder)")
+
+	return nil
+}
+
+func DeleteAgentHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	agentID := args[0]
+
+	// TODO: Make actual HTTP request to DELETE /api/orchestration/agents/{id}
+	_ = client
+
+	fmt.Printf("Deleting agent: %s\n", agentID)
+	fmt.Println("(This is a placeholder)")
+
+	return nil
+}
+
+func RunTasksHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	agentID := args[0]
+	taskSpecs, _ := cmd.Flags().GetStringSlice("tasks")
+	sequential, _ := cmd.Flags().GetBool("sequential")
+	keepAlive, _ := cmd.Flags().GetString("keepalive")
+
+	if len(taskSpecs) == 0 {
+		return fmt.Errorf("no tasks specified. Use --tasks to specify tasks in format 'type:input'")
+	}
+
+	// Parse task specifications
+	tasks := make([]api.OrchestrationTask, 0, len(taskSpecs))
+	for _, spec := range taskSpecs {
+		parts := strings.SplitN(spec, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid task format '%s'. Use 'type:input'", spec)
+		}
+		tasks = append(tasks, api.OrchestrationTask{
+			Type:  parts[0],
+			Input: parts[1],
+		})
+	}
+
+	req := api.OrchestrationRequest{
+		AgentID:    agentID,
+		Tasks:      tasks,
+		Sequential: sequential,
+	}
+
+	if keepAlive != "" {
+		d, err := time.ParseDuration(keepAlive)
+		if err != nil {
+			return err
+		}
+		req.KeepAlive = &api.Duration{Duration: d}
+	}
+
+	// TODO: Make actual HTTP request to /api/orchestration/tasks
+	_ = client
+	_ = req
+
+	fmt.Printf("Running %d tasks for agent %s\n", len(tasks), agentID)
+	if sequential {
+		fmt.Println("Tasks will be run sequentially")
+	} else {
+		fmt.Println("Tasks will be run in parallel")
+	}
+
+	for i, task := range tasks {
+		fmt.Printf("Task %d: %s - %s\n", i+1, task.Type, task.Input)
+	}
+
+	fmt.Println("(This is a placeholder)")
+
+	return nil
+}
+
+func RunWorkflowHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	agentID := args[0]
+	stepSpecs, _ := cmd.Flags().GetStringSlice("steps")
+
+	if len(stepSpecs) == 0 {
+		return fmt.Errorf("no steps specified. Use --steps to specify steps in format 'name:type:input'")
+	}
+
+	// Parse step specifications
+	steps := make([]api.WorkflowStep, 0, len(stepSpecs))
+	for _, spec := range stepSpecs {
+		parts := strings.SplitN(spec, ":", 3)
+		if len(parts) != 3 {
+			return fmt.Errorf("invalid step format '%s'. Use 'name:type:input'", spec)
+		}
+		steps = append(steps, api.WorkflowStep{
+			Name:  parts[0],
+			Type:  parts[1],
+			Input: parts[2],
+		})
+	}
+
+	req := api.WorkflowRequest{
+		AgentID: agentID,
+		Steps:   steps,
+	}
+
+	// TODO: Make actual HTTP request to /api/orchestration/workflows
+	_ = client
+	_ = req
+
+	fmt.Printf("Running workflow with %d steps for agent %s\n", len(steps), agentID)
+
+	for i, step := range steps {
+		fmt.Printf("Step %d: %s (%s) - %s\n", i+1, step.Name, step.Type, step.Input)
+	}
+
+	fmt.Println("(This is a placeholder)")
+
+	return nil
 }

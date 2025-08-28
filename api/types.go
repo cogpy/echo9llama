@@ -947,3 +947,120 @@ func FormatParams(params map[string][]string) (map[string]any, error) {
 
 	return out, nil
 }
+
+// Orchestration API types
+
+// CreateAgentRequest represents a request to create an orchestration agent
+type CreateAgentRequest struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Models      []string               `json:"models"`
+	Config      map[string]interface{} `json:"config,omitempty"`
+}
+
+// AgentResponse represents an orchestration agent response
+type AgentResponse struct {
+	ID          string                 `json:"id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Models      []string               `json:"models"`
+	Config      map[string]interface{} `json:"config"`
+	CreatedAt   time.Time              `json:"created_at"`
+	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// ListAgentsResponse represents the response for listing agents
+type ListAgentsResponse struct {
+	Agents []AgentResponse `json:"agents"`
+}
+
+// OrchestrationRequest represents a request to orchestrate multiple tasks
+type OrchestrationRequest struct {
+	AgentID     string                 `json:"agent_id"`
+	Tasks       []OrchestrationTask    `json:"tasks"`
+	Sequential  bool                   `json:"sequential"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	Stream      *bool                  `json:"stream,omitempty"`
+	KeepAlive   *Duration              `json:"keep_alive,omitempty"`
+}
+
+// OrchestrationTask represents a single task within an orchestration request
+type OrchestrationTask struct {
+	Type       string                 `json:"type"`
+	Input      string                 `json:"input"`
+	ModelName  string                 `json:"model_name,omitempty"`
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+// OrchestrationResponse represents the response from an orchestration request
+type OrchestrationResponse struct {
+	ID        string                    `json:"id"`
+	AgentID   string                    `json:"agent_id"`
+	Status    string                    `json:"status"`
+	Tasks     []OrchestrationTaskResult `json:"tasks"`
+	Results   []OrchestrationResult     `json:"results,omitempty"`
+	Error     string                    `json:"error,omitempty"`
+	CreatedAt time.Time                 `json:"created_at"`
+}
+
+// OrchestrationTaskResult represents a task within an orchestration response
+type OrchestrationTaskResult struct {
+	ID          string                 `json:"id"`
+	Type        string                 `json:"type"`
+	Input       string                 `json:"input"`
+	Output      string                 `json:"output,omitempty"`
+	Status      string                 `json:"status"`
+	ModelName   string                 `json:"model_name,omitempty"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+	CreatedAt   time.Time              `json:"created_at"`
+	CompletedAt *time.Time             `json:"completed_at,omitempty"`
+	Error       string                 `json:"error,omitempty"`
+}
+
+// OrchestrationResult represents the result of a completed task
+type OrchestrationResult struct {
+	TaskID    string                    `json:"task_id"`
+	Output    string                    `json:"output"`
+	ModelUsed string                    `json:"model_used,omitempty"`
+	Metrics   OrchestrationTaskMetrics  `json:"metrics,omitempty"`
+}
+
+// OrchestrationTaskMetrics contains performance metrics for a completed task
+type OrchestrationTaskMetrics struct {
+	Duration     Duration `json:"duration"`
+	TokensUsed   int      `json:"tokens_used,omitempty"`
+	PromptTokens int      `json:"prompt_tokens,omitempty"`
+	OutputTokens int      `json:"output_tokens,omitempty"`
+}
+
+// WorkflowRequest represents a request to execute a multi-step workflow
+type WorkflowRequest struct {
+	AgentID string         `json:"agent_id"`
+	Steps   []WorkflowStep `json:"steps"`
+}
+
+// WorkflowStep represents a single step in a workflow
+type WorkflowStep struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Input     string `json:"input"`
+	ModelName string `json:"model_name,omitempty"`
+}
+
+// WorkflowResponse represents the response from a workflow execution
+type WorkflowResponse struct {
+	Steps   []WorkflowStepResult `json:"steps"`
+	Success bool                 `json:"success"`
+	Error   string               `json:"error,omitempty"`
+}
+
+// WorkflowStepResult represents the result of a single workflow step
+type WorkflowStepResult struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Input     string `json:"input"`
+	Output    string `json:"output"`
+	ModelUsed string `json:"model_used"`
+	Success   bool   `json:"success"`
+	Error     string `json:"error,omitempty"`
+}
