@@ -103,6 +103,32 @@ ollama orchestrate create-agent default \
   --description "Default agent for general tasks"
 ```
 
+### Enhanced Agent Types (🆕 Echoself Integration)
+
+```bash
+# Create a reflective agent for self-analysis
+ollama orchestrate create-agent reflective-analyst \
+  --type reflective \
+  --domain analysis \
+  --models llama3.2 \
+  --description "Self-reflective agent for performance analysis"
+
+# Create an orchestrator agent for coordination
+ollama orchestrate create-agent coordinator \
+  --type orchestrator \
+  --models llama3.2 \
+  --tools web_search,calculator \
+  --description "Orchestrator for complex multi-agent workflows"
+
+# Create a specialist agent for coding tasks
+ollama orchestrate create-agent code-specialist \
+  --type specialist \
+  --domain coding \
+  --models codellama,llama3.2 \
+  --tools web_search \
+  --description "Specialist agent for software development tasks"
+```
+
 ### Task Orchestration
 
 ```bash
@@ -111,6 +137,23 @@ ollama orchestrate run-tasks default \
   --tasks "generate:Review this Python code for bugs: def add(a,b): return a+b" \
   --tasks "generate:Suggest improvements for this code: def add(a,b): return a+b" \
   --tasks "generate:Write unit tests for: def add(a,b): return a+b"
+```
+
+### Enhanced Task Types (🆕 Echoself Integration)
+
+```bash
+# Execute tool-based tasks
+ollama orchestrate run-tasks default \
+  --tasks "tool:calculator:Calculate 15 * 23 + 7" \
+  --tasks "tool:web_search:Find recent AI research papers"
+
+# Run reflection tasks for agent self-analysis
+ollama orchestrate run-tasks reflective-analyst \
+  --tasks "reflect:Analyze recent task performance and suggest improvements"
+
+# Execute plugin-based data analysis
+ollama orchestrate run-tasks default \
+  --tasks "plugin:data_analysis:Analyze sentiment of customer feedback data"
 ```
 
 ### Multi-Step Workflows
@@ -123,7 +166,60 @@ ollama orchestrate run-workflow default \
   --steps "examples:generate:Provide usage examples for the function described in: {{document}}"
 ```
 
+### Advanced Coordinated Workflows (🆕 Echoself Integration)
+
+```bash
+# Multi-agent coordinated workflow
+ollama orchestrate run-coordinated-workflow coordinator \
+  --tasks "analysis:reflect:Analyze current system performance" \
+  --tasks "research:tool:web_search:Find best practices for optimization" \
+  --tasks "planning:generate:Create improvement plan based on analysis and research" \
+  --tasks "validation:plugin:data_analysis:Validate the proposed improvements"
+
+# Hierarchical agent coordination
+ollama orchestrate run-workflow coordinator \
+  --steps "delegate:Generate task assignments for specialist agents" \
+  --steps "coordinate:Monitor and coordinate specialist agent execution" \
+  --steps "integrate:Combine results from all specialist agents" \
+  --steps "reflect:Analyze coordination effectiveness and learn"
+```
+
 ## Features
+
+### Advanced Agent Types (🆕 Echoself Integration)
+The orchestration engine now supports specialized agent types with enhanced capabilities:
+- **General Agents**: Multi-purpose agents for standard tasks
+- **Specialist Agents**: Domain-focused agents with specialized knowledge
+- **Orchestrator Agents**: Coordinate other agents and manage complex workflows
+- **Reflective Agents**: Self-analyzing agents that improve over time
+
+### State Management & Memory (🆕 Echoself Integration)
+Agents maintain persistent state across interactions:
+- **Memory System**: Key-value storage for agent knowledge and experience
+- **Context Tracking**: Relevance-scored contextual information with timestamps
+- **Goal Management**: Agents can maintain and work toward defined objectives
+- **Capability Awareness**: Agents track and understand their own capabilities
+
+### Tool Integration (🆕 Echoself Integration)
+Extensible tool system for external integrations:
+- **Web Search Tool**: Example integration for information retrieval
+- **Calculator Tool**: Mathematical computation capabilities
+- **Custom Tools**: Plugin interface for adding domain-specific tools
+- **Tool Selection**: Intelligent tool selection based on task requirements
+
+### Plugin System (🆕 Echoself Integration)
+Modular plugin architecture for custom functionality:
+- **Data Analysis Plugin**: Example plugin for pattern recognition and insights
+- **Plugin Registry**: Centralized management of available plugins
+- **Custom Plugins**: Easy interface for adding specialized capabilities
+- **Plugin Coordination**: Seamless integration with agent workflows
+
+### Enhanced Coordination Patterns (🆝 Echoself Integration)
+Advanced multi-agent coordination capabilities:
+- **Intelligent Agent Selection**: Automatic selection of optimal agents for tasks
+- **Performance Scoring**: Agent-task compatibility scoring and optimization
+- **Coordination Reflection**: Post-execution analysis and learning
+- **Hierarchical Orchestration**: Orchestrator agents managing sub-agents
 
 ### Smart Model Routing
 The orchestration engine automatically selects the most appropriate model for each task:
@@ -166,10 +262,13 @@ Agents support flexible configuration options:
 ```
 
 ### Task Types
-Supported task types:
+Supported task types (enhanced for echoself integration):
 - `generate` - Text generation tasks
 - `chat` - Conversational tasks
 - `embed` - Embedding generation
+- `tool` - External tool calling (🆕)
+- `reflect` - Agent self-reflection and analysis (🆕)
+- `plugin` - Custom plugin execution (🆕)
 - `custom` - Extensible for future task types
 
 ## Integration with Existing Flows
@@ -200,14 +299,22 @@ go build -o ollama .
 
 ## Future Enhancements
 
-This implementation provides a foundation for integration with the actual echoself system. Planned enhancements include:
+This implementation provides a foundation for integration with the actual echoself system. **Recent enhancements include**:
 
-1. **Advanced Agent Types**: Support for specialized agent behaviors and learning patterns
-2. **State Management**: Persistent agent memory and context across sessions  
-3. **Tool Integration**: Ability to call external tools and APIs within workflows
-4. **Monitoring Dashboard**: Web interface for orchestration monitoring and management
-5. **Performance Optimization**: Advanced scheduling and resource management
-6. **Plugin System**: Extensible architecture for custom task types and behaviors
+**✅ Completed Enhancements:**
+1. **Advanced Agent Types**: Support for specialized agent behaviors (General, Specialist, Orchestrator, Reflective)
+2. **State Management**: Persistent agent memory and context across sessions with contextual relevance scoring
+3. **Tool Integration**: Ability to call external tools and APIs within workflows (web search, calculator examples)
+4. **Plugin System**: Extensible architecture for custom task types and behaviors (data analysis example)
+5. **Enhanced Coordination**: Intelligent agent selection and coordinated workflows with performance reflection
+6. **Self-Reflection**: Agents can analyze their own performance and learning patterns
+
+**🚧 Planned Future Enhancements:**
+1. **Advanced Learning**: Machine learning-based agent improvement and adaptation
+2. **Monitoring Dashboard**: Web interface for orchestration monitoring and management
+3. **Performance Optimization**: Advanced scheduling and resource management
+4. **Multi-Agent Conversations**: Direct agent-to-agent communication protocols
+5. **Integration APIs**: Enhanced integration with external echoself components
 
 ## Error Handling
 

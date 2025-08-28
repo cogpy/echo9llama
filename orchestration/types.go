@@ -14,8 +14,38 @@ type Agent struct {
 	Description string                 `json:"description"`
 	Models      []string               `json:"models"`
 	Config      map[string]interface{} `json:"config"`
+	Type        AgentType              `json:"type"`
+	State       *AgentState            `json:"state,omitempty"`
+	Tools       []string               `json:"tools,omitempty"`
 	CreatedAt   time.Time              `json:"created_at"`
 	UpdatedAt   time.Time              `json:"updated_at"`
+}
+
+// AgentType defines different types of agents with specialized behaviors
+type AgentType string
+
+const (
+	AgentTypeGeneral     AgentType = "general"     // General purpose agent
+	AgentTypeSpecialist  AgentType = "specialist"  // Specialized for specific domains
+	AgentTypeOrchestrator AgentType = "orchestrator" // Coordinates other agents
+	AgentTypeReflective  AgentType = "reflective"  // Self-analyzing and improving
+)
+
+// AgentState maintains persistent state and memory for agents
+type AgentState struct {
+	Memory         map[string]interface{} `json:"memory,omitempty"`
+	Context        []ContextItem          `json:"context,omitempty"`
+	Goals          []string               `json:"goals,omitempty"`
+	Capabilities   []string               `json:"capabilities,omitempty"`
+	LastInteraction time.Time             `json:"last_interaction"`
+}
+
+// ContextItem represents a piece of contextual information in agent memory
+type ContextItem struct {
+	Key       string      `json:"key"`
+	Value     interface{} `json:"value"`
+	Timestamp time.Time   `json:"timestamp"`
+	Relevance float64     `json:"relevance"`
 }
 
 // Task represents a task that can be executed by an orchestration agent
@@ -47,7 +77,43 @@ const (
 	TaskTypeChat     = "chat"
 	TaskTypeEmbed    = "embed"
 	TaskTypeCustom   = "custom"
+	TaskTypeTool     = "tool"     // Call external tools
+	TaskTypeReflect  = "reflect"  // Self-reflection and analysis
+	TaskTypePlugin   = "plugin"   // Custom plugin execution
 )
+
+// ToolCall represents a call to an external tool
+type ToolCall struct {
+	Name       string                 `json:"name"`
+	Parameters map[string]interface{} `json:"parameters"`
+	Timeout    time.Duration          `json:"timeout,omitempty"`
+}
+
+// ToolResult represents the result of a tool call
+type ToolResult struct {
+	Success bool        `json:"success"`
+	Output  interface{} `json:"output"`
+	Error   string      `json:"error,omitempty"`
+}
+
+// Plugin interface for extensible custom task types
+type Plugin interface {
+	Name() string
+	Description() string
+	Execute(ctx context.Context, input string, params map[string]interface{}) (interface{}, error)
+}
+
+// PluginRegistry manages available plugins
+type PluginRegistry struct {
+	plugins map[string]Plugin
+}
+
+// Tool interface for external tool integrations
+type Tool interface {
+	Name() string
+	Description() string
+	Call(ctx context.Context, params map[string]interface{}) (*ToolResult, error)
+}
 
 // OrchestrationRequest represents a request to orchestrate multiple tasks
 type OrchestrationRequest struct {

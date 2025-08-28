@@ -218,3 +218,207 @@ func TestUpdateNonExistentAgent(t *testing.T) {
 		t.Error("UpdateAgent should have failed for non-existent agent")
 	}
 }
+
+func TestNewAgentTypes(t *testing.T) {
+	client := api.Client{}
+	engine := NewEngine(client)
+	ctx := context.Background()
+
+	// Test creating different agent types
+	testCases := []struct {
+		agentType AgentType
+		domain    string
+	}{
+		{AgentTypeReflective, "analysis"},
+		{AgentTypeOrchestrator, "coordination"},
+		{AgentTypeSpecialist, "coding"},
+	}
+
+	for _, tc := range testCases {
+		agent, err := engine.CreateSpecializedAgent(ctx, tc.agentType, tc.domain)
+		if err != nil {
+			t.Errorf("CreateSpecializedAgent failed for type %s: %v", tc.agentType, err)
+			continue
+		}
+
+		if agent.Type != tc.agentType {
+			t.Errorf("Expected agent type %s, got %s", tc.agentType, agent.Type)
+		}
+
+		if agent.State == nil {
+			t.Error("Agent state should be initialized")
+		}
+
+		if agent.State.Memory == nil {
+			t.Error("Agent memory should be initialized")
+		}
+	}
+}
+
+func TestToolRegistration(t *testing.T) {
+	client := api.Client{}
+	engine := NewEngine(client)
+
+	// Register default tools
+	RegisterDefaultTools(engine)
+
+	tools := engine.GetAvailableTools()
+	if len(tools) == 0 {
+		t.Error("Expected tools to be registered")
+	}
+
+	// Check for specific tools
+	expectedTools := []string{"web_search", "calculator"}
+	for _, expectedTool := range expectedTools {
+		found := false
+		for _, tool := range tools {
+			if tool == expectedTool {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected tool '%s' not found in registered tools", expectedTool)
+		}
+	}
+}
+
+func TestPluginRegistration(t *testing.T) {
+	client := api.Client{}
+	engine := NewEngine(client)
+
+	// Register default plugins
+	RegisterDefaultPlugins(engine)
+
+	plugins := engine.GetAvailablePlugins()
+	if len(plugins) == 0 {
+		t.Error("Expected plugins to be registered")
+	}
+
+	// Check for specific plugin
+	expectedPlugin := "data_analysis"
+	found := false
+	for _, plugin := range plugins {
+		if plugin == expectedPlugin {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("Expected plugin '%s' not found in registered plugins", expectedPlugin)
+	}
+}
+
+func TestEnhancedTaskExecution(t *testing.T) {
+	client := api.Client{}
+	engine := NewEngine(client)
+	ctx := context.Background()
+
+	// Register tools and plugins for testing
+	RegisterDefaultTools(engine)
+	RegisterDefaultPlugins(engine)
+
+	// Create a general agent
+	agent := &Agent{
+		Name:        "test-agent",
+		Description: "Test agent for enhanced features",
+		Type:        AgentTypeGeneral,
+		Models:      []string{"llama2"},
+		Tools:       []string{"calculator"},
+	}
+
+	err := engine.CreateAgent(ctx, agent)
+	if err != nil {
+		t.Fatalf("CreateAgent failed: %v", err)
+	}
+
+	// Test tool task execution
+	toolTask := &Task{
+		ID:      "tool-task-1",
+		Type:    TaskTypeTool,
+		Input:   "Calculate 2 + 3",
+		Status:  TaskStatusPending,
+		AgentID: agent.ID,
+		Parameters: map[string]interface{}{
+			"tool": map[string]interface{}{
+				"name": "calculator",
+				"parameters": map[string]interface{}{
+					"operation": "add",
+					"a":         2.0,
+					"b":         3.0,
+				},
+			},
+		},
+	}
+
+	result, err := engine.ExecuteTask(ctx, toolTask, agent)
+	if err != nil {
+		t.Errorf("Tool task execution failed: %v", err)
+	}
+
+	if result == nil {
+		t.Error("Tool task result should not be nil")
+	}
+
+	// Test plugin task execution
+	pluginTask := &Task{
+		ID:      "plugin-task-1",
+		Type:    TaskTypePlugin,
+		Input:   "Analyze this sample data",
+		Status:  TaskStatusPending,
+		AgentID: agent.ID,
+		Parameters: map[string]interface{}{
+			"plugin_name": "data_analysis",
+			"type":        "summary",
+		},
+	}
+
+	result, err = engine.ExecuteTask(ctx, pluginTask, agent)
+	if err != nil {
+		t.Errorf("Plugin task execution failed: %v", err)
+	}
+
+	if result == nil {
+		t.Error("Plugin task result should not be nil")
+	}
+}
+
+func TestReflectiveAgent(t *testing.T) {
+	client := api.Client{}
+	engine := NewEngine(client)
+	ctx := context.Background()
+
+	// Create a reflective agent
+	agent, err := engine.CreateSpecializedAgent(ctx, AgentTypeReflective, "self-analysis")
+	if err != nil {
+		t.Fatalf("CreateSpecializedAgent failed: %v", err)
+	}
+
+	// Test reflection task
+	reflectTask := &Task{
+		ID:      "reflect-task-1",
+		Type:    TaskTypeReflect,
+		Input:   "Analyze recent performance and learning patterns",
+		Status:  TaskStatusPending,
+		AgentID: agent.ID,
+	}
+
+	result, err := engine.ExecuteTask(ctx, reflectTask, agent)
+	if err != nil {
+		t.Errorf("Reflection task execution failed: %v", err)
+	}
+
+	if result == nil {
+		t.Error("Reflection task result should not be nil")
+	}
+
+	// Check that agent state was updated
+	updatedAgent, err := engine.GetAgent(ctx, agent.ID)
+	if err != nil {
+		t.Errorf("GetAgent failed: %v", err)
+	}
+
+	if updatedAgent.State == nil || len(updatedAgent.State.Context) == 0 {
+		t.Error("Agent state should be updated with reflection context")
+	}
+}
