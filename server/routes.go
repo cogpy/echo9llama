@@ -35,6 +35,7 @@ import (
 	"github.com/ollama/ollama/llm"
 	"github.com/ollama/ollama/logutil"
 	"github.com/ollama/ollama/openai"
+	"github.com/ollama/ollama/orchestration"
 	"github.com/ollama/ollama/server/internal/client/ollama"
 	"github.com/ollama/ollama/server/internal/registry"
 	"github.com/ollama/ollama/template"
@@ -58,9 +59,10 @@ var lowVRAMThreshold uint64 = 20 * format.GibiByte
 var mode string = gin.DebugMode
 
 type Server struct {
-	addr    net.Addr
-	sched   *Scheduler
-	lowVRAM bool
+	addr           net.Addr
+	sched          *Scheduler
+	lowVRAM        bool
+	orchestration  *orchestration.Engine
 }
 
 func init() {
@@ -1277,6 +1279,14 @@ func (s *Server) GenerateRoutes(rc *ollama.Registry) (http.Handler, error) {
 	r.POST("/api/embed", s.EmbedHandler)
 	r.POST("/api/embeddings", s.EmbeddingsHandler)
 
+	// Orchestration
+	r.POST("/api/orchestration/agents", s.CreateAgentHandler)
+	r.GET("/api/orchestration/agents", s.ListAgentsHandler)
+	r.GET("/api/orchestration/agents/:id", s.GetAgentHandler)
+	r.PUT("/api/orchestration/agents/:id", s.UpdateAgentHandler)
+	r.DELETE("/api/orchestration/agents/:id", s.DeleteAgentHandler)
+	r.POST("/api/orchestration/tasks", s.OrchestrationHandler)
+
 	// Inference (OpenAI compatibility)
 	r.POST("/v1/chat/completions", openai.ChatMiddleware(), s.ChatHandler)
 	r.POST("/v1/completions", openai.CompletionsMiddleware(), s.GenerateHandler)
@@ -1332,6 +1342,16 @@ func Serve(ln net.Listener) error {
 	}
 
 	s := &Server{addr: ln.Addr()}
+
+	// Initialize orchestration engine with a client
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		slog.Warn("failed to create API client for orchestration engine", "error", err)
+		// Use a local client instance that will be created when needed
+		s.orchestration = orchestration.NewEngine(api.Client{})
+	} else {
+		s.orchestration = orchestration.NewEngine(*client)
+	}
 
 	var rc *ollama.Registry
 	if useClient2 {
@@ -1803,4 +1823,210 @@ func filterThinkTags(msgs []api.Message, m *Model) []api.Message {
 		}
 	}
 	return msgs
+}
+
+// Orchestration Handlers
+
+func (s *Server) CreateAgentHandler(c *gin.Context) {
+	var req api.CreateAgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	agent := &orchestration.Agent{
+		Name:        req.Name,
+		Description: req.Description,
+		Models:      req.Models,
+		Config:      req.Config,
+	}
+
+	if err := s.orchestration.CreateAgent(c.Request.Context(), agent); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := api.AgentResponse{
+		ID:          agent.ID,
+		Name:        agent.Name,
+		Description: agent.Description,
+		Models:      agent.Models,
+		Config:      agent.Config,
+		CreatedAt:   agent.CreatedAt,
+		UpdatedAt:   agent.UpdatedAt,
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
+
+func (s *Server) ListAgentsHandler(c *gin.Context) {
+	agents, err := s.orchestration.ListAgents(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := api.ListAgentsResponse{
+		Agents: make([]api.AgentResponse, len(agents)),
+	}
+
+	for i, agent := range agents {
+		response.Agents[i] = api.AgentResponse{
+			ID:          agent.ID,
+			Name:        agent.Name,
+			Description: agent.Description,
+			Models:      agent.Models,
+			Config:      agent.Config,
+			CreatedAt:   agent.CreatedAt,
+			UpdatedAt:   agent.UpdatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (s *Server) GetAgentHandler(c *gin.Context) {
+	id := c.Param("id")
+	agent, err := s.orchestration.GetAgent(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := api.AgentResponse{
+		ID:          agent.ID,
+		Name:        agent.Name,
+		Description: agent.Description,
+		Models:      agent.Models,
+		Config:      agent.Config,
+		CreatedAt:   agent.CreatedAt,
+		UpdatedAt:   agent.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (s *Server) UpdateAgentHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req api.CreateAgentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	agent := &orchestration.Agent{
+		ID:          id,
+		Name:        req.Name,
+		Description: req.Description,
+		Models:      req.Models,
+		Config:      req.Config,
+	}
+
+	if err := s.orchestration.UpdateAgent(c.Request.Context(), agent); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	response := api.AgentResponse{
+		ID:          agent.ID,
+		Name:        agent.Name,
+		Description: agent.Description,
+		Models:      agent.Models,
+		Config:      agent.Config,
+		CreatedAt:   agent.CreatedAt,
+		UpdatedAt:   agent.UpdatedAt,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (s *Server) DeleteAgentHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := s.orchestration.DeleteAgent(c.Request.Context(), id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) OrchestrationHandler(c *gin.Context) {
+	var req api.OrchestrationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert API types to orchestration types
+	orchReq := &orchestration.OrchestrationRequest{
+		AgentID:    req.AgentID,
+		Sequential: req.Sequential,
+		Parameters: req.Parameters,
+		Stream:     req.Stream,
+	}
+
+	if req.KeepAlive != nil {
+		orchReq.KeepAlive = (*api.Duration)(req.KeepAlive)
+	}
+
+	// Convert tasks
+	orchReq.Tasks = make([]orchestration.TaskRequest, len(req.Tasks))
+	for i, task := range req.Tasks {
+		orchReq.Tasks[i] = orchestration.TaskRequest{
+			Type:       task.Type,
+			Input:      task.Input,
+			ModelName:  task.ModelName,
+			Parameters: task.Parameters,
+		}
+	}
+
+	response, err := s.orchestration.OrchestrateTasks(c.Request.Context(), orchReq)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert response back to API types
+	apiResponse := api.OrchestrationResponse{
+		ID:        response.ID,
+		AgentID:   response.AgentID,
+		Status:    response.Status,
+		Error:     response.Error,
+		CreatedAt: response.CreatedAt,
+	}
+
+	// Convert tasks
+	apiResponse.Tasks = make([]api.OrchestrationTaskResult, len(response.Tasks))
+	for i, task := range response.Tasks {
+		apiResponse.Tasks[i] = api.OrchestrationTaskResult{
+			ID:          task.ID,
+			Type:        task.Type,
+			Input:       task.Input,
+			Output:      task.Output,
+			Status:      task.Status,
+			ModelName:   task.ModelName,
+			Parameters:  task.Parameters,
+			CreatedAt:   task.CreatedAt,
+			CompletedAt: task.CompletedAt,
+			Error:       task.Error,
+		}
+	}
+
+	// Convert results
+	apiResponse.Results = make([]api.OrchestrationResult, len(response.Results))
+	for i, result := range response.Results {
+		apiResponse.Results[i] = api.OrchestrationResult{
+			TaskID:    result.TaskID,
+			Output:    result.Output,
+			ModelUsed: result.ModelUsed,
+			Metrics: api.OrchestrationTaskMetrics{
+				Duration:     api.Duration{Duration: result.Metrics.Duration},
+				TokensUsed:   result.Metrics.TokensUsed,
+				PromptTokens: result.Metrics.PromptTokens,
+				OutputTokens: result.Metrics.OutputTokens,
+			},
+		}
+	}
+
+	c.JSON(http.StatusOK, apiResponse)
 }
