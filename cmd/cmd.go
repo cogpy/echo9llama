@@ -1618,7 +1618,16 @@ func NewCLI() *cobra.Command {
 	runTasksCmd.Flags().Bool("sequential", false, "Run tasks sequentially")
 	runTasksCmd.Flags().String("keepalive", "", "Duration to keep models loaded")
 
-	orchestrateCmd.AddCommand(createAgentCmd, listAgentsCmd, deleteAgentCmd, runTasksCmd)
+	runWorkflowCmd := &cobra.Command{
+		Use:     "run-workflow AGENT_ID",
+		Short:   "Run a multi-step workflow",
+		Args:    cobra.ExactArgs(1),
+		PreRunE: checkServerHeartbeat,
+		RunE:    RunWorkflowHandler,
+	}
+	runWorkflowCmd.Flags().StringSlice("steps", []string{}, "Workflow steps (format: name:type:input)")
+
+	orchestrateCmd.AddCommand(createAgentCmd, listAgentsCmd, deleteAgentCmd, runTasksCmd, runWorkflowCmd)
 
 	runnerCmd := &cobra.Command{
 		Use:    "runner",
@@ -1881,6 +1890,53 @@ func RunTasksHandler(cmd *cobra.Command, args []string) error {
 
 	for i, task := range tasks {
 		fmt.Printf("Task %d: %s - %s\n", i+1, task.Type, task.Input)
+	}
+
+	fmt.Println("(This is a placeholder)")
+
+	return nil
+}
+
+func RunWorkflowHandler(cmd *cobra.Command, args []string) error {
+	client, err := api.ClientFromEnvironment()
+	if err != nil {
+		return err
+	}
+
+	agentID := args[0]
+	stepSpecs, _ := cmd.Flags().GetStringSlice("steps")
+
+	if len(stepSpecs) == 0 {
+		return fmt.Errorf("no steps specified. Use --steps to specify steps in format 'name:type:input'")
+	}
+
+	// Parse step specifications
+	steps := make([]api.WorkflowStep, 0, len(stepSpecs))
+	for _, spec := range stepSpecs {
+		parts := strings.SplitN(spec, ":", 3)
+		if len(parts) != 3 {
+			return fmt.Errorf("invalid step format '%s'. Use 'name:type:input'", spec)
+		}
+		steps = append(steps, api.WorkflowStep{
+			Name:  parts[0],
+			Type:  parts[1],
+			Input: parts[2],
+		})
+	}
+
+	req := api.WorkflowRequest{
+		AgentID: agentID,
+		Steps:   steps,
+	}
+
+	// TODO: Make actual HTTP request to /api/orchestration/workflows
+	_ = client
+	_ = req
+
+	fmt.Printf("Running workflow with %d steps for agent %s\n", len(steps), agentID)
+
+	for i, step := range steps {
+		fmt.Printf("Step %d: %s (%s) - %s\n", i+1, step.Name, step.Type, step.Input)
 	}
 
 	fmt.Println("(This is a placeholder)")

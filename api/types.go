@@ -1032,3 +1032,35 @@ type OrchestrationTaskMetrics struct {
 	PromptTokens int      `json:"prompt_tokens,omitempty"`
 	OutputTokens int      `json:"output_tokens,omitempty"`
 }
+
+// WorkflowRequest represents a request to execute a multi-step workflow
+type WorkflowRequest struct {
+	AgentID string         `json:"agent_id"`
+	Steps   []WorkflowStep `json:"steps"`
+}
+
+// WorkflowStep represents a single step in a workflow
+type WorkflowStep struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Input     string `json:"input"`
+	ModelName string `json:"model_name,omitempty"`
+}
+
+// WorkflowResponse represents the response from a workflow execution
+type WorkflowResponse struct {
+	Steps   []WorkflowStepResult `json:"steps"`
+	Success bool                 `json:"success"`
+	Error   string               `json:"error,omitempty"`
+}
+
+// WorkflowStepResult represents the result of a single workflow step
+type WorkflowStepResult struct {
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Input     string `json:"input"`
+	Output    string `json:"output"`
+	ModelUsed string `json:"model_used"`
+	Success   bool   `json:"success"`
+	Error     string `json:"error,omitempty"`
+}

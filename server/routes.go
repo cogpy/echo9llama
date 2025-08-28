@@ -1286,6 +1286,7 @@ func (s *Server) GenerateRoutes(rc *ollama.Registry) (http.Handler, error) {
 	r.PUT("/api/orchestration/agents/:id", s.UpdateAgentHandler)
 	r.DELETE("/api/orchestration/agents/:id", s.DeleteAgentHandler)
 	r.POST("/api/orchestration/tasks", s.OrchestrationHandler)
+	r.POST("/api/orchestration/workflows", s.WorkflowHandler)
 
 	// Inference (OpenAI compatibility)
 	r.POST("/v1/chat/completions", openai.ChatMiddleware(), s.ChatHandler)
@@ -2025,6 +2026,52 @@ func (s *Server) OrchestrationHandler(c *gin.Context) {
 				PromptTokens: result.Metrics.PromptTokens,
 				OutputTokens: result.Metrics.OutputTokens,
 			},
+		}
+	}
+
+	c.JSON(http.StatusOK, apiResponse)
+}
+
+func (s *Server) WorkflowHandler(c *gin.Context) {
+	var req api.WorkflowRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert API types to orchestration types
+	steps := make([]orchestration.WorkflowStep, len(req.Steps))
+	for i, step := range req.Steps {
+		steps[i] = orchestration.WorkflowStep{
+			Name:      step.Name,
+			Type:      step.Type,
+			Input:     step.Input,
+			ModelName: step.ModelName,
+		}
+	}
+
+	result, err := s.orchestration.MultiStepWorkflow(c.Request.Context(), req.AgentID, steps)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Convert result back to API types
+	apiResponse := api.WorkflowResponse{
+		Success: result.Success,
+		Error:   result.Error,
+		Steps:   make([]api.WorkflowStepResult, len(result.Steps)),
+	}
+
+	for i, step := range result.Steps {
+		apiResponse.Steps[i] = api.WorkflowStepResult{
+			Name:      step.Name,
+			Type:      step.Type,
+			Input:     step.Input,
+			Output:    step.Output,
+			ModelUsed: step.ModelUsed,
+			Success:   step.Success,
+			Error:     step.Error,
 		}
 	}
 
