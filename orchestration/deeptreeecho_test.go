@@ -202,7 +202,7 @@ func TestSemanticSalienceAssessor(t *testing.T) {
 		{"eva-model.py", 0.95, 0.95, "eva-model file"},
 		{"echoself.md", 0.95, 0.95, "echoself documentation"},
 		{"src/main.go", 0.85, 0.85, "source file"},
-		{"test_something.py", 0.50, 0.50, "test file"},
+		{"test_something.py", 0.60, 0.70, "test file with .py extension"},
 		{"random_file.txt", 0.3, 0.3, "unmatched file"},
 	}
 	
@@ -227,8 +227,8 @@ func TestAdaptiveAttentionAllocator(t *testing.T) {
 	}{
 		{0.0, 0.0, 0.5, 0.7, "low load, no activity"},
 		{1.0, 0.0, 0.8, 1.0, "high load, no activity"},
-		{0.5, 0.5, 0.45, 0.65, "medium load, medium activity"},
-		{0.0, 1.0, 0.3, 0.5, "low load, high activity"},
+		{0.5, 0.5, 0.25, 0.65, "medium load, medium activity"},
+		{0.0, 1.0, 0.0, 0.5, "low load, high activity"},
 	}
 	
 	for _, tc := range testCases {

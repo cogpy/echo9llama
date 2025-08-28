@@ -1,10 +1,8 @@
 package orchestration
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,6 +28,12 @@ func NewAPIServer(engine *Engine) *APIServer {
 
 // setupRoutes configures all API routes
 func (s *APIServer) setupRoutes() {
+	// Serve static dashboard
+	s.router.StaticFile("/dashboard.html", "./examples/dashboard.html")
+	s.router.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusFound, "/dashboard.html")
+	})
+	
 	// Deep Tree Echo routes
 	dte := s.router.Group("/api/deep-tree-echo")
 	{
