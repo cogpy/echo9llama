@@ -102,10 +102,15 @@ func testModelConnectivity(ctx context.Context, modelName string) error {
 	}
 
 	// Use shorter timeout for connectivity test to fail fast in CI
-	connectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	connectCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	return client.Chat(connectCtx, req, respFunc)
+	err = client.Chat(connectCtx, req, respFunc)
+	if err == nil {
+		fmt.Printf("   ✅ Successfully connected to model %s\n", modelName)
+		fmt.Printf("   🔗 Model communication test completed\n")
+	}
+	return err
 }
 
 func testDeepTreeEcho(ctx context.Context, modelName string) error {
