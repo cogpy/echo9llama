@@ -1,0 +1,55 @@
+name: Echollama Verbose Integration Test
+
+on: [push, pull_request]
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Start echollama server (background)
+        run: |
+          ./echollama serve &  # Start server in background
+          sleep 8
+
+      - name: Load tiny test model
+        run: |
+          ./echollama pull ./models/tiny-test-model
+          sleep 2
+
+      - name: Send timestamped JSON requests (verbose)
+        run: |
+          TS1=$(date --iso-8601=ns)
+          TS2=$(date --iso-8601=ns)
+          # Verbose curl for first timestamp
+          curl -v -X POST http://localhost:11434/api/generate \
+            -H 'Content-Type: application/json' \
+            -d '{
+                  "model": "tiny-test-model",
+                  "prompt": "TIMESTAMP1: '$TS1'",
+                  "stream": false
+                }' | tee response1.json
+          # Verbose curl for second timestamp
+          curl -v -X POST http://localhost:11434/api/generate \
+            -H 'Content-Type: application/json' \
+            -d '{
+                  "model": "tiny-test-model",
+                  "prompt": "TIMESTAMP2: '$TS2'",
+                  "stream": false
+                }' | tee response2.json
+
+      - name: Show full JSON responses
+        run: |
+          cat response*.json
+
+      - name: Show token info for both responses
+        run: |
+          jq .tokens response1.json
+          jq .tokens response2.json
+
+      - name: End-of-workflow verification (fail if responses missing tokens)
+        run: |
+          test "$(jq '.tokens | length' response1.json)" -gt 0
+          test "$(jq '.tokens | length' response2.json)" -gt 0
