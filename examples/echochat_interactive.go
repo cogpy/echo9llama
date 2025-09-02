@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/orchestration"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/orchestration"
 )
 
 // EchoChatInteractiveDemo starts an interactive EchoChat session

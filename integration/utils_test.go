@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/app/lifecycle"
-	"github.com/ollama/ollama/format"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/app/lifecycle"
+	"github.com/EchoCog/echollama/format"
 	"github.com/stretchr/testify/require"
 )
 

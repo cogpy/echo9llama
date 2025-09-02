@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/orchestration"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/orchestration"
 )
 
 // EchoselfIntegrationDemo demonstrates the enhanced orchestration capabilities

@@ -1,6 +1,6 @@
 package convert
 
-import "github.com/ollama/ollama/fs/ggml"
+import "github.com/EchoCog/echollama/fs/ggml"
 
 type gemma2Model struct {
 	gemmaModel

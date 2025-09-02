@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ollama/ollama/fs/ggml"
-	"github.com/ollama/ollama/template"
-	"github.com/ollama/ollama/types/model"
+	"github.com/EchoCog/echollama/fs/ggml"
+	"github.com/EchoCog/echollama/template"
+	"github.com/EchoCog/echollama/types/model"
 )
 
 func TestModelCapabilities(t *testing.T) {

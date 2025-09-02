@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 )
 
 // Agent represents an orchestration agent that can coordinate multiple models and tasks

@@ -7,10 +7,10 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/ollama/ollama/envconfig"
-	"github.com/ollama/ollama/fs/ggml"
-	"github.com/ollama/ollama/logutil"
-	"github.com/ollama/ollama/ml"
+	"github.com/EchoCog/echollama/envconfig"
+	"github.com/EchoCog/echollama/fs/ggml"
+	"github.com/EchoCog/echollama/logutil"
+	"github.com/EchoCog/echollama/ml"
 )
 
 func TestMain(m *testing.M) {

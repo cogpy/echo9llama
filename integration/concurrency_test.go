@@ -13,8 +13,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/format"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/format"
 )
 
 func TestMultiModelConcurrency(t *testing.T) {

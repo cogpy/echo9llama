@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 )
 
 func startApp(ctx context.Context, client *api.Client) error {

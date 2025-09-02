@@ -3,14 +3,14 @@ package gemma2
 import (
 	"math"
 
-	"github.com/ollama/ollama/fs"
-	"github.com/ollama/ollama/kvcache"
-	"github.com/ollama/ollama/ml"
-	"github.com/ollama/ollama/ml/nn"
-	"github.com/ollama/ollama/ml/nn/fast"
-	"github.com/ollama/ollama/ml/nn/rope"
-	"github.com/ollama/ollama/model"
-	"github.com/ollama/ollama/model/input"
+	"github.com/EchoCog/echollama/fs"
+	"github.com/EchoCog/echollama/kvcache"
+	"github.com/EchoCog/echollama/ml"
+	"github.com/EchoCog/echollama/ml/nn"
+	"github.com/EchoCog/echollama/ml/nn/fast"
+	"github.com/EchoCog/echollama/ml/nn/rope"
+	"github.com/EchoCog/echollama/model"
+	"github.com/EchoCog/echollama/model/input"
 )
 
 type Options struct {

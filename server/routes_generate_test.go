@@ -14,10 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/discover"
-	"github.com/ollama/ollama/fs/ggml"
-	"github.com/ollama/ollama/llm"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/discover"
+	"github.com/EchoCog/echollama/fs/ggml"
+	"github.com/EchoCog/echollama/llm"
 )
 
 type mockRunner struct {

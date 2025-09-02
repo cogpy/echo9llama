@@ -17,9 +17,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/envconfig"
-	"github.com/ollama/ollama/fs/ggml"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/envconfig"
+	"github.com/EchoCog/echollama/fs/ggml"
 )
 
 var stream bool = false

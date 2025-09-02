@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 	"golang.org/x/sync/semaphore"
 )
 

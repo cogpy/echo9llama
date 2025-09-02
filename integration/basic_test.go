@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 	"github.com/stretchr/testify/require"
 )
 

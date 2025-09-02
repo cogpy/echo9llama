@@ -1,11 +1,11 @@
 package gemma3n
 
 import (
-	"github.com/ollama/ollama/fs"
-	"github.com/ollama/ollama/kvcache"
-	"github.com/ollama/ollama/ml"
-	"github.com/ollama/ollama/model"
-	"github.com/ollama/ollama/model/input"
+	"github.com/EchoCog/echollama/fs"
+	"github.com/EchoCog/echollama/kvcache"
+	"github.com/EchoCog/echollama/ml"
+	"github.com/EchoCog/echollama/model"
+	"github.com/EchoCog/echollama/model/input"
 )
 
 type Model struct {
