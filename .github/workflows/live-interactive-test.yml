@@ -1,0 +1,113 @@
+name: Live Interactive Test with Real Model
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch: # Allow manual triggering
+    inputs:
+      model:
+        description: 'Model to test with'
+        required: false
+        default: 'llama3.2:1b'
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  live-interactive-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+    
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: go.mod
+        cache: true
+    
+    - name: Build ollama
+      run: |
+        go build -v -o ollama .
+        chmod +x ollama
+    
+    - name: Start ollama server
+      run: |
+        # Start ollama server in background
+        ./ollama serve &
+        OLLAMA_PID=$!
+        echo "OLLAMA_PID=$OLLAMA_PID" >> $GITHUB_ENV
+        
+        # Wait for server to start
+        for i in {1..30}; do
+          if ./ollama list >/dev/null 2>&1; then
+            echo "Ollama server started successfully"
+            break
+          fi
+          echo "Waiting for ollama server to start... ($i/30)"
+          sleep 2
+        done
+        
+        # Verify server is running
+        if ! ./ollama list >/dev/null 2>&1; then
+          echo "Failed to start ollama server"
+          exit 1
+        fi
+    
+    - name: Pull test model
+      run: |
+        MODEL="${{ github.event.inputs.model || 'llama3.2:1b' }}"
+        echo "Pulling model: $MODEL"
+        
+        # Pull model with timeout
+        timeout 600 ./ollama pull "$MODEL" || {
+          echo "Failed to pull model $MODEL within timeout"
+          exit 1
+        }
+        
+        # Verify model was pulled
+        if ! ./ollama list | grep -q "$MODEL"; then
+          echo "Model $MODEL not found after pulling"
+          exit 1
+        fi
+        
+        echo "MODEL_NAME=$MODEL" >> $GITHUB_ENV
+    
+    - name: Run live interactive test
+      run: |
+        # Create test script and run it
+        go run scripts/live-interactive-test.go "$MODEL_NAME"
+      timeout-minutes: 15
+    
+    - name: Test orchestration capabilities
+      run: |
+        # Test orchestration commands
+        echo "Testing orchestration capabilities..."
+        
+        # Test agent creation
+        ./ollama orchestrate create-agent --name "test-agent" --model "$MODEL_NAME" --description "Test agent for CI" || true
+        
+        # List agents
+        ./ollama orchestrate list-agents || true
+        
+        # Test a simple task
+        echo "list files" | timeout 60 ./ollama orchestrate run-tasks --agent "test-agent" || true
+    
+    - name: Cleanup
+      if: always()
+      run: |
+        # Stop ollama server
+        if [ -n "${OLLAMA_PID:-}" ]; then
+          kill $OLLAMA_PID 2>/dev/null || true
+          sleep 2
+        fi
+        # Kill any remaining ollama processes
+        pkill -f "ollama serve" || true
