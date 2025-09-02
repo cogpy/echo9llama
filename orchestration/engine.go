@@ -1215,6 +1215,16 @@ func (e *Engine) GetPerformanceOptimizer() *PerformanceOptimizer {
 
 // ExecuteTaskOptimized executes a task with performance optimization
 func (e *Engine) ExecuteTaskOptimized(ctx context.Context, task *Task, priority TaskPriority, deadline time.Time) (*TaskResult, error) {
+	// Generate task ID if not provided
+	if task.ID == "" {
+		task.ID = uuid.New().String()
+	}
+	
+	// Store task in engine
+	e.mu.Lock()
+	e.tasks[task.ID] = task
+	e.mu.Unlock()
+	
 	// Select optimal agent using learning system and load balancing
 	availableAgents, err := e.ListAgents(ctx)
 	if err != nil {
