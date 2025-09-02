@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ollama/ollama/fs"
+	"github.com/EchoCog/echollama/fs"
 )
 
 type Backend interface {

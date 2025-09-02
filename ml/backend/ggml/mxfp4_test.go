@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ollama/ollama/ml"
+	"github.com/EchoCog/echollama/ml"
 
-	fsggml "github.com/ollama/ollama/fs/ggml"
+	fsggml "github.com/EchoCog/echollama/fs/ggml"
 )
 
 /*

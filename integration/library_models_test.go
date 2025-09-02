@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 )
 
 // First run of this scenario on a target system will take a long time to download

@@ -7,7 +7,7 @@ import (
 	"github.com/pdevine/tensor"
 	"github.com/pdevine/tensor/native"
 
-	"github.com/ollama/ollama/fs/ggml"
+	"github.com/EchoCog/echollama/fs/ggml"
 )
 
 type llamaAdapter struct {

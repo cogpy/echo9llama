@@ -34,17 +34,17 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/term"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/envconfig"
-	"github.com/ollama/ollama/format"
-	"github.com/ollama/ollama/parser"
-	"github.com/ollama/ollama/progress"
-	"github.com/ollama/ollama/readline"
-	"github.com/ollama/ollama/runner"
-	"github.com/ollama/ollama/server"
-	"github.com/ollama/ollama/types/model"
-	"github.com/ollama/ollama/types/syncmap"
-	"github.com/ollama/ollama/version"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/envconfig"
+	"github.com/EchoCog/echollama/format"
+	"github.com/EchoCog/echollama/parser"
+	"github.com/EchoCog/echollama/progress"
+	"github.com/EchoCog/echollama/readline"
+	"github.com/EchoCog/echollama/runner"
+	"github.com/EchoCog/echollama/server"
+	"github.com/EchoCog/echollama/types/model"
+	"github.com/EchoCog/echollama/types/syncmap"
+	"github.com/EchoCog/echollama/version"
 )
 
 // ensureThinkingSupport emits a warning if the model does not advertise thinking support

@@ -11,10 +11,10 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/fs/ggml"
-	"github.com/ollama/ollama/template"
-	"github.com/ollama/ollama/types/model"
+	"github.com/EchoCog/echollama/api"
+	"github.com/EchoCog/echollama/fs/ggml"
+	"github.com/EchoCog/echollama/template"
+	"github.com/EchoCog/echollama/types/model"
 )
 
 var intermediateBlobs map[string]string = make(map[string]string)

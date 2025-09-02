@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ollama/ollama/api"
+	"github.com/EchoCog/echollama/api"
 )
 
 func TestAPIGenerate(t *testing.T) {
