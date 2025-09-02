@@ -9,6 +9,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Build echollama
+        run: go build -o echollama .
+
       - name: Start echollama server (background)
         run: |
           ./echollama serve &  # Start server in background

@@ -14,7 +14,7 @@ __debug_bin*
 llama/build
 llama/vendor
 /ollama
-./echollama
+echollama
 
 # Exclude model files globally but allow them in models/ directory for testing
 *.bin
