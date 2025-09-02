@@ -6,7 +6,19 @@ This directory contains minimal test model configurations for CI/CD testing.
 
 A minimal Modelfile that defines a test model based on qwen2.5:0.5b (the smallest available model).
 
-Note: Due to size constraints, actual model binary files (*.gguf) cannot be stored in git repositories. The workflow downloads the base model at runtime.
+- tiny-test-model.modelfile
+
+Note: Due to size constraints, large model binary files (*.gguf) cannot be stored in git repositories.
+
+Below are some small .gguf files kept locally for testing:
+
+- stories15M.gguf
+- stories260K.gguf
+- tinyllamas-stories-260k-f32.gguf
+- yolov3-tiny.gguf
+
+
+For large models the workflow downloads the base model at runtime.
 
 ## Usage in Tests
 
