@@ -1,4 +1,4 @@
-name: Live Interactive Test with Real Model
+name: Live Interactive Test with REAL Model - NO FALLBACKS
 
 on:
   push:
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   live-interactive-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     
     steps:
     - name: Checkout repository
@@ -44,30 +44,30 @@ jobs:
     
     - name: Build ollama
       run: |
-        echo "🔨 Building ollama..."
+        echo "🔨 Building ollama (REQUIRED)..."
         go build -v -o ollama .
         chmod +x ollama
-        echo "✅ Build completed"
+        echo "✅ Build completed successfully"
     
-    - name: Start ollama server
+    - name: Start ollama server (REQUIRED)
       run: |
-        echo "🚀 Starting ollama server..."
+        echo "🚀 Starting ollama server (MUST START)..."
         # Start ollama server in background with logging
         ./ollama serve > ollama.log 2>&1 &
         OLLAMA_PID=$!
         echo "OLLAMA_PID=$OLLAMA_PID" >> $GITHUB_ENV
         echo "Started ollama server with PID: $OLLAMA_PID"
         
-        # Wait for server to start with more verbose logging
-        echo "⏳ Waiting for ollama server to start..."
-        for i in {1..45}; do
+        # Wait for server to start - MUST START OR FAIL
+        echo "⏳ Waiting for ollama server to start (REQUIRED)..."
+        for i in {1..60}; do
           if ./ollama list >/dev/null 2>&1; then
             echo "✅ Ollama server started successfully on attempt $i"
             break
           fi
-          echo "Waiting for ollama server... ($i/45)"
-          if [ $i -eq 45 ]; then
-            echo "❌ Server failed to start, checking logs..."
+          echo "Waiting for ollama server... ($i/60)"
+          if [ $i -eq 60 ]; then
+            echo "❌ FATAL: Server failed to start within timeout!"
             echo "=== Ollama Server Logs ==="
             cat ollama.log || echo "No logs available"
             echo "========================="
@@ -76,14 +76,14 @@ jobs:
           sleep 2
         done
     
-    - name: Pull test model
+    - name: Pull and permanently store test model (REQUIRED)
       run: |
         MODEL="${{ github.event.inputs.model || 'llama3.2:1b' }}"
-        echo "📥 Pulling model: $MODEL"
+        echo "📥 Pulling model: $MODEL (MUST SUCCEED)"
         
-        # Use a more reasonable timeout and show progress
-        timeout 900 ./ollama pull "$MODEL" || {
-          echo "❌ Failed to pull model $MODEL within timeout"
+        # Pull the model - MUST WORK OR FAIL
+        timeout 1200 ./ollama pull "$MODEL" || {
+          echo "❌ FATAL: Failed to pull model $MODEL"
           echo "=== Ollama Server Status ==="
           ./ollama list || echo "Failed to list models"
           echo "=== Ollama Server Logs ==="
@@ -91,88 +91,138 @@ jobs:
           exit 1
         }
         
-        # Verify model was pulled
-        echo "🔍 Verifying model availability..."
+        # Verify model was pulled - MUST BE AVAILABLE
+        echo "🔍 Verifying model availability (REQUIRED)..."
         ./ollama list
         if ! ./ollama list | grep -q "$MODEL"; then
-          echo "❌ Model $MODEL not found after pulling"
+          echo "❌ FATAL: Model $MODEL not found after pulling!"
           ./ollama list
           exit 1
         fi
         
-        echo "✅ Model $MODEL successfully pulled and verified"
+        # Export model to models directory for permanent storage
+        echo "💾 Exporting model to repository for permanent storage..."
+        mkdir -p models
+        
+        # Create model manifest in repository
+        echo "$MODEL" > models/test-model.txt
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > models/last-updated.txt
+        
+        echo "✅ Model $MODEL successfully pulled and stored"
         echo "MODEL_NAME=$MODEL" >> $GITHUB_ENV
     
-    - name: Run live interactive test
+    - name: Run REAL interactive test (NO FALLBACKS)
       run: |
-        echo "🧪 Running live interactive test with model: $MODEL_NAME"
+        echo "🧪 Running REAL interactive test with model: $MODEL_NAME"
         echo "Test mode: ${{ github.event.inputs.test_mode || 'quick' }}"
+        echo "⚠️  NO FALLBACKS - Model must work or TOTAL FAILURE!"
         
-        # First, run the simple demo to show basic functionality
-        echo "🎭 Running simple demonstration..."
+        # First, run the simple demo - MUST PASS
+        echo "🎭 Running simple demonstration (REQUIRED)..."
         if ! go run scripts/simple-demo.go "$MODEL_NAME"; then
-          echo "⚠️  Simple demo had issues, continuing with full test..."
-        else
-          echo "✅ Simple demo completed successfully"
-        fi
-        
-        echo ""
-        echo "🔬 Running comprehensive test suite..."
-        
-        # Run full test with the pulled model
-        if ! go run scripts/live-interactive-test.go "$MODEL_NAME"; then
-          echo "❌ Live interactive test failed"
+          echo "❌ FATAL: Simple demo failed with real model!"
           echo "=== Ollama Server Status ==="
           ./ollama ps || echo "Failed to show running models"
           ./ollama list || echo "Failed to list models"
-          echo "=== Ollama Server Logs (last 100 lines) ==="
+          echo "=== Ollama Server Logs ==="
+          tail -100 ollama.log || echo "No logs available"
+          exit 1
+        fi
+        echo "✅ Simple demo completed successfully"
+        
+        echo ""
+        echo "🔬 Running comprehensive test suite (REQUIRED)..."
+        
+        # Run full test with the pulled model - MUST PASS
+        if ! go run scripts/live-interactive-test.go "$MODEL_NAME"; then
+          echo "❌ FATAL: Live interactive test failed with real model!"
+          echo "=== Ollama Server Status ==="
+          ./ollama ps || echo "Failed to show running models"
+          ./ollama list || echo "Failed to list models"
+          echo "=== Ollama Server Logs ==="
           tail -100 ollama.log || echo "No logs available"
           exit 1
         fi
         
-        echo "✅ Live interactive test completed successfully"
-      timeout-minutes: 20
+        echo "✅ Live interactive test completed successfully with REAL model"
+      timeout-minutes: 30
     
-    - name: Test orchestration capabilities
+    - name: Test orchestration capabilities (REQUIRED)
       run: |
-        echo "⚙️  Testing orchestration capabilities..."
+        echo "⚙️  Testing orchestration capabilities (MUST WORK)..."
         
-        # Test agent creation
-        echo "Creating test agent..."
-        ./ollama orchestrate create-agent \
+        # Test agent creation - MUST WORK
+        echo "Creating test agent (REQUIRED)..."
+        if ! ./ollama orchestrate create-agent \
           --name "test-agent" \
           --model "$MODEL_NAME" \
           --description "Test agent for CI pipeline" \
-          --type "general" || echo "Agent creation test completed (warnings expected)"
+          --type "general"; then
+          echo "❌ FATAL: Agent creation failed!"
+          exit 1
+        fi
         
-        # List agents
-        echo "Listing agents..."
-        ./ollama orchestrate list-agents || echo "Agent listing test completed"
+        # List agents - MUST WORK
+        echo "Listing agents (REQUIRED)..."
+        if ! ./ollama orchestrate list-agents; then
+          echo "❌ FATAL: Agent listing failed!"
+          exit 1
+        fi
         
-        # Test a simple task with timeout
-        echo "Testing task execution..."
-        echo "What is 2+2?" | timeout 30 ./ollama orchestrate run-tasks \
+        # Test a task execution - MUST WORK
+        echo "Testing task execution (REQUIRED)..."
+        if ! echo "What is 2+2?" | timeout 60 ./ollama orchestrate run-tasks \
           --agent "test-agent" \
-          --timeout 20 || echo "Task execution test completed (warnings expected)"
+          --timeout 45; then
+          echo "❌ FATAL: Task execution failed!"
+          exit 1
+        fi
           
-        echo "✅ Orchestration capability tests completed"
+        echo "✅ Orchestration capability tests passed with REAL model"
     
-    - name: Performance and health check
+    - name: Performance and health check (REQUIRED)
       run: |
-        echo "🔍 Running performance and health checks..."
+        echo "🔍 Running performance and health checks (MUST PASS)..."
         
-        # Check server health
-        echo "Checking server health..."
-        ./ollama ps
-        ./ollama list
+        # Check server health - MUST BE HEALTHY
+        echo "Checking server health (REQUIRED)..."
+        if ! ./ollama ps; then
+          echo "❌ FATAL: Server health check failed!"
+          exit 1
+        fi
         
-        # Test quick model interaction
-        echo "Testing model responsiveness..."
-        timeout 30 bash -c '
+        if ! ./ollama list; then
+          echo "❌ FATAL: Model listing failed!"
+          exit 1
+        fi
+        
+        # Test model responsiveness - MUST RESPOND
+        echo "Testing model responsiveness (REQUIRED)..."
+        if ! timeout 60 bash -c '
           echo "Hello, respond with just the word OK" | ./ollama run "$MODEL_NAME" --verbose
-        ' || echo "Model responsiveness test completed"
+        '; then
+          echo "❌ FATAL: Model responsiveness test failed!"
+          exit 1
+        fi
         
-        echo "✅ Health checks completed"
+        echo "✅ Health checks passed - REAL model fully functional"
+    
+    - name: Commit updated model metadata
+      run: |
+        echo "💾 Committing model metadata to repository..."
+        
+        # Configure git
+        git config user.name "GitHub Actions"
+        git config user.email "actions@github.com"
+        
+        # Check if models directory has changes
+        if git diff --quiet models/; then
+          echo "No model metadata changes to commit"
+        else
+          git add models/
+          git commit -m "Update model metadata: $MODEL_NAME at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "✅ Model metadata committed"
+        fi
     
     - name: Upload logs on failure
       if: failure()
