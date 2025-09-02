@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -14,26 +15,30 @@ import (
 
 // Engine implements the core orchestration functionality
 type Engine struct {
-	client         api.Client
-	agents         map[string]*Agent
-	tasks          map[string]*Task
-	tools          map[string]Tool
-	plugins        *PluginRegistry
-	deepTreeEcho   *DeepTreeEcho
-	conversations  map[string]*Conversation  // Multi-agent conversations
-	mu             sync.RWMutex
+	client              api.Client
+	agents              map[string]*Agent
+	tasks               map[string]*Task
+	tools               map[string]Tool
+	plugins             *PluginRegistry
+	deepTreeEcho        *DeepTreeEcho
+	conversations       map[string]*Conversation  // Multi-agent conversations
+	learningSystem      *LearningSystem            // Advanced learning capabilities
+	performanceOptimizer *PerformanceOptimizer     // Performance optimization
+	mu                  sync.RWMutex
 }
 
 // NewEngine creates a new orchestration engine
 func NewEngine(client api.Client) *Engine {
 	return &Engine{
-		client:        client,
-		agents:        make(map[string]*Agent),
-		tasks:         make(map[string]*Task),
-		tools:         make(map[string]Tool),
-		plugins:       &PluginRegistry{plugins: make(map[string]Plugin)},
-		deepTreeEcho:  NewDeepTreeEcho("Primary Deep Tree Echo System"),
-		conversations: make(map[string]*Conversation),
+		client:               client,
+		agents:               make(map[string]*Agent),
+		tasks:                make(map[string]*Task),
+		tools:                make(map[string]Tool),
+		plugins:              &PluginRegistry{plugins: make(map[string]Plugin)},
+		deepTreeEcho:         NewDeepTreeEcho("Primary Deep Tree Echo System"),
+		conversations:        make(map[string]*Conversation),
+		learningSystem:       NewLearningSystem(),
+		performanceOptimizer: NewPerformanceOptimizer(),
 	}
 }
 
@@ -151,6 +156,24 @@ func (e *Engine) ExecuteTask(ctx context.Context, task *Task, agent *Agent) (*Ta
 	}
 
 	duration := time.Since(startTime)
+	endTime := time.Now()
+
+	// Record performance data for learning
+	performance := &TaskPerformance{
+		TaskID:     task.ID,
+		TaskType:   task.Type,
+		AgentID:    agent.ID,
+		StartTime:  startTime,
+		EndTime:    endTime,
+		Duration:   duration,
+		Success:    err == nil,
+		Quality:    e.calculateTaskQuality(result, err),
+		Difficulty: e.estimateTaskDifficulty(task),
+		Context:    task.Parameters,
+		Feedback:   e.generatePerformanceFeedback(task, result, err, duration),
+	}
+	
+	e.learningSystem.RecordTaskPerformance(performance)
 
 	if err != nil {
 		task.Status = TaskStatusFailed
@@ -159,8 +182,7 @@ func (e *Engine) ExecuteTask(ctx context.Context, task *Task, agent *Agent) (*Ta
 	}
 
 	task.Status = TaskStatusCompleted
-	now := time.Now()
-	task.CompletedAt = &now
+	task.CompletedAt = &endTime
 	task.Output = result.Output
 
 	if result.Metrics.Duration == 0 {
@@ -1029,4 +1051,317 @@ func (e *Engine) GetConversationMetrics(ctx context.Context) map[string]interfac
 			return float64(totalMessages) / float64(totalConversations)
 		}(),
 	}
+}
+
+// Learning System Integration Methods
+
+// calculateTaskQuality estimates the quality of a task result
+func (e *Engine) calculateTaskQuality(result *TaskResult, err error) float64 {
+	if err != nil {
+		return 0.0
+	}
+	
+	if result == nil {
+		return 0.1
+	}
+	
+	// Base quality on output length and completeness
+	baseQuality := 0.5
+	
+	if result.Output != "" {
+		if len(result.Output) > 50 {
+			baseQuality += 0.2
+		}
+		if len(result.Output) > 200 {
+			baseQuality += 0.1
+		}
+		
+		// Check for common quality indicators
+		output := strings.ToLower(result.Output)
+		if strings.Contains(output, "error") || strings.Contains(output, "failed") {
+			baseQuality -= 0.2
+		}
+		if strings.Contains(output, "successfully") || strings.Contains(output, "completed") {
+			baseQuality += 0.2
+		}
+	}
+	
+	return math.Min(1.0, math.Max(0.0, baseQuality))
+}
+
+// estimateTaskDifficulty estimates how difficult a task is
+func (e *Engine) estimateTaskDifficulty(task *Task) float64 {
+	difficulty := 0.5 // Base difficulty
+	
+	// Factor in task type
+	switch task.Type {
+	case TaskTypeEmbed:
+		difficulty = 0.3
+	case TaskTypeGenerate:
+		difficulty = 0.4
+	case TaskTypeChat:
+		difficulty = 0.5
+	case TaskTypeTool:
+		difficulty = 0.6
+	case TaskTypeReflect:
+		difficulty = 0.7
+	case TaskTypePlugin:
+		difficulty = 0.8
+	case TaskTypeCustom:
+		difficulty = 0.9
+	}
+	
+	// Factor in input complexity
+	if len(task.Input) > 500 {
+		difficulty += 0.1
+	}
+	if len(task.Input) > 1000 {
+		difficulty += 0.1
+	}
+	
+	// Factor in parameters
+	if task.Parameters != nil && len(task.Parameters) > 3 {
+		difficulty += 0.1
+	}
+	
+	return math.Min(1.0, difficulty)
+}
+
+// generatePerformanceFeedback generates feedback about task performance
+func (e *Engine) generatePerformanceFeedback(task *Task, result *TaskResult, err error, duration time.Duration) *PerformanceFeedback {
+	feedback := &PerformanceFeedback{}
+	
+	// Calculate accuracy based on error and result quality
+	if err != nil {
+		feedback.Accuracy = 0.0
+	} else if result != nil && result.Output != "" {
+		feedback.Accuracy = 0.8 // Assume good accuracy if task completed
+	} else {
+		feedback.Accuracy = 0.3
+	}
+	
+	// Calculate efficiency based on duration
+	expectedDuration := e.getExpectedTaskDuration(task.Type)
+	if duration <= expectedDuration {
+		feedback.Efficiency = 1.0
+	} else if duration <= expectedDuration*2 {
+		feedback.Efficiency = 0.8
+	} else {
+		feedback.Efficiency = 0.5
+	}
+	
+	// Base values for other metrics
+	feedback.Creativity = 0.5
+	feedback.Adaptability = 0.6
+	feedback.Collaboration = 0.5
+	feedback.LearningRate = 0.1
+	
+	return feedback
+}
+
+// getExpectedTaskDuration returns expected duration for different task types
+func (e *Engine) getExpectedTaskDuration(taskType string) time.Duration {
+	switch taskType {
+	case TaskTypeEmbed:
+		return 2 * time.Second
+	case TaskTypeGenerate:
+		return 5 * time.Second
+	case TaskTypeChat:
+		return 10 * time.Second
+	case TaskTypeTool:
+		return 3 * time.Second
+	case TaskTypeReflect:
+		return 1 * time.Second
+	case TaskTypePlugin:
+		return 200 * time.Millisecond
+	default:
+		return 5 * time.Second
+	}
+}
+
+// GetLearningSystem returns the learning system instance
+func (e *Engine) GetLearningSystem() *LearningSystem {
+	return e.learningSystem
+}
+
+// PredictOptimalAgentForTask uses learning system to predict best agent for a task
+func (e *Engine) PredictOptimalAgentForTask(ctx context.Context, task *Task) (*Agent, float64, error) {
+	e.mu.RLock()
+	agents := make([]*Agent, 0, len(e.agents))
+	for _, agent := range e.agents {
+		agents = append(agents, agent)
+	}
+	e.mu.RUnlock()
+	
+	return e.learningSystem.PredictOptimalAgent(ctx, task, agents)
+}
+
+// AdaptAgent performs learning-based adaptation for an agent
+func (e *Engine) AdaptAgent(ctx context.Context, agentID string) (*AdaptationResult, error) {
+	agent, err := e.GetAgent(ctx, agentID)
+	if err != nil {
+		return nil, err
+	}
+	
+	return e.learningSystem.adaptationEngine.AdaptAgent(ctx, agent, e.learningSystem)
+}
+
+// Performance Optimization Methods
+
+// GetPerformanceOptimizer returns the performance optimizer instance
+func (e *Engine) GetPerformanceOptimizer() *PerformanceOptimizer {
+	return e.performanceOptimizer
+}
+
+// ExecuteTaskOptimized executes a task with performance optimization
+func (e *Engine) ExecuteTaskOptimized(ctx context.Context, task *Task, priority TaskPriority, deadline time.Time) (*TaskResult, error) {
+	// Generate task ID if not provided
+	if task.ID == "" {
+		task.ID = uuid.New().String()
+	}
+	
+	// Store task in engine
+	e.mu.Lock()
+	e.tasks[task.ID] = task
+	e.mu.Unlock()
+	
+	// Select optimal agent using learning system and load balancing
+	availableAgents, err := e.ListAgents(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get available agents: %v", err)
+	}
+	
+	// Use learning system to predict optimal agent
+	optimalAgent, confidence, err := e.learningSystem.PredictOptimalAgent(ctx, task, availableAgents)
+	if err != nil || confidence < 0.3 { // Fall back to load balancing if confidence is low
+		optimalAgent, err = e.performanceOptimizer.loadBalancer.SelectOptimalAgent(ctx, task, availableAgents)
+		if err != nil {
+			return nil, fmt.Errorf("failed to select optimal agent: %v", err)
+		}
+	}
+	
+	// Schedule the task
+	scheduledTask, err := e.performanceOptimizer.taskScheduler.ScheduleTask(task, optimalAgent, priority, deadline)
+	if err != nil {
+		return nil, fmt.Errorf("failed to schedule task: %v", err)
+	}
+	
+	// Allocate resources
+	resourceRequirements := scheduledTask.ResourceRequirements
+	reservation, err := e.performanceOptimizer.resourceManager.AllocateResources(
+		ctx, task.ID, optimalAgent.ID, resourceRequirements, ResourcePriorityNormal)
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate resources: %v", err)
+	}
+	
+	// Execute the task
+	result, err := e.ExecuteTask(ctx, task, optimalAgent)
+	
+	// Release resources
+	e.performanceOptimizer.resourceManager.ReleaseResources(ctx, reservation.ReservationID)
+	
+	// Update performance metrics
+	e.updatePerformanceMetrics(task, result, err, scheduledTask)
+	
+	return result, err
+}
+
+// updatePerformanceMetrics updates system performance metrics after task execution
+func (e *Engine) updatePerformanceMetrics(task *Task, result *TaskResult, err error, scheduledTask *ScheduledTask) {
+	// Update load balancer with agent performance
+	agentID := scheduledTask.Agent.ID
+	performanceScore := 0.5
+	healthStatus := HealthStatusHealthy
+	
+	if result != nil && err == nil {
+		performanceScore = 0.8
+	} else if err != nil {
+		performanceScore = 0.2
+		healthStatus = HealthStatusDegraded
+	}
+	
+	// Update agent load (simplified)
+	e.performanceOptimizer.loadBalancer.UpdateAgentLoad(
+		agentID, 1, 0, scheduledTask.ResourceRequirements, performanceScore, healthStatus)
+	
+	// Update system metrics
+	e.mu.RLock()
+	totalTasks := len(e.tasks)
+	completedTasks := 0
+	failedTasks := 0
+	totalDuration := time.Duration(0)
+	
+	for _, t := range e.tasks {
+		if t.Status == TaskStatusCompleted {
+			completedTasks++
+			if t.CompletedAt != nil {
+				totalDuration += t.CompletedAt.Sub(t.CreatedAt)
+			}
+		} else if t.Status == TaskStatusFailed {
+			failedTasks++
+		}
+	}
+	e.mu.RUnlock()
+	
+	avgResponseTime := time.Duration(0)
+	if completedTasks > 0 {
+		avgResponseTime = totalDuration / time.Duration(completedTasks)
+	}
+	
+	throughputTPS := 0.0
+	if totalDuration > 0 {
+		throughputTPS = float64(completedTasks) / totalDuration.Seconds()
+	}
+	
+	systemHealth := 1.0
+	if totalTasks > 0 {
+		systemHealth = float64(completedTasks) / float64(totalTasks)
+	}
+	
+	systemMetrics := &SystemMetrics{
+		TotalTasks:          totalTasks,
+		CompletedTasks:      completedTasks,
+		FailedTasks:         failedTasks,
+		AverageResponseTime: avgResponseTime,
+		ThroughputTPS:       throughputTPS,
+		ResourceUtilization: scheduledTask.ResourceRequirements,
+		SystemHealth:        systemHealth,
+		LastUpdated:         time.Now(),
+	}
+	
+	e.performanceOptimizer.performanceMonitor.UpdateSystemMetrics(systemMetrics)
+}
+
+// GetSystemMetrics returns current system performance metrics
+func (e *Engine) GetSystemMetrics() *SystemMetrics {
+	return e.performanceOptimizer.performanceMonitor.GetSystemMetrics()
+}
+
+// GetActiveAlerts returns currently active performance alerts
+func (e *Engine) GetActiveAlerts() []*Alert {
+	return e.performanceOptimizer.performanceMonitor.GetActiveAlerts()
+}
+
+// GetResourceUsage returns current resource usage across all agents
+func (e *Engine) GetResourceUsage() map[string]*ResourceUsage {
+	e.performanceOptimizer.resourceManager.mu.RLock()
+	defer e.performanceOptimizer.resourceManager.mu.RUnlock()
+	
+	usage := make(map[string]*ResourceUsage)
+	for agentID, resourceUsage := range e.performanceOptimizer.resourceManager.resourceUsage {
+		usage[agentID] = resourceUsage
+	}
+	return usage
+}
+
+// GetAgentLoads returns current load information for all agents
+func (e *Engine) GetAgentLoads() map[string]*AgentLoad {
+	e.performanceOptimizer.loadBalancer.mu.RLock()
+	defer e.performanceOptimizer.loadBalancer.mu.RUnlock()
+	
+	loads := make(map[string]*AgentLoad)
+	for agentID, agentLoad := range e.performanceOptimizer.loadBalancer.agentLoads {
+		loads[agentID] = agentLoad
+	}
+	return loads
 }

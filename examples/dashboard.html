@@ -662,8 +662,201 @@
                 if (data.status === 'success') {
                     updateDashboardWithData(data.data);
                 }
+
+                // Fetch new learning and performance data
+                await updateLearningData();
+                await updatePerformanceData();
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
+            }
+        }
+
+        // Update learning system data
+        async function updateLearningData() {
+            try {
+                const response = await fetch(`${API_BASE}/learning/system/metrics`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    updateLearningMetrics(data.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch learning data:', error);
+            }
+        }
+
+        // Update performance data
+        async function updatePerformanceData() {
+            try {
+                const [metricsResponse, alertsResponse, loadsResponse] = await Promise.all([
+                    fetch(`${API_BASE}/performance/metrics`),
+                    fetch(`${API_BASE}/performance/alerts`),
+                    fetch(`${API_BASE}/performance/agents/loads`)
+                ]);
+                
+                const metricsData = await metricsResponse.json();
+                const alertsData = await alertsResponse.json();
+                const loadsData = await loadsResponse.json();
+                
+                if (metricsData.status === 'success') {
+                    updatePerformanceMetrics(metricsData.data);
+                }
+                if (alertsData.status === 'success') {
+                    updateAlerts(alertsData.data);
+                }
+                if (loadsData.status === 'success') {
+                    updateAgentLoads(loadsData.data);
+                }
+            } catch (error) {
+                console.error('Failed to fetch performance data:', error);
+            }
+        }
+
+        // Update learning metrics display
+        function updateLearningMetrics(data) {
+            // Add learning metrics to guidance section
+            const guidanceElement = document.querySelector('.guidance');
+            
+            // Create learning metrics section if it doesn't exist
+            let learningSection = document.getElementById('learning-metrics');
+            if (!learningSection) {
+                learningSection = document.createElement('div');
+                learningSection.id = 'learning-metrics';
+                learningSection.style.marginTop = '1rem';
+                learningSection.style.padding = '1rem';
+                learningSection.style.background = 'rgba(37, 99, 235, 0.2)';
+                learningSection.style.borderRadius = '8px';
+                learningSection.innerHTML = `
+                    <h4 style="margin-bottom: 0.5rem; color: #60a5fa;">🧠 Learning System Status</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.875rem;">
+                        <div>Active Agents: <span id="active-agents">${data.total_agents || 0}</span></div>
+                        <div>Learning Records: <span id="learning-records">${data.total_performance_records || 0}</span></div>
+                        <div>Avg Learning Rate: <span id="avg-learning-rate">${(data.average_learning_rate * 100).toFixed(1)}%</span></div>
+                        <div>Avg Performance: <span id="avg-performance">${(data.average_current_performance * 100).toFixed(1)}%</span></div>
+                    </div>
+                `;
+                guidanceElement.appendChild(learningSection);
+            } else {
+                document.getElementById('active-agents').textContent = data.total_agents || 0;
+                document.getElementById('learning-records').textContent = data.total_performance_records || 0;
+                document.getElementById('avg-learning-rate').textContent = `${(data.average_learning_rate * 100).toFixed(1)}%`;
+                document.getElementById('avg-performance').textContent = `${(data.average_current_performance * 100).toFixed(1)}%`;
+            }
+        }
+
+        // Update performance metrics display
+        function updatePerformanceMetrics(data) {
+            // Update system metrics section
+            const systemHealthElement = document.getElementById('system-health');
+            const thoughtCountElement = document.getElementById('thought-count');
+            
+            if (systemHealthElement && data.system_health !== undefined) {
+                systemHealthElement.textContent = data.system_health.toFixed(2);
+                systemHealthElement.className = `metric-value ${getHealthClass(data.system_health)}`;
+            }
+            
+            if (thoughtCountElement && data.total_tasks !== undefined) {
+                thoughtCountElement.textContent = data.total_tasks;
+            }
+
+            // Add performance section if it doesn't exist
+            let perfSection = document.getElementById('performance-metrics');
+            if (!perfSection) {
+                perfSection = document.createElement('div');
+                perfSection.id = 'performance-metrics';
+                perfSection.className = 'card';
+                perfSection.style.gridColumn = '1 / -1';
+                perfSection.innerHTML = `
+                    <h2>⚡ Performance Metrics</h2>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                        <div class="metric">
+                            <div class="metric-label">Throughput</div>
+                            <div class="metric-value" id="throughput-tps">${data.throughput_tps?.toFixed(2) || '0.00'} TPS</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Avg Response Time</div>
+                            <div class="metric-value" id="avg-response-time">${data.average_response_time || 0}ms</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Completed Tasks</div>
+                            <div class="metric-value active" id="completed-tasks">${data.completed_tasks || 0}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Failed Tasks</div>
+                            <div class="metric-value ${data.failed_tasks > 0 ? 'degraded' : 'active'}" id="failed-tasks">${data.failed_tasks || 0}</div>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert before actions section
+                const actionsSection = document.querySelector('.actions').parentElement;
+                actionsSection.insertBefore(perfSection, document.querySelector('.actions'));
+            } else {
+                document.getElementById('throughput-tps').textContent = `${data.throughput_tps?.toFixed(2) || '0.00'} TPS`;
+                document.getElementById('avg-response-time').textContent = `${data.average_response_time || 0}ms`;
+                document.getElementById('completed-tasks').textContent = data.completed_tasks || 0;
+                const failedTasksElement = document.getElementById('failed-tasks');
+                failedTasksElement.textContent = data.failed_tasks || 0;
+                failedTasksElement.className = `metric-value ${data.failed_tasks > 0 ? 'degraded' : 'active'}`;
+            }
+        }
+
+        // Update alerts display
+        function updateAlerts(alerts) {
+            let alertsSection = document.getElementById('alerts-section');
+            if (!alertsSection && alerts && alerts.length > 0) {
+                alertsSection = document.createElement('div');
+                alertsSection.id = 'alerts-section';
+                alertsSection.className = 'card';
+                alertsSection.style.gridColumn = '1 / -1';
+                alertsSection.style.background = 'rgba(239, 68, 68, 0.2)';
+                alertsSection.style.borderLeft = '4px solid #ef4444';
+                
+                const header = document.querySelector('.header');
+                header.parentNode.insertBefore(alertsSection, header.nextSibling);
+            }
+            
+            if (alertsSection) {
+                if (alerts && alerts.length > 0) {
+                    alertsSection.innerHTML = `
+                        <h2>🚨 Active Alerts (${alerts.length})</h2>
+                        <div style="max-height: 200px; overflow-y: auto;">
+                            ${alerts.map(alert => `
+                                <div style="margin: 0.5rem 0; padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px;">
+                                    <div style="font-weight: 600; color: ${getSeverityColor(alert.severity)};">${alert.rule_name}</div>
+                                    <div style="font-size: 0.875rem; color: #e2e8f0;">${alert.message}</div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">${new Date(alert.timestamp).toLocaleString()}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    alertsSection.style.display = 'none';
+                }
+            }
+        }
+
+        // Update agent loads display
+        function updateAgentLoads(loads) {
+            // This would update a separate agent loads section
+            // For now, we'll just log the data
+            console.log('Agent loads:', loads);
+        }
+
+        function getHealthClass(health) {
+            if (health >= 0.8) return 'active';
+            if (health >= 0.6) return 'stable';
+            if (health >= 0.3) return 'degraded';
+            return 'inactive';
+        }
+
+        function getSeverityColor(severity) {
+            switch (severity) {
+                case 'critical': return '#ef4444';
+                case 'error': return '#f97316';
+                case 'warning': return '#eab308';
+                case 'info': return '#3b82f6';
+                default: return '#6b7280';
             }
         }
 
