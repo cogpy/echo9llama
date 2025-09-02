@@ -12,14 +12,40 @@ jobs:
       - name: Build echollama
         run: go build -o echollama .
 
-      - name: Start echollama server (background)
+      - name: Install and configure nginx proxy
         run: |
-          ./echollama serve &
+          sudo apt-get update
+          sudo apt-get install -y nginx
+          # Create nginx config for universal proxy redirect (0.0.0.0 → 127.0.0.1)
+          sudo tee /etc/nginx/sites-available/echollama-proxy > /dev/null <<EOF
+          server {
+            listen 11434;                     # Listen on all interfaces
+            server_name _;                    # Match any host
+            location / {
+              proxy_pass http://127.0.0.1:11435;
+              proxy_set_header Host \$host;
+              proxy_set_header X-Real-IP \$remote_addr;
+              proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto \$scheme;
+            }
+          }
+          EOF
+          # Enable the configuration
+          sudo ln -sf /etc/nginx/sites-available/echollama-proxy \
+            /etc/nginx/sites-enabled/
+          sudo rm -f /etc/nginx/sites-enabled/default
+          # Test and start nginx
+          sudo nginx -t
+          sudo systemctl start nginx
+
+      - name: Start echollama server (background on port 11435)
+        run: |
+          OLLAMA_HOST=127.0.0.1:11435 ./echollama serve &
           sleep 8
 
-      - name: Load tiny test model
+      - name: Load tiny test model (via proxy)
         run: |
-          ./echollama pull qwen2.5:0.5b
+          OLLAMA_HOST=127.0.0.1:11435 ./echollama pull qwen2.5:0.5b
           # Store model info in models directory to show it's "permanently" available
           mkdir -p models
           echo "qwen2.5:0.5b" > models/active-test-model.txt
