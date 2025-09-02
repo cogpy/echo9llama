@@ -3,6 +3,7 @@ package orchestration
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -62,6 +63,26 @@ func (s *APIServer) setupRoutes() {
 		orchestration.POST("/", s.orchestrateTasks)
 		orchestration.GET("/tools", s.getAvailableTools)
 		orchestration.GET("/plugins", s.getAvailablePlugins)
+	}
+	
+	// Learning System routes
+	learning := s.router.Group("/api/learning")
+	{
+		learning.GET("/agents/:id/model", s.getLearningModel)
+		learning.GET("/agents/:id/performance", s.getAgentPerformance)
+		learning.POST("/agents/:id/adapt", s.adaptAgent)
+		learning.POST("/predict-optimal-agent", s.predictOptimalAgent)
+		learning.GET("/system/metrics", s.getLearningSystemMetrics)
+	}
+	
+	// Performance Optimization routes
+	performance := s.router.Group("/api/performance")
+	{
+		performance.GET("/metrics", s.getSystemMetrics)
+		performance.GET("/alerts", s.getActiveAlerts)
+		performance.GET("/resources", s.getResourceUsage)
+		performance.GET("/agents/loads", s.getAgentLoads)
+		performance.POST("/tasks/execute-optimized", s.executeTaskOptimized)
 	}
 }
 
@@ -470,4 +491,245 @@ func getCoreStatusColor(status CoreStatus) string {
 	default:
 		return "gray"
 	}
+}
+
+// Learning System API Handlers
+
+func (s *APIServer) getLearningModel(c *gin.Context) {
+	agentID := c.Param("id")
+	
+	learningSystem := s.engine.GetLearningSystem()
+	model := learningSystem.GetLearningModel(agentID)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   model,
+	})
+}
+
+func (s *APIServer) getAgentPerformance(c *gin.Context) {
+	agentID := c.Param("id")
+	
+	learningSystem := s.engine.GetLearningSystem()
+	history := learningSystem.performanceHistory[agentID]
+	
+	if history == nil {
+		history = make([]*TaskPerformance, 0)
+	}
+	
+	// Return recent performance (last 20 records)
+	recentHistory := history
+	if len(history) > 20 {
+		recentHistory = history[len(history)-20:]
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": map[string]interface{}{
+			"agent_id":           agentID,
+			"total_tasks":        len(history),
+			"recent_performance": recentHistory,
+		},
+	})
+}
+
+func (s *APIServer) adaptAgent(c *gin.Context) {
+	agentID := c.Param("id")
+	
+	result, err := s.engine.AdaptAgent(c.Request.Context(), agentID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   result,
+	})
+}
+
+func (s *APIServer) predictOptimalAgent(c *gin.Context) {
+	var req struct {
+		TaskType   string                 `json:"task_type"`
+		Input      string                 `json:"input"`
+		Parameters map[string]interface{} `json:"parameters"`
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request body",
+		})
+		return
+	}
+	
+	task := &Task{
+		Type:       req.TaskType,
+		Input:      req.Input,
+		Parameters: req.Parameters,
+	}
+	
+	agent, confidence, err := s.engine.PredictOptimalAgentForTask(c.Request.Context(), task)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": map[string]interface{}{
+			"optimal_agent": agent,
+			"confidence":    confidence,
+		},
+	})
+}
+
+func (s *APIServer) getLearningSystemMetrics(c *gin.Context) {
+	learningSystem := s.engine.GetLearningSystem()
+	
+	// Calculate system-wide learning metrics
+	totalAgents := len(learningSystem.learningModels)
+	totalPerformanceRecords := 0
+	avgLearningRate := 0.0
+	avgCurrentPerformance := 0.0
+	
+	for _, model := range learningSystem.learningModels {
+		if history, exists := learningSystem.performanceHistory[model.AgentID]; exists {
+			totalPerformanceRecords += len(history)
+		}
+		avgLearningRate += model.LearningRate
+		avgCurrentPerformance += model.LearningTrajectory.CurrentPerformance
+	}
+	
+	if totalAgents > 0 {
+		avgLearningRate /= float64(totalAgents)
+		avgCurrentPerformance /= float64(totalAgents)
+	}
+	
+	// Get adaptation strategies count
+	adaptationStrategiesCount := len(learningSystem.adaptationEngine.adaptationStrategies)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data": map[string]interface{}{
+			"total_agents":                totalAgents,
+			"total_performance_records":   totalPerformanceRecords,
+			"average_learning_rate":       avgLearningRate,
+			"average_current_performance": avgCurrentPerformance,
+			"adaptation_strategies_count": adaptationStrategiesCount,
+			"environment_factors":         learningSystem.adaptationEngine.environmentFactors,
+		},
+	})
+}
+
+// Performance Optimization API Handlers
+
+func (s *APIServer) getSystemMetrics(c *gin.Context) {
+	metrics := s.engine.GetSystemMetrics()
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   metrics,
+	})
+}
+
+func (s *APIServer) getActiveAlerts(c *gin.Context) {
+	alerts := s.engine.GetActiveAlerts()
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   alerts,
+	})
+}
+
+func (s *APIServer) getResourceUsage(c *gin.Context) {
+	usage := s.engine.GetResourceUsage()
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   usage,
+	})
+}
+
+func (s *APIServer) getAgentLoads(c *gin.Context) {
+	loads := s.engine.GetAgentLoads()
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   loads,
+	})
+}
+
+func (s *APIServer) executeTaskOptimized(c *gin.Context) {
+	var req struct {
+		Type       string                 `json:"type"`
+		Input      string                 `json:"input"`
+		ModelName  string                 `json:"model_name"`
+		Parameters map[string]interface{} `json:"parameters"`
+		Priority   string                 `json:"priority"`   // "low", "normal", "high", "urgent"
+		Deadline   string                 `json:"deadline"`   // ISO 8601 timestamp
+	}
+	
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status": "error",
+			"error":  "Invalid request body",
+		})
+		return
+	}
+	
+	// Parse priority
+	var priority TaskPriority
+	switch req.Priority {
+	case "low":
+		priority = TaskPriorityLow
+	case "normal":
+		priority = TaskPriorityNormal
+	case "high":
+		priority = TaskPriorityHigh
+	case "urgent":
+		priority = TaskPriorityUrgent
+	default:
+		priority = TaskPriorityNormal
+	}
+	
+	// Parse deadline
+	deadline := time.Now().Add(30 * time.Minute) // Default deadline
+	if req.Deadline != "" {
+		if parsedDeadline, err := time.Parse(time.RFC3339, req.Deadline); err == nil {
+			deadline = parsedDeadline
+		}
+	}
+	
+	// Create task
+	task := &Task{
+		ID:         fmt.Sprintf("opt-task-%d", time.Now().Unix()),
+		Type:       req.Type,
+		Input:      req.Input,
+		ModelName:  req.ModelName,
+		Parameters: req.Parameters,
+		Status:     TaskStatusPending,
+		CreatedAt:  time.Now(),
+	}
+	
+	// Execute task with optimization
+	result, err := s.engine.ExecuteTaskOptimized(c.Request.Context(), task, priority, deadline)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"status": "error",
+			"error":  err.Error(),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status": "success",
+		"data":   result,
+	})
 }
