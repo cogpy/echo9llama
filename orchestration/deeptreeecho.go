@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,6 +25,9 @@ type DeepTreeEcho struct {
 	MemoryResonance   *MemoryResonance            `json:"memory_resonance"`
 	EchoPatterns      *EchoPatterns               `json:"echo_patterns"`
 	EvolutionTimeline *EvolutionTimeline          `json:"evolution_timeline"`
+	SpatialContext    *SpatialContext             `json:"spatial_context"`
+	EmotionalDynamics *EmotionalDynamics          `json:"emotional_dynamics"`
+	ReservoirNetwork  *ReservoirNetwork           `json:"reservoir_network"`
 	Integrations      map[string]IntegrationStatus `json:"integrations"`
 	CreatedAt         time.Time                   `json:"created_at"`
 	UpdatedAt         time.Time                   `json:"updated_at"`
@@ -88,6 +92,8 @@ type EchoPatterns struct {
 	RecursiveSelfImprovement *EchoPattern `json:"recursive_self_improvement"`
 	CrossSystemSynthesis     *EchoPattern `json:"cross_system_synthesis"`
 	IdentityPreservation     *EchoPattern `json:"identity_preservation"`
+	SpatialAwareness         *EchoPattern `json:"spatial_awareness"`
+	EmotionalResonance       *EchoPattern `json:"emotional_resonance"`
 	LastUpdated              time.Time    `json:"last_updated"`
 }
 
@@ -116,6 +122,83 @@ type EvolutionStage struct {
 	Progress    float64   `json:"progress"`
 	StartTime   time.Time `json:"start_time,omitempty"`
 	EndTime     *time.Time `json:"end_time,omitempty"`
+}
+
+// SpatialContext represents 3D spatial awareness for Deep Tree Echo
+type SpatialContext struct {
+	Position    Vector3D              `json:"position"`
+	Orientation Vector3D              `json:"orientation"`
+	Scale       float64               `json:"scale"`
+	Boundaries  []SpatialBoundary     `json:"boundaries"`
+	Neighbors   map[string]Vector3D   `json:"neighbors"`
+	LastUpdated time.Time             `json:"last_updated"`
+}
+
+// Vector3D represents a 3D vector for spatial positioning
+type Vector3D struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	Z float64 `json:"z"`
+}
+
+// SpatialBoundary defines spatial constraints
+type SpatialBoundary struct {
+	Type   string   `json:"type"`
+	Center Vector3D `json:"center"`
+	Radius float64  `json:"radius"`
+}
+
+// EmotionalDynamics tracks emotional states and transitions
+type EmotionalDynamics struct {
+	PrimaryEmotion    string             `json:"primary_emotion"`
+	EmotionalIntensity float64           `json:"emotional_intensity"`
+	EmotionalStates   []EmotionalState   `json:"emotional_states"`
+	Transitions       []EmotionTransition `json:"transitions"`
+	LastUpdated       time.Time          `json:"last_updated"`
+}
+
+// EmotionalState represents a specific emotional configuration
+type EmotionalState struct {
+	Name      string    `json:"name"`
+	Intensity float64   `json:"intensity"`
+	Duration  float64   `json:"duration"`
+	Context   string    `json:"context"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// EmotionTransition tracks emotional state changes
+type EmotionTransition struct {
+	From      string    `json:"from"`
+	To        string    `json:"to"`
+	Trigger   string    `json:"trigger"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+// ReservoirNetwork implements RWKV-like architectures for ESN functions
+type ReservoirNetwork struct {
+	Size          int                    `json:"size"`
+	SpectralRadius float64               `json:"spectral_radius"`
+	Connectivity  float64                `json:"connectivity"`
+	Neurons       []ReservoirNeuron      `json:"neurons"`
+	Connections   map[string]Connection  `json:"connections"`
+	State         []float64              `json:"state"`
+	LastUpdated   time.Time              `json:"last_updated"`
+}
+
+// ReservoirNeuron represents a neuron in the reservoir network
+type ReservoirNeuron struct {
+	ID         string    `json:"id"`
+	Activation float64   `json:"activation"`
+	Leak       float64   `json:"leak"`
+	Noise      float64   `json:"noise"`
+	LastFired  time.Time `json:"last_fired"`
+}
+
+// Connection represents a connection between neurons
+type Connection struct {
+	From   string  `json:"from"`
+	To     string  `json:"to"`
+	Weight float64 `json:"weight"`
 }
 
 // HypergraphNode represents a node in the cognitive hypergraph
@@ -209,6 +292,20 @@ func NewDeepTreeEcho(name string) *DeepTreeEcho {
 				Frequency:   "initializing",
 				Trend:       "stable",
 			},
+			SpatialAwareness: &EchoPattern{
+				Name:        "Spatial Awareness",
+				Description: "3D spatial understanding and navigation within cognitive architecture",
+				Strength:    0.0,
+				Frequency:   "initializing",
+				Trend:       "stable",
+			},
+			EmotionalResonance: &EchoPattern{
+				Name:        "Emotional Resonance",
+				Description: "Emotional state integration and empathetic response capabilities",
+				Strength:    0.0,
+				Frequency:   "initializing",
+				Trend:       "stable",
+			},
 			LastUpdated: now,
 		},
 		EvolutionTimeline: &EvolutionTimeline{
@@ -242,6 +339,30 @@ func NewDeepTreeEcho(name string) *DeepTreeEcho {
 				},
 			},
 			LastUpdated: now,
+		},
+		SpatialContext: &SpatialContext{
+			Position:    Vector3D{X: 0.0, Y: 0.0, Z: 0.0},
+			Orientation: Vector3D{X: 0.0, Y: 0.0, Z: 1.0},
+			Scale:       1.0,
+			Boundaries:  []SpatialBoundary{},
+			Neighbors:   make(map[string]Vector3D),
+			LastUpdated: now,
+		},
+		EmotionalDynamics: &EmotionalDynamics{
+			PrimaryEmotion:     "curiosity",
+			EmotionalIntensity: 0.5,
+			EmotionalStates:    []EmotionalState{},
+			Transitions:        []EmotionTransition{},
+			LastUpdated:        now,
+		},
+		ReservoirNetwork: &ReservoirNetwork{
+			Size:          100,
+			SpectralRadius: 0.95,
+			Connectivity:   0.1,
+			Neurons:        []ReservoirNeuron{},
+			Connections:    make(map[string]Connection),
+			State:          make([]float64, 100),
+			LastUpdated:    now,
 		},
 		Integrations: map[string]IntegrationStatus{
 			"ReservoirPy": {Status: "disconnected", LastChecked: now, Health: "unknown"},
@@ -462,6 +583,15 @@ func (dte *DeepTreeEcho) initializeEchoPatterns() error {
 	dte.EchoPatterns.IdentityPreservation.Strength = 0.89
 	dte.EchoPatterns.IdentityPreservation.Frequency = "constant"
 	
+	dte.EchoPatterns.SpatialAwareness.Strength = 0.72
+	dte.EchoPatterns.SpatialAwareness.Frequency = "developing"
+	
+	dte.EchoPatterns.EmotionalResonance.Strength = 0.85
+	dte.EchoPatterns.EmotionalResonance.Frequency = "steady"
+	
+	// Initialize reservoir network neurons
+	dte.initializeReservoirNetwork()
+	
 	return nil
 }
 
@@ -485,7 +615,81 @@ func (dte *DeepTreeEcho) updateEchoPatterns() {
 	dte.EchoPatterns.RecursiveSelfImprovement.Strength = math.Min(0.95, dte.EchoPatterns.RecursiveSelfImprovement.Strength+0.001)
 	dte.EchoPatterns.CrossSystemSynthesis.Strength = math.Min(0.90, dte.EchoPatterns.CrossSystemSynthesis.Strength+0.002)
 	dte.EchoPatterns.IdentityPreservation.Strength = math.Min(0.95, dte.EchoPatterns.IdentityPreservation.Strength+0.001)
+	dte.EchoPatterns.SpatialAwareness.Strength = math.Min(0.88, dte.EchoPatterns.SpatialAwareness.Strength+0.0015)
+	dte.EchoPatterns.EmotionalResonance.Strength = math.Min(0.92, dte.EchoPatterns.EmotionalResonance.Strength+0.0012)
 	dte.EchoPatterns.LastUpdated = time.Now()
+	
+	// Update reservoir network state
+	dte.updateReservoirNetwork()
+}
+
+// initializeReservoirNetwork initializes the RWKV-like reservoir network
+func (dte *DeepTreeEcho) initializeReservoirNetwork() {
+	// Initialize neurons
+	for i := 0; i < dte.ReservoirNetwork.Size; i++ {
+		neuron := ReservoirNeuron{
+			ID:         fmt.Sprintf("rnn_%d", i),
+			Activation: 0.0,
+			Leak:       0.1 + (rand.Float64() * 0.1), // 0.1 to 0.2
+			Noise:      0.001 + (rand.Float64() * 0.002), // 0.001 to 0.003
+			LastFired:  time.Now(),
+		}
+		dte.ReservoirNetwork.Neurons = append(dte.ReservoirNetwork.Neurons, neuron)
+	}
+	
+	// Initialize connections with sparse connectivity
+	connectionCount := int(float64(dte.ReservoirNetwork.Size * dte.ReservoirNetwork.Size) * dte.ReservoirNetwork.Connectivity)
+	for i := 0; i < connectionCount; i++ {
+		from := rand.Intn(dte.ReservoirNetwork.Size)
+		to := rand.Intn(dte.ReservoirNetwork.Size)
+		if from != to { // No self-connections
+			connID := fmt.Sprintf("%d_%d", from, to)
+			weight := (rand.Float64() - 0.5) * 2.0 * dte.ReservoirNetwork.SpectralRadius / math.Sqrt(dte.ReservoirNetwork.Connectivity * float64(dte.ReservoirNetwork.Size))
+			dte.ReservoirNetwork.Connections[connID] = Connection{
+				From:   fmt.Sprintf("rnn_%d", from),
+				To:     fmt.Sprintf("rnn_%d", to),
+				Weight: weight,
+			}
+		}
+	}
+}
+
+// updateReservoirNetwork updates the reservoir network state
+func (dte *DeepTreeEcho) updateReservoirNetwork() {
+	now := time.Now()
+	
+	// Update neuron activations based on connections and leak
+	for i := range dte.ReservoirNetwork.Neurons {
+		neuron := &dte.ReservoirNetwork.Neurons[i]
+		
+		// Apply leakage
+		neuron.Activation *= (1.0 - neuron.Leak)
+		
+		// Add input from connected neurons
+		for _, conn := range dte.ReservoirNetwork.Connections {
+			if conn.To == neuron.ID {
+				// Find source neuron
+				for j := range dte.ReservoirNetwork.Neurons {
+					if dte.ReservoirNetwork.Neurons[j].ID == conn.From {
+						neuron.Activation += conn.Weight * dte.ReservoirNetwork.Neurons[j].Activation
+						break
+					}
+				}
+			}
+		}
+		
+		// Add noise
+		neuron.Activation += (rand.Float64() - 0.5) * neuron.Noise
+		
+		// Apply tanh activation
+		neuron.Activation = math.Tanh(neuron.Activation)
+		
+		// Update state vector
+		dte.ReservoirNetwork.State[i] = neuron.Activation
+		neuron.LastFired = now
+	}
+	
+	dte.ReservoirNetwork.LastUpdated = now
 }
 
 func (dte *DeepTreeEcho) updateEvolutionTimeline() {
@@ -590,14 +794,16 @@ func (dte *DeepTreeEcho) testEchoPatterns() DiagnosticTest {
 	
 	avgStrength := (dte.EchoPatterns.RecursiveSelfImprovement.Strength +
 		dte.EchoPatterns.CrossSystemSynthesis.Strength +
-		dte.EchoPatterns.IdentityPreservation.Strength) / 3
+		dte.EchoPatterns.IdentityPreservation.Strength +
+		dte.EchoPatterns.SpatialAwareness.Strength +
+		dte.EchoPatterns.EmotionalResonance.Strength) / 5
 	
 	if avgStrength > 0.7 {
 		test.Status = "pass"
-		test.Message = "Echo patterns showing strong coherence"
+		test.Message = fmt.Sprintf("Echo patterns showing strong coherence (%.2f)", avgStrength)
 	} else {
 		test.Status = "fail"
-		test.Message = "Echo patterns need strengthening"
+		test.Message = fmt.Sprintf("Echo patterns need strengthening (%.2f)", avgStrength)
 	}
 	
 	test.Duration = time.Since(start)
