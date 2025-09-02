@@ -12,7 +12,6 @@ Note: Due to size constraints, large model binary files (*.gguf) cannot be store
 
 Below are some small .gguf files kept locally for testing:
 
-- stories15M.gguf
 - stories260K.gguf
 - tinyllamas-stories-260k-f32.gguf
 - yolov3-tiny.gguf
