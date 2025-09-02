@@ -1365,3 +1365,8 @@ func (e *Engine) GetAgentLoads() map[string]*AgentLoad {
 	}
 	return loads
 }
+
+// NewEchoChat creates a new EchoChat instance connected to this engine
+func (e *Engine) NewEchoChat() *EchoChat {
+	return NewEchoChat(e)
+}
