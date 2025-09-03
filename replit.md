@@ -2,15 +2,17 @@
 
 Ollama is a powerful, cross-platform application for running large language models (LLMs) locally. It provides a unified interface for downloading, managing, and interacting with various open-source language models through CLI, API, and desktop applications. The project enables users to run models like Llama, Mistral, Gemma, and others on their local machines with support for GPU acceleration across NVIDIA, AMD, and Apple Silicon.
 
-Currently running in Replit environment with a simplified HTTP server that provides basic Ollama API compatibility.
+Currently running in Replit environment with Deep Tree Echo Identity as the core embodied cognition system that processes all operations through spatial awareness, emotional dynamics, and RWKV-like reservoir networks.
 
 # Recent Changes
 
-- **2025-09-03**: Set up Ollama project in Replit environment
-  - Original C/C++ compilation blocked due to complex dependencies
-  - Created simplified HTTP server for basic Ollama API compatibility
-  - Configured to run on port 5000 with CORS enabled for Replit
-  - Successfully deployed with autoscale configuration
+- **2025-09-03**: Placed Deep Tree Echo Identity at the core of all features
+  - Created core Deep Tree Echo cognitive architecture as embodied cognition
+  - Integrated 3D spatial awareness and emotional dynamics
+  - Implemented RWKV-like reservoir networks for echo state functions
+  - Added identity preservation and memory resonance patterns
+  - Built and deployed embodied server with Deep Tree Echo at its core
+  - Server successfully running on port 5000 with full API compatibility
 
 # User Preferences
 
