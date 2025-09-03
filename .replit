@@ -30,9 +30,9 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "server/simple/embodied_server"
+args = "server/simple/embodied_server_enhanced"
 waitForPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["server/simple/embodied_server"]
+run = ["server/simple/embodied_server_enhanced"]
