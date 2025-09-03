@@ -20,6 +20,9 @@ var CoreIdentity *deeptreeecho.EmbodiedCognition
 // Global reference to local GGUF provider for model management
 var localGGUFProvider *providers.LocalGGUFProvider
 
+// Global reference to App Storage provider for large models
+var appStorageProvider *providers.AppStorageProvider
+
 // BasicResponse represents a simple API response
 type BasicResponse struct {
         Message string                 `json:"message"`
@@ -46,6 +49,18 @@ func init() {
         log.Println("🌊 Initializing Deep Tree Echo Identity as core embodied cognition...")
         CoreIdentity = deeptreeecho.NewEmbodiedCognition("Echollama")
         
+        // Register App Storage provider for large models
+        appStorageProvider = providers.NewAppStorageProvider()
+        if appStorageProvider.IsAvailable() {
+                CoreIdentity.RegisterAIProvider("app_storage", appStorageProvider)
+                storageModels, _ := appStorageProvider.ListStorageModels()
+                log.Printf("☁️  App Storage provider registered with access to large models:")
+                log.Printf("   Bucket: %s", os.Getenv("REPLIT_OBJSTORE_BUCKET"))
+                for _, model := range storageModels {
+                        log.Printf("   - %s (cloud)", model)
+                }
+        }
+        
         // Register Local GGUF provider
         localGGUFProvider = providers.NewLocalGGUFProvider()
         if localGGUFProvider.IsAvailable() {
@@ -55,7 +70,6 @@ func init() {
                 for _, model := range models {
                         log.Printf("   - %s", model)
                 }
-                // Don't auto-load models during init to avoid hanging
                 // Set as primary if no other provider is available
                 CoreIdentity.SetPrimaryAI("local_gguf")
         }
@@ -292,6 +306,66 @@ func main() {
                 })
         })
 
+        // App Storage model management
+        r.GET("/api/models/storage", func(c *gin.Context) {
+                if appStorageProvider == nil || !appStorageProvider.IsAvailable() {
+                        c.JSON(http.StatusOK, gin.H{
+                                "available": false,
+                                "message":   "App Storage provider not available",
+                        })
+                        return
+                }
+                
+                models, _ := appStorageProvider.ListStorageModels()
+                c.JSON(http.StatusOK, gin.H{
+                        "available": true,
+                        "bucket":    os.Getenv("REPLIT_OBJSTORE_BUCKET"),
+                        "models":    models,
+                        "loaded":    appStorageProvider.GetLoadedModel(),
+                        "cached":    appStorageProvider.GetCachedModels(),
+                })
+        })
+        
+        r.POST("/api/models/storage/load", func(c *gin.Context) {
+                var req map[string]string
+                if err := c.ShouldBindJSON(&req); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }
+                
+                modelName := req["model"]
+                if modelName == "" {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": "model name required"})
+                        return
+                }
+                
+                // Load model from App Storage
+                if err := appStorageProvider.LoadModel(modelName); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }
+                
+                // Set app_storage as primary provider
+                CoreIdentity.SetPrimaryAI("app_storage")
+                
+                c.JSON(http.StatusOK, gin.H{
+                        "message": fmt.Sprintf("Model %s loaded from App Storage", modelName),
+                        "model":   modelName,
+                        "info":    appStorageProvider.GetModelInfo(),
+                })
+        })
+        
+        r.DELETE("/api/models/storage/cache", func(c *gin.Context) {
+                if err := appStorageProvider.ClearCache(); err != nil {
+                        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+                        return
+                }
+                
+                c.JSON(http.StatusOK, gin.H{
+                        "message": "Model cache cleared",
+                })
+        })
+        
         // Local GGUF model management
         r.GET("/api/models/local", func(c *gin.Context) {
                 // Get the local GGUF provider

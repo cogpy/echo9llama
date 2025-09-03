@@ -1,4 +1,4 @@
-modules = ["go-1.21", "c-clang14", "bash", "nodejs-20"]
+modules = ["go-1.21", "c-clang14", "bash", "nodejs-20", "bun"]
 [agent]
 expertMode = true
 
@@ -36,3 +36,6 @@ waitForPort = 5000
 [deployment]
 deploymentTarget = "autoscale"
 run = ["server/simple/embodied_server_enhanced"]
+
+[objectStorage]
+defaultBucketID = "replit-objstore-16fee67f-aa23-4195-8eac-85a4289c2e1a"
