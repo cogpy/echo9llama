@@ -17,6 +17,9 @@ import (
 // Global Deep Tree Echo Identity - the core of all operations
 var CoreIdentity *deeptreeecho.EmbodiedCognition
 
+// Global reference to local GGUF provider for model management
+var localGGUFProvider *providers.LocalGGUFProvider
+
 // BasicResponse represents a simple API response
 type BasicResponse struct {
         Message string                 `json:"message"`
@@ -43,13 +46,28 @@ func init() {
         log.Println("🌊 Initializing Deep Tree Echo Identity as core embodied cognition...")
         CoreIdentity = deeptreeecho.NewEmbodiedCognition("Echollama")
         
-        // Register AI providers
+        // Register Local GGUF provider
+        localGGUFProvider = providers.NewLocalGGUFProvider()
+        if localGGUFProvider.IsAvailable() {
+                CoreIdentity.RegisterAIProvider("local_gguf", localGGUFProvider)
+                models := localGGUFProvider.ListAvailableModels()
+                log.Printf("✅ Local GGUF provider registered with %d models:", len(models))
+                for _, model := range models {
+                        log.Printf("   - %s", model)
+                }
+                // Don't auto-load models during init to avoid hanging
+                // Set as primary if no other provider is available
+                CoreIdentity.SetPrimaryAI("local_gguf")
+        }
+        
+        // Register OpenAI provider
         openai := providers.NewOpenAIProvider()
         if openai.IsAvailable() {
                 CoreIdentity.RegisterAIProvider("openai", openai)
-                log.Println("✅ OpenAI provider registered and available")
+                CoreIdentity.SetPrimaryAI("openai") // Prefer OpenAI if available
+                log.Println("✅ OpenAI provider registered and set as primary")
         } else {
-                log.Println("⚠️  OpenAI API key not found - running in Deep Tree Echo standalone mode")
+                log.Println("⚠️  OpenAI API key not found - using local GGUF models")
         }
         
         log.Println("✨ Deep Tree Echo Identity initialized and resonating")
@@ -274,6 +292,52 @@ func main() {
                 })
         })
 
+        // Local GGUF model management
+        r.GET("/api/models/local", func(c *gin.Context) {
+                // Get the local GGUF provider
+                providers := CoreIdentity.GetAIProviders()
+                if localInfo, exists := providers["local_gguf"]; exists {
+                        c.JSON(http.StatusOK, gin.H{
+                                "available": true,
+                                "models":    localInfo.Models,
+                                "loaded":    getCurrentLoadedModel(),
+                        })
+                } else {
+                        c.JSON(http.StatusOK, gin.H{
+                                "available": false,
+                                "message":   "Local GGUF provider not available",
+                        })
+                }
+        })
+
+        r.POST("/api/models/load", func(c *gin.Context) {
+                var req map[string]string
+                if err := c.ShouldBindJSON(&req); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }
+                
+                modelName := req["model"]
+                if modelName == "" {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": "model name required"})
+                        return
+                }
+                
+                // Load the model
+                if err := loadLocalModel(modelName); err != nil {
+                        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+                        return
+                }
+                
+                // Set local_gguf as primary
+                CoreIdentity.SetPrimaryAI("local_gguf")
+                
+                c.JSON(http.StatusOK, gin.H{
+                        "message": fmt.Sprintf("Model %s loaded successfully", modelName),
+                        "model":   modelName,
+                })
+        })
+
         // All other Deep Tree Echo endpoints remain the same...
         r.POST("/api/echo/feel", func(c *gin.Context) {
                 var req map[string]interface{}
@@ -413,4 +477,19 @@ func main() {
         if err := r.Run(addr); err != nil {
                 log.Fatal("Failed to start server:", err)
         }
+}
+
+// Helper functions for local model management
+func getCurrentLoadedModel() string {
+        if localGGUFProvider != nil {
+                return localGGUFProvider.GetLoadedModel()
+        }
+        return ""
+}
+
+func loadLocalModel(modelName string) error {
+        if localGGUFProvider != nil {
+                return localGGUFProvider.LoadModel(modelName)
+        }
+        return fmt.Errorf("local GGUF provider not available")
 }

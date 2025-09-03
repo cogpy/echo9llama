@@ -30,7 +30,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "server/simple/embodied_server_enhanced"
+args = "server/simple/embodied_server"
 waitForPort = 5000
 
 [deployment]
