@@ -1,0 +1,838 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HGQL Dashboard - HyperGraph GraphQL</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 1rem 2rem;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .header h1 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+        
+        .header .subtitle {
+            color: #a0c4ff;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        
+        .container {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #a0c4ff;
+        }
+        
+        .query-editor {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .query-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+        }
+        
+        .query-tab {
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: #a0c4ff;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .query-tab.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+        
+        .query-content {
+            padding: 1.5rem;
+        }
+        
+        .query-textarea {
+            width: 100%;
+            height: 300px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        .query-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .query-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .results-panel {
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        
+        .results-content {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .json-output {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .integration-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .integration-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .integration-info {
+            flex: 1;
+        }
+        
+        .integration-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .integration-type {
+            font-size: 0.9rem;
+            color: #a0c4ff;
+        }
+        
+        .integration-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+        }
+        
+        .visualization-container {
+            height: 300px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>
+            <span>🧬</span>
+            HGQL Dashboard
+        </h1>
+        <div class="subtitle">HyperGraph GraphQL with Deep Tree Echo Integration</div>
+    </div>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <!-- System Status -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🌊</span>
+                    System Status
+                    <div class="status-indicator"></div>
+                </div>
+                <div class="metric">
+                    <span>HGQL Engine</span>
+                    <span class="metric-value" id="engine-status">Active</span>
+                </div>
+                <div class="metric">
+                    <span>Deep Tree Echo</span>
+                    <span class="metric-value" id="echo-status">Resonating</span>
+                </div>
+                <div class="metric">
+                    <span>Identity Coherence</span>
+                    <span class="metric-value" id="coherence">95.2%</span>
+                </div>
+                <div class="metric">
+                    <span>Schema Version</span>
+                    <span class="metric-value">1.0.0</span>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card">
+                <div class="card-header">
+                    <span>⚡</span>
+                    Performance Metrics
+                </div>
+                <div class="metric">
+                    <span>Queries Processed</span>
+                    <span class="metric-value" id="query-count">1,247</span>
+                </div>
+                <div class="metric">
+                    <span>Avg Query Time</span>
+                    <span class="metric-value" id="avg-query-time">45ms</span>
+                </div>
+                <div class="metric">
+                    <span>Cache Hit Rate</span>
+                    <span class="metric-value" id="cache-hit-rate">87%</span>
+                </div>
+                <div class="metric">
+                    <span>Active Subscriptions</span>
+                    <span class="metric-value" id="active-subs">12</span>
+                </div>
+            </div>
+
+            <!-- Hypergraph Schema -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🕸️</span>
+                    Hypergraph Schema
+                </div>
+                <div class="metric">
+                    <span>HyperNodes</span>
+                    <span class="metric-value" id="hypernode-count">156</span>
+                </div>
+                <div class="metric">
+                    <span>HyperEdges</span>
+                    <span class="metric-value" id="hyperedge-count">342</span>
+                </div>
+                <div class="metric">
+                    <span>Dimensions</span>
+                    <span class="metric-value" id="dimension-count">8</span>
+                </div>
+                <div class="metric">
+                    <span>Patterns</span>
+                    <span class="metric-value" id="pattern-count">24</span>
+                </div>
+            </div>
+
+            <!-- Integration Hub -->
+            <div class="card">
+                <div class="card-header">
+                    <span>🔗</span>
+                    Integration Hub
+                    <button class="btn btn-secondary btn-small" onclick="openIntegrationModal()">Add Integration</button>
+                </div>
+                <div class="integration-list" id="integration-list">
+                    <!-- Integrations will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Query Editor -->
+        <div class="card query-editor">
+            <div class="card-header">
+                <span>🔍</span>
+                HGQL Query Editor
+            </div>
+            <div class="query-tabs">
+                <button class="query-tab active" onclick="switchTab('graphql')">GraphQL</button>
+                <button class="query-tab" onclick="switchTab('hypergraph')">HyperGraph</button>
+                <button class="query-tab" onclick="switchTab('cognitive')">Cognitive</button>
+                <button class="query-tab" onclick="switchTab('temporal')">Temporal</button>
+            </div>
+            <div class="query-content">
+                <textarea class="query-textarea" id="query-input" placeholder="Enter your HGQL query here...">query ExampleHyperGraphQuery {
+  user(id: "1") {
+    name
+    email
+    
+    # Hypergraph traversal
+    connections(depth: 3, type: "friendship") @hypergraph {
+      nodes {
+        id
+        type
+        resonance
+      }
+      patterns {
+        type
+        confidence
+      }
+    }
+  }
+  
+  # Cognitive pattern search
+  cognitivePatterns(context: "social_network") @cognitive {
+    patterns
+    resonance
+    emergence
+  }
+}</textarea>
+                <div class="query-actions">
+                    <button class="btn btn-primary" onclick="executeQuery()">Execute Query</button>
+                    <button class="btn btn-secondary" onclick="validateQuery()">Validate</button>
+                    <button class="btn btn-secondary" onclick="clearQuery()">Clear</button>
+                    <button class="btn btn-secondary" onclick="loadExample()">Load Example</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Panel -->
+        <div class="card results-panel">
+            <div class="card-header">
+                <span>📊</span>
+                Query Results
+            </div>
+            <div class="results-content">
+                <pre class="json-output" id="results-output">Execute a query to see results...</pre>
+            </div>
+        </div>
+
+        <!-- Visualization -->
+        <div class="card">
+            <div class="card-header">
+                <span>📈</span>
+                Hypergraph Visualization
+            </div>
+            <div class="visualization-container">
+                <div>Hypergraph visualization would render here</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Integration Modal -->
+    <div class="modal" id="integration-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add Data Source Integration</h2>
+                <button class="modal-close" onclick="closeIntegrationModal()">&times;</button>
+            </div>
+            <form id="integration-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-input" name="name" placeholder="Integration name" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="type" required>
+                        <option value="">Select connector type</option>
+                        <option value="rest">REST API</option>
+                        <option value="postgresql">PostgreSQL</option>
+                        <option value="message_queue">Message Queue</option>
+                        <option value="file_system">File System</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Configuration</label>
+                    <textarea class="form-input" name="config" rows="6" placeholder="JSON configuration">{
+  "base_url": "https://api.example.com",
+  "headers": {
+    "Authorization": "Bearer YOUR_TOKEN"
+  }
+}</textarea>
+                </div>
+                <div class="query-actions">
+                    <button type="submit" class="btn btn-primary">Add Integration</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeIntegrationModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentTab = 'graphql';
+        let queryHistory = [];
+        
+        // Sample queries for different tabs
+        const sampleQueries = {
+            graphql: `query ExampleHyperGraphQuery {
+  user(id: "1") {
+    name
+    email
+    connections(depth: 3) @hypergraph {
+      nodes { id, type, resonance }
+      patterns { type, confidence }
+    }
+  }
+}`,
+            hypergraph: `query HypergraphTraversal {
+  traverse(
+    start_nodes: ["user_1"]
+    max_depth: 5
+    edge_types: ["friendship", "collaboration"]
+  ) @hypergraph {
+    path
+    depth_reached
+    nodes_visited
+    patterns_found {
+      type
+      confidence
+      frequency
+    }
+  }
+}`,
+            cognitive: `query CognitivePatternAnalysis {
+  cognitivePatterns(
+    context: "social_network"
+    resonance_threshold: 0.7
+  ) @cognitive {
+    patterns {
+      type
+      confidence
+      nodes_involved
+    }
+    resonance_map {
+      frequency
+      amplitude
+    }
+    emergence {
+      threshold_exceeded
+      new_patterns
+    }
+  }
+}`,
+            temporal: `query TemporalPatternAnalysis {
+  temporalPatterns(
+    time_range: {
+      start: "2024-01-01T00:00:00Z"
+      end: "2024-12-31T23:59:59Z"
+    }
+    resolution: "1h"
+  ) @temporal {
+    patterns {
+      frequency
+      amplitude
+      phase_shift
+    }
+    evolution_metrics {
+      trend
+      seasonality
+      anomalies
+    }
+  }
+}`
+        };
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadIntegrations();
+            updateMetrics();
+            // Auto-refresh every 30 seconds
+            setInterval(updateMetrics, 30000);
+        });
+
+        // Tab switching
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.query-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update query textarea with sample for selected tab
+            document.getElementById('query-input').value = sampleQueries[tab];
+        }
+
+        // Query operations
+        async function executeQuery() {
+            const query = document.getElementById('query-input').value;
+            const resultsOutput = document.getElementById('results-output');
+            
+            resultsOutput.textContent = 'Executing query...';
+            
+            try {
+                const response = await fetch('/graphql', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: query,
+                        variables: {},
+                        extensions: {
+                            hypergraph: {
+                                cognitive_enhancement: true,
+                                deep_tree_echo: true
+                            }
+                        }
+                    })
+                });
+                
+                const result = await response.json();
+                resultsOutput.textContent = JSON.stringify(result, null, 2);
+                
+                // Add to history
+                queryHistory.unshift({
+                    query: query,
+                    result: result,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Keep only last 10 queries
+                if (queryHistory.length > 10) {
+                    queryHistory = queryHistory.slice(0, 10);
+                }
+                
+            } catch (error) {
+                resultsOutput.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function validateQuery() {
+            const query = document.getElementById('query-input').value;
+            // Simple validation - in real implementation this would call a validation endpoint
+            if (query.trim() === '') {
+                alert('Please enter a query');
+                return;
+            }
+            alert('Query validation would happen here');
+        }
+
+        function clearQuery() {
+            document.getElementById('query-input').value = '';
+        }
+
+        function loadExample() {
+            document.getElementById('query-input').value = sampleQueries[currentTab];
+        }
+
+        // Integration management
+        function openIntegrationModal() {
+            document.getElementById('integration-modal').style.display = 'block';
+        }
+
+        function closeIntegrationModal() {
+            document.getElementById('integration-modal').style.display = 'none';
+        }
+
+        async function loadIntegrations() {
+            try {
+                const response = await fetch('/integrations');
+                const data = await response.json();
+                
+                const integrationList = document.getElementById('integration-list');
+                integrationList.innerHTML = '';
+                
+                if (data.integrations && Object.keys(data.integrations).length > 0) {
+                    for (const [id, integration] of Object.entries(data.integrations)) {
+                        const item = document.createElement('div');
+                        item.className = 'integration-item';
+                        item.innerHTML = `
+                            <div class="integration-info">
+                                <div class="integration-name">${integration.name}</div>
+                                <div class="integration-type">${integration.type} - ${integration.status}</div>
+                            </div>
+                            <div class="integration-actions">
+                                <button class="btn btn-secondary btn-small" onclick="testIntegration('${id}')">Test</button>
+                                <button class="btn btn-secondary btn-small" onclick="editIntegration('${id}')">Edit</button>
+                            </div>
+                        `;
+                        integrationList.appendChild(item);
+                    }
+                } else {
+                    integrationList.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.6);">No integrations configured</div>';
+                }
+            } catch (error) {
+                console.error('Failed to load integrations:', error);
+            }
+        }
+
+        async function testIntegration(id) {
+            try {
+                const response = await fetch(`/integrations/${id}/test`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                alert(`Test result: ${result.test_result.status}`);
+            } catch (error) {
+                alert(`Test failed: ${error.message}`);
+            }
+        }
+
+        function editIntegration(id) {
+            alert('Edit integration functionality would be implemented here');
+        }
+
+        // Form submission for new integrations
+        document.getElementById('integration-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const integrationData = {
+                name: formData.get('name'),
+                type: formData.get('type'),
+                config: JSON.parse(formData.get('config'))
+            };
+            
+            try {
+                const response = await fetch('/integrations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(integrationData)
+                });
+                
+                if (response.ok) {
+                    closeIntegrationModal();
+                    loadIntegrations(); // Refresh list
+                    e.target.reset(); // Clear form
+                    alert('Integration added successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to add integration: ${error.error}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+
+        // Update dashboard metrics
+        async function updateMetrics() {
+            try {
+                // Update system status
+                const statusResponse = await fetch('/status');
+                const statusData = await statusResponse.json();
+                
+                if (statusData.deep_tree_echo) {
+                    document.getElementById('coherence').textContent = statusData.deep_tree_echo.coherence || '95.2%';
+                }
+                
+                // Update performance metrics
+                const metricsResponse = await fetch('/metrics');
+                const metricsData = await metricsResponse.json();
+                
+                if (metricsData.performance) {
+                    const perf = metricsData.performance;
+                    document.getElementById('query-count').textContent = perf.query_count || 0;
+                    document.getElementById('avg-query-time').textContent = perf.avg_query_time || '0ms';
+                    document.getElementById('cache-hit-rate').textContent = 
+                        Math.round((perf.cache_hit_rate || 0) * 100) + '%';
+                    document.getElementById('active-subs').textContent = perf.active_subscriptions || 0;
+                }
+                
+                // Update schema info
+                const schemaResponse = await fetch('/schema');
+                const schemaData = await schemaResponse.json();
+                
+                if (schemaData.schema) {
+                    const schema = schemaData.schema;
+                    document.getElementById('hypernode-count').textContent = 
+                        Object.keys(schema.HyperNodes || {}).length;
+                    document.getElementById('hyperedge-count').textContent = 
+                        Object.keys(schema.HyperEdges || {}).length;
+                    document.getElementById('dimension-count').textContent = 
+                        Object.keys(schema.Dimensions || {}).length;
+                    document.getElementById('pattern-count').textContent = 
+                        (schema.TemporalPatterns ? Object.keys(schema.TemporalPatterns).length : 0);
+                }
+                
+            } catch (error) {
+                console.error('Failed to update metrics:', error);
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('integration-modal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeIntegrationModal();
+            }
+        });
+    </script>
+</body>
+</html>
