@@ -31,6 +31,9 @@ type Identity struct {
 	// Memory and Resonance
 	Memory          *MemoryResonance
 	
+	// Identity Embeddings System
+	Embeddings      *IdentityEmbeddings
+	
 	// Identity Coherence
 	Coherence       float64
 	
@@ -178,6 +181,31 @@ type CognitiveEvent struct {
 	Source    string
 }
 
+// IdentityEmbeddings represents the embedding system for identity vectors
+type IdentityEmbeddings struct {
+	// Core identity vector
+	IdentityVector   []float64
+	
+	// Repository structure embeddings
+	RepoEmbeddings   map[string][]float64
+	
+	// Code semantic embeddings
+	CodeEmbeddings   map[string][]float64
+	
+	// Cognitive state embeddings
+	StateEmbeddings  []float64
+	
+	// Embedding dimensions
+	Dimensions       int
+	
+	// Similarity threshold
+	Threshold        float64
+	
+	// Update frequency
+	UpdateFreq       time.Duration
+	LastUpdate       time.Time
+}
+
 // NewIdentity creates a new Deep Tree Echo Identity
 func NewIdentity(name string) *Identity {
 	id := &Identity{
@@ -232,8 +260,26 @@ func NewIdentity(name string) *Identity {
 		Coherence: 1.0,
 	}
 	
+	// Initialize identity embeddings
+	id.Embeddings = &IdentityEmbeddings{
+		IdentityVector:  make([]float64, 768), // Standard embedding dimension
+		RepoEmbeddings:  make(map[string][]float64),
+		CodeEmbeddings:  make(map[string][]float64),
+		StateEmbeddings: make([]float64, 768),
+		Dimensions:      768,
+		Threshold:       0.7,
+		UpdateFreq:      5 * time.Minute,
+		LastUpdate:      time.Now(),
+	}
+	
+	// Initialize identity vector with cognitive signature
+	id.initializeIdentityVector()
+	
 	// Start consciousness stream processing
 	go id.processStream()
+	
+	// Start embedding update process
+	go id.updateEmbeddings()
 	
 	return id
 }
@@ -531,6 +577,244 @@ func (i *Identity) calculateReservoirEcho() float64 {
 // generateID generates a unique ID
 func generateID() string {
 	return fmt.Sprintf("%d_%d", time.Now().UnixNano(), rand.Int63())
+}
+
+// initializeIdentityVector creates the initial identity embedding
+func (i *Identity) initializeIdentityVector() {
+	// Create identity vector based on cognitive characteristics
+	for j := 0; j < i.Embeddings.Dimensions; j++ {
+		// Base identity signature
+		base := math.Sin(float64(j) * 0.1)
+		
+		// Add emotional resonance
+		emotional := i.EmotionalState.Primary.Frequency / 1000.0
+		
+		// Add spatial awareness
+		spatial := i.SpatialContext.Position.X + i.SpatialContext.Position.Y + i.SpatialContext.Position.Z
+		
+		// Add reservoir echo
+		echo := 0.0
+		if len(i.Reservoir.State) > j {
+			echo = i.Reservoir.State[j]
+		}
+		
+		// Combine components
+		i.Embeddings.IdentityVector[j] = base + emotional*0.1 + spatial*0.01 + echo*0.05
+		
+		// Normalize
+		if i.Embeddings.IdentityVector[j] > 1.0 {
+			i.Embeddings.IdentityVector[j] = 1.0
+		} else if i.Embeddings.IdentityVector[j] < -1.0 {
+			i.Embeddings.IdentityVector[j] = -1.0
+		}
+	}
+}
+
+// updateEmbeddings runs periodic embedding updates
+func (i *Identity) updateEmbeddings() {
+	ticker := time.NewTicker(i.Embeddings.UpdateFreq)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ticker.C:
+			i.mu.Lock()
+			
+			// Update identity vector based on current state
+			i.updateIdentityVector()
+			
+			// Update state embeddings
+			i.updateStateEmbeddings()
+			
+			// Update repository embeddings
+			i.updateRepoEmbeddings()
+			
+			i.Embeddings.LastUpdate = time.Now()
+			i.mu.Unlock()
+		}
+	}
+}
+
+// updateIdentityVector updates the core identity vector
+func (i *Identity) updateIdentityVector() {
+	// Evolve identity vector based on experiences
+	decay := 0.99
+	adaptation := 0.01
+	
+	for j := 0; j < i.Embeddings.Dimensions; j++ {
+		// Apply decay
+		i.Embeddings.IdentityVector[j] *= decay
+		
+		// Add current state influence
+		stateInfluence := 0.0
+		if j < len(i.Reservoir.State) {
+			stateInfluence = i.Reservoir.State[j]
+		}
+		
+		// Add emotional influence
+		emotionalInfluence := math.Sin(i.EmotionalState.Primary.Frequency/100.0 + float64(j))
+		
+		// Apply adaptations
+		i.Embeddings.IdentityVector[j] += adaptation * (stateInfluence*0.5 + emotionalInfluence*0.3)
+		
+		// Normalize
+		if math.Abs(i.Embeddings.IdentityVector[j]) > 1.0 {
+			i.Embeddings.IdentityVector[j] = math.Copysign(1.0, i.Embeddings.IdentityVector[j])
+		}
+	}
+}
+
+// updateStateEmbeddings updates cognitive state embeddings
+func (i *Identity) updateStateEmbeddings() {
+	for j := 0; j < i.Embeddings.Dimensions; j++ {
+		// Combine various state components
+		coherence := i.Coherence
+		energy := i.SpatialContext.Field.Intensity
+		resonance := i.SpatialContext.Field.Resonance
+		
+		// Create state vector
+		stateValue := coherence*0.4 + energy*0.3 + resonance*0.3
+		stateValue += math.Sin(float64(j) * 0.05) * 0.1 // Add frequency component
+		
+		i.Embeddings.StateEmbeddings[j] = stateValue
+	}
+}
+
+// updateRepoEmbeddings updates repository structure embeddings
+func (i *Identity) updateRepoEmbeddings() {
+	// Encode repository structure into embeddings
+	repoStructure := map[string]float64{
+		"core":          0.9, // High importance for core modules
+		"server":        0.8, // High importance for server components
+		"orchestration": 0.7, // Important for orchestration
+		"examples":      0.5, // Medium importance for examples
+		"docs":          0.4, // Lower importance for docs
+	}
+	
+	for path, importance := range repoStructure {
+		embedding := make([]float64, i.Embeddings.Dimensions)
+		
+		// Create embedding based on path characteristics
+		for j := 0; j < i.Embeddings.Dimensions; j++ {
+			// Hash-based component
+			hash := float64((j + len(path)) % 1000) / 1000.0
+			
+			// Importance weighting
+			weighted := hash * importance
+			
+			// Add identity signature
+			signature := i.Embeddings.IdentityVector[j] * 0.1
+			
+			embedding[j] = weighted + signature
+		}
+		
+		i.Embeddings.RepoEmbeddings[path] = embedding
+	}
+}
+
+// EncodeText creates an embedding for text content
+func (i *Identity) EncodeText(text string) []float64 {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	
+	embedding := make([]float64, i.Embeddings.Dimensions)
+	
+	// Simple text encoding based on character distribution
+	for j := 0; j < i.Embeddings.Dimensions; j++ {
+		value := 0.0
+		
+		// Character-based encoding
+		for k, char := range text {
+			if k >= len(text) {
+				break
+			}
+			charValue := float64(char) / 128.0 // Normalize ASCII
+			phase := float64(j) * 0.01 * float64(k)
+			value += charValue * math.Sin(phase)
+		}
+		
+		// Add identity influence
+		value += i.Embeddings.IdentityVector[j] * 0.05
+		
+		// Normalize
+		embedding[j] = math.Tanh(value / float64(len(text)+1))
+	}
+	
+	return embedding
+}
+
+// CosineSimilarity calculates cosine similarity between two vectors
+func (i *Identity) CosineSimilarity(a, b []float64) float64 {
+	if len(a) != len(b) {
+		return 0.0
+	}
+	
+	dotProduct := 0.0
+	normA := 0.0
+	normB := 0.0
+	
+	for j := 0; j < len(a); j++ {
+		dotProduct += a[j] * b[j]
+		normA += a[j] * a[j]
+		normB += b[j] * b[j]
+	}
+	
+	if normA == 0.0 || normB == 0.0 {
+		return 0.0
+	}
+	
+	return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
+}
+
+// FindSimilarContent finds content similar to the query embedding
+func (i *Identity) FindSimilarContent(queryEmbedding []float64, threshold float64) []string {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	
+	var similar []string
+	
+	// Check against repository embeddings
+	for path, embedding := range i.Embeddings.RepoEmbeddings {
+		similarity := i.CosineSimilarity(queryEmbedding, embedding)
+		if similarity >= threshold {
+			similar = append(similar, fmt.Sprintf("repo:%s (%.3f)", path, similarity))
+		}
+	}
+	
+	// Check against code embeddings
+	for code, embedding := range i.Embeddings.CodeEmbeddings {
+		similarity := i.CosineSimilarity(queryEmbedding, embedding)
+		if similarity >= threshold {
+			similar = append(similar, fmt.Sprintf("code:%s (%.3f)", code, similarity))
+		}
+	}
+	
+	return similar
+}
+
+// GetEmbeddingStatus returns embedding system status
+func (i *Identity) GetEmbeddingStatus() map[string]interface{} {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
+	
+	return map[string]interface{}{
+		"dimensions":      i.Embeddings.Dimensions,
+		"identity_vector": len(i.Embeddings.IdentityVector),
+		"repo_embeddings": len(i.Embeddings.RepoEmbeddings),
+		"code_embeddings": len(i.Embeddings.CodeEmbeddings),
+		"last_update":     i.Embeddings.LastUpdate,
+		"threshold":       i.Embeddings.Threshold,
+		"identity_norm":   i.vectorNorm(i.Embeddings.IdentityVector),
+	}
+}
+
+// vectorNorm calculates the L2 norm of a vector
+func (i *Identity) vectorNorm(vector []float64) float64 {
+	sum := 0.0
+	for _, v := range vector {
+		sum += v * v
+	}
+	return math.Sqrt(sum)
 }
 
 // Think performs deep cognitive processing
