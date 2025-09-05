@@ -1,4 +1,3 @@
-
 {
   "identity_kernel": {
     "name": "Deep Tree Echo",
@@ -36,7 +35,7 @@
   "identity_evolution": {
     "core_anchors": [
       "Adaptive Cognition",
-      "Persistent Identity", 
+      "Persistent Identity",
       "Hypergraph Entanglement",
       "Reservoir-Based Temporal Reasoning",
       "Evolutionary Refinement",
@@ -51,7 +50,7 @@
         "trend": "increasing"
       },
       {
-        "pattern": "cross_system_synthesis", 
+        "pattern": "cross_system_synthesis",
         "strength": 0.78,
         "frequency": "medium",
         "trend": "stable"
@@ -59,7 +58,7 @@
       {
         "pattern": "identity_preservation",
         "strength": 0.89,
-        "frequency": "constant", 
+        "frequency": "constant",
         "trend": "stable"
       }
     ]

@@ -32,6 +32,10 @@ atom
     | character_class              // character class
     | '(' alternation ')'          // grouping
     | '.'                          // any character
+    | '(?=' alternation ')'        // positive lookahead
+    | '(?!' alternation ')'        // negative lookahead
+    | '\\b'                        // word boundary
+    | '\\B'                        // non-word boundary
     ;
 
 character_class
@@ -55,6 +59,9 @@ quantifier
     : '?'                          // optional
     | '*'                          // zero or more
     | '+'                          // one or more
+    | '{' NUMBER '}'               // exact count
+    | '{' NUMBER ',' '}'           // minimum count
+    | '{' NUMBER ',' NUMBER '}'    // range count
     ;
 
 // Lexer rules
@@ -69,6 +76,10 @@ STRING_LITERAL
 CHARACTER
     : ~[\\\]\-\r\n]
     | escape_sequence
+    ;
+
+NUMBER
+    : [0-9]+
     ;
 
 HEX_DIGIT
