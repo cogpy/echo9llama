@@ -34,7 +34,7 @@ type EmbodiedCognition struct {
 	Active bool
 
 	// --- Identity Kernel and Memory ---
-	ActiveProviders map[string]AIProvider // Added for AI integration
+	ActiveProviders map[string]ModelProvider // Added for AI integration
 	LongTerm        *LongTermMemory       // Added for persistent memory
 	ShortTerm       *ShortTermMemory      // Added for short-term working memory
 	WorkingMemory   *WorkingMemory        // Added for dynamic working memory
@@ -107,7 +107,7 @@ func NewEmbodiedCognition(name string) *EmbodiedCognition {
 		Active: true,
 
 		// --- Identity Kernel and Memory Initialization ---
-		ActiveProviders: make(map[string]AIProvider),
+		ActiveProviders: make(map[string]ModelProvider),
 		LongTerm:        NewLongTermMemory(),
 		ShortTerm:       NewShortTermMemory(),
 		WorkingMemory:   NewWorkingMemory(),
@@ -522,8 +522,8 @@ func (ec *EmbodiedCognition) ChatWithAI(ctx context.Context, messages []ChatMess
 	return response, nil
 }
 
-// RegisterAIProvider registers an AI model provider
-func (ec *EmbodiedCognition) RegisterAIProvider(name string, provider AIProvider) {
+// RegisterModelProvider registers a model provider
+func (ec *EmbodiedCognition) RegisterModelProvider(name string, provider ModelProvider) {
 	ec.mu.Lock()
 	defer ec.mu.Unlock()
 
@@ -544,8 +544,8 @@ func (ec *EmbodiedCognition) SetPrimaryAI(name string) error {
 	return ec.Models.SetPrimary(name)
 }
 
-// GetAIProviders returns available AI providers
-func (ec *EmbodiedCognition) GetAIProviders() map[string]ProviderInfo {
+// GetModelProviders returns available model providers
+func (ec *EmbodiedCognition) GetModelProviders() map[string]ProviderInfo {
 	ec.mu.RLock()
 	defer ec.mu.RUnlock()
 
@@ -585,7 +585,7 @@ func (ec *EmbodiedCognition) parseIdentityKernel() {
 
 // loadPersistentMemory loads memory from memory.json
 func (ec *EmbodiedCognition) loadPersistentMemory() {
-	content, err := os.ReadFile("memory.json")
+	_, err := os.ReadFile("memory.json")
 	if err != nil {
 		log.Println("ℹ️  Creating new memory.json file")
 		return
@@ -598,7 +598,7 @@ func (ec *EmbodiedCognition) loadPersistentMemory() {
 
 // loadEchoReflections loads reflections from echo_reflections.json
 func (ec *EmbodiedCognition) loadEchoReflections() {
-	content, err := os.ReadFile("echo_reflections.json")
+	_, err := os.ReadFile("echo_reflections.json")
 	if err != nil {
 		log.Println("ℹ️  Creating new echo_reflections.json file")
 		return
@@ -685,36 +685,7 @@ func (ec *EmbodiedCognition) savePersistentMemory() {
 	// Implementation would serialize current memory state to JSON
 }
 
-// --- Placeholder types and functions ---
-// These would be defined in other files or packages
-type Identity struct{}
-type CognitiveContext struct{}
-type GlobalCognitiveState struct{}
-type CognitivePipeline struct{}
-type PipelineStage struct{}
-type PipelineEvent struct{}
-type ModelManager struct{}
-type Vector3D struct { float64; float64; float64 }
-type SpatialContext struct { Position Vector3D; Field struct{Intensity float64} }
-type EmotionalState struct { Primary Emotion; Transitions []EmotionalTransition; Intensity float64 }
-type Emotion struct { Type string; Strength float64; Color string; Frequency float64 }
-type EmotionalTransition struct { From Emotion; To Emotion; Trigger string; Timestamp time.Time }
-type CognitivePattern struct{}
-type LongTermMemory struct{ Nodes map[string]interface{}; Coherence float64 }
-type ShortTermMemory struct{}
-type WorkingMemory struct{}
-type AIProvider interface { GetInfo() string }
-type ProviderInfo struct { Name string }
-type GenerateOptions struct { Temperature float64; Model string }
-type ChatOptions struct { GenerateOptions GenerateOptions }
-type ChatMessage struct { Content string }
-
-func NewIdentity(name string) *Identity { return &Identity{} }
-func (id *Identity) Process(input interface{}) (interface{}, error) { return input, nil }
-func (id *Identity) Think(prompt string) string { return "Identity thought: " + prompt }
-func (id *Identity) Remember(key string, value interface{}) {}
-func (id *Identity) Resonate(frequency float64) {}
-func (id *Identity) GetStatus() map[string]interface{} { return map[string]interface{}{} }
+// --- Required imports and type compatibility ---
 var _ = sync.RWMutex{} // Ensure sync.RWMutex is used
 var _ = time.Time{} // Ensure time.Time is used
 var _ = os.ReadFile // Ensure os.ReadFile is used
@@ -723,38 +694,59 @@ var _ = log.Println // Ensure log.Println is used
 var _ = fmt.Sprintf // Ensure fmt.Sprintf is used
 var _ = context.Background // Ensure context.Background is used
 
-func NewModelManager(identity *Identity) *ModelManager { return &ModelManager{} }
-func (mm *ModelManager) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) { return "AI response: " + prompt, nil }
-func (mm *ModelManager) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) { return "AI chat response", nil }
-func (mm *ModelManager) RegisterProvider(name string, provider AIProvider) {}
-func (mm *ModelManager) SetPrimary(name string) error { return nil }
-func (mm *ModelManager) GetProviders() map[string]ProviderInfo { return map[string]ProviderInfo{} }
-func NewLongTermMemory() *LongTermMemory { return &LongTermMemory{Nodes: make(map[string]interface{}), Coherence: 0.5} }
-func NewShortTermMemory() *ShortTermMemory { return &ShortTermMemory{} }
-func NewWorkingMemory() *WorkingMemory { return &WorkingMemory{} }
-func (ec *EmbodiedCognition) initializeCognitivePatterns() {}
-func (ec *EmbodiedCognition) continuousLearning() {}
-func (ec *EmbodiedCognition) memoryConsolidation() {}
-func (ec *EmbodiedCognition) patternEvolution() {}
-func (id *Identity) Attribute(key string) interface{} { return nil }
-func (id *Identity) SetAttribute(key string, value interface{}) {}
-func (id *Identity) SpatialContextAttribute(key string) interface{} { return nil }
-func (id *Identity) SetSpatialContextAttribute(key string, value interface{}) {}
-func (id *Identity) EmotionalStateAttribute(key string) interface{} { return nil }
-func (id *Identity) SetEmotionalStateAttribute(key string, value interface{}) {}
-func (id *Identity) MemoryAttribute(key string) interface{} { return nil }
-func (id *Identity) SetMemoryAttribute(key string, value interface{}) {}
-func (id *Identity) SetRecursiveDepth(depth int) {}
-func (id *Identity) RecursiveDepth int
-func (id *Identity) SpatialContext SpatialContext
-func (id *Identity) EmotionalState EmotionalState
-func (id *Identity) Memory struct{ Nodes map[string]interface{}; Coherence float64 }
-func (id *Identity) Coherence float64
-func (id *Identity) Patterns map[string]interface{}
-func (id *Identity) Essence string
+// Missing type definitions for compilation  
+type ShortTermMemory struct {
+	Nodes    map[string]interface{}
+	Capacity int
+}
 
-// Mock implementations for required types not fully defined above
-type MockAIProvider struct{}
-func (m *MockAIProvider) GetInfo() string { return "Mock AI Provider Info" }
-func (m *MockAIProvider) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) { return "Mock AI generate response", nil }
-func (m *MockAIProvider) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) { return "Mock AI chat response", nil }
+type WorkingMemory struct {
+	Buffer []interface{}
+	Active map[string]interface{}
+}
+
+type CognitivePattern struct {
+	Name     string
+	Strength float64
+	Pattern  interface{}
+}
+
+// New* functions for missing types
+func NewLongTermMemory() *LongTermMemory {
+	return &LongTermMemory{
+		Memories:    make(map[string]*Memory),
+		Connections: make(map[string][]string),
+		FilePath:    "memory.json",
+	}
+}
+
+func NewShortTermMemory() *ShortTermMemory {
+	return &ShortTermMemory{
+		Nodes:    make(map[string]interface{}),
+		Capacity: 100,
+	}
+}
+
+func NewWorkingMemory() *WorkingMemory {
+	return &WorkingMemory{
+		Buffer: make([]interface{}, 0),
+		Active: make(map[string]interface{}),
+	}
+}
+
+// Missing methods for EmbodiedCognition
+func (ec *EmbodiedCognition) initializeCognitivePatterns() {
+	// Initialize cognitive patterns
+}
+
+func (ec *EmbodiedCognition) continuousLearning() {
+	// Background continuous learning process
+}
+
+func (ec *EmbodiedCognition) memoryConsolidation() {
+	// Memory consolidation background process
+}
+
+func (ec *EmbodiedCognition) patternEvolution() {
+	// Pattern evolution background process
+}
