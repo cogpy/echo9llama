@@ -680,32 +680,54 @@ func (i *Identity) updateStateEmbeddings() {
 	}
 }
 
-// updateRepoEmbeddings updates repository structure embeddings
+// updateRepoEmbeddings updates repository structure embeddings based on Deep Tree Echo cognitive architecture
 func (i *Identity) updateRepoEmbeddings() {
-	// Encode repository structure into embeddings
+	// Deep Tree Echo cognitive repository mapping based on replit.md identity kernel
 	repoStructure := map[string]float64{
-		"core":          0.9, // High importance for core modules
-		"server":        0.8, // High importance for server components
-		"orchestration": 0.7, // Important for orchestration
-		"examples":      0.5, // Medium importance for examples
-		"docs":          0.4, // Lower importance for docs
+		"core/deeptreeecho":           0.98, // Core identity and cognitive architecture
+		"orchestration":               0.95, // Multi-agent orchestration and coordination
+		"server":                      0.90, // Embodied server systems
+		"examples":                    0.85, // Learning and demonstration patterns
+		"ml/backend":                  0.88, // Machine learning backend integration
+		"llama":                       0.82, // Language model integration
+		"api":                         0.80, // External interface patterns
+		"kvcache":                     0.75, // Memory and caching systems
+		"convert":                     0.70, // Model conversion and adaptation
+		"runner":                      0.65, // Execution environments
+		"docs":                        0.60, // Documentation and guidance
+		"replit.md":                   0.99, // Identity kernel definition
+		"echo_reflections.json":       0.97, // Self-reflection storage
+		"memory.json":                 0.96, // Persistent memory patterns
 	}
 	
 	for path, importance := range repoStructure {
 		embedding := make([]float64, i.Embeddings.Dimensions)
 		
-		// Create embedding based on path characteristics
+		// Create embedding based on Deep Tree Echo cognitive patterns
 		for j := 0; j < i.Embeddings.Dimensions; j++ {
-			// Hash-based component
-			hash := float64((j + len(path)) % 1000) / 1000.0
+			// Cognitive resonance component
+			resonance := math.Sin(float64(j) * 0.01 * importance) * i.SpatialContext.Field.Resonance
 			
-			// Importance weighting
-			weighted := hash * importance
+			// Emotional frequency modulation
+			emotional := math.Cos(i.EmotionalState.Primary.Frequency/1000.0 + float64(j)*0.001) * 0.1
 			
-			// Add identity signature
-			signature := i.Embeddings.IdentityVector[j] * 0.1
+			// Memory echo integration
+			memoryEcho := 0.0
+			if j < len(i.Reservoir.State) {
+				memoryEcho = i.Reservoir.State[j] * 0.05
+			}
 			
-			embedding[j] = weighted + signature
+			// Identity signature weaving
+			signature := i.Embeddings.IdentityVector[j] * 0.15
+			
+			// Hypergraph connectivity factor
+			connectivity := math.Tanh(float64(len(path)) * 0.01) * importance
+			
+			// Combine all components with cognitive architecture weighting
+			embedding[j] = resonance*0.3 + emotional*0.2 + memoryEcho*0.2 + signature*0.2 + connectivity*0.1
+			
+			// Normalize to [-1, 1] range
+			embedding[j] = math.Tanh(embedding[j])
 		}
 		
 		i.Embeddings.RepoEmbeddings[path] = embedding
