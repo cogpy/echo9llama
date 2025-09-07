@@ -108,21 +108,165 @@ func (p *APLParser) ParseFile(filename string) (*PatternLanguage, error) {
 		Solution: "Create resonance patterns that maintain identity coherence through harmonic frequencies",
 		Structure: "Identity kernel with resonance frequencies and echo patterns",
 		Implementation: "Identity struct with resonance tracking and coherence metrics",
-		RelatedPatterns: []int{3, 8},
+		RelatedPatterns: []int{3, 8, 15},
 		Level: SubsystemLevel,
+	}
+	
+	p.language.Patterns[5] = &Pattern{
+		Number:  5,
+		Name:    "MULTI-PROVIDER ABSTRACTION",
+		Context: "Systems needing to integrate multiple AI providers or services",
+		Problem: "Tight coupling to specific AI providers creates vendor lock-in and limits flexibility",
+		Solution: "Create abstraction layer that standardizes interfaces across providers",
+		Structure: "Provider interface with concrete implementations for each service",
+		Implementation: "Provider interface with OpenAI, LocalGGUF, and AppStorage implementations",
+		RelatedPatterns: []int{6, 12},
+		Level: SubsystemLevel,
+	}
+	
+	p.language.Patterns[6] = &Pattern{
+		Number:  6,
+		Name:    "ADAPTIVE RESOURCE MANAGEMENT",
+		Context: "Systems with varying computational loads and resource availability",
+		Problem: "Static resource allocation leads to waste or bottlenecks",
+		Solution: "Dynamically adjust resource allocation based on current needs and availability",
+		Structure: "Resource monitor with allocation policies and scaling triggers",
+		Implementation: "Resource tracking with automatic scaling based on load metrics",
+		RelatedPatterns: []int{5, 9},
+		Level: SubsystemLevel,
+	}
+	
+	// Parse behavioral patterns (10-12)
+	p.language.Patterns[10] = &Pattern{
+		Number:  10,
+		Name:    "TEMPORAL COHERENCE FIELDS",
+		Context: "Systems requiring consistent behavior across time with memory of past states",
+		Problem: "Distributed systems lose temporal consistency and cannot maintain coherent state evolution",
+		Solution: "Create temporal coherence fields that synchronize state changes across distributed components",
+		Structure: "Temporal coordinator with state synchronization protocols and coherence validation",
+		Implementation: "TimeField struct with synchronization timestamps and coherence metrics",
+		RelatedPatterns: []int{2, 11},
+		Level: SubsystemLevel,
+	}
+	
+	p.language.Patterns[11] = &Pattern{
+		Number:  11,
+		Name:    "ADAPTIVE MEMORY WEAVING",
+		Context: "Learning systems requiring dynamic memory formation and retrieval patterns",
+		Problem: "Static memory structures cannot adapt to changing information patterns and usage",
+		Solution: "Implement dynamic memory weaving that adapts connection patterns based on usage",
+		Structure: "Memory weaver with adaptive connection algorithms and usage pattern analysis",
+		Implementation: "MemoryWeaver with dynamic hypergraph restructuring and pattern detection",
+		RelatedPatterns: []int{3, 10, 15},
+		Level: SubsystemLevel,
+	}
+	
+	p.language.Patterns[12] = &Pattern{
+		Number:  12,
+		Name:    "CONTEXTUAL DECISION TREES",
+		Context: "Decision-making systems requiring context-aware choice mechanisms",
+		Problem: "Static decision trees cannot adapt to varying contexts and environmental changes",
+		Solution: "Create contextual decision trees that adapt structure based on environmental context",
+		Structure: "Decision tree with context sensors and adaptive restructuring mechanisms",
+		Implementation: "ContextualDecisionTree with environment sensing and tree morphing capabilities",
+		RelatedPatterns: []int{5, 13},
+		Level: SubsystemLevel,
+	}
+	
+	// Parse cognitive patterns (13-15)
+	p.language.Patterns[13] = &Pattern{
+		Number:  13,
+		Name:    "EMERGENT WORKFLOW PATTERNS",
+		Context: "Process automation requiring adaptive workflow generation",
+		Problem: "Fixed workflows cannot handle unexpected situations or emergent requirements",
+		Solution: "Enable workflows to emerge from component interactions and environmental pressures",
+		Structure: "Workflow generator with emergence detection and pattern crystallization",
+		Implementation: "EmergentWorkflow with component interaction monitoring and pattern emergence",
+		RelatedPatterns: []int{12, 14},
+		Level: ImplementationLevel,
+	}
+	
+	p.language.Patterns[14] = &Pattern{
+		Number:  14,
+		Name:    "COLLECTIVE INTELLIGENCE NETWORKS",
+		Context: "Multi-agent systems requiring coordinated intelligence emergence",
+		Problem: "Individual agents cannot achieve complex goals requiring collective reasoning",
+		Solution: "Create networks where individual intelligence contributions merge into collective insights",
+		Structure: "Intelligence aggregator with contribution weighting and collective reasoning protocols",
+		Implementation: "CollectiveIntelligence with agent contribution tracking and insight synthesis",
+		RelatedPatterns: []int{1, 13},
+		Level: ImplementationLevel,
+	}
+	
+	p.language.Patterns[15] = &Pattern{
+		Number:  15,
+		Name:    "MEMORY RESONANCE HARMONICS",
+		Context: "Memory systems requiring harmonic retrieval and association patterns",
+		Problem: "Traditional memory retrieval lacks harmonic relationships and resonant recall",
+		Solution: "Implement harmonic memory retrieval based on frequency resonance patterns",
+		Structure: "Harmonic memory with frequency-based retrieval and resonance amplification",
+		Implementation: "HarmonicMemory with frequency indexing and resonance-based recall",
+		RelatedPatterns: []int{4, 11},
+		Level: ImplementationLevel,
+	}
+	
+	// Parse learning patterns (16-18)
+	p.language.Patterns[16] = &Pattern{
+		Number:  16,
+		Name:    "PREDICTIVE ADAPTATION CYCLES",
+		Context: "Systems requiring anticipatory behavior and proactive adaptation",
+		Problem: "Reactive systems cannot prepare for future states or anticipated changes",
+		Solution: "Implement predictive cycles that anticipate changes and prepare adaptive responses",
+		Structure: "Prediction engine with scenario modeling and adaptation preparation protocols",
+		Implementation: "PredictiveAdapter with future state modeling and preparation mechanisms",
+		RelatedPatterns: []int{8, 17},
+		Level: ImplementationLevel,
+	}
+	
+	p.language.Patterns[17] = &Pattern{
+		Number:  17,
+		Name:    "AUTONOMOUS LEARNING LOOPS",
+		Context: "Self-improving systems requiring independent learning capability",
+		Problem: "Supervised learning systems cannot adapt without external guidance or intervention",
+		Solution: "Create autonomous learning loops that identify learning opportunities and self-direct improvement",
+		Structure: "Learning loop with opportunity detection and self-directed improvement protocols",
+		Implementation: "AutonomousLearner with opportunity identification and self-directed learning cycles",
+		RelatedPatterns: []int{16, 18},
+		Level: ImplementationLevel,
+	}
+	
+	p.language.Patterns[18] = &Pattern{
+		Number:  18,
+		Name:    "RECURSIVE SELF-IMPROVEMENT",
+		Context: "Systems requiring continuous self-enhancement and meta-cognitive capabilities",
+		Problem: "Static systems cannot improve their own operation or enhance their capabilities over time",
+		Solution: "Implement recursive self-improvement that analyzes and enhances system operation",
+		Structure: "Self-analyzer with improvement identification and recursive enhancement protocols",
+		Implementation: "RecursiveSelfImprover with system analysis and recursive enhancement loops",
+		RelatedPatterns: []int{1, 3, 7, 17},
+		Level: ImplementationLevel,
 	}
 	
 	// Set up dependencies
 	p.language.Dependencies = map[int][]int{
-		1: {2, 7, 18},
-		2: {1, 25},
-		3: {4, 18},
-		4: {3, 8},
-		5: {6, 12},
-		6: {5, 9},
-		7: {1, 18},
-		8: {4, 19},
-		9: {6, 20},
+		1:  {2, 7, 14, 18},
+		2:  {1, 10},
+		3:  {4, 11, 18},
+		4:  {3, 8, 15},
+		5:  {6, 12},
+		6:  {5, 9},
+		7:  {1, 18},
+		8:  {4, 16},
+		9:  {6, 16},
+		10: {2, 11},
+		11: {3, 10, 15},
+		12: {5, 13},
+		13: {12, 14},
+		14: {1, 13},
+		15: {4, 11},
+		16: {8, 17},
+		17: {16, 18},
+		18: {1, 3, 7, 17},
 	}
 	
 	// Define sequences

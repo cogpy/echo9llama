@@ -140,6 +140,60 @@ func (pe *PatternEngine) generateComponents(pattern *Pattern) []Component {
 			{Name: "HyperNode", Type: TypeStruct, FilePath: "core/memory/node.go"},
 			{Name: "HyperEdge", Type: TypeStruct, FilePath: "core/memory/edge.go"},
 		}
+	case "TEMPORAL COHERENCE FIELDS":
+		components = []Component{
+			{Name: "TemporalField", Type: TypeStruct, FilePath: "core/temporal/field.go"},
+			{Name: "CoherenceValidator", Type: TypeInterface, FilePath: "core/temporal/validator.go"},
+			{Name: "StateSync", Type: TypeService, FilePath: "core/temporal/sync.go"},
+		}
+	case "ADAPTIVE MEMORY WEAVING":
+		components = []Component{
+			{Name: "MemoryWeaver", Type: TypeStruct, FilePath: "core/memory/weaver.go"},
+			{Name: "PatternDetector", Type: TypeInterface, FilePath: "core/memory/detector.go"},
+			{Name: "ConnectionAdapter", Type: TypeService, FilePath: "core/memory/adapter.go"},
+		}
+	case "CONTEXTUAL DECISION TREES":
+		components = []Component{
+			{Name: "ContextualDecisionTree", Type: TypeStruct, FilePath: "core/decision/tree.go"},
+			{Name: "ContextSensor", Type: TypeInterface, FilePath: "core/decision/sensor.go"},
+			{Name: "TreeMorpher", Type: TypeService, FilePath: "core/decision/morpher.go"},
+		}
+	case "EMERGENT WORKFLOW PATTERNS":
+		components = []Component{
+			{Name: "EmergentWorkflow", Type: TypeStruct, FilePath: "core/workflow/emergent.go"},
+			{Name: "PatternCrystallizer", Type: TypeInterface, FilePath: "core/workflow/crystallizer.go"},
+			{Name: "InteractionMonitor", Type: TypeService, FilePath: "core/workflow/monitor.go"},
+		}
+	case "COLLECTIVE INTELLIGENCE NETWORKS":
+		components = []Component{
+			{Name: "CollectiveIntelligence", Type: TypeStruct, FilePath: "core/collective/intelligence.go"},
+			{Name: "ContributionAggregator", Type: TypeInterface, FilePath: "core/collective/aggregator.go"},
+			{Name: "InsightSynthesizer", Type: TypeService, FilePath: "core/collective/synthesizer.go"},
+		}
+	case "MEMORY RESONANCE HARMONICS":
+		components = []Component{
+			{Name: "HarmonicMemory", Type: TypeStruct, FilePath: "core/memory/harmonic.go"},
+			{Name: "FrequencyIndexer", Type: TypeInterface, FilePath: "core/memory/indexer.go"},
+			{Name: "ResonanceAmplifier", Type: TypeService, FilePath: "core/memory/amplifier.go"},
+		}
+	case "PREDICTIVE ADAPTATION CYCLES":
+		components = []Component{
+			{Name: "PredictiveAdapter", Type: TypeStruct, FilePath: "core/adaptation/predictive.go"},
+			{Name: "ScenarioModeler", Type: TypeInterface, FilePath: "core/adaptation/modeler.go"},
+			{Name: "PreparationEngine", Type: TypeService, FilePath: "core/adaptation/preparation.go"},
+		}
+	case "AUTONOMOUS LEARNING LOOPS":
+		components = []Component{
+			{Name: "AutonomousLearner", Type: TypeStruct, FilePath: "core/learning/autonomous.go"},
+			{Name: "OpportunityDetector", Type: TypeInterface, FilePath: "core/learning/detector.go"},
+			{Name: "SelfDirector", Type: TypeService, FilePath: "core/learning/director.go"},
+		}
+	case "RECURSIVE SELF-IMPROVEMENT":
+		components = []Component{
+			{Name: "RecursiveSelfImprover", Type: TypeStruct, FilePath: "core/improvement/recursive.go"},
+			{Name: "SystemAnalyzer", Type: TypeInterface, FilePath: "core/improvement/analyzer.go"},
+			{Name: "EnhancementEngine", Type: TypeService, FilePath: "core/improvement/enhancement.go"},
+		}
 	default:
 		components = []Component{
 			{Name: fmt.Sprintf("%sImpl", strings.ReplaceAll(pattern.Name, " ", "")), Type: TypeStruct},
