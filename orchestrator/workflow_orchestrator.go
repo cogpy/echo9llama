@@ -488,6 +488,10 @@ func truncate(s string, maxLen int) string {
 }
 
 func main() {
-        orchestrator := NewOrchestrator()
-        orchestrator.RunComprehensiveTest()
+        if len(os.Args) > 1 && os.Args[1] == "tasks" {
+                RunTaskAutomation()
+        } else {
+                orchestrator := NewOrchestrator()
+                orchestrator.RunComprehensiveTest()
+        }
 }
