@@ -97,6 +97,42 @@ func TestGrammar(t *testing.T) {
 	grammarJSON := `
 	root   ::= object
 	value  ::= object | array | string | number | ("true" | "false" | "null") ws
+
+
+func TestAdvancedGrammar(t *testing.T) {
+	tokenizer := modelHelper(t)
+
+	// Test grammar with lookaheads and word boundaries
+	grammarAdvanced := `
+	root ::= sentence+
+	sentence ::= word (" " word)* ("." | "!" | "?") ws
+	word ::= [a-zA-Z]+ (?![0-9]) # word followed by non-digit lookahead
+	identifier ::= \b [a-zA-Z_][a-zA-Z0-9_]* \b # word boundaries
+	ws ::= [ \t\n]*
+	`
+	
+	grammar, err := NewGrammarSampler(tokenizer, grammarAdvanced)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grammar.Free()
+
+	// Test with quantified patterns
+	grammarQuantified := `
+	root ::= number_sequence
+	number_sequence ::= digit{1,3} ("," digit{3})* # 1-3 digits, then groups of 3
+	digit ::= [0-9]
+	`
+	
+	grammarQ, err := NewGrammarSampler(tokenizer, grammarQuantified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grammarQ.Free()
+
+	t.Log("Advanced grammar features test passed")
+}
+
 	object ::=
 	"{" ws (
 				string ":" ws value
@@ -110,7 +146,7 @@ func TestGrammar(t *testing.T) {
 	string ::=
 	"\"" (
 		[^"\\\x7F\x00-\x1F] |
-		"\\" (["\\/bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F]) # escapes
+		"\\" (["\\/bfnrt] | "u" [0-9a-fA-F]{4}) # enhanced escapes with quantifier
 	)* "\"" ws
 	number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ([eE] [-+]? [0-9]+)? ws
 	# Optional space: by convention, applied in this grammar after literal chars when allowed

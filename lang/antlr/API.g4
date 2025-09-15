@@ -14,6 +14,10 @@ request_field
     | stream_field
     | template_field
     | system_field
+    | tools_field
+    | tool_choice_field
+    | functions_field
+    | function_call_field
     ;
 
 model_field
@@ -43,6 +47,43 @@ role_field
 
 content_field
     : '"content"' ':' STRING
+
+
+tools_field
+    : '"tools"' ':' '[' (tool (',' tool)*)? ']'
+    ;
+
+tool
+    : '{' tool_property (',' tool_property)* '}'
+    ;
+
+tool_property
+    : '"type"' ':' STRING
+    | '"function"' ':' function_def
+    ;
+
+function_def
+    : '{' function_property (',' function_property)* '}'
+    ;
+
+function_property
+    : '"name"' ':' STRING
+    | '"description"' ':' STRING
+    | '"parameters"' ':' object
+    ;
+
+tool_choice_field
+    : '"tool_choice"' ':' (STRING | 'auto' | 'none' | object)
+    ;
+
+functions_field
+    : '"functions"' ':' '[' (function_def (',' function_def)*)? ']'
+    ;
+
+function_call_field
+    : '"function_call"' ':' (STRING | 'auto' | 'none' | object)
+    ;
+
     ;
 
 parameters_field
