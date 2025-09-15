@@ -17,9 +17,13 @@ jobs:
           ./echollama serve &  # Start server in background
           sleep 8
 
-      - name: Load tiny test model
+      - name: Load stories15M.gguf test model
         run: |
-          ./echollama pull ./models/tiny-test-model
+          echo "FROM $(pwd)/models/stories15M.gguf" > models/stories15M.modelfile
+          echo "PARAMETER temperature 0.7" >> models/stories15M.modelfile
+          echo "PARAMETER num_ctx 2048" >> models/stories15M.modelfile
+          echo "SYSTEM You are a test assistant that provides simple, direct responses for testing purposes." >> models/stories15M.modelfile
+          ./echollama create stories15M -f models/stories15M.modelfile
           sleep 2
 
       - name: Send timestamped JSON requests (verbose)
@@ -30,7 +34,7 @@ jobs:
           curl -v -X POST http://localhost:11434/api/generate \
             -H 'Content-Type: application/json' \
             -d '{
-                  "model": "tiny-test-model",
+                  "model": "stories15M",
                   "prompt": "TIMESTAMP1: '$TS1'",
                   "stream": false
                 }' | tee response1.json
@@ -38,7 +42,7 @@ jobs:
           curl -v -X POST http://localhost:11434/api/generate \
             -H 'Content-Type: application/json' \
             -d '{
-                  "model": "tiny-test-model",
+                  "model": "stories15M",
                   "prompt": "TIMESTAMP2: '$TS2'",
                   "stream": false
                 }' | tee response2.json
@@ -49,10 +53,10 @@ jobs:
 
       - name: Show token info for both responses
         run: |
-          jq .tokens response1.json
-          jq .tokens response2.json
+          jq .eval_count response1.json
+          jq .eval_count response2.json
 
       - name: End-of-workflow verification (fail if responses missing tokens)
         run: |
-          test "$(jq '.tokens | length' response1.json)" -gt 0
-          test "$(jq '.tokens | length' response2.json)" -gt 0
+          test "$(jq '.eval_count' response1.json)" -gt 0
+          test "$(jq '.eval_count' response2.json)" -gt 0
