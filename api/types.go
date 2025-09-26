@@ -557,6 +557,9 @@ type GenerateResponse struct {
 	// can be sent in the next request to keep a conversational memory.
 	Context []int `json:"context,omitempty"`
 
+	// Tokens is a copy of Context for compatibility with tests that expect .tokens field
+	Tokens []int `json:"tokens,omitempty"`
+
 	Metrics
 
 	ToolCalls []ToolCall `json:"tool_calls,omitempty"`
