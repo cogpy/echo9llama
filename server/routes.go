@@ -137,6 +137,15 @@ func (s *Server) scheduleRunner(ctx context.Context, name string, caps []model.C
 	return runner.llama, model, &opts, nil
 }
 
+func (s *Server) HealthHandler(c *gin.Context) {
+	// Simple health check - if we can respond, we're healthy
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "healthy",
+		"version": version.Version,
+		"time":    time.Now().UTC(),
+	})
+}
+
 func (s *Server) GenerateHandler(c *gin.Context) {
 	checkpointStart := time.Now()
 	var req api.GenerateRequest
@@ -397,6 +406,7 @@ func (s *Server) GenerateHandler(c *gin.Context) {
 						return
 					}
 					res.Context = tokens
+					res.Tokens = tokens  // Copy for compatibility with tests expecting .tokens field
 				}
 			}
 
@@ -1271,6 +1281,10 @@ func (s *Server) GenerateRoutes(rc *ollama.Registry) (http.Handler, error) {
 	r.POST("/api/blobs/:digest", s.CreateBlobHandler)
 	r.HEAD("/api/blobs/:digest", s.HeadBlobHandler)
 	r.POST("/api/copy", s.CopyHandler)
+
+	// Health check endpoint
+	r.GET("/healthz", s.HealthHandler)
+	r.GET("/api/healthz", s.HealthHandler)
 
 	// Inference
 	r.GET("/api/ps", s.PsHandler)

@@ -43,6 +43,11 @@ jobs:
           OLLAMA_HOST=127.0.0.1:11435 ./echollama serve &
           sleep 8
 
+      - name: Confirm echollama server is live
+        run: |
+          sleep 2
+          curl -v http://127.0.0.1:11435/healthz || (echo "Server not responding on health check"; exit 1)
+
       - name: Load tiny test model (via proxy)
         run: |
           OLLAMA_HOST=127.0.0.1:11435 ./echollama pull qwen2.5:0.5b
