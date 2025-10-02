@@ -847,18 +847,7 @@ func (ec *EmbodiedCognition) savePersistentMemory() {
 }
 
 // --- Required imports and type compatibility ---
-//=======
-//        log.Println("💾 Saving persistent memory to memory.json")
-        // Implementation would serialize current memory state to JSON
-//}
 
-// --- Placeholder types for compilation ---
-// Types that aren't defined elsewhere
-//type CognitivePattern struct{}
-//type ShortTermMemory struct{}
-//type WorkingMemory struct{}
-type AIProvider interface { GetInfo() string }
-//>>>>>>> main
 var _ = sync.RWMutex{} // Ensure sync.RWMutex is used
 var _ = time.Time{} // Ensure time.Time is used
 var _ = os.ReadFile // Ensure os.ReadFile is used
@@ -1032,35 +1021,4 @@ func (ec *EmbodiedCognition) extractReflectionProtocol(content string) {
 		// Set up periodic reflection based on protocol
 	}
 }
-//=======
-func NewShortTermMemory() *ShortTermMemory { return &ShortTermMemory{} }
-func NewWorkingMemory() *WorkingMemory { return &WorkingMemory{} }
-func (ec *EmbodiedCognition) initializeCognitivePatterns() {}
-func (ec *EmbodiedCognition) continuousLearning() {}
-func (ec *EmbodiedCognition) memoryConsolidation() {}
-func (ec *EmbodiedCognition) patternEvolution() {}
-func (id *Identity) Attribute(key string) interface{} { return nil }
-func (id *Identity) SetAttribute(key string, value interface{}) {}
-func (id *Identity) SpatialContextAttribute(key string) interface{} { return nil }
-func (id *Identity) SetSpatialContextAttribute(key string, value interface{}) {}
-func (id *Identity) EmotionalStateAttribute(key string) interface{} { return nil }
-func (id *Identity) SetEmotionalStateAttribute(key string, value interface{}) {}
-func (id *Identity) MemoryAttribute(key string) interface{} { return nil }
-func (id *Identity) SetMemoryAttribute(key string, value interface{}) {}
-func (id *Identity) SetRecursiveDepth(depth int) {}
-func (id *Identity) GetRecursiveDepth() int { return 0 }
-func (id *Identity) GetSpatialContext() SpatialContext { return SpatialContext{} }
-func (id *Identity) GetEmotionalState() EmotionalState { return EmotionalState{} }
-func (id *Identity) GetMemory() struct{ Nodes map[string]interface{}; Coherence float64 } { 
-        return struct{ Nodes map[string]interface{}; Coherence float64 }{Nodes: make(map[string]interface{}), Coherence: 0.5} 
-}
-func (id *Identity) GetCoherence() float64 { return 0.95 }
-func (id *Identity) GetPatterns() map[string]interface{} { return make(map[string]interface{}) }
-func (id *Identity) GetEssence() string { return "Deep Tree Echo" }
 
-// Implementations for required types not fully defined above
-type AIProvider struct{}
-func (m *AIProvider) GetInfo() string { return "AI Provider Info" }
-func (m *AIProvider) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) { return "AI generate response", nil }
-func (m *AIProvider) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) { return "AI chat response", nil }
-//>>>>>>> main
