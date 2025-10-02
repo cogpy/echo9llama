@@ -8,25 +8,27 @@
 
 Get up and running with large language models.
 
-### macOS
+## 🚀 Installation
 
-[Download](https://ollama.com/download/Ollama.dmg)
-
-### Windows
-
-[Download](https://ollama.com/download/OllamaSetup.exe)
-
-### Linux
+### Quick Start with Go
 
 ```shell
-curl -fsSL https://ollama.com/install.sh | sh
+git clone https://github.com/EchoCog/echollama.git
+cd echollama
+go run server/simple/embodied_server_enhanced.go
 ```
 
-[Manual install instructions](https://github.com/ollama/ollama/blob/main/docs/linux.md)
+The EchOllama server will start on `http://localhost:5000` with Deep Tree Echo cognitive features active.
 
-### Docker
+### Docker (Coming Soon)
 
-The official [Ollama Docker image](https://hub.docker.com/r/ollama/ollama) `ollama/ollama` is available on Docker Hub.
+Docker support with Deep Tree Echo integration is in development.
+
+### Prerequisites
+
+- Go 1.21 or later
+- Optional: OpenAI API key for cloud model integration
+- Optional: Local GGUF models for offline operation
 
 ### Libraries
 
@@ -38,13 +40,60 @@ The official [Ollama Docker image](https://hub.docker.com/r/ollama/ollama) `olla
 - [Discord](https://discord.gg/ollama)
 - [Reddit](https://reddit.com/r/ollama)
 
-## Quickstart
+## 🎯 Quickstart
 
-To run and chat with [Gemma 3](https://ollama.com/library/gemma3):
+### Start the EchOllama Server
 
 ```shell
-ollama run gemma3
+go run server/simple/embodied_server_enhanced.go
 ```
+
+Visit `http://localhost:5000` to see the Deep Tree Echo status and web dashboard.
+
+### Basic Chat with Deep Tree Echo
+
+```shell
+curl -X POST http://localhost:5000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local", "prompt": "Hello, how does Deep Tree Echo enhance AI?"}'
+```
+
+### Deep Tree Echo Cognitive Processing
+
+```shell
+curl -X POST http://localhost:5000/api/echo/think \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Process this through embodied cognition"}'
+```
+
+## 🧠 Deep Tree Echo Architecture
+
+EchOllama integrates Deep Tree Echo, an advanced cognitive architecture that brings embodied cognition to AI interactions:
+
+### Core Components
+
+- **🌊 Embodied Cognition Engine**: Real-time cognitive processing with spatial and emotional awareness
+- **🧬 Identity System**: Persistent identity with continuous learning and memory formation
+- **🕸️ Hypergraph Memory**: Multi-relational knowledge representation and storage
+- **⚡ Reservoir Networks**: Temporal pattern recognition and echo state processing
+- **🌀 Adaptive Learning**: Evolutionary algorithms for continuous system optimization
+
+### Cognitive Features
+
+- **Spatial Awareness**: 3D cognitive space with movement and positioning
+- **Emotional Dynamics**: Emotional state tracking and balance management
+- **Pattern Learning**: Real-time pattern recognition from interactions
+- **Memory Consolidation**: Automatic memory pruning and importance-based retention
+- **Predictive Responses**: AI responses enhanced by learned patterns
+
+### AI Provider Integration
+
+- **Local GGUF Models**: Offline model execution with cognitive enhancement
+- **OpenAI Integration**: Cloud-based models with Deep Tree Echo processing
+- **App Storage Provider**: Large model management and cloud storage
+- **Hybrid Processing**: Seamless switching between local and cloud providers
+
+Visit the [Deep Tree Echo documentation](dte.md) for detailed architecture information.
 
 ## Model library
 
@@ -230,23 +279,122 @@ ollama stop llama3.2
 
 `ollama serve` is used when you want to start ollama without running the desktop application.
 
-## Building
+## 🔧 Building EchOllama
 
-See the [developer guide](https://github.com/ollama/ollama/blob/main/docs/development.md)
-
-### Running local builds
-
-Next, start the server:
+### Development Setup
 
 ```shell
-./ollama serve
+git clone https://github.com/EchoCog/echollama.git
+cd echollama
+go mod tidy
 ```
 
-Finally, in a separate shell, run a model:
+### Start the Enhanced Server
 
 ```shell
-./ollama run llama3.2
+# Start the main embodied server with full Deep Tree Echo features
+go run server/simple/embodied_server_enhanced.go
+
+# Alternative: Start introspective server for development
+go run server/simple/introspective_server.go
 ```
+
+### Run Examples and Demos
+
+```shell
+# Interactive EchoChat demo
+./echochat_demo
+
+# API integration examples
+go run examples/api_server.go
+
+# Deep cognitive processing examples
+go run examples/enhanced_orchestration_demo.go
+```
+
+### Build from Source
+
+```shell
+go build -o echollama main.go
+./echollama
+```
+
+## 🌊 EchOllama Enhanced API
+
+EchOllama extends the standard Ollama API with Deep Tree Echo cognitive features running on `http://localhost:5000`.
+
+### Deep Tree Echo Endpoints
+
+#### Get Cognitive Status
+```shell
+curl http://localhost:5000/api/echo/status
+```
+
+#### Cognitive Processing
+```shell
+curl -X POST http://localhost:5000/api/echo/think \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "Your question"}'
+```
+
+#### Emotional State Updates
+```shell
+curl -X POST http://localhost:5000/api/echo/feel \
+  -H "Content-Type: application/json" \
+  -d '{"emotion": "curious", "intensity": 0.8}'
+```
+
+#### Memory Storage & Recall
+```shell
+# Store a memory
+curl -X POST http://localhost:5000/api/echo/remember \
+  -H "Content-Type: application/json" \
+  -d '{"key": "important_fact", "value": "Deep Tree Echo learns continuously"}'
+
+# Recall a memory
+curl http://localhost:5000/api/echo/recall/important_fact
+```
+
+#### Spatial Movement (Cognitive Space)
+```shell
+curl -X POST http://localhost:5000/api/echo/move \
+  -H "Content-Type: application/json" \
+  -d '{"x": 10, "y": 5, "z": 3}'
+```
+
+### Enhanced Generation with AI Providers
+
+#### Multi-Provider Model Support
+```shell
+# Use local GGUF models
+curl -X POST http://localhost:5000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local", "prompt": "Hello from local model"}'
+
+# Use OpenAI (requires API key configuration)
+curl -X POST http://localhost:5000/api/generate \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai", "prompt": "Hello from OpenAI"}'
+```
+
+#### Configure AI Providers
+```shell
+# Set OpenAI API key
+curl -X POST http://localhost:5000/api/config/openai \
+  -H "Content-Type: application/json" \
+  -d '{"api_key": "your-openai-api-key"}'
+
+# Check available providers
+curl http://localhost:5000/api/ai/providers
+```
+
+### Web Dashboard
+
+Visit `http://localhost:5000` for the real-time Deep Tree Echo dashboard featuring:
+- Cognitive state visualization
+- Memory system monitoring
+- AI provider status
+- System metrics and performance
 
 ## REST API
 
