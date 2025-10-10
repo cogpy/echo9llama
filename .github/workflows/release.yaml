@@ -20,7 +20,7 @@ jobs:
       - name: Set environment
         id: goflags
         run: |
-          echo GOFLAGS="'-ldflags=-w -s \"-X=github.com/ollama/ollama/version.Version=${GITHUB_REF_NAME#v}\" \"-X=github.com/ollama/ollama/server.mode=release\"'" >>$GITHUB_OUTPUT
+          echo GOFLAGS="'-ldflags=-w -s \"-X=github.com/EchoCog/echollama/version.Version=${GITHUB_REF_NAME#v}\" \"-X=github.com/EchoCog/echollama/server.mode=release\"'" >>$GITHUB_OUTPUT
 
   darwin-build:
     runs-on: macos-13-xlarge
@@ -379,6 +379,6 @@ jobs:
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.RELEASE_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            https://api.github.com/repos/ollama/${{ vars.RELEASE_REPO }}/dispatches \
+            https://api.github.com/repos/EchoCog/${{ vars.RELEASE_REPO }}/dispatches \
             -d "{\"event_type\": \"trigger-workflow\", \"client_payload\": {\"run_id\": \"${GITHUB_RUN_ID}\", \"version\": \"${GITHUB_REF_NAME#v}\", \"origin\": \"${GITHUB_REPOSITORY}\", \"publish\": \"1\"}}"
 
