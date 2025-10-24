@@ -1,0 +1,34 @@
+# .slsa-goreleaser.yml
+# Configuration for SLSA Go builder
+# See: https://github.com/slsa-framework/slsa-github-generator/blob/main/internal/builders/go/README.md
+
+version: 1
+
+# (Optional) env variables to pass to the build process.
+env:
+  - CGO_ENABLED=1
+
+# (Optional) flags to pass to the go compiler.
+flags:
+  - -trimpath
+  - -tags=netgo
+
+# (Optional) ldflags to pass to the go compiler.
+ldflags:
+  - "-s"
+  - "-w"
+  - "-X=github.com/EchoCog/echollama/version.Version={{.Version}}"
+  - "-X=github.com/EchoCog/echollama/server.mode=release"
+
+# The Go binary to build.
+goos: linux
+goarch: amd64
+
+# Binary name. Defaults to the project name.
+binary: echollama
+
+# (Optional) Working directory. Defaults to the root of the repository.
+# main: .
+
+# (Optional) Upload artifacts as release assets.
+upload-assets: true
