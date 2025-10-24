@@ -924,18 +924,17 @@ func (i *Identity) ProcessInput(input string) (*CognitionResponse, error) {
 	}
 
 	// Enhanced cognitive processing with memory consolidation
-	if i.config.EnableLearning {
-		response.Patterns = i.extractPatterns(input)
+	// Always enable learning (config field removed)
+	response.Patterns = i.extractPatterns(input)
 
-		// Consolidate memories based on semantic similarity
-		i.consolidateMemories(response.Patterns)
+	// Consolidate memories based on semantic similarity
+	i.consolidateMemories(response.Patterns)
 
-		// Generate echo signatures for pattern recognition
-		response.EchoSignature = i.generateEchoSignature(input)
+	// Generate echo signatures for pattern recognition
+	response.EchoSignature = i.generateEchoSignature(input)
 
-		// Update internal state based on new patterns
-		i.updateCognitiveState(response)
-	}
+	// Update internal state based on new patterns
+	i.updateCognitiveState(response)
 
 	return response, nil
 }
