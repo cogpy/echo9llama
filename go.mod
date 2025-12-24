@@ -37,6 +37,7 @@ require (
 require github.com/mattn/go-sqlite3 v1.14.32
 
 require (
+	aead.dev/minisign v0.2.0 // indirect
 	github.com/apache/arrow/go/arrow v0.0.0-20211112161151-bc219186db40 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/chewxy/hm v1.0.0 // indirect
@@ -55,6 +56,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/milvus-io/milvus-proto/go-api/v2 v2.4.10-0.20240819025435-512e3b98866a // indirect
+	github.com/minio/selfupdate v0.6.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect

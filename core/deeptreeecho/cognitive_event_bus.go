@@ -72,6 +72,10 @@ const (
 	// Knowledge and wisdom events
 	EventKnowledgeGapIdentified CognitiveEventType = "knowledge_gap_identified"
 	EventWisdomGained          CognitiveEventType = "wisdom_gained"
+	
+	// Self-update events
+	EventUpdateAvailable       CognitiveEventType = "update_available"
+	EventUpdateApplied         CognitiveEventType = "update_applied"
 )
 
 // CognitiveEvent represents a single event in the cognitive system

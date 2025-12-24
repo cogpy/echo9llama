@@ -29,6 +29,7 @@ type AutonomousAgent struct {
 	conversationMonitor *ConversationMonitor
 	echodreamIntegration *EchoDreamKnowledgeIntegration
 	echobeatsScheduler *EchobeatsTetrahedralScheduler
+	selfUpdateManager *SelfUpdateManager
 	
 	// LLM provider
 	llmProvider     llm.LLMProvider
@@ -99,6 +100,17 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 	agent.echodreamIntegration = NewEchoDreamKnowledgeIntegration(llmProvider)
 	agent.echobeatsScheduler = NewEchobeatsTetrahedralScheduler(llmProvider)
 	
+	// Initialize self-update manager
+	selfUpdateConfig := SelfUpdateConfig{
+		Enabled:        true,
+		CheckInterval:  24 * time.Hour,
+		CurrentVersion: "v0.0.1", // TODO: Get from build info
+		AutoApply:      false,    // Require manual approval for safety
+		Owner:          "cogpy",
+		Repo:           "echo9llama",
+	}
+	agent.selfUpdateManager = NewSelfUpdateManager(selfUpdateConfig, agent.eventBus)
+	
 	return agent
 }
 
@@ -162,6 +174,10 @@ func (agent *AutonomousAgent) Start() error {
 		return fmt.Errorf("failed to start echobeats scheduler: %w", err)
 	}
 	
+	if err := agent.selfUpdateManager.Start(); err != nil {
+		return fmt.Errorf("failed to start self-update manager: %w", err)
+	}
+	
 	fmt.Println("\n✅ All subsystems initialized")
 	
 	// Transition to awakening phase
@@ -202,6 +218,7 @@ func (agent *AutonomousAgent) Stop() error {
 	agent.skillLearning.Stop()
 	agent.conversationMonitor.Stop()
 	agent.echobeatsScheduler.Stop()
+	agent.selfUpdateManager.Stop()
 	agent.eventBus.Stop()
 	
 	agent.cancel()
