@@ -32,6 +32,10 @@ type UnifiedCognitiveLoopV2 struct {
 	skillGoalIntegration  *SkillGoalIntegration
 	wisdomSynthesis       *WisdomSynthesis
 
+	// NEW: Langchain & Ergo integrations
+	reasoningManager      *ReasoningManager
+	actorSupervisor       *ActorSupervisor
+
 	// LLM provider
 	llmProvider           llm.LLMProvider
 
@@ -87,6 +91,20 @@ func NewUnifiedCognitiveLoopV2(llmProvider llm.LLMProvider) *UnifiedCognitiveLoo
 	ucl.conversationMonitor = NewConversationMonitor(llmProvider, ucl.interestPatterns)
 	ucl.skillGoalIntegration = NewSkillGoalIntegration(llmProvider, ucl.skillLearning, ucl.interestPatterns)
 	ucl.wisdomSynthesis = NewWisdomSynthesis(llmProvider)
+
+	// Create cognitive tools for reasoning
+	cognitiveTools := CreateAllCognitiveTools(
+		ucl.skillLearning,
+		ucl.discussionAutonomy,
+		ucl.wisdomSynthesis,
+		ucl.interestPatterns,
+		ucl.echoDream,
+		ucl.echobeatsScheduler,
+	)
+
+	// Create NEW: Langchain & Ergo integrations
+	ucl.reasoningManager = NewReasoningManager(llmProvider, cognitiveTools)
+	ucl.actorSupervisor = NewActorSupervisor()
 
 	// Wire up all subsystems
 	ucl.wireSubsystemsV2()
@@ -415,6 +433,20 @@ func (ucl *UnifiedCognitiveLoopV2) Start() error {
 		return fmt.Errorf("failed to start wisdom synthesis: %w", err)
 	}
 
+	// Start NEW: Langchain & Ergo integrations
+	fmt.Println("🧠 Starting reasoning manager...")
+	if err := ucl.reasoningManager.Start(); err != nil {
+		return fmt.Errorf("failed to start reasoning manager: %w", err)
+	}
+
+	fmt.Println("🎭 Starting actor supervisor (3 cognitive streams)...")
+	if err := ucl.actorSupervisor.Start(); err != nil {
+		return fmt.Errorf("failed to start actor supervisor: %w", err)
+	}
+
+	// Wire actor supervisor callbacks
+	ucl.wireActorSupervisor()
+
 	// Start main loop
 	go ucl.mainLoop()
 
@@ -442,6 +474,8 @@ func (ucl *UnifiedCognitiveLoopV2) Stop() error {
 	ucl.cancel()
 
 	// Stop all subsystems (reverse order)
+	ucl.actorSupervisor.Stop()
+	ucl.reasoningManager.Stop()
 	ucl.wisdomSynthesis.Stop()
 	ucl.skillGoalIntegration.Stop()
 	ucl.conversationMonitor.Stop()
@@ -732,4 +766,126 @@ func (ucl *UnifiedCognitiveLoopV2) GetWisdomPrinciples() []WisdomPrinciple {
 // GetSelfModel returns the current self-model from heartbeat
 func (ucl *UnifiedCognitiveLoopV2) GetSelfModel() *SelfModel {
 	return ucl.heartbeat.GetSelfModel()
+}
+
+// wireActorSupervisor connects the actor supervisor to the cognitive loop
+func (ucl *UnifiedCognitiveLoopV2) wireActorSupervisor() {
+	// Set callbacks for the three cognitive streams
+	ucl.actorSupervisor.SetStreamCallbacks(
+		// Perception callback
+		func(data interface{}) interface{} {
+			// Process perception through stream of consciousness
+			if thoughts, ok := data.([]interface{}); ok && len(thoughts) > 0 {
+				// Trigger thought generation by publishing event
+				ucl.eventBus.Publish(CognitiveEvent{
+					Type:      EventThoughtGenerated,
+					Timestamp: time.Now(),
+					Source:    "perception_stream",
+					Data:      thoughts,
+					Priority:  0.7,
+				})
+				return "perception_processed"
+			}
+			return nil
+		},
+		// Action callback
+		func(data interface{}) interface{} {
+			// Process action through echobeats scheduler
+			if goals, ok := data.([]interface{}); ok && len(goals) > 0 {
+				// Execute goal-directed action
+				for _, goal := range goals {
+					if goalStr, ok := goal.(string); ok {
+						ucl.echobeatsScheduler.AddGoal(goalStr, 0.5)
+					}
+				}
+				return "actions_scheduled"
+			}
+			return nil
+		},
+		// Simulation callback
+		func(data interface{}) interface{} {
+			// Process simulation through wisdom synthesis
+			if patterns, ok := data.([]interface{}); ok && len(patterns) > 0 {
+				// Simulate and synthesize wisdom
+				for _, pattern := range patterns {
+					if patternStr, ok := pattern.(string); ok {
+						ucl.wisdomSynthesis.AccumulatePattern(patternStr, "simulation", 0.6, []string{"simulated"})
+					}
+				}
+				return "patterns_synthesized"
+			}
+			return nil
+		},
+		// Emergence callback
+		func(pattern string, strength float64) {
+			// Publish emergence event
+			ucl.eventBus.Publish(CognitiveEvent{
+				Type:      EventEmergenceDetected,
+				Timestamp: time.Now(),
+				Source:    "actor_supervisor",
+				Data:      map[string]interface{}{"pattern": pattern, "strength": strength},
+				Priority:  strength,
+			})
+		},
+	)
+
+	// Subscribe to reasoning events
+	ucl.reasoningManager.SetCallbacks(
+		func(chain *LangchainReasoningChain) {
+			fmt.Printf("🧠 Reasoning chain started: %s (mode: %s)\n", chain.ID, chain.Mode)
+		},
+		func(chain *LangchainReasoningChain, step ReasoningStep) {
+			fmt.Printf("   → Step %d: %s\n", len(chain.Steps), truncate(step.Thought, 60))
+		},
+		func(chain *LangchainReasoningChain) {
+			fmt.Printf("🧠 Reasoning chain completed: %s (success: %v)\n", chain.ID, chain.Success)
+			if chain.Success {
+				// Feed successful reasoning to wisdom synthesis
+				ucl.wisdomSynthesis.AccumulatePattern(
+					chain.Result,
+					"reasoning_chain",
+					0.8,
+					[]string{"reasoning", chain.Mode.String()},
+				)
+			}
+		},
+	)
+}
+
+// Reason performs a reasoning task using the integrated langchain agent
+func (ucl *UnifiedCognitiveLoopV2) Reason(ctx context.Context, input string, mode ReasoningMode) (string, error) {
+	return ucl.reasoningManager.Reason(ctx, input, mode)
+}
+
+// ReasonAsync performs an asynchronous reasoning task
+func (ucl *UnifiedCognitiveLoopV2) ReasonAsync(input string, mode ReasoningMode, priority float64) (string, chan ReasoningResult) {
+	return ucl.reasoningManager.ReasonAsync(input, mode, priority)
+}
+
+// GetStreamStates returns the states of the three cognitive streams
+func (ucl *UnifiedCognitiveLoopV2) GetStreamStates() map[StreamType]StreamState {
+	return ucl.actorSupervisor.GetStreamStates()
+}
+
+// GetReasoningMetrics returns metrics from the reasoning manager
+func (ucl *UnifiedCognitiveLoopV2) GetReasoningMetrics() map[string]interface{} {
+	return ucl.reasoningManager.GetMetrics()
+}
+
+// ContributeToGestalt returns the unified cognitive loop's contribution to the global gestalt
+func (ucl *UnifiedCognitiveLoopV2) ContributeToGestalt() map[string]interface{} {
+	ucl.mu.RLock()
+	defer ucl.mu.RUnlock()
+
+	return map[string]interface{}{
+		"subsystem":            "unified_cognitive_loop_v2",
+		"state":                ucl.wakeRestState.String(),
+		"cognitive_load":       ucl.cognitiveLoad,
+		"wisdom_level":         ucl.wisdomLevel,
+		"awareness_level":      ucl.awarenessLevel,
+		"total_cycles":         ucl.totalCycles,
+		"running":              ucl.running,
+		"reasoning_manager":    ucl.reasoningManager.ContributeToGestalt(),
+		"actor_supervisor":     ucl.actorSupervisor.ContributeToGestalt(),
+	}
 }
