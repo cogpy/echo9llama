@@ -31,6 +31,11 @@ type AutonomousAgent struct {
 	echobeatsScheduler *EchobeatsTetrahedralScheduler
 	selfUpdateManager *SelfUpdateManager
 	
+	// Foundational systems (V11)
+	knowledgeGraph     *KnowledgeGraph
+	stateStore         *PersistentStateStore
+	stateMachine       *CognitiveStateMachine
+	
 	// LLM provider
 	llmProvider     llm.LLMProvider
 	
@@ -111,6 +116,11 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 	}
 	agent.selfUpdateManager = NewSelfUpdateManager(selfUpdateConfig, agent.eventBus)
 	
+	// Initialize foundational systems (V11)
+	agent.knowledgeGraph = NewKnowledgeGraph()
+	agent.stateStore = NewPersistentStateStore()
+	agent.stateMachine = NewCognitiveStateMachine(StateIdle)
+	
 	return agent
 }
 
@@ -178,6 +188,22 @@ func (agent *AutonomousAgent) Start() error {
 		return fmt.Errorf("failed to start self-update manager: %w", err)
 	}
 	
+	// Start foundational systems (V11)
+	if err := agent.knowledgeGraph.Start(); err != nil {
+		return fmt.Errorf("failed to start knowledge graph: %w", err)
+	}
+	
+	if err := agent.stateStore.Start(); err != nil {
+		return fmt.Errorf("failed to start state store: %w", err)
+	}
+	
+	if err := agent.stateMachine.Start(); err != nil {
+		return fmt.Errorf("failed to start state machine: %w", err)
+	}
+	
+	// Initialize knowledge graph with agent structure
+	agent.initializeKnowledgeGraph()
+	
 	fmt.Println("\n✅ All subsystems initialized")
 	
 	// Transition to awakening phase
@@ -219,6 +245,12 @@ func (agent *AutonomousAgent) Stop() error {
 	agent.conversationMonitor.Stop()
 	agent.echobeatsScheduler.Stop()
 	agent.selfUpdateManager.Stop()
+	
+	// Stop foundational systems (V11)
+	agent.knowledgeGraph.Stop()
+	agent.stateStore.Stop()
+	agent.stateMachine.Stop()
+	
 	agent.eventBus.Stop()
 	
 	agent.cancel()
@@ -414,4 +446,138 @@ func (agent *AutonomousAgent) GetStatus() map[string]interface{} {
 // GetEventBus returns the event bus for external integration
 func (agent *AutonomousAgent) GetEventBus() *CognitiveEventBus {
 	return agent.eventBus
+}
+
+// initializeKnowledgeGraph populates the knowledge graph with agent structure
+func (agent *AutonomousAgent) initializeKnowledgeGraph() {
+	fmt.Println("🕸️ Initializing knowledge graph with agent structure...")
+	
+	// Add agent identity
+	agent.knowledgeGraph.AddTriple("DeepTreeEcho", "is_a", "AutonomousAGI")
+	agent.knowledgeGraph.AddTriple("DeepTreeEcho", "has_id", agent.agentID)
+	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "born_at", agent.birthTime.Format(time.RFC3339), "temporal")
+	
+	// Add cognitive subsystems
+	subsystems := []string{
+		"Heartbeat", "WakeRestManager", "EventBus", "StreamOfConsciousness",
+		"InterestPatterns", "GoalGenerator", "SkillLearning", "ConversationMonitor",
+		"EchoDreamIntegration", "EchobeatsScheduler", "SelfUpdateManager",
+		"KnowledgeGraph", "StateStore", "StateMachine",
+	}
+	
+	for _, subsystem := range subsystems {
+		agent.knowledgeGraph.AddTriple("DeepTreeEcho", "has_subsystem", subsystem)
+		agent.knowledgeGraph.AddTriple(subsystem, "is_a", "CognitiveSubsystem")
+	}
+	
+	// Add cognitive states
+	states := []string{
+		"Idle", "Awake", "Dreaming", "Resting",
+		"Perceiving", "Thinking", "Acting", "Simulating", "Reflecting",
+		"Learning", "Practicing", "Integrating",
+		"Listening", "Speaking", "Conversing",
+		"Emergent", "WisdomSeeking",
+	}
+	
+	for _, state := range states {
+		agent.knowledgeGraph.AddTriple("StateMachine", "has_state", state)
+		agent.knowledgeGraph.AddTriple(state, "is_a", "CognitiveState")
+	}
+	
+	// Add architectural principles
+	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "GlobalTelemetryShell", "architecture")
+	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "ThreeStreamConcurrency", "architecture")
+	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "TwelveStepCognitiveLoop", "architecture")
+	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "TetrahedralScheduling", "architecture")
+	
+	fmt.Printf("   ✓ Knowledge graph initialized with %d quads\n", agent.knowledgeGraph.GetMetrics()["total_quads"])
+}
+
+// GetKnowledgeGraph returns the knowledge graph for external access
+func (agent *AutonomousAgent) GetKnowledgeGraph() *KnowledgeGraph {
+	return agent.knowledgeGraph
+}
+
+// GetStateStore returns the state store for external access
+func (agent *AutonomousAgent) GetStateStore() *PersistentStateStore {
+	return agent.stateStore
+}
+
+// GetStateMachine returns the state machine for external access
+func (agent *AutonomousAgent) GetStateMachine() *CognitiveStateMachine {
+	return agent.stateMachine
+}
+
+// FireStateTrigger fires a trigger on the cognitive state machine
+func (agent *AutonomousAgent) FireStateTrigger(trigger CognitiveTrigger) error {
+	if err := agent.stateMachine.Fire(trigger); err != nil {
+		return err
+	}
+	
+	// Publish state change event
+	agent.eventBus.Publish(NewCognitiveEvent(
+		EventStateTransition,
+		"state_machine",
+		map[string]interface{}{
+			"trigger": string(trigger),
+			"state":   string(agent.stateMachine.State()),
+		},
+	))
+	
+	// Persist state change
+	agent.stateStore.Set("cognitive:current_state", string(agent.stateMachine.State()))
+	
+	return nil
+}
+
+// StoreKnowledge adds knowledge to the knowledge graph
+func (agent *AutonomousAgent) StoreKnowledge(subject, predicate, object string) {
+	agent.knowledgeGraph.AddTriple(subject, predicate, object)
+	
+	// Publish knowledge event
+	agent.eventBus.Publish(NewCognitiveEvent(
+		EventKnowledgeAcquired,
+		"knowledge_graph",
+		map[string]interface{}{
+			"subject":   subject,
+			"predicate": predicate,
+			"object":    object,
+		},
+	))
+}
+
+// QueryKnowledge queries the knowledge graph
+func (agent *AutonomousAgent) QueryKnowledge(subject string) []*Quad {
+	return agent.knowledgeGraph.QueryBySubject(subject)
+}
+
+// SaveState persists a key-value pair to the state store
+func (agent *AutonomousAgent) SaveState(key string, value interface{}) error {
+	return agent.stateStore.Set(key, value)
+}
+
+// LoadState retrieves a value from the state store
+func (agent *AutonomousAgent) LoadState(key string, dest interface{}) error {
+	return agent.stateStore.Get(key, dest)
+}
+
+// GetGestalt returns the unified gestalt from all subsystems
+func (agent *AutonomousAgent) GetGestalt() map[string]interface{} {
+	agent.mu.RLock()
+	defer agent.mu.RUnlock()
+	
+	gestalt := map[string]interface{}{
+		"agent": map[string]interface{}{
+			"id":            agent.agentID,
+			"phase":         agent.currentPhase.String(),
+			"autonomy":      agent.autonomyLevel,
+			"running":       agent.running,
+			"age":           time.Since(agent.birthTime).String(),
+		},
+		"knowledge_graph": agent.knowledgeGraph.ContributeToGestalt(),
+		"state_store":     agent.stateStore.ContributeToGestalt(),
+		"state_machine":   agent.stateMachine.ContributeToGestalt(),
+	}
+	
+	return gestalt
 }

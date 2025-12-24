@@ -71,6 +71,7 @@ const (
 	
 	// Knowledge and wisdom events
 	EventKnowledgeGapIdentified CognitiveEventType = "knowledge_gap_identified"
+	EventKnowledgeAcquired      CognitiveEventType = "knowledge_acquired"
 	EventWisdomGained          CognitiveEventType = "wisdom_gained"
 	
 	// Self-update events
