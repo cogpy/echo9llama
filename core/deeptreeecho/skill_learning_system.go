@@ -127,8 +127,78 @@ func (sls *SkillLearningSystem) Start() error {
 	return nil
 }
 
-// Stop gracefully stops the skill learning system
-func (sls *SkillLearningSystem) Stop() error {
+	// ConsiderSkill evaluates whether to learn a new skill based on a knowledge gap
+	func (sls *SkillLearningSystem) ConsiderSkill(gap string, priority float64) {
+		sls.mu.Lock()
+		defer sls.mu.Unlock()
+		
+		// Check if we already have a skill for this gap
+		for _, skill := range sls.skills {
+			if skill.Name == gap || skill.Description == gap {
+				// Already learning this skill, increase priority
+				sls.queuePractice(skill.ID, priority)
+				return
+			}
+		}
+		
+		// Consider learning this as a new skill if priority is high enough
+		if priority > 0.6 {
+			// Create new skill
+			skill := &Skill{
+				ID:            fmt.Sprintf("skill_%d", time.Now().UnixNano()),
+				Name:          gap,
+				Description:   fmt.Sprintf("Skill to address: %s", gap),
+				Category:      sls.categorizeSkill(gap),
+				Proficiency:   0.0,
+				PracticeCount: 0,
+				CreatedAt:     time.Now(),
+				LearningRate:  0.1,
+				Difficulty:    sls.estimateDifficulty(gap),
+				Prerequisites: []string{},
+				Attempts:      make([]SkillAttempt, 0),
+			}
+			
+			sls.skills[skill.ID] = skill
+			fmt.Printf("🎯 New skill identified: %s (priority: %.2f)\n", gap, priority)
+			
+			// Schedule initial practice
+			sls.queuePractice(skill.ID, priority)
+		}
+	}
+	
+	// categorizeSkill determines the category of a skill
+	func (sls *SkillLearningSystem) categorizeSkill(skillName string) SkillCategory {
+		// Simple heuristic categorization
+		// In a full implementation, this would use LLM or more sophisticated logic
+		return SkillCategoryCognitive
+	}
+	
+	// estimateDifficulty estimates the difficulty of learning a skill
+	func (sls *SkillLearningSystem) estimateDifficulty(skillName string) float64 {
+		// Simple heuristic - longer names = harder skills
+		// In a full implementation, this would use LLM or more sophisticated logic
+		if len(skillName) > 50 {
+			return 0.8
+		} else if len(skillName) > 30 {
+			return 0.6
+		}
+		return 0.4
+	}
+	
+	// queuePractice queues a practice session for a skill
+	func (sls *SkillLearningSystem) queuePractice(skillID string, priority float64) {
+		// Add to practice queue
+		task := &SkillPracticeTask{
+			SkillID:     skillID,
+			ScheduledAt: time.Now().Add(time.Duration(10-priority*10) * time.Minute),
+			Priority:    priority,
+		}
+		
+		sls.practiceQueue = append(sls.practiceQueue, task)
+	}
+	
+	// Stop gracefully stops the skill learning system
+	func (sls *SkillLearningSystem) Stop() error {
 	sls.mu.Lock()
 	defer sls.mu.Unlock()
 	

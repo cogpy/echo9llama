@@ -133,8 +133,35 @@ func (das *DiscussionAutonomySystem) Start() error {
 	return nil
 }
 
-// Stop gracefully stops discussion management
-func (das *DiscussionAutonomySystem) Stop() error {
+	// UpdateInterest updates the interest level for a topic
+	func (das *DiscussionAutonomySystem) UpdateInterest(topic string, strength float64) {
+		das.mu.Lock()
+		defer das.mu.Unlock()
+		
+		// Update interest pattern
+		das.interestPatterns[topic] = strength
+		
+		// Check if interest is high enough to start a discussion
+		if strength >= das.startThreshold && das.socialCapacity > 0.5 {
+			// Consider starting a discussion about this topic
+			go das.considerStartingDiscussion(topic, strength)
+		}
+		
+		// Update active discussions if topic matches
+		for _, discussion := range das.activeDiscussions {
+			if discussion.Topic == topic {
+				discussion.InterestLevel = strength
+				
+					// End discussion if interest dropped too low
+					if strength < das.endThreshold {
+						go das.endDiscussionByID(discussion.ID, "interest_dropped")
+					}
+			}
+		}
+	}
+	
+	// Stop gracefully stops discussion management
+	func (das *DiscussionAutonomySystem) Stop() error {
 	das.mu.Lock()
 	defer das.mu.Unlock()
 	
@@ -526,3 +553,53 @@ func truncateString(s string, maxLen int) string {
 	}
 	return s[:maxLen-3] + "..."
 }
+
+
+// considerStartingDiscussion evaluates whether to start a discussion about a topic
+func (das *DiscussionAutonomySystem) considerStartingDiscussion(topic string, strength float64) {
+	// Check if we should start a discussion
+	trigger := DiscussionTrigger{
+		Type:    TriggerCuriosity,
+		Topic:   topic,
+		Urgency: strength,
+		Context: fmt.Sprintf("Interest emerged in %s", topic),
+	}
+	
+	if das.shouldStartDiscussion(trigger) {
+		das.initiateDiscussion(trigger)
+	}
+}
+
+// endDiscussionByID ends a discussion by ID with a reason
+func (das *DiscussionAutonomySystem) endDiscussionByID(discussionID, reason string) {
+	das.mu.Lock()
+	defer das.mu.Unlock()
+	
+	disc, exists := das.activeDiscussions[discussionID]
+	if !exists || !disc.Active {
+		return
+	}
+	
+	fmt.Printf("\n💬 Ending discussion about %s (reason: %s)\n", disc.Topic, reason)
+	
+	// Generate closing message
+	closing := das.generateClosingMessage(disc, reason)
+	
+	disc.Messages = append(disc.Messages, DiscussionMessage{
+		From:      "echoself",
+		Content:   closing,
+		Timestamp: time.Now(),
+		Emotion:   das.currentMood,
+	})
+	
+	disc.Active = false
+	das.discussionHistory = append(das.discussionHistory, *disc)
+	das.discussionsEnded++
+	
+	fmt.Printf("   Closing: %s\n", truncateString(closing, 80))
+	
+	// Remove from active discussions
+	delete(das.activeDiscussions, discussionID)
+}
+
+

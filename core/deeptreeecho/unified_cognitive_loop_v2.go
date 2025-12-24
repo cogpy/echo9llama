@@ -179,11 +179,8 @@ func (ucl *UnifiedCognitiveLoopV2) wireSubsystemsV2() {
 		topic := interest["topic"].(string)
 		strength := interest["strength"].(float64)
 
-		// Update discussion autonomy
-		// TODO: Implement UpdateInterest method
-		_ = topic
-		_ = strength
-		// ucl.discussionAutonomy.UpdateInterest(topic, strength)
+			// Update discussion autonomy
+			ucl.discussionAutonomy.UpdateInterest(topic, strength)
 
 		// Queue skill learning from interest
 		ucl.skillGoalIntegration.QueueSkillFromInterest(topic, strength)
@@ -193,10 +190,8 @@ func (ucl *UnifiedCognitiveLoopV2) wireSubsystemsV2() {
 	ucl.eventBus.Subscribe(EventKnowledgeGapIdentified, func(event CognitiveEvent) {
 		gap := event.Data.(string)
 
-		// Consider learning a skill
-		// TODO: Implement ConsiderSkill method
-		_ = gap
-		// ucl.skillLearning.ConsiderSkill(gap, event.Priority)
+			// Consider learning a skill
+			ucl.skillLearning.ConsiderSkill(gap, event.Priority)
 
 		// Also create skill acquisition goal if priority high enough
 		if event.Priority > 0.7 {
