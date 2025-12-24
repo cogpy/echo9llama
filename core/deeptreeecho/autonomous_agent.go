@@ -36,6 +36,9 @@ type AutonomousAgent struct {
 	stateStore         *PersistentStateStore
 	stateMachine       *CognitiveStateMachine
 	
+	// Sys6 Triality Engine (V13)
+	sys6Engine         *Sys6MultiplexedEngine
+	
 	// LLM provider
 	llmProvider     llm.LLMProvider
 	
@@ -121,6 +124,9 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 	agent.stateStore = NewPersistentStateStore()
 	agent.stateMachine = NewCognitiveStateMachine(StateIdle)
 	
+	// Initialize Sys6 Triality Engine (V13)
+	agent.sys6Engine = NewSys6MultiplexedEngine()
+	
 	return agent
 }
 
@@ -201,6 +207,11 @@ func (agent *AutonomousAgent) Start() error {
 		return fmt.Errorf("failed to start state machine: %w", err)
 	}
 	
+	// Start Sys6 Triality Engine (V13)
+	if err := agent.sys6Engine.Start(); err != nil {
+		return fmt.Errorf("failed to start sys6 engine: %w", err)
+	}
+	
 	// Initialize knowledge graph with agent structure
 	agent.initializeKnowledgeGraph()
 	
@@ -250,6 +261,9 @@ func (agent *AutonomousAgent) Stop() error {
 	agent.knowledgeGraph.Stop()
 	agent.stateStore.Stop()
 	agent.stateMachine.Stop()
+	
+	// Stop Sys6 Triality Engine (V13)
+	agent.sys6Engine.Stop()
 	
 	agent.eventBus.Stop()
 	
@@ -577,7 +591,18 @@ func (agent *AutonomousAgent) GetGestalt() map[string]interface{} {
 		"knowledge_graph": agent.knowledgeGraph.ContributeToGestalt(),
 		"state_store":     agent.stateStore.ContributeToGestalt(),
 		"state_machine":   agent.stateMachine.ContributeToGestalt(),
+		"sys6_triality":   agent.sys6Engine.ContributeToGestalt(),
 	}
 	
 	return gestalt
+}
+
+// GetSys6Engine returns the sys6 triality engine
+func (agent *AutonomousAgent) GetSys6Engine() *Sys6MultiplexedEngine {
+	return agent.sys6Engine
+}
+
+// GetSys6State returns the current state of the sys6 engine
+func (agent *AutonomousAgent) GetSys6State() map[string]interface{} {
+	return agent.sys6Engine.GetState()
 }
