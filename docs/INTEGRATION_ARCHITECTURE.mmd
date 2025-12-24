@@ -1,0 +1,143 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#2d3748', 'primaryTextColor': '#fff', 'primaryBorderColor': '#4a5568', 'lineColor': '#718096', 'secondaryColor': '#4a5568', 'tertiaryColor': '#1a202c'}}}%%
+flowchart TB
+    subgraph GLOBAL["🌐 GLOBAL TELEMETRY SHELL"]
+        direction TB
+        
+        subgraph CORE["🧠 DEEP TREE ECHO CORE"]
+            direction TB
+            
+            subgraph COGNITIVE["⚡ Cognitive Event Loop"]
+                AA[Autonomous Agent]
+                UCL[Unified Cognitive Loop V2]
+                TSC[Three-Stream Cognitive Loop]
+                EBT[Echobeats Tetrahedral Scheduler]
+            end
+            
+            subgraph CONSCIOUSNESS["💭 Consciousness Systems"]
+                SOC[Stream of Consciousness]
+                CL[Consciousness Layers]
+                PCS[Persistent Consciousness State]
+                TOM[Theory of Mind]
+            end
+            
+            subgraph AUTONOMY["🎯 Autonomy Systems"]
+                AWR[Autonomous Wake/Rest]
+                AHB[Autonomous Heartbeat]
+                DA[Discussion Autonomy]
+                IPS[Interest Pattern System]
+            end
+            
+            subgraph LEARNING["📚 Learning & Wisdom"]
+                SLS[Skill Learning System]
+                WS[Wisdom Synthesis]
+                EDK[EchoDream Knowledge Integration]
+                GG[Goal Generator]
+            end
+        end
+        
+        subgraph INTEGRATIONS["🔌 INTEGRATION LAYER"]
+            direction TB
+            
+            subgraph INT_COGNITIVE["Cognitive Architecture"]
+                LCI[langchaingo<br/>LLM Chains & Agents]
+                ERGO[ergo<br/>Actor Framework]
+                SL[stateless<br/>State Machines]
+            end
+            
+            subgraph INT_KNOWLEDGE["Knowledge Representation"]
+                CAY[cayley<br/>Graph Database]
+                CHR[chromem-go<br/>Vector Store]
+                BAD[badger<br/>KV Storage]
+            end
+            
+            subgraph INT_SCHED["Scheduling & Orchestration"]
+                GCR[gocron<br/>Job Scheduler]
+                WM[watermill<br/>Event Streaming]
+            end
+            
+            subgraph INT_ML["Machine Learning"]
+                GOMLX[gomlx<br/>ML Framework]
+            end
+        end
+        
+        subgraph PROVIDERS["🔗 LLM PROVIDERS"]
+            ANTH[Anthropic Provider]
+            OAI[OpenAI Provider]
+            OR[OpenRouter Provider]
+            MPL[Multi-Provider LLM]
+        end
+        
+        subgraph PERSISTENCE["💾 PERSISTENCE LAYER"]
+            PSM[Persistent State Manager]
+            SUP[Supabase Persistence]
+            SUM[Self-Update Manager]
+        end
+    end
+
+    %% Core Internal Connections
+    AA --> UCL
+    AA --> TSC
+    UCL --> EBT
+    TSC --> EBT
+    
+    SOC --> CL
+    CL --> PCS
+    PCS --> TOM
+    
+    AWR --> AHB
+    AHB --> DA
+    DA --> IPS
+    
+    SLS --> WS
+    WS --> EDK
+    EDK --> GG
+    
+    %% Integration Connections to Core
+    LCI -.->|"Reasoning & Planning"| UCL
+    LCI -.->|"Agent Chains"| AA
+    
+    ERGO -.->|"Actor Concurrency"| TSC
+    ERGO -.->|"Message Passing"| SOC
+    
+    SL -.->|"State Transitions"| PCS
+    SL -.->|"Cognitive States"| CL
+    
+    CAY -.->|"Knowledge Graph"| EDK
+    CAY -.->|"Semantic Memory"| WS
+    
+    CHR -.->|"Vector Embeddings"| SLS
+    CHR -.->|"Similarity Search"| IPS
+    
+    BAD -.->|"Fast KV Store"| PSM
+    BAD -.->|"Cache Layer"| PCS
+    
+    GCR -.->|"Cognitive Scheduling"| EBT
+    GCR -.->|"Wake/Rest Cycles"| AWR
+    
+    WM -.->|"Event Bus"| AA
+    WM -.->|"Pub/Sub Events"| DA
+    
+    GOMLX -.->|"Neural Processing"| TSC
+    GOMLX -.->|"Pattern Learning"| SLS
+    
+    %% Provider Connections
+    MPL --> ANTH
+    MPL --> OAI
+    MPL --> OR
+    UCL --> MPL
+    
+    %% Persistence Connections
+    AA --> PSM
+    PSM --> SUP
+    AA --> SUM
+
+    %% Styling
+    classDef core fill:#2d3748,stroke:#4a5568,color:#fff
+    classDef integration fill:#2c5282,stroke:#3182ce,color:#fff
+    classDef provider fill:#553c9a,stroke:#805ad5,color:#fff
+    classDef persistence fill:#285e61,stroke:#38b2ac,color:#fff
+    
+    class AA,UCL,TSC,EBT,SOC,CL,PCS,TOM,AWR,AHB,DA,IPS,SLS,WS,EDK,GG core
+    class LCI,ERGO,SL,CAY,CHR,BAD,GCR,WM,GOMLX integration
+    class ANTH,OAI,OR,MPL provider
+    class PSM,SUP,SUM persistence
