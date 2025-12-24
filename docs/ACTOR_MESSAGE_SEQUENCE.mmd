@@ -1,0 +1,107 @@
+sequenceDiagram
+    autonumber
+    participant UCL as UnifiedCognitiveLoopV2
+    participant AS as ActorSupervisor
+    participant P as PerceptionActor<br/>(Phase Offset: 0°)
+    participant A as ActionActor<br/>(Phase Offset: 120°)
+    participant S as SimulationActor<br/>(Phase Offset: 240°)
+
+    rect rgb(240, 248, 255)
+        Note over UCL,S: Initialization Phase
+        UCL->>AS: Start()
+        AS->>P: Start()
+        AS->>A: Start()
+        AS->>S: Start()
+        P-->>AS: Started (perception_stream)
+        A-->>AS: Started (action_stream)
+        S-->>AS: Started (simulation_stream)
+        AS-->>UCL: All streams active
+    end
+
+    rect rgb(255, 250, 240)
+        Note over UCL,S: 12-Step Cognitive Cycle (Steps 1-4)
+        
+        Note over P: Step 1 (Triad 1)
+        P->>P: executeCognitiveStep()
+        P->>A: MsgTypePerception<br/>{step: 1, data: perceived}
+        P->>S: MsgTypePerception<br/>{step: 1, data: perceived}
+        
+        Note over A: Step 2 (Triad 2)
+        A->>A: executeCognitiveStep()
+        A->>P: MsgTypeAction<br/>{step: 2, data: action_result}
+        A->>S: MsgTypeAction<br/>{step: 2, data: action_result}
+        
+        Note over S: Step 3 (Triad 3)
+        S->>S: executeCognitiveStep()
+        S->>P: MsgTypeSimulation<br/>{step: 3, data: simulation}
+        S->>A: MsgTypeSimulation<br/>{step: 3, data: simulation}
+        
+        Note over P,S: Step 4 (Triad 4) - All streams sync
+        P->>A: MsgTypeSyncRequest
+        A-->>P: MsgTypeSyncResponse<br/>{state: StreamState}
+        A->>S: MsgTypeSyncRequest
+        S-->>A: MsgTypeSyncResponse<br/>{state: StreamState}
+    end
+
+    rect rgb(240, 255, 240)
+        Note over UCL,S: Inter-Stream Communication (Steps 5-8)
+        
+        Note over P: Step 5 (Triad 1)
+        P->>P: executeCognitiveStep()
+        P->>A: MsgTypePerception<br/>{step: 5, phase: triad_1}
+        P->>S: MsgTypePerception<br/>{step: 5, phase: triad_1}
+        
+        Note over A: Step 6 (Triad 2)
+        A->>A: executeCognitiveStep()
+        A->>P: MsgTypeAction<br/>{step: 6, phase: triad_2}
+        A->>S: MsgTypeAction<br/>{step: 6, phase: triad_2}
+        
+        Note over S: Step 7 (Triad 3)
+        S->>S: executeCognitiveStep()
+        S->>P: MsgTypeSimulation<br/>{step: 7, phase: triad_3}
+        S->>A: MsgTypeSimulation<br/>{step: 7, phase: triad_3}
+        
+        Note over P,S: Step 8 (Triad 4) - State Update
+        P->>A: MsgTypeStateUpdate<br/>{accumulated_data}
+        A->>S: MsgTypeStateUpdate<br/>{accumulated_data}
+        S->>P: MsgTypeStateUpdate<br/>{accumulated_data}
+    end
+
+    rect rgb(255, 240, 245)
+        Note over UCL,S: Emergence Detection (Steps 9-12)
+        
+        Note over P: Step 9 (Triad 1)
+        P->>P: executeCognitiveStep()
+        P->>P: detectEmergence()
+        
+        Note over A: Step 10 (Triad 2)
+        A->>A: executeCognitiveStep()
+        A->>A: detectEmergence()
+        
+        Note over S: Step 11 (Triad 3)
+        S->>S: executeCognitiveStep()
+        S->>S: detectEmergence()
+        Note over S: Emergence Detected!
+        S->>P: MsgTypeEmergence<br/>{pattern, strength: 0.55}
+        S->>A: MsgTypeEmergence<br/>{pattern, strength: 0.55}
+        S->>AS: onEmergence callback
+        AS->>UCL: EventEmergenceDetected
+        
+        Note over P,S: Step 12 (Triad 4) - Cycle Complete
+        P->>AS: ContributeToGestalt()
+        A->>AS: ContributeToGestalt()
+        S->>AS: ContributeToGestalt()
+        AS->>UCL: Unified Gestalt
+    end
+
+    rect rgb(245, 245, 245)
+        Note over UCL,S: Shutdown Phase
+        UCL->>AS: Stop()
+        AS->>P: Stop()
+        AS->>A: Stop()
+        AS->>S: Stop()
+        P-->>AS: Stopped
+        A-->>AS: Stopped
+        S-->>AS: Stopped
+        AS-->>UCL: All streams stopped
+    end
