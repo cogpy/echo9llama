@@ -1,0 +1,20 @@
+services:
+  server:
+    image: golang:1.25
+    restart: unless-stopped
+    volumes:
+    - .:/app
+    - $GOPATH/pkg/mod:/go/pkg/mod
+    working_dir: /app
+    command: >
+      /bin/sh -c "go install github.com/ThreeDotsLabs/watermill/tools/mill@latest &&
+                  go run main.go"
+
+  kafka:
+    image: bitnami/kafka:3.5.0
+    restart: unless-stopped
+    environment:
+      ALLOW_PLAINTEXT_LISTENER: yes
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
