@@ -681,3 +681,19 @@ func (edi *EchoDreamKnowledgeIntegration) AddMemory(content string, importance f
 	return mem.ID
 }
 
+// BeginDreamCycle starts a dream cycle for knowledge consolidation
+func (edi *EchoDreamKnowledgeIntegration) BeginDreamCycle() {
+	edi.mu.Lock()
+	defer edi.mu.Unlock()
+	edi.dreamCycleActive = true
+	edi.dreamPhase = PhaseREM
+}
+
+// EndDreamCycle ends the dream cycle and returns wisdom insights
+func (edi *EchoDreamKnowledgeIntegration) EndDreamCycle() []WisdomInsight {
+	edi.mu.Lock()
+	defer edi.mu.Unlock()
+	edi.dreamCycleActive = false
+	edi.dreamPhase = PhaseWaking
+	return edi.wisdomInsights
+}

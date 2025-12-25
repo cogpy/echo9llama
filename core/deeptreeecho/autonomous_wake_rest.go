@@ -382,3 +382,49 @@ func (m *AutonomousWakeRestManager) IsDreaming() bool {
 	return m.currentState == StateDreaming
 }
 
+
+// ShouldTransitionToRest determines if it's time to rest
+func (m *AutonomousWakeRestManager) ShouldTransitionToRest() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	// Check if currently awake
+	if m.currentState != StateAwake {
+		return false
+	}
+	
+	// Check if fatigue threshold exceeded
+	if m.fatigueLevel > m.restThreshold {
+		return true
+	}
+	
+	// Check if maximum wake duration exceeded
+	if time.Since(m.stateStartTime) > m.maxWakeDuration {
+		return true
+	}
+	
+	return false
+}
+
+// ShouldTransitionToWake determines if it's time to wake
+func (m *AutonomousWakeRestManager) ShouldTransitionToWake() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	// Check if currently resting or dreaming
+	if m.currentState != StateResting && m.currentState != StateDreaming {
+		return false
+	}
+	
+	// Check if fatigue is low enough
+	if m.fatigueLevel < m.wakeThreshold {
+		return true
+	}
+	
+	// Check if minimum rest duration has passed
+	if time.Since(m.stateStartTime) > m.minRestDuration {
+		return true
+	}
+	
+	return false
+}

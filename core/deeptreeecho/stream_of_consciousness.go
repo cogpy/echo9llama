@@ -550,3 +550,38 @@ func (soc *StreamOfConsciousness) GetMetrics() map[string]interface{} {
 		"thought_interval":  soc.thoughtInterval.String(),
 	}
 }
+
+// Pause pauses thought generation
+func (soc *StreamOfConsciousness) Pause() {
+	soc.mu.Lock()
+	defer soc.mu.Unlock()
+	soc.awake = false
+}
+
+// Resume resumes thought generation
+func (soc *StreamOfConsciousness) Resume() {
+	soc.mu.Lock()
+	defer soc.mu.Unlock()
+	soc.awake = true
+}
+
+// IsRunning returns whether the stream is running
+func (soc *StreamOfConsciousness) IsRunning() bool {
+	soc.mu.RLock()
+	defer soc.mu.RUnlock()
+	return soc.running
+}
+
+// SetThoughtInterval sets the thought generation interval
+func (soc *StreamOfConsciousness) SetThoughtInterval(interval time.Duration) {
+	soc.mu.Lock()
+	defer soc.mu.Unlock()
+	soc.thoughtInterval = interval
+}
+
+// GetAllThoughts returns all thoughts
+func (soc *StreamOfConsciousness) GetAllThoughts() []AutonomousThought {
+	soc.mu.RLock()
+	defer soc.mu.RUnlock()
+	return soc.thoughts
+}

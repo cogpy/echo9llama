@@ -89,7 +89,7 @@ type StreamState struct {
 	Number     int       // e.g., 4, 8
 	Polarity   Polarity  // E (Expansion) or R (Reduction)
 	Timestamp  time.Time
-	Thought    *consciousness.Thought
+	Thought    *consciousness.LLMThought
 }
 
 // Polarity represents the expansion/reduction state.
@@ -256,11 +256,15 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 	thought, err := s.thoughtEngine.GenerateAutonomousThought(ctx, thoughtType)
 	if err != nil {
 		// Log error but don't fail the transition
-		thought = &consciousness.Thought{
+		// Create fallback thought that matches the expected Thought type
+		thought = &consciousness.LLMThought{
 			ID:        fmt.Sprintf("%s_step_%d_fallback", s.name, cycleStep),
 			Type:      thoughtType,
 			Content:   fmt.Sprintf("[%s] Processing state %s", s.function, nextState.Label),
 			Timestamp: time.Now(),
+			Emotion:   "neutral",
+			Depth:     0.5,
+			Tags:      []string{},
 		}
 	}
 
@@ -279,7 +283,7 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 }
 
 // applyConvolution modifies a thought based on cross-stream awareness (System 5 principle).
-func (s *ConsciousnessStream) applyConvolution(thought *consciousness.Thought, crossState *CrossStreamState) *consciousness.Thought {
+func (s *ConsciousnessStream) applyConvolution(thought *consciousness.LLMThought, crossState *CrossStreamState) *consciousness.LLMThought {
 	crossState.mu.RLock()
 	defer crossState.mu.RUnlock()
 

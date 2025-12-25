@@ -816,3 +816,57 @@ func parseFloat(s string) float64 {
 
 	return clampFloat(result, 0.0, 1.0)
 }
+
+// WisdomInsightFull represents a full wisdom insight with depth
+type WisdomInsightFull struct {
+	Insight string
+	Depth   float64
+}
+
+// SynthesizeWisdom synthesizes wisdom from a collection of thoughts
+func (ws *WisdomSynthesis) SynthesizeWisdom(ctx context.Context, thoughts []string) (*WisdomInsightFull, error) {
+	ws.mu.Lock()
+	defer ws.mu.Unlock()
+	
+	if len(thoughts) < 3 {
+		return nil, fmt.Errorf("need at least 3 thoughts to synthesize wisdom")
+	}
+	
+	// Build synthesis prompt
+	thoughtsText := ""
+	for i, thought := range thoughts {
+		if i < 10 {  // Limit to 10 most recent
+			thoughtsText += fmt.Sprintf("- %s\n", thought)
+		}
+	}
+	
+	prompt := fmt.Sprintf(`Synthesize wisdom from these thoughts and experiences:
+
+%s
+
+Extract a single profound wisdom principle that emerges from these reflections. Be concise and insightful.`, thoughtsText)
+	
+	opts := llm.GenerateOptions{
+		Temperature:  0.7,
+		MaxTokens:    150,
+	}
+	
+	fullPrompt := "[System: You are a wisdom synthesis system extracting deep insights from experiences.]\n\n" + prompt
+	result, err := ws.llmProvider.Generate(ctx, fullPrompt, opts)
+	if err != nil {
+		return nil, fmt.Errorf("wisdom synthesis failed: %w", err)
+	}
+	
+	// Calculate depth based on length and complexity (simplified)
+	depth := 0.5 + float64(len(result))/500.0
+	if depth > 1.0 {
+		depth = 1.0
+	}
+	
+	ws.totalPrinciplesSynthesized++
+	
+	return &WisdomInsightFull{
+		Insight: result,
+		Depth:   depth,
+	}, nil
+}

@@ -851,3 +851,24 @@ func (sched *EchobeatsScheduler) GetCompleteCycleMetrics() CycleMetrics {
 		Timestamp:      time.Now(),
 	}
 }
+
+// Pause pauses the scheduler
+func (sched *EchobeatsScheduler) Pause() {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	// Pause scheduler operations
+}
+
+// Resume resumes the scheduler
+func (sched *EchobeatsScheduler) Resume() {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	// Resume scheduler operations
+}
+
+// IsRunning returns whether the scheduler is running
+func (sched *EchobeatsScheduler) IsRunning() bool {
+	sched.mu.RLock()
+	defer sched.mu.RUnlock()
+	return sched.running
+}

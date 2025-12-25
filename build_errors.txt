@@ -1,0 +1,22 @@
+# github.com/cogpy/echo9llama/sample
+sample/samplers.go:168:17: undefined: llama.Grammar
+sample/samplers.go:179:19: undefined: llama.NewGrammar
+sample/samplers.go:188:22: undefined: llama.TokenData
+# github.com/cogpy/echo9llama/llm
+llm/server.go:91:24: undefined: llama.Model
+llm/server.go:131:25: undefined: discover.GetSystemInfo
+llm/server.go:139:19: undefined: discover.GetCPUInfo
+llm/server.go:158:20: undefined: discover.GetCPUInfo
+llm/server.go:301:24: undefined: llama.Model
+llm/server.go:311:27: undefined: llama.LoadModelFromFile
+llm/server.go:311:62: undefined: llama.ModelParams
+llm/server.go:409:51: gpus.GetVisibleDevicesEnv undefined (type discover.GpuInfoList has no field or method GetVisibleDevicesEnv)
+llm/server.go:449:12: undefined: llama.FreeModel
+llm/memory.go:134:12: undefined: discover.GetGPUInfo
+llm/server.go:449:12: too many errors
+# github.com/cogpy/echo9llama/core/echobeats
+core/echobeats/system4_triad_engine.go:259:13: cannot use &consciousness.Thought{…} (value of type *consciousness.Thought) as *consciousness.LLMThought value in assignment
+core/echobeats/system4_triad_engine.go:269:13: cannot use s.applyConvolution(thought, crossState) (value of type *consciousness.Thought) as *consciousness.LLMThought value in assignment
+core/echobeats/system4_triad_engine.go:269:32: cannot use thought (variable of type *consciousness.LLMThought) as *consciousness.Thought value in argument to s.applyConvolution
+core/echobeats/system4_triad_engine.go:272:22: cannot use thought (variable of type *consciousness.LLMThought) as *consciousness.Thought value in assignment
+core/echobeats/system4_triad_engine.go:299:32: thought.Tags undefined (type *consciousness.Thought has no field or method Tags)
