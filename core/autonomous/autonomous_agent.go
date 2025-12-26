@@ -36,6 +36,11 @@ type AutonomousAgent struct {
 	wisdomTracker       *wisdom.SevenDimensionalWisdom
 	coherenceTracker    *echoself.CoherenceTracker
 	
+	// Iteration 014 enhancements
+	executionLoop       *AutonomousExecutionLoop
+	sleepWakeMachine    interface{} // *echodream.SleepWakeStateMachine
+	sys6Integration     interface{} // *deeptreeecho.Sys6CognitiveIntegration
+	
 	// LLM provider
 	llmProvider         llm.LLMProvider
 	
@@ -134,6 +139,18 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 	// Echoself coherence tracker (Echo9)
 	agent.coherenceTracker = echoself.NewCoherenceTracker(agent.coreValues)
 	fmt.Println("   ✓ Echoself coherence tracker initialized")
+	
+	// Iteration 014: Autonomous execution loop
+	agent.executionLoop = NewAutonomousExecutionLoop(agent)
+	fmt.Println("   ✓ Autonomous execution loop initialized")
+	
+	// Iteration 014: Sleep/wake state machine (from echodream)
+	// agent.sleepWakeMachine = echodream.NewSleepWakeStateMachine()
+	// fmt.Println("   ✓ Sleep/wake state machine initialized")
+	
+	// Iteration 014: Sys6 cognitive integration
+	// agent.sys6Integration = deeptreeecho.NewSys6CognitiveIntegration(sys6Engine)
+	// fmt.Println("   ✓ Sys6 cognitive integration initialized")
 }
 
 // wireSubsystems connects subsystems together
@@ -198,6 +215,11 @@ func (agent *AutonomousAgent) Start() error {
 		return fmt.Errorf("failed to start goal orchestrator: %w", err)
 	}
 	
+	// 5. Start autonomous execution loop (Iteration 014)
+	if err := agent.executionLoop.Start(); err != nil {
+		return fmt.Errorf("failed to start execution loop: %w", err)
+	}
+	
 	// Start monitoring
 	go agent.monitoringLoop()
 	
@@ -220,6 +242,9 @@ func (agent *AutonomousAgent) Stop() error {
 	agent.cancel()
 	
 	// Stop subsystems in reverse order
+	
+	// Stop execution loop first
+	agent.executionLoop.Stop()
 	
 	if err := agent.goalOrchestrator.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping goal orchestrator: %v\n", err)
