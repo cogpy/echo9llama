@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 package sample
 
 import (
@@ -11,11 +14,6 @@ import (
 )
 
 // token represents information about a single token during sampling
-type token struct {
-	id    int32   // The token's unique identifier
-	value float32 // The raw logit or probability from the model
-}
-
 type Sampler struct {
 	rng         *rand.Rand
 	topK        int

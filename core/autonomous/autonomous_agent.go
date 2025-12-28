@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/cogpy/echo9llama/core/consciousness"
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echobeats"
+	"github.com/cogpy/echo9llama/core/goals"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/echoself"
 	"github.com/cogpy/echo9llama/core/llm"
@@ -28,9 +30,9 @@ type AutonomousAgent struct {
 	// Core subsystems
 	echoBeatsScheduler  *echobeats.EnhancedScheduler
 	wakeRestManager     *deeptreeecho.AutonomousWakeRestManager
-	streamOfConsc       *consciousness.StreamOfConsciousness
+	streamOfConsc       *deeptreeecho.StreamOfConsciousness
 	dreamCycle          *echodream.DreamCycleIntegration
-	goalOrchestrator    *deeptreeecho.GoalOrchestrator
+	goalOrchestrator    *goals.GoalOrchestrator
 	
 	// Echo9 cognitive enhancements
 	wisdomTracker       *wisdom.SevenDimensionalWisdom
@@ -113,9 +115,8 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 	fmt.Println("   ✓ Wake/Rest manager initialized")
 	
 	// Stream-of-consciousness (will use simplified LLM provider)
-	agent.streamOfConsc = consciousness.NewStreamOfConsciousness(
-		&SimpleLLMProvider{provider: agent.llmProvider},
-		"/tmp/stream_of_consciousness.json",
+	agent.streamOfConsc = deeptreeecho.NewStreamOfConsciousness(
+		agent.llmProvider,
 	)
 	fmt.Println("   ✓ Stream-of-consciousness initialized")
 	
@@ -124,11 +125,14 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 	fmt.Println("   ✓ EchoDream consolidation initialized")
 	
 	// Goal orchestrator
-	agent.goalOrchestrator = deeptreeecho.NewGoalOrchestrator(
-		agent.llmProvider,
-		agent.identity,
-		agent.coreValues,
-		agent.wisdomDomains,
+	identityKernel := map[string]interface{}{
+		"identity":      agent.identity,
+		"core_values":   agent.coreValues,
+		"wisdom_domains": agent.wisdomDomains,
+	}
+	agent.goalOrchestrator = goals.NewGoalOrchestrator(
+		identityKernel,
+		"/tmp/goals.json",
 	)
 	fmt.Println("   ✓ Goal orchestrator initialized")
 	
@@ -185,13 +189,13 @@ func (agent *AutonomousAgent) Start() error {
 	agent.startTime = time.Now()
 	agent.mu.Unlock()
 	
-	fmt.Println("\n" + "="*60)
+	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🌳 Deep Tree Echo: Autonomous Agent Starting")
-	fmt.Println("="*60)
+	fmt.Println(strings.Repeat("=", 60))
 	fmt.Printf("Identity: %s\n", agent.identity)
 	fmt.Printf("Core Values: %v\n", agent.coreValues)
 	fmt.Printf("Wisdom Domains: %v\n", agent.wisdomDomains)
-	fmt.Println("="*60 + "\n")
+	fmt.Println(strings.Repeat("=", 60) + "\n")
 	
 	// Start all subsystems in order
 	
@@ -306,9 +310,9 @@ func (agent *AutonomousAgent) printStatus() {
 	uptime := time.Since(agent.startTime)
 	agent.mu.RUnlock()
 	
-	fmt.Println("\n" + "─"*60)
+	fmt.Println("\n" + strings.Repeat("─", 60))
 	fmt.Printf("📊 Deep Tree Echo Status (uptime: %s)\n", uptime.Round(time.Second))
-	fmt.Println("─"*60)
+	fmt.Println(strings.Repeat("─", 60))
 	
 	// Wake/Rest state
 	wakeRestMetrics := agent.wakeRestManager.GetMetrics()
@@ -342,7 +346,7 @@ func (agent *AutonomousAgent) printStatus() {
 	fmt.Printf("Identity: Coherence=%.1f%% | Signature=%s\n",
 		identityCoherence*100, agent.coherenceTracker.GetIdentitySignature()[:16]+"...")
 	
-	fmt.Println("─"*60 + "\n")
+	fmt.Println(strings.Repeat("─", 60) + "\n")
 }
 
 // Callback handlers
@@ -410,12 +414,16 @@ type SimpleLLMProvider struct {
 	provider llm.LLMProvider
 }
 
-func (p *SimpleLLMProvider) GenerateThought(prompt string, context map[string]interface{}) (string, error) {
+func (p *SimpleLLMProvider) GenerateThought(prompt string, contextData map[string]interface{}) (string, error) {
 	opts := llm.GenerateOptions{
 		Temperature: 0.8,
 		MaxTokens:   100,
 	}
-	return p.provider.Generate(context["ctx"].(context.Context), prompt, opts)
+	ctx := context.Background()
+	if ctxVal, ok := contextData["ctx"].(context.Context); ok {
+		ctx = ctxVal
+	}
+	return p.provider.Generate(ctx, prompt, opts)
 }
 
 func (p *SimpleLLMProvider) GenerateInsight(thoughts []string) (string, error) {
@@ -427,8 +435,8 @@ func (p *SimpleLLMProvider) GenerateInsight(thoughts []string) (string, error) {
 	return p.provider.Generate(context.Background(), prompt, opts)
 }
 
-func (p *SimpleLLMProvider) GenerateQuestion(context string) (string, error) {
-	prompt := fmt.Sprintf("Generate a self-directed question based on: %s", context)
+func (p *SimpleLLMProvider) GenerateQuestion(contextStr string) (string, error) {
+	prompt := fmt.Sprintf("Generate a self-directed question based on: %s", contextStr)
 	opts := llm.GenerateOptions{
 		Temperature: 0.9,
 		MaxTokens:   80,

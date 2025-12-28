@@ -25,7 +25,7 @@ type AgentOrchestrator struct {
 
 	// Core subsystems
 	wakeRestManager *deeptreeecho.AutonomousWakeRestManager
-	consciousness   *consciousness.StreamOfConsciousness
+	consciousness   *deeptreeecho.StreamOfConsciousness
 	scheduler       *echobeats.EchoBeats
 	dreamSystem     *echodream.DreamCycleIntegration
 	persistentState *deeptreeecho.PersistentConsciousnessState
@@ -118,10 +118,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	llmAdapter := &ConsciousnessLLMAdapter{
 		provider: llmProvider,
 	}
-	consciousnessStream := consciousness.NewStreamOfConsciousness(
-		llmAdapter,
-		config.StateDirectory+"/consciousness.json",
-	)
+	consciousness := deeptreeecho.NewStreamOfConsciousness(llmAdapter)
 
 	// Initialize echobeats scheduler
 	scheduler := echobeats.NewEchoBeats()
