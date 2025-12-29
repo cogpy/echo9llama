@@ -428,3 +428,51 @@ func (m *AutonomousWakeRestManager) ShouldTransitionToWake() bool {
 	
 	return false
 }
+
+// ShouldSleep returns true if the agent should transition to sleep
+func (m *AutonomousWakeRestManager) ShouldSleep() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	// Check if we're already resting or dreaming
+	if m.currentState != StateAwake {
+		return false
+	}
+	
+	// Check fatigue level
+	if m.fatigueLevel >= m.restThreshold {
+		return true
+	}
+	
+	// Check if we've been awake for too long
+	awakeDuration := time.Since(m.stateStartTime)
+	if awakeDuration >= m.maxWakeDuration {
+		return true
+	}
+	
+	return false
+}
+
+// ShouldWake returns true if the agent should transition to wake
+func (m *AutonomousWakeRestManager) ShouldWake() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	
+	// Check if we're already awake
+	if m.currentState == StateAwake {
+		return false
+	}
+	
+	// Check fatigue level (should be low enough to wake)
+	if m.fatigueLevel <= m.wakeThreshold {
+		return true
+	}
+	
+	// Check if we've rested for minimum duration
+	restDuration := time.Since(m.stateStartTime)
+	if restDuration >= m.minRestDuration {
+		return true
+	}
+	
+	return false
+}

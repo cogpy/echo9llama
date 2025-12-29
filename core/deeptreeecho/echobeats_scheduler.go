@@ -872,3 +872,17 @@ func (sched *EchobeatsScheduler) IsRunning() bool {
 	defer sched.mu.RUnlock()
 	return sched.running
 }
+
+// SetCallbacks sets the callback functions for echobeats events
+func (sched *EchobeatsScheduler) SetCallbacks(
+	onCycleComplete func(metrics CycleMetrics),
+	onGoalAchieved func(goal ScheduledGoal),
+	onEmergenceDetected func(pattern string, strength float64),
+) {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	
+	sched.onCycleComplete = onCycleComplete
+	sched.onGoalAchieved = onGoalAchieved
+	sched.onEmergenceDetected = onEmergenceDetected
+}

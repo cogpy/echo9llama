@@ -256,21 +256,22 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 	thought, err := s.thoughtEngine.GenerateAutonomousThought(ctx, thoughtType)
 	if err != nil {
 		// Log error but don't fail the transition
-		// Create fallback thought that matches the expected Thought type
-		thought = &consciousness.LLMThought{
+			// Create fallback thought using UnifiedThought
+			thought = consciousness.FromLegacyLLMThought(&consciousness.LLMThought{
 			ID:        fmt.Sprintf("%s_step_%d_fallback", s.name, cycleStep),
 			Type:      thoughtType,
 			Content:   fmt.Sprintf("[%s] Processing state %s", s.function, nextState.Label),
 			Timestamp: time.Now(),
 			Emotion:   "neutral",
 			Depth:     0.5,
-			Tags:      []string{},
-		}
+				Tags:      []string{},
+			}).ToLegacyLLMThought()
 	}
 
 	// If convolution is enabled (System 5 logic), modify the thought based on cross-stream awareness
 	if enableConvolution {
-		thought = s.applyConvolution(thought, crossState)
+		unified := consciousness.FromLegacyLLMThought(thought)
+		thought = s.applyConvolutionUnified(unified, crossState).ToLegacyLLMThought()
 	}
 
 	nextState.Thought = thought
@@ -282,8 +283,8 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 	return nil
 }
 
-// applyConvolution modifies a thought based on cross-stream awareness (System 5 principle).
-func (s *ConsciousnessStream) applyConvolution(thought *consciousness.LLMThought, crossState *CrossStreamState) *consciousness.LLMThought {
+// applyConvolutionUnified modifies a thought based on cross-stream awareness (System 5 principle).
+func (s *ConsciousnessStream) applyConvolutionUnified(thought *consciousness.UnifiedThought, crossState *CrossStreamState) *consciousness.UnifiedThought {
 	crossState.mu.RLock()
 	defer crossState.mu.RUnlock()
 
