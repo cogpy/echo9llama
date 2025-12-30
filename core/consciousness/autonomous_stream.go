@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
@@ -20,7 +19,8 @@ type AutonomousStream struct {
 	
 	// Core components
 	llmProvider       llm.LLMProvider
-	baseStream        *deeptreeecho.StreamOfConsciousness
+	// baseStream removed to avoid circular import
+	// Use composition or interfaces instead
 	
 	// Autonomous thought generation
 	thoughtTriggers   []ThoughtTrigger
@@ -55,13 +55,12 @@ type ThoughtTrigger struct {
 func NewAutonomousStream(llmProvider llm.LLMProvider, persistPath string) *AutonomousStream {
 	ctx, cancel := context.WithCancel(context.Background())
 	
-	baseStream := deeptreeecho.NewStreamOfConsciousness(llmProvider)
+	// baseStream removed to avoid circular import
 	
 	as := &AutonomousStream{
 		ctx:              ctx,
 		cancel:           cancel,
 		llmProvider:      llmProvider,
-		baseStream:       baseStream,
 		mentalWandering:  true,
 		curiosityLevel:   0.7,
 		thoughtInterval:  30 * time.Second,
@@ -127,10 +126,7 @@ func (as *AutonomousStream) Start() error {
 	as.lastThought = time.Now()
 	as.mu.Unlock()
 	
-	// Start base stream
-	if err := as.baseStream.Start(); err != nil {
-		return fmt.Errorf("failed to start base stream: %w", err)
-	}
+	// Base stream start removed to avoid circular import
 	
 	// Start autonomous thought loop
 	go as.autonomousThoughtLoop()
@@ -151,10 +147,7 @@ func (as *AutonomousStream) Stop() error {
 	as.running = false
 	as.cancel()
 	
-	// Stop base stream
-	if err := as.baseStream.Stop(); err != nil {
-		return fmt.Errorf("failed to stop base stream: %w", err)
-	}
+	// Base stream stop removed to avoid circular import
 	
 	fmt.Println("🧠 Autonomous Stream-of-Consciousness: Stopped")
 	return nil

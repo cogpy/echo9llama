@@ -22,7 +22,7 @@ type AnthropicProvider struct {
 // NewAnthropicProvider creates a new Anthropic provider
 func NewAnthropicProvider(model string) *AnthropicProvider {
 	if model == "" {
-		model = "claude-3-sonnet-20240229" // Claude 3 Sonnet
+		model = "claude-sonnet-4-5-20250929" // Claude 4.5 Sonnet (latest)
 	}
 	
 	return &AnthropicProvider{
@@ -92,7 +92,7 @@ func (ap *AnthropicProvider) Generate(ctx context.Context, prompt string, opts G
 		Model:       ap.model,
 		MaxTokens:   opts.MaxTokens,
 		Temperature: opts.Temperature,
-		TopP:        opts.TopP,
+		// TopP omitted - Claude 4.5 doesn't allow both temperature and top_p
 		Messages: []anthropicMessage{
 			{
 				Role:    "user",

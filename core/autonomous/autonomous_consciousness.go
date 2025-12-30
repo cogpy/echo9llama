@@ -82,18 +82,18 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 	
 	// Add Anthropic provider for deep reasoning
 	if config.UseAnthropicForDeep {
-		anthropicProvider, err := llm.NewAnthropicProvider()
-		if err == nil {
-			llmManager.AddProvider("anthropic", anthropicProvider)
-			llmManager.SetPreferredProvider("anthropic")
+		anthropicProvider := llm.NewAnthropicProvider("")
+		if anthropicProvider.Available() {
+			llmManager.RegisterProvider(anthropicProvider)
+			llmManager.SetFallbackChain([]string{"anthropic"})
 		}
 	}
 	
 	// Add OpenRouter provider for diverse models
 	if config.UseOpenRouterForDiv {
-		openrouterProvider, err := llm.NewOpenRouterProvider()
-		if err == nil {
-			llmManager.AddProvider("openrouter", openrouterProvider)
+		openrouterProvider := llm.NewOpenRouterProvider("")
+		if openrouterProvider.Available() {
+			llmManager.RegisterProvider(openrouterProvider)
 		}
 	}
 	
