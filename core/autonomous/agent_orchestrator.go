@@ -10,6 +10,7 @@ import (
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echobeats"
 	"github.com/cogpy/echo9llama/core/echodream"
+	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/cogpy/echo9llama/core/memory"
 )
 
@@ -118,7 +119,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	llmAdapter := &ConsciousnessLLMAdapter{
 		provider: llmProvider,
 	}
-	consciousness := deeptreeecho.NewStreamOfConsciousness(llmAdapter)
+	consciousnessStream := deeptreeecho.NewStreamOfConsciousness(llmAdapter)
 
 	// Initialize echobeats scheduler
 	scheduler := echobeats.NewEchoBeats()
@@ -138,7 +139,6 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 		)
 		discussionManager = echobeats.NewDiscussionManager(
 			interestSystem,
-			config.StateDirectory+"/discussions.json",
 		)
 	}
 
@@ -500,6 +500,32 @@ func (a *ConsciousnessLLMAdapter) GenerateQuestion(contextStr string) (string, e
 	prompt := fmt.Sprintf("Based on this context, generate a thoughtful question for self-inquiry:\n%s", contextStr)
 	ctx := context.Background()
 	return a.provider.GenerateThought(ctx, prompt)
+}
+
+func (a *ConsciousnessLLMAdapter) Available() bool {
+	return a.provider != nil && a.provider.IsAvailable()
+}
+
+func (a *ConsciousnessLLMAdapter) Name() string {
+	if a.provider != nil {
+		return "ConsciousnessAdapter(MultiProvider)"
+	}
+	return "ConsciousnessAdapter(none)"
+}
+
+func (a *ConsciousnessLLMAdapter) MaxTokens() int {
+	return 4096
+}
+
+func (a *ConsciousnessLLMAdapter) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
+	if a.provider == nil || !a.provider.IsAvailable() {
+		return "", fmt.Errorf("no LLM provider available")
+	}
+	return a.provider.GenerateThought(ctx, prompt)
+}
+
+func (a *ConsciousnessLLMAdapter) StreamGenerate(ctx context.Context, prompt string, opts llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
+	return nil, fmt.Errorf("streaming not implemented for consciousness adapter")
 }
 
 // PrintDetailedStatus prints a detailed status report

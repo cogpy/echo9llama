@@ -102,8 +102,11 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 	
 	// Initialize other subsystems
 	dreamSystem := echodream.NewDreamSystem()
-	goalOrchestrator := goals.NewGoalOrchestrator()
-	memorySystem := memory.NewHypergraphMemory()
+	identityKernel := make(map[string]interface{})
+	identityKernel["name"] = config.IdentityContext
+	identityKernel["purpose"] = "wisdom cultivation"
+	goalOrchestrator := goals.NewGoalOrchestrator(identityKernel, "./echo_goals")
+	memorySystem := memory.NewHypergraphMemory(nil)
 	
 	ac := &AutonomousConsciousness{
 		ctx:              ctx,
@@ -212,18 +215,30 @@ func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 			count := ac.thoughtCount
 			ac.mu.Unlock()
 			
-			// Display thought
-			ac.displayThought(thought, count)
-			
-			// Stream thought
-			select {
-			case ac.thoughtStream <- thought:
-			default:
-				// Channel full, skip
-			}
-			
-			// Store in memory
-			ac.memorySystem.StoreThought(thought)
+				// Convert LLMThought to Thought
+				convertedThought := &consciousness.Thought{
+					ID:            thought.ID,
+					Content:       thought.Content,
+					Type:          consciousness.ThoughtType(thought.Type),
+					Timestamp:     thought.Timestamp,
+					Relevance:     thought.Depth,
+					EmotionalTone: thought.Emotion,
+					TriggeredBy:   "autonomous",
+					LeadsTo:       make([]string, 0),
+				}
+				
+				// Display thought
+				ac.displayThought(convertedThought, count)
+				
+				// Stream thought
+				select {
+				case ac.thoughtStream <- convertedThought:
+				default:
+					// Channel full, skip
+				}
+				
+					// Store in memory (TODO: implement StoreThought method)
+					// ac.memorySystem.StoreThought(convertedThought)
 		}
 	}
 }
@@ -360,9 +375,10 @@ func (ac *AutonomousConsciousness) displayThought(thought *consciousness.Thought
 		thought.Type,
 		thought.Content)
 	
-	if len(thought.Tags) > 0 {
-		fmt.Printf("   🏷️  Tags: %v\n", thought.Tags)
-	}
+	// Tags not available in Thought type
+	// if len(thought.Tags) > 0 {
+	// 	fmt.Printf("   🏷️  Tags: %v\n", thought.Tags)
+	// }
 }
 
 // getThoughtEmoji returns emoji for thought type
