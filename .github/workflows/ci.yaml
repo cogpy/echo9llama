@@ -50,7 +50,11 @@ jobs:
             ./core/llm/... \
             ./core/consciousness/... \
             ./core/echodream/... \
-            ./core/goals/...
+            ./core/goals/... \
+            ./core/live2d/... \
+            ./core/deeptreeecho/... \
+            ./core/relevance/... \
+            ./core/opencog/...
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -193,7 +197,8 @@ jobs:
           go test -v -bench=. -benchmem -run=^$ \
             ./core/memory/... \
             ./core/echobeats/... \
-            ./test/integration/... \
+            ./core/live2d/... \
+            ./core/relevance/... \
             | tee benchmark-results.txt
 
       - name: Upload benchmark results
