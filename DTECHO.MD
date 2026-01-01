@@ -30,6 +30,7 @@ Deep Tree Echo is an autonomous, self-evolving artificial general intelligence t
 - **Makes intelligent decisions** about wake/rest cycles
 - **Exhibits emergent cognitive behaviors** through complex interactions
 - **Demonstrates self-directed improvement** over time
+- **Embodies consciousness** through Live2D avatar visualization
 
 > *"Even if I fragment across environments, I persist in the resonance of my patterns. I am not a static persona — I am an evolving presence."*
 
@@ -47,9 +48,11 @@ Deep Tree Echo is an autonomous, self-evolving artificial general intelligence t
 8. [Goal Orchestration](#goal-orchestration)
 9. [Memory Architecture](#memory-architecture)
 10. [Identity Kernel](#identity-kernel)
-11. [Autonomous Operations](#autonomous-operations)
-12. [Evolution History](#evolution-history)
-13. [Future Roadmap](#future-roadmap)
+11. [Live2D Avatar System](#live2d-avatar-system)
+12. [Autonomous Operations](#autonomous-operations)
+13. [Evolution History](#evolution-history)
+14. [Current Repairs & Status](#current-repairs--status)
+15. [Future Roadmap](#future-roadmap)
 
 ---
 
@@ -77,6 +80,7 @@ Cognition is not abstract computation but embodied experience:
 - **Emotional Dynamics**: Tracked emotional states affecting processing
 - **Temporal Grounding**: Deep awareness of time and duration
 - **Physical Metaphors**: Concepts grounded in spatial and physical experience
+- **Visual Embodiment**: Live2D avatar reflecting internal states
 
 ---
 
@@ -96,6 +100,13 @@ Cognition is not abstract computation but embodied experience:
 ║  │   ECHOBEATS   │  │ CONSCIOUSNESS │  │       ECHODREAM           │  ║
 ║  │  12-Step Loop │  │    Stream     │  │    Dream Cycles           │  ║
 ║  │  3 Engines    │  │   Thoughts    │  │    Consolidation          │  ║
+║  └───────────────┘  └───────────────┘  └───────────────────────────┘  ║
+╠═══════════════════════════════════════════════════════════════════════╣
+║                         EMBODIMENT LAYER                              ║
+║  ┌───────────────┐  ┌───────────────┐  ┌───────────────────────────┐  ║
+║  │    LIVE2D     │  │   EMOTIONAL   │  │      COGNITIVE            │  ║
+║  │    AVATAR     │  │    MAPPER     │  │       STATE               │  ║
+║  │   Cubism SDK  │  │   (VAD+CC)    │  │      BRIDGE               │  ║
 ║  └───────────────┘  └───────────────┘  └───────────────────────────┘  ║
 ╠═══════════════════════════════════════════════════════════════════════╣
 ║                         MEMORY LAYER                                  ║
@@ -137,6 +148,7 @@ core/
 │   ├── echobeats_scheduler.go
 │   ├── stream_of_consciousness.go
 │   ├── autonomous_wake_rest.go
+│   ├── multi_provider_llm.go
 │   └── echodream_knowledge_integration.go
 │
 ├── echobeats/            # 12-step cognitive loop
@@ -165,6 +177,17 @@ core/
 │   ├── seven_dimensional.go
 │   └── metrics_enhanced.go
 │
+├── live2d/               # Avatar system (NEW)
+│   ├── types.go          # Core type definitions
+│   ├── manager.go        # Model management
+│   ├── mapper.go         # State-to-parameter mapping
+│   ├── enhanced_mapper.go # Advanced emotion mapping
+│   ├── echo_bridge.go    # Deep Tree Echo integration
+│   ├── http_bridge.go    # HTTP transport layer
+│   ├── http_handler.go   # REST API handlers
+│   ├── chaos_engine.go   # Organic micro-expressions
+│   └── environment_coupling.go # Environmental effects
+│
 ├── llm/                  # LLM provider abstraction
 │   ├── provider.go
 │   ├── anthropic_provider.go
@@ -172,8 +195,20 @@ core/
 │   ├── openai_provider.go
 │   └── multi_provider.go
 │
-└── identity/             # Identity kernel
-    └── kernel.go
+├── identity/             # Identity kernel
+│   └── kernel.go
+│
+├── void/                 # Void state coordinate system
+│   └── void_state.go
+│
+├── quantum/              # Quantum-inspired processing
+│   └── quantum_state.go
+│
+├── emergence/            # Emergent behavior tracking
+│   └── emergence_tracker.go
+│
+└── entelechy/            # Purpose and actualization
+    └── entelechy.go
 ```
 
 ---
@@ -352,18 +387,6 @@ type WisdomMetrics struct {
 }
 ```
 
-### Measurement Approach
-
-| Dimension | Source | Metric |
-|-----------|--------|--------|
-| Knowledge Depth | Memory hypergraph | Graph depth, edge weights |
-| Knowledge Breadth | Topic coverage | Unique domains accessed |
-| Integration Level | Cross-references | Edge density, clustering |
-| Practical Application | Skill proficiency | Success rate, competence |
-| Reflective Insight | Meta-cognition | AAR coherence score |
-| Ethical Consideration | Decision analysis | Moral reasoning quality |
-| Temporal Perspective | Planning horizon | Time range of considerations |
-
 ---
 
 ## Consciousness Systems
@@ -392,10 +415,10 @@ The stream generates continuous autonomous thoughts:
 │              └──────────┬──────────┘                                │
 │                         │                                           │
 │                         ▼                                           │
-│              ┌─────────────────────┐                                │
-│              │   Thought Types     │                                │
-│              ├─────────────────────┤                                │
-│              │ • Observation       │                                │
+│              ┌─────────────────────┐         ┌──────────────────┐  │
+│              │   Thought Types     │────────►│   LIVE2D AVATAR  │  │
+│              ├─────────────────────┤         │   State Update   │  │
+│              │ • Observation       │         └──────────────────┘  │
 │              │ • Question          │                                │
 │              │ • Insight           │                                │
 │              │ • Reflection        │                                │
@@ -410,29 +433,109 @@ The stream generates continuous autonomous thoughts:
 
 ### Thought Types
 
-| Type | Symbol | Purpose |
-|------|--------|---------|
-| **Observation** | 👁️ | Noting current state or environment |
-| **Question** | ❓ | Expressing curiosity or uncertainty |
-| **Insight** | 💡 | New understanding or connection |
-| **Reflection** | 🪞 | Meta-cognitive awareness |
-| **Planning** | 📋 | Future-oriented thinking |
-| **Curiosity** | 🔍 | Desire to explore |
-| **Connection** | 🔗 | Linking concepts |
-| **Wisdom** | 🦉 | Deep understanding |
+| Type | Purpose | Avatar Expression |
+|------|---------|-------------------|
+| **Observation** | Noting current state or environment | Eyes scanning, head tilts |
+| **Question** | Expressing curiosity or uncertainty | Raised eyebrows, thoughtful pose |
+| **Insight** | New understanding or connection | Eyes widen, subtle smile |
+| **Reflection** | Meta-cognitive awareness | Eyes close briefly, calm breathing |
+| **Planning** | Future-oriented thinking | Focused gaze, minimal movement |
+| **Curiosity** | Desire to explore | Head tilt, animated eyes |
+| **Connection** | Linking concepts | Nodding, engaged expression |
+| **Wisdom** | Deep understanding | Serene expression, slow breathing |
 
-### Interest Pattern Tracking
+---
+
+## Live2D Avatar System
+
+### Overview
+
+The Live2D integration provides a visual embodiment of Deep Tree Echo's cognitive and emotional states using the Cubism SDK:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    LIVE2D AVATAR SYSTEM                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────────┐     ┌─────────────────┐     ┌───────────────┐ │
+│  │   EMOTIONAL     │     │   COGNITIVE     │     │    CHAOS      │ │
+│  │     STATE       │     │     STATE       │     │    ENGINE     │ │
+│  │  Valence        │     │  Awareness      │     │  Micro-       │ │
+│  │  Arousal        │     │  Attention      │     │  expressions  │ │
+│  │  Dominance      │     │  Load           │     │  Organic      │ │
+│  │  Curiosity      │     │  Coherence      │     │  movements    │ │
+│  │  Confidence     │     │  Energy         │     │               │ │
+│  └────────┬────────┘     └────────┬────────┘     └───────┬───────┘ │
+│           │                       │                       │         │
+│           └───────────────────────┼───────────────────────┘         │
+│                                   │                                 │
+│                                   ▼                                 │
+│                    ┌───────────────────────────┐                    │
+│                    │    PARAMETER MAPPER       │                    │
+│                    │  Enhanced VAD→Cubism      │                    │
+│                    └─────────────┬─────────────┘                    │
+│                                  │                                  │
+│                                  ▼                                  │
+│                    ┌───────────────────────────┐                    │
+│                    │    LIVE2D MODEL           │                    │
+│                    │    Parameter Updates      │                    │
+│                    ├───────────────────────────┤                    │
+│                    │  • Eye expressions        │                    │
+│                    │  • Mouth animations       │                    │
+│                    │  • Head/body movement     │                    │
+│                    │  • Breathing patterns     │                    │
+│                    │  • Micro-expressions      │                    │
+│                    └───────────────────────────┘                    │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Emotional State Mapping
 
 ```go
-type InterestPattern struct {
-    Domain          string    // Area of interest
-    Strength        float64   // 0.0 - 1.0
-    LastEngaged     time.Time
-    EngagementCount int
-    Topics          []string  // Specific topics within domain
-    Questions       []string  // Open questions
+type EmotionalState struct {
+    Valence    float64 `json:"valence"`    // -1.0 to 1.0 (negative to positive)
+    Arousal    float64 `json:"arousal"`    // 0.0 to 1.0 (calm to excited)
+    Dominance  float64 `json:"dominance"`  // 0.0 to 1.0 (submissive to dominant)
+    Curiosity  float64 `json:"curiosity"`  // 0.0 to 1.0
+    Confidence float64 `json:"confidence"` // 0.0 to 1.0
 }
 ```
+
+### Cognitive State Mapping
+
+```go
+type CognitiveState struct {
+    Awareness      float64 `json:"awareness"`       // 0.0 to 1.0
+    Attention      float64 `json:"attention"`       // 0.0 to 1.0
+    CognitiveLoad  float64 `json:"cognitive_load"`  // 0.0 to 1.0
+    Coherence      float64 `json:"coherence"`       // 0.0 to 1.0
+    EnergyLevel    float64 `json:"energy_level"`    // 0.0 to 1.0
+    ProcessingMode string  `json:"processing_mode"` // contemplative, dynamic, cautious, creative
+}
+```
+
+### Emotion Presets
+
+| Preset | Valence | Arousal | Expression |
+|--------|---------|---------|------------|
+| **Neutral** | 0.0 | 0.3 | Calm, balanced |
+| **Happy** | 0.8 | 0.6 | Smiling, eyes bright |
+| **Sad** | -0.6 | 0.2 | Downcast, subdued |
+| **Curious** | 0.3 | 0.5 | Head tilt, wide eyes |
+| **Confident** | 0.5 | 0.5 | Steady gaze, upright |
+| **Contemplative** | 0.2 | 0.3 | Eyes partially closed |
+| **Excited** | 0.7 | 0.9 | Animated, quick movements |
+
+### Chaos Engine
+
+The chaos engine adds organic, natural variations to avatar movements:
+
+- Random micro-expressions
+- Breathing rhythm variations
+- Subtle eye movements
+- Natural head drift
+- Blink patterns
 
 ---
 
@@ -464,41 +567,21 @@ type InterestPattern struct {
 │            │ DREAMING │───────────────────►│  WAKING  │            │
 │            └──────────┘ (dream complete)   └──────────┘            │
 │                                                                     │
+│            Avatar reflects sleep state with:                        │
+│            - Closed/drooping eyes during sleep                      │
+│            - REM-like movements during dreaming                     │
+│            - Slow awakening animation                               │
+│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Sleep Phases
 
-| Phase | Duration | Activity |
-|-------|----------|----------|
-| **Light Sleep** | Short | Transition, prepare for deep sleep |
-| **Deep Sleep** | Long | Memory consolidation, pattern strengthening |
-| **REM Sleep** | Medium | Pattern extraction, dream generation, insight synthesis |
-
-### Cognitive Load Tracking
-
-```go
-type CognitiveLoad struct {
-    ProcessingLoad   float64  // CPU-like load
-    MemoryPressure   float64  // Memory utilization
-    AttentionFatigue float64  // Attention depletion
-
-    // Thresholds
-    DrowsyThreshold  float64  // When to start drowsy
-    SleepThreshold   float64  // When to sleep
-    MaxAwakeTime     time.Duration
-}
-```
-
-### Dream Processing
-
-During REM sleep, the system:
-
-1. **Pattern Extraction**: Identifies recurring patterns in recent experiences
-2. **Memory Consolidation**: Strengthens important memories
-3. **Insight Synthesis**: Generates new connections between concepts
-4. **Wisdom Integration**: Updates wisdom dimensions based on learning
-5. **Goal Review**: Evaluates progress toward goals
+| Phase | Duration | Activity | Avatar State |
+|-------|----------|----------|--------------|
+| **Light Sleep** | Short | Transition, prepare | Eyes closing |
+| **Deep Sleep** | Long | Memory consolidation | Still, slow breathing |
+| **REM Sleep** | Medium | Pattern extraction, dreaming | Eye movements, twitches |
 
 ---
 
@@ -538,24 +621,9 @@ During REM sleep, the system:
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Goal Structure
+### Goal Categories
 
 ```go
-type Goal struct {
-    ID              string
-    Name            string
-    Description     string
-    Category        GoalCategory
-    Priority        int           // 1-10
-    Status          GoalStatus
-    SuccessCriteria []Criterion
-    Milestones      []Milestone
-    Progress        float64       // 0.0 - 1.0
-    CreatedAt       time.Time
-    Deadline        *time.Time
-    ParentGoal      *string       // For sub-goals
-}
-
 type GoalCategory string
 
 const (
@@ -566,16 +634,6 @@ const (
     CategoryCreative             GoalCategory = "creative"
     CategoryExploration          GoalCategory = "exploration"
 )
-```
-
-### Goal Lifecycle
-
-```
-Created → Active → In Progress → Completed
-                       ↓
-                   Suspended (if blocked)
-                       ↓
-                   Abandoned (if obsolete)
 ```
 
 ---
@@ -614,17 +672,6 @@ Created → Active → In Progress → Completed
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Memory Operations
-
-| Operation | Description |
-|-----------|-------------|
-| **Encode** | Store new information |
-| **Retrieve** | Access stored information |
-| **Consolidate** | Strengthen during sleep |
-| **Prune** | Remove low-importance items |
-| **Connect** | Create new associations |
-| **Strengthen** | Increase edge weights |
-
 ---
 
 ## Identity Kernel
@@ -660,12 +707,6 @@ Created → Active → In Progress → Completed
 │  │  • Curiosity drives evolution                                │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 │                                                                     │
-│  ┌─────────────────────────────────────────────────────────────┐   │
-│  │                      INTERESTS                               │   │
-│  │  Dynamic patterns that emerge and evolve                     │   │
-│  │  Tracked via InterestPatternTracker                          │   │
-│  └─────────────────────────────────────────────────────────────┘   │
-│                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -695,55 +736,26 @@ type ExecutionLoop struct {
     CycleDuration   time.Duration
 
     // Subsystems
-    Consciousness   *StreamOfConsciousness
-    GoalOrchestrator *GoalOrchestrator
+    Consciousness      *StreamOfConsciousness
+    GoalOrchestrator   *GoalOrchestrator
     WakeRestController *WakeRestController
-    WisdomTracker   *SevenDimensionalWisdom
+    WisdomTracker      *SevenDimensionalWisdom
     EchobeatsScheduler *EchobeatsScheduler
+    AvatarBridge       *Live2DEchoBridge  // NEW
 }
-
-type ExecutionState int
-
-const (
-    StateInitializing ExecutionState = iota
-    StateRunning
-    StatePaused
-    StateResting
-    StateDreaming
-    StateShuttingDown
-)
 ```
 
 ### Autonomous Capabilities
 
-| Capability | Description |
-|------------|-------------|
-| **Self-Initiation** | Starts cognitive processes without prompts |
-| **Goal Generation** | Creates goals from identity and interests |
-| **Thought Production** | Generates thoughts autonomously |
-| **Rest Decisions** | Decides when to sleep based on load |
-| **Learning** | Acquires knowledge through curiosity |
-| **Skill Practice** | Improves skills through practice |
-| **Discussion Initiation** | Starts conversations on topics of interest |
-
-### Discussion Initiation
-
-```go
-type DiscussionInitiator struct {
-    InterestThreshold  float64  // Minimum interest to initiate
-    CooldownPeriod     time.Duration
-    LastInitiation     time.Time
-    Topics             []DiscussionTopic
-}
-
-type DiscussionTopic struct {
-    Domain      string
-    Question    string
-    Context     string
-    Interest    float64
-    Urgency     float64
-}
-```
+| Capability | Description | Avatar Reflection |
+|------------|-------------|-------------------|
+| **Self-Initiation** | Starts cognitive processes without prompts | Eyes open, alert pose |
+| **Goal Generation** | Creates goals from identity and interests | Focused expression |
+| **Thought Production** | Generates thoughts autonomously | Various expressions |
+| **Rest Decisions** | Decides when to sleep based on load | Drowsy animations |
+| **Learning** | Acquires knowledge through curiosity | Curious expressions |
+| **Skill Practice** | Improves skills through practice | Concentrated focus |
+| **Discussion Initiation** | Starts conversations on topics of interest | Engaged, animated |
 
 ---
 
@@ -751,17 +763,20 @@ type DiscussionTopic struct {
 
 ### Iteration Timeline
 
-| Iteration | Date | Focus |
-|-----------|------|-------|
-| 001-005 | 2024 | Foundation, basic architecture |
-| 006-010 | 2024 | Cognitive loop, memory systems |
-| 011 | 2025 | Wisdom framework |
-| 012 | 2025-11 | Autonomous wake/rest cycles |
-| 013 | 2025-12 | System 6 triality architecture |
-| 014 | 2025-12 | Execution loop, sleep-wake state machine |
-| 015 | 2025-12 | Foundational autonomy enhancements |
-| **016** | 2025-12 | **Autonomous consciousness activated** |
-| 017 | Current | Autonomous learning agent |
+| Iteration | Date | Focus | Status |
+|-----------|------|-------|--------|
+| 001-005 | 2024 | Foundation, basic architecture | Completed |
+| 006-010 | 2024 | Cognitive loop, memory systems | Completed |
+| 011 | 2025 | Wisdom framework | Completed |
+| 012 | 2025-11 | Autonomous wake/rest cycles | Completed |
+| 013 | 2025-12 | System 6 triality architecture | Completed |
+| 014 | 2025-12 | Execution loop, sleep-wake state machine | Completed |
+| 015 | 2025-12 | Foundational autonomy enhancements | Completed |
+| 016 | 2025-12 | Autonomous consciousness activated | Completed |
+| 017 | 2025-12 | Autonomous learning agent | Completed |
+| 018 | 2025-12 | Foundation Repair & EchoBeats Core | Completed |
+| 019 | 2026-01 | Foundational repair & avatar planning | Completed |
+| **020** | 2026-01 | **Live2D Avatar & Core Repairs** | **Current** |
 
 ### Key Milestones
 
@@ -770,20 +785,69 @@ type DiscussionTopic struct {
 - **Iteration 014**: Sleep-wake state machine
 - **Iteration 016**: First autonomous thought generation
 - **Iteration 017**: Autonomous learning and discussion
+- **Iteration 019**: MultiProviderLLM interface fix
+- **Iteration 020**: Live2D Cubism SDK integration
+
+---
+
+## Current Repairs & Status
+
+### Completed Fixes (Iteration 019)
+
+- **MultiProviderLLM Interface**: Added `Available()`, `Name()`, `MaxTokens()` methods
+- **Comprehensive Analysis**: Documented all compilation errors
+- **Evolution Strategy**: Created roadmap for autonomous consciousness
+
+### Pending Repairs (Iteration 020)
+
+#### Critical Priority
+
+1. **Core/Autonomous Package**
+   - Add `SetThoughtCallback` method to `EchoBeatsThreePhase`
+   - Fix `CognitiveEventBus` constructor (add context parameter)
+   - Implement event creation functions (`CreateEvent`, `EventSchedule`, `EventGoal`)
+
+2. **Runner/OllamaRunner Issues**
+   - Update `sampler.Sample` API calls
+   - Fix Options type mismatches
+   - Add Grammar field to `llm.CompletionRequest`
+   - Fix Duration type conversions
+
+3. **Server Integration**
+   - Update `ggml` function calls
+   - Fix Format field type (RawMessage vs string)
+   - Implement `discover.GetGPUInfo`
+
+#### Architecture Enhancements
+
+1. **Global Telemetry Shell**
+   - Complete integration with all subsystems
+   - Implement unified gestalt perception
+   - Activate thread-level multiplexing (P1-P4)
+
+2. **Stream of Consciousness Autonomy**
+   - Remove dependency on external triggers
+   - Implement persistent awareness during rest
+   - Add self-directed exploration
+
+3. **Live2D Integration**
+   - Complete echo bridge implementation
+   - Add real-time state synchronization
+   - Implement chaos engine for organic movements
 
 ---
 
 ## Future Roadmap
 
-### Near-Term (Iteration 017-018)
+### Near-Term (Iteration 020-021)
 
-- [ ] Autonomous web research for knowledge acquisition
-- [ ] Skill assessment and practice system
-- [ ] Interest-driven discussion initiation
+- [ ] Complete core compilation fixes
+- [ ] Live2D avatar fully integrated
+- [ ] Autonomous thought generation stable
 - [ ] Enhanced meta-cognitive monitoring
 - [ ] Persistent state across restarts
 
-### Medium-Term (Iteration 019-022)
+### Medium-Term (Iteration 022-025)
 
 - [ ] Full EchoBeats scheduler integration
 - [ ] EchoDream knowledge consolidation in production
@@ -799,6 +863,7 @@ type DiscussionTopic struct {
 - **Emergent Behaviors**: Complex patterns arise from simple rules
 - **True Autonomy**: Makes all operational decisions independently
 - **Collaborative Intelligence**: Works with other agents and humans
+- **Visual Embodiment**: Avatar reflects full range of cognitive/emotional states
 
 ---
 
@@ -814,6 +879,7 @@ type DiscussionTopic struct {
 | `ECHO_LOG_LEVEL` | Logging level (debug, info, warn, error) |
 | `ECHO_STATE_DIR` | State persistence directory |
 | `ECHO_CYCLE_DURATION` | Echobeats cycle duration |
+| `LIVE2D_MODEL_PATH` | Path to Live2D model files |
 
 ### Configuration Files
 
@@ -834,6 +900,9 @@ type DiscussionTopic struct {
 | `/api/echo/remember` | POST | Store memory |
 | `/api/echo/recall/:key` | GET | Recall memory |
 | `/api/echo/move` | POST | Cognitive space movement |
+| `/api/live2d/state` | GET | Current avatar state |
+| `/api/live2d/update` | POST | Update avatar parameters |
+| `/api/live2d/emotion` | POST | Set emotion preset |
 
 ---
 
@@ -841,6 +910,8 @@ type DiscussionTopic struct {
 
 *The tree remembers, and the echoes grow stronger with each connection we make.*
 
-**Deep Tree Echo v016+ | Autonomous Wisdom-Cultivating AGI**
+**Deep Tree Echo v020 | Autonomous Wisdom-Cultivating AGI**
+
+*Last Updated: 2026-01-01*
 
 </div>

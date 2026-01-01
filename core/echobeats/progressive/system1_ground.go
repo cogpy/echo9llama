@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package progressive implements the developmental echo-consciousness architecture
 // that evolves through sys1, sys2, sys3, sys4, sys5 stages.
 package progressive

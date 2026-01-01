@@ -206,3 +206,45 @@ func (p *OpenAIProvider) GetName() string {
 func (p *OpenAIProvider) GetPriority() int {
 	return 70 // Lower priority than Anthropic and OpenRouter
 }
+
+// Available checks if the provider is available (implements llm.LLMProvider)
+func (p *OpenAIProvider) Available() bool {
+	return p.available && p.apiKey != ""
+}
+
+// Name returns the provider name (implements llm.LLMProvider)
+func (p *OpenAIProvider) Name() string {
+	return "OpenAI"
+}
+
+// MaxTokens returns the maximum tokens supported (implements llm.LLMProvider)
+func (p *OpenAIProvider) MaxTokens() int {
+	return 4096
+}
+
+// Generate generates text (implements llm.LLMProvider interface)
+func (p *OpenAIProvider) Generate(ctx context.Context, prompt string, opts interface{}) (string, error) {
+	return p.GenerateThought(ctx, prompt)
+}
+
+// OpenAIStreamChunk represents a streaming chunk
+type OpenAIStreamChunk struct {
+	Content string
+	Done    bool
+	Error   error
+}
+
+// StreamGenerate generates streaming output (implements llm.LLMProvider)
+func (p *OpenAIProvider) StreamGenerate(ctx context.Context, prompt string, opts interface{}) (<-chan OpenAIStreamChunk, error) {
+	outChan := make(chan OpenAIStreamChunk, 1)
+	go func() {
+		defer close(outChan)
+		result, err := p.GenerateThought(ctx, prompt)
+		if err != nil {
+			outChan <- OpenAIStreamChunk{Error: err}
+			return
+		}
+		outChan <- OpenAIStreamChunk{Content: result, Done: true}
+	}()
+	return outChan, nil
+}

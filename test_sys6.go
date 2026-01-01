@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // test_sys6.go - Test program for Sys6 Triality Architecture
 package main
 

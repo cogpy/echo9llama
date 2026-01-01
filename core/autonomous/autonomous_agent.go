@@ -9,13 +9,12 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	
-	"github.com/cogpy/echo9llama/core/consciousness"
+
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echobeats"
-	"github.com/cogpy/echo9llama/core/goals"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/echoself"
+	"github.com/cogpy/echo9llama/core/goals"
 	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/cogpy/echo9llama/core/wisdom"
 )

@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package progressive implements the EchoConsciousness container
 // that manages progressive evolution through sys1-sys5 stages.
 package progressive

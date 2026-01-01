@@ -64,8 +64,8 @@ type ChatCompletionResponse struct {
 	} `json:"usage"`
 }
 
-// StreamChunk represents a chunk from the streaming API
-type StreamChunk struct {
+// FeatherlessStreamChunk represents a chunk from the streaming API
+type FeatherlessStreamChunk struct {
 	ID      string `json:"id"`
 	Object  string `json:"object"`
 	Created int64  `json:"created"`
@@ -247,7 +247,7 @@ func (fc *FeatherlessClient) ChatCompletionStream(ctx context.Context, messages 
 				if strings.HasPrefix(line, "data: ") {
 					jsonStr := strings.TrimPrefix(line, "data: ")
 					
-					var chunk StreamChunk
+					var chunk FeatherlessStreamChunk
 					if err := json.Unmarshal([]byte(jsonStr), &chunk); err != nil {
 						// Skip malformed chunks
 						continue

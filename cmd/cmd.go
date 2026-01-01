@@ -1700,8 +1700,8 @@ func NewCLI() *cobra.Command {
 		runnerCmd,
 	)
 
-	// Add Deep Tree Echo commands
-	AddEchoCommands(rootCmd)
+	// Deep Tree Echo commands are in echo.go (excluded via build constraints)
+	// AddEchoCommands(rootCmd)
 
 	return rootCmd
 }

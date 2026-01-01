@@ -430,3 +430,46 @@ func (ap *AnthropicProvider) GetName() string {
 func (ap *AnthropicProvider) GetPriority() int {
 	return 100 // Highest priority - Anthropic Claude is preferred
 }
+
+// Available checks if the provider is available (implements llm.LLMProvider)
+func (ap *AnthropicProvider) Available() bool {
+	return ap.available && ap.apiKey != ""
+}
+
+// Name returns the provider name (implements llm.LLMProvider)
+func (ap *AnthropicProvider) Name() string {
+	return "Anthropic"
+}
+
+// MaxTokens returns the maximum tokens supported (implements llm.LLMProvider)
+func (ap *AnthropicProvider) MaxTokens() int {
+	return 4096
+}
+
+// GenerateSimple generates text using a simple prompt (implements llm.LLMProvider interface)
+func (ap *AnthropicProvider) GenerateSimple(ctx context.Context, prompt string, opts interface{}) (string, error) {
+	return ap.GenerateThought(ctx, prompt)
+}
+
+// StreamChunk represents a streaming chunk for compatibility
+type StreamChunk struct {
+	Content string
+	Done    bool
+	Error   error
+}
+
+// StreamGenerate generates streaming output (implements llm.LLMProvider)
+func (ap *AnthropicProvider) StreamGenerate(ctx context.Context, prompt string, opts interface{}) (<-chan StreamChunk, error) {
+	// For now, we simulate streaming with a single chunk
+	outChan := make(chan StreamChunk, 1)
+	go func() {
+		defer close(outChan)
+		result, err := ap.GenerateThought(ctx, prompt)
+		if err != nil {
+			outChan <- StreamChunk{Error: err}
+			return
+		}
+		outChan <- StreamChunk{Content: result, Done: true}
+	}()
+	return outChan, nil
+}

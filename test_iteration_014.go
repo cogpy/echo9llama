@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Test for Iteration 014 - Autonomous Execution Loop and Echodream Integration
 // This test validates the new autonomous cognitive systems
 

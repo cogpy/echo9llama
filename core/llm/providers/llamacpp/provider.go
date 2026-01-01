@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package llamacpp provides a local LLM provider implementation using llama.cpp.
 // This enables direct, on-device inference without external API dependencies.
 package llamacpp

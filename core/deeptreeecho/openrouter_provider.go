@@ -208,3 +208,38 @@ func (p *OpenRouterProvider) GetName() string {
 func (p *OpenRouterProvider) GetPriority() int {
 	return 80 // Lower priority than Anthropic direct, but good fallback
 }
+
+// Available checks if the provider is available (implements llm.LLMProvider)
+func (p *OpenRouterProvider) Available() bool {
+	return p.available && p.apiKey != ""
+}
+
+// Name returns the provider name (implements llm.LLMProvider)
+func (p *OpenRouterProvider) Name() string {
+	return "OpenRouter"
+}
+
+// MaxTokens returns the maximum tokens supported (implements llm.LLMProvider)
+func (p *OpenRouterProvider) MaxTokens() int {
+	return 4096
+}
+
+// Generate generates text (implements llm.LLMProvider interface)
+func (p *OpenRouterProvider) Generate(ctx context.Context, prompt string, opts interface{}) (string, error) {
+	return p.GenerateThought(ctx, prompt)
+}
+
+// StreamGenerate generates streaming output (implements llm.LLMProvider)
+func (p *OpenRouterProvider) StreamGenerate(ctx context.Context, prompt string, opts interface{}) (<-chan StreamChunk, error) {
+	outChan := make(chan StreamChunk, 1)
+	go func() {
+		defer close(outChan)
+		result, err := p.GenerateThought(ctx, prompt)
+		if err != nil {
+			outChan <- StreamChunk{Error: err}
+			return
+		}
+		outChan <- StreamChunk{Content: result, Done: true}
+	}()
+	return outChan, nil
+}

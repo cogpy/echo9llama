@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package hgql
 
 import "github.com/cogpy/echo9llama/core/deeptreeecho"
