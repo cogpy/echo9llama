@@ -99,6 +99,32 @@ go run server/simple/live2d_server.go
          (Internal State → Visual Expression)
 ```
 
+### System 5 Triadic Polarity (C-S-A [3-6-9])
+
+The core triad implements the **Cognitive Triad C-S-A [3-6-9] Potential-Commitment-Performance Topology**:
+
+```
+     [3] CEREBRAL        [6] SOMATIC         [9] AUTONOMIC
+         GOALS     ←──────→ IDENTITY   ←──────→  SKILLS
+       Potential        Commitment         Performance
+       Executive         Core Self          Learning
+
+                    Parasympathetic Sharing
+                    ─────────────────────────
+                    IDENTITY & SKILLS share
+                    the D-T [2-7] polarity
+                    (9 polarities from 8)
+```
+
+Each triad follows the **[[D-T]-[P-O]-[S-M]]** dimensional pattern:
+- **[D-T] 2-7**: Development → Treasury (Potential - background/memory)
+- **[P-O] 5-4**: Production → Organization (Commitment - processing/output)
+- **[S-M] 8-1**: Sales → Market (Performance - state/perception)
+
+The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cerebral Triad (GOALS) interfacing via Balance over Limbic Cortex & Basal Ganglia.
+
+*See [docs/architecture/SYSTEM_5_MAPPING.md](docs/architecture/SYSTEM_5_MAPPING.md) for full mapping.*
+
 ## Key Packages
 
 ### Core Cognitive Packages
