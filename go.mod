@@ -3,7 +3,7 @@ module github.com/cogpy/echo9llama
 // Deep Tree Echo - compatible with Go 1.21+
 go 1.24.0
 
-toolchain go1.24.11
+toolchain go1.24.7
 
 require (
 	github.com/containerd/console v1.0.3

@@ -152,7 +152,9 @@ jobs:
           go test -v -bench=. -benchmem -benchtime=10s -run=^$ \
             ./core/memory/... \
             ./core/echobeats/... \
-            ./test/integration/... \
+            ./core/live2d/... \
+            ./core/relevance/... \
+            ./core/deeptreeecho/... \
             | tee benchmark-nightly.txt
 
       - name: Upload benchmark results

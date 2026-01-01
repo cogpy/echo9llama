@@ -76,17 +76,54 @@ go run server/simple/live2d_server.go
           │                   │                   │
           ▼                   ▼                   ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│     GOALS       │  │    IDENTITY     │  │    LIVE2D       │
-│  Orchestrator   │  │     Kernel      │  │    AVATAR       │
-│  Generation     │  │    Interests    │  │    Bridge       │
+│     GOALS       │  │    IDENTITY     │  │     SKILLS      │
+│  Orchestrator   │  │     Kernel      │  │    Learning     │
+│  Generation     │  │    Interests    │  │    Practice     │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
-                              │
-                              ▼
+          │                                         │
+          ▼                                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      LLM PROVIDERS                               │
 │        Anthropic │ OpenRouter │ OpenAI │ Local GGUF             │
 └─────────────────────────────────────────────────────────────────┘
+
+                    EMBODIMENT (Visualization Output)
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│    LIVE2D       │  │   EMOTIONAL     │  │   COGNITIVE     │
+│    AVATAR       │  │    MAPPER       │  │    STATE        │
+│   Cubism SDK    │  │   (VAD+CC)      │  │    BRIDGE       │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+         (Internal State → Visual Expression)
 ```
+
+### System 5 Triadic Polarity (C-S-A [3-6-9])
+
+The core triad implements the **Cognitive Triad C-S-A [3-6-9] Potential-Commitment-Performance Topology**:
+
+```
+     [3] CEREBRAL        [6] SOMATIC         [9] AUTONOMIC
+         GOALS     ←──────→ IDENTITY   ←──────→  SKILLS
+       Potential        Commitment         Performance
+       Executive         Core Self          Learning
+
+                    Parasympathetic Sharing
+                    ─────────────────────────
+                    IDENTITY & SKILLS share
+                    the D-T [2-7] polarity
+                    (9 polarities from 8)
+```
+
+Each triad follows the **[[D-T]-[P-O]-[S-M]]** dimensional pattern:
+- **[D-T] 2-7**: Development → Treasury (Potential - background/memory)
+- **[P-O] 5-4**: Production → Organization (Commitment - processing/output)
+- **[S-M] 8-1**: Sales → Market (Performance - state/perception)
+
+The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cerebral Triad (GOALS) interfacing via Balance over Limbic Cortex & Basal Ganglia.
+
+*See [docs/architecture/SYSTEM_5_MAPPING.md](docs/architecture/SYSTEM_5_MAPPING.md) for full mapping.*
 
 ## Key Packages
 
@@ -102,7 +139,7 @@ go run server/simple/live2d_server.go
 | `goals` | `core/goals` | Goal generation and pursuit |
 | `memory` | `core/memory` | Hypergraph, episodic, semantic memory |
 | `wisdom` | `core/wisdom` | Seven-dimensional wisdom framework |
-| `live2d` | `core/live2d` | Live2D Cubism SDK integration for avatar |
+| `skills` | `core/skills` | Skill learning and autonomous practice |
 
 ### Support Packages
 
@@ -110,12 +147,17 @@ go run server/simple/live2d_server.go
 |---------|-------------|---------|
 | `llm` | `core/llm` | Multi-provider LLM abstraction |
 | `identity` | `core/identity` | Identity kernel and interests |
-| `skills` | `core/skills` | Skill learning and practice |
 | `persistence` | `core/persistence` | State persistence |
 | `entelechy` | `core/entelechy` | Purpose and actualization |
 | `emergence` | `core/emergence` | Emergent behavior tracking |
 | `void` | `core/void` | Void state coordinate system |
 | `quantum` | `core/quantum` | Quantum-inspired processing |
+
+### Embodiment & Visualization
+
+| Package | Import Path | Purpose |
+|---------|-------------|---------|
+| `live2d` | `core/live2d` | Live2D Cubism SDK avatar visualization (state → visual expression) |
 
 ## 12-Step Cognitive Loop (Echobeats)
 
