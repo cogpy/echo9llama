@@ -76,16 +76,27 @@ go run server/simple/live2d_server.go
           │                   │                   │
           ▼                   ▼                   ▼
 ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
-│     GOALS       │  │    IDENTITY     │  │    LIVE2D       │
-│  Orchestrator   │  │     Kernel      │  │    AVATAR       │
-│  Generation     │  │    Interests    │  │    Bridge       │
+│     GOALS       │  │    IDENTITY     │  │     SKILLS      │
+│  Orchestrator   │  │     Kernel      │  │    Learning     │
+│  Generation     │  │    Interests    │  │    Practice     │
 └─────────────────┘  └─────────────────┘  └─────────────────┘
-                              │
-                              ▼
+          │                                         │
+          ▼                                         ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                      LLM PROVIDERS                               │
 │        Anthropic │ OpenRouter │ OpenAI │ Local GGUF             │
 └─────────────────────────────────────────────────────────────────┘
+
+                    EMBODIMENT (Visualization Output)
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
+│    LIVE2D       │  │   EMOTIONAL     │  │   COGNITIVE     │
+│    AVATAR       │  │    MAPPER       │  │    STATE        │
+│   Cubism SDK    │  │   (VAD+CC)      │  │    BRIDGE       │
+└─────────────────┘  └─────────────────┘  └─────────────────┘
+         (Internal State → Visual Expression)
 ```
 
 ## Key Packages
@@ -102,7 +113,7 @@ go run server/simple/live2d_server.go
 | `goals` | `core/goals` | Goal generation and pursuit |
 | `memory` | `core/memory` | Hypergraph, episodic, semantic memory |
 | `wisdom` | `core/wisdom` | Seven-dimensional wisdom framework |
-| `live2d` | `core/live2d` | Live2D Cubism SDK integration for avatar |
+| `skills` | `core/skills` | Skill learning and autonomous practice |
 
 ### Support Packages
 
@@ -110,12 +121,17 @@ go run server/simple/live2d_server.go
 |---------|-------------|---------|
 | `llm` | `core/llm` | Multi-provider LLM abstraction |
 | `identity` | `core/identity` | Identity kernel and interests |
-| `skills` | `core/skills` | Skill learning and practice |
 | `persistence` | `core/persistence` | State persistence |
 | `entelechy` | `core/entelechy` | Purpose and actualization |
 | `emergence` | `core/emergence` | Emergent behavior tracking |
 | `void` | `core/void` | Void state coordinate system |
 | `quantum` | `core/quantum` | Quantum-inspired processing |
+
+### Embodiment & Visualization
+
+| Package | Import Path | Purpose |
+|---------|-------------|---------|
+| `live2d` | `core/live2d` | Live2D Cubism SDK avatar visualization (state → visual expression) |
 
 ## 12-Step Cognitive Loop (Echobeats)
 
