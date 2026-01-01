@@ -6,6 +6,8 @@ import (
 	"os"
 	"sync"
 	"time"
+	
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // LLMProvider interface for different LLM backends
@@ -303,4 +305,40 @@ func (m *MultiProviderLLM) IsAvailable() bool {
 		}
 	}
 	return false
+}
+
+// Available returns true if at least one provider is available (alias for IsAvailable)
+func (m *MultiProviderLLM) Available() bool {
+	return m.IsAvailable()
+}
+
+// Name returns the provider name
+func (m *MultiProviderLLM) Name() string {
+	return "MultiProvider"
+}
+
+// MaxTokens returns the maximum tokens supported
+func (m *MultiProviderLLM) MaxTokens() int {
+	return 4096 // Default reasonable value
+}
+
+// Generate produces a completion for the given prompt (implements llm.LLMProvider)
+func (m *MultiProviderLLM) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
+	return m.GenerateThought(ctx, prompt)
+}
+
+// StreamGenerate produces a streaming completion (stub implementation)
+func (m *MultiProviderLLM) StreamGenerate(ctx context.Context, prompt string, opts llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
+	// For now, return a simple channel that sends the full result
+	ch := make(chan llm.StreamChunk, 1)
+	go func() {
+		defer close(ch)
+		result, err := m.GenerateThought(ctx, prompt)
+		if err != nil {
+			ch <- llm.StreamChunk{Error: err, Done: true}
+			return
+		}
+		ch <- llm.StreamChunk{Content: result, Done: true}
+	}()
+	return ch, nil
 }
