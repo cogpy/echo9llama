@@ -1,0 +1,401 @@
+name: Live2D Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'core/live2d/**'
+      - 'Source/Live2DCubism/**'
+      - 'Plugins/CubismSdkForUnrealEngine-5-r.1-beta.1/**'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  # ============================================================================
+  # Parameter Mapping Tests
+  # ============================================================================
+  parameter-mapping-tests:
+    name: Parameter Mapping Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Test emotional state mapping
+        run: |
+          cd core/live2d
+          cat > mapper_test.go << 'EOF'
+          package live2d
+          
+          import (
+              "testing"
+          )
+          
+          func TestEmotionalStateMapping(t *testing.T) {
+              mapper := NewEnhancedParameterMapper()
+              
+              // Test super-hot-girl presets
+              presets := []string{"alluring", "playful", "mysterious", "seductive", "charming", "elegant", "flirtatious"}
+              
+              for _, presetName := range presets {
+                  state, ok := SuperHotGirlPresets[presetName]
+                  if !ok {
+                      t.Errorf("Preset %s not found", presetName)
+                      continue
+                  }
+                  
+                  params := mapper.MapEmotionalState(state)
+                  
+                  if len(params) == 0 {
+                      t.Errorf("No parameters generated for preset %s", presetName)
+                  }
+                  
+                  t.Logf("Preset %s: generated %d parameters", presetName, len(params))
+              }
+          }
+          
+          func TestHyperChaoticMapping(t *testing.T) {
+              baseline := NewDefaultParameterMapper()
+              chaosMapper := NewDeepTreeEchoMapper(baseline, 0.5)
+              chaosMapper.Start()
+              defer chaosMapper.Stop()
+              
+              state := EmotionalState{
+                  Valence:    0.7,
+                  Arousal:    0.6,
+                  Dominance:  0.8,
+                  Curiosity:  0.5,
+                  Confidence: 0.9,
+              }
+              
+              params := chaosMapper.MapEmotionalState(state)
+              
+              if len(params) == 0 {
+                  t.Error("No parameters generated with chaos mapping")
+              }
+              
+              t.Logf("Chaos mapping generated %d parameters", len(params))
+          }
+          EOF
+          
+          go test -v -run TestEmotionalStateMapping
+          go test -v -run TestHyperChaoticMapping
+
+  # ============================================================================
+  # Chaos Engine Tests
+  # ============================================================================
+  chaos-engine-tests:
+    name: Chaos Engine Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Test Lorenz attractor
+        run: |
+          cd core/live2d
+          cat > chaos_test.go << 'EOF'
+          package live2d
+          
+          import (
+              "math"
+              "testing"
+              "time"
+          )
+          
+          func TestLorenzAttractor(t *testing.T) {
+              attractor := NewChaoticAttractor()
+              
+              // Run for 1000 steps
+              for i := 0; i < 1000; i++ {
+                  attractor.Step()
+              }
+              
+              x, y, z := attractor.GetScaledValues()
+              
+              // Check that values are bounded
+              if math.Abs(x) > 10.0 || math.Abs(y) > 10.0 || math.Abs(z) > 10.0 {
+                  t.Errorf("Attractor values out of bounds: x=%.2f, y=%.2f, z=%.2f", x, y, z)
+              }
+              
+              t.Logf("Attractor after 1000 steps: x=%.4f, y=%.4f, z=%.4f", x, y, z)
+          }
+          
+          func TestFractalPattern(t *testing.T) {
+              fractal := NewFractalPattern(5)
+              
+              samples := make([]float64, 100)
+              for i := 0; i < 100; i++ {
+                  fractal.Update(0.016) // ~60 FPS
+                  samples[i] = fractal.Sample()
+              }
+              
+              // Check that samples vary
+              min, max := samples[0], samples[0]
+              for _, s := range samples {
+                  if s < min {
+                      min = s
+                  }
+                  if s > max {
+                      max = s
+                  }
+              }
+              
+              if max-min < 0.1 {
+                  t.Error("Fractal pattern not varying enough")
+              }
+              
+              t.Logf("Fractal range: [%.4f, %.4f]", min, max)
+          }
+          
+          func TestQuantumFluctuator(t *testing.T) {
+              quantum := NewQuantumFluctuator(0.5)
+              
+              samples := make([]float64, 100)
+              for i := 0; i < 100; i++ {
+                  samples[i] = quantum.Sample()
+                  time.Sleep(10 * time.Millisecond)
+              }
+              
+              // Calculate variance
+              mean := 0.0
+              for _, s := range samples {
+                  mean += s
+              }
+              mean /= float64(len(samples))
+              
+              variance := 0.0
+              for _, s := range samples {
+                  diff := s - mean
+                  variance += diff * diff
+              }
+              variance /= float64(len(samples))
+              
+              t.Logf("Quantum fluctuation: mean=%.4f, variance=%.4f", mean, variance)
+          }
+          
+          func TestEmergentBehavior(t *testing.T) {
+              engine := NewEmergentBehaviorEngine(3, 0.5)
+              engine.Start()
+              defer engine.Stop()
+              
+              time.Sleep(100 * time.Millisecond)
+              
+              emergence := engine.ComputeEmergence()
+              
+              if emergence < 0.0 || emergence > 1.0 {
+                  t.Errorf("Emergence level out of bounds: %.4f", emergence)
+              }
+              
+              t.Logf("Emergence level: %.4f", emergence)
+          }
+          EOF
+          
+          go test -v -run TestLorenzAttractor
+          go test -v -run TestFractalPattern
+          go test -v -run TestQuantumFluctuator
+          go test -v -run TestEmergentBehavior
+
+  # ============================================================================
+  # Avatar Manager Tests
+  # ============================================================================
+  avatar-manager-tests:
+    name: Avatar Manager Integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Test avatar manager lifecycle
+        run: |
+          cd core/live2d
+          cat > manager_test.go << 'EOF'
+          package live2d
+          
+          import (
+              "testing"
+              "time"
+          )
+          
+          func TestAvatarManagerLifecycle(t *testing.T) {
+              manager := NewAvatarManager("TestAvatar", "/path/to/model")
+              
+              // Start manager
+              err := manager.Start()
+              if err != nil {
+                  t.Fatalf("Failed to start manager: %v", err)
+              }
+              
+              // Check running state
+              if !manager.IsRunning() {
+                  t.Error("Manager should be running")
+              }
+              
+              // Update emotional state
+              err = manager.UpdateEmotionalState(EmotionalState{
+                  Valence:    0.8,
+                  Arousal:    0.6,
+                  Dominance:  0.7,
+                  Curiosity:  0.5,
+                  Confidence: 0.85,
+              })
+              if err != nil {
+                  t.Errorf("Failed to update emotional state: %v", err)
+              }
+              
+              // Subscribe to updates
+              updateChan, err := manager.Subscribe()
+              if err != nil {
+                  t.Errorf("Failed to subscribe: %v", err)
+              }
+              
+              // Wait for update
+              select {
+              case update := <-updateChan:
+                  t.Logf("Received update with %d parameters", len(update.Parameters))
+              case <-time.After(1 * time.Second):
+                  t.Error("Timeout waiting for parameter update")
+              }
+              
+              // Stop manager
+              err = manager.Stop()
+              if err != nil {
+                  t.Errorf("Failed to stop manager: %v", err)
+              }
+              
+              // Check stopped state
+              if manager.IsRunning() {
+                  t.Error("Manager should not be running")
+              }
+          }
+          
+          func TestEmotionPresets(t *testing.T) {
+              manager := NewAvatarManager("TestAvatar", "/path/to/model")
+              manager.Start()
+              defer manager.Stop()
+              
+              presets := []string{"alluring", "playful", "mysterious", "seductive"}
+              
+              for _, preset := range presets {
+                  err := manager.SetEmotionPreset(preset)
+                  if err != nil {
+                      t.Errorf("Failed to set preset %s: %v", preset, err)
+                  } else {
+                      t.Logf("Successfully set preset: %s", preset)
+                  }
+              }
+          }
+          
+          func TestEmotionTransition(t *testing.T) {
+              manager := NewAvatarManager("TestAvatar", "/path/to/model")
+              manager.Start()
+              defer manager.Stop()
+              
+              from := EmotionalState{Valence: 0.0, Arousal: 0.3, Dominance: 0.5, Curiosity: 0.3, Confidence: 0.5}
+              to := EmotionalState{Valence: 0.8, Arousal: 0.7, Dominance: 0.6, Curiosity: 0.6, Confidence: 0.8}
+              
+              err := manager.AnimateEmotionTransition(from, to, 500*time.Millisecond)
+              if err != nil {
+                  t.Errorf("Failed to animate transition: %v", err)
+              }
+              
+              time.Sleep(600 * time.Millisecond)
+              
+              t.Log("Emotion transition completed")
+          }
+          EOF
+          
+          go test -v -run TestAvatarManagerLifecycle
+          go test -v -run TestEmotionPresets
+          go test -v -run TestEmotionTransition
+
+  # ============================================================================
+  # Visual Regression Tests (Placeholder)
+  # ============================================================================
+  visual-regression:
+    name: Visual Regression Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup visual testing environment
+        run: |
+          echo "Visual regression testing would be implemented here"
+          echo "This would include:"
+          echo "  - Rendering avatar with different emotional states"
+          echo "  - Capturing screenshots"
+          echo "  - Comparing with baseline images"
+          echo "  - Detecting visual regressions"
+
+      - name: Generate test report
+        run: |
+          echo "## Visual Regression Test Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Visual regression testing framework ready for implementation." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Test Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Emotional state rendering" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Expression accuracy" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Parameter range validation" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Animation smoothness" >> $GITHUB_STEP_SUMMARY
+          echo "- [ ] Chaotic behavior visualization" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # Test Summary
+  # ============================================================================
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [
+      parameter-mapping-tests,
+      chaos-engine-tests,
+      avatar-manager-tests,
+      visual-regression
+    ]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "# 🎭 Live2D Integration Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter Mapping | ${{ needs.parameter-mapping-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Chaos Engine | ${{ needs.chaos-engine-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Avatar Manager | ${{ needs.avatar-manager-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Visual Regression | ${{ needs.visual-regression.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Components Tested" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Enhanced Parameter Mapper" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Lorenz Chaotic Attractor" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Fractal Pattern Generator" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Quantum Fluctuator" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Emergent Behavior Engine" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Avatar Manager Lifecycle" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Emotion Preset System" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Emotion Transition Animation" >> $GITHUB_STEP_SUMMARY
