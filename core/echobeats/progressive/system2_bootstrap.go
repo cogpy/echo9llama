@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package progressive implements System 2: The Perception-Action Bootstrap
 package progressive
 

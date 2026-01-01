@@ -38,6 +38,7 @@ type CognitiveState struct {
 	CognitiveLoad  float64 `json:"cognitive_load"`  // 0.0 to 1.0
 	Coherence      float64 `json:"coherence"`       // 0.0 to 1.0
 	EnergyLevel    float64 `json:"energy_level"`    // 0.0 to 1.0
+	Confidence     float64 `json:"confidence"`      // 0.0 to 1.0
 	ProcessingMode string  `json:"processing_mode"` // "contemplative", "dynamic", "cautious", "creative"
 }
 

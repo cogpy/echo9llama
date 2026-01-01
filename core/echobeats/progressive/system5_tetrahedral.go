@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package progressive implements System 5: Nested Concurrency (Tetrahedral)
 package progressive
 

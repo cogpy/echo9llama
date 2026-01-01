@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package progressive implements System 3: Orthogonal Dyadic Pairs
 package progressive
 

@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cogpy/echo9llama/core/consciousness"
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echobeats"
 	"github.com/cogpy/echo9llama/core/echodream"

@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package embeddings provides embedding providers for the memory system.
 package embeddings
 

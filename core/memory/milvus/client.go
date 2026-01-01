@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // Package milvus provides a Milvus-backed implementation of the CognitiveMemory interface.
 package milvus
 
