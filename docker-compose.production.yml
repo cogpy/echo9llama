@@ -1,0 +1,114 @@
+version: '3.8'
+
+# Deep Tree Echo - Production Deployment
+# Continuous autonomous operation with health monitoring
+
+services:
+  # Main Deep Tree Echo autonomous agent
+  echo-autonomous:
+    build:
+      context: .
+      dockerfile: Dockerfile.autonomous
+    container_name: deep-tree-echo
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    ports:
+      - "8080:8080"      # HTTP API
+      - "11434:11434"    # Ollama-compatible API
+    environment:
+      # LLM Provider Keys (set in .env or export)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # Cognitive cycle configuration
+      - ECHO_CYCLE_INTERVAL=${ECHO_CYCLE_INTERVAL:-10s}
+      - ECHO_DREAM_INTERVAL=${ECHO_DREAM_INTERVAL:-30m}
+      - ECHO_DREAM_DURATION=${ECHO_DREAM_DURATION:-5m}
+      # Memory/persistence
+      - ECHO_DATA_DIR=/app/data
+      - ECHO_LOG_LEVEL=${ECHO_LOG_LEVEL:-info}
+    volumes:
+      - echo-data:/app/data
+      - echo-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      - "autoheal=true"
+      - "com.deep-tree-echo.version=iteration-020"
+
+  # Auto-restart unhealthy containers
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: echo-autoheal
+    restart: always
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=30
+      - AUTOHEAL_START_PERIOD=60
+      - AUTOHEAL_DEFAULT_STOP_TIMEOUT=10
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - echo-autonomous
+
+  # Optional: Prometheus metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: echo-prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+
+  # Optional: Grafana dashboards
+  grafana:
+    image: grafana/grafana:latest
+    container_name: echo-grafana
+    restart: unless-stopped
+    profiles: ["monitoring"]
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  echo-data:
+    driver: local
+  echo-logs:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+networks:
+  default:
+    name: deep-tree-echo-network
