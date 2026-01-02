@@ -66,7 +66,7 @@ type EpisodicMemory struct {
 	Consolidated bool
 }
 
-// Pattern represents an extracted pattern from experiences
+// Pattern represents an extracted pattern from experiences and cognitive processes
 type Pattern struct {
 	ID          string
 	Description string
@@ -74,6 +74,12 @@ type Pattern struct {
 	Strength    float64
 	Examples    []string
 	CreatedAt   time.Time
+	// Identity-related fields for cognitive pattern tracking
+	Type        string    // Pattern type (cognitive, semantic, temporal, activation_cluster)
+	Nodes       []string  // Connected nodes in hypergraph
+	FirstSeen   time.Time // When pattern was first observed
+	LastSeen    time.Time // When pattern was last active
+	Occurrences int       // Number of times pattern has been activated
 }
 
 // WisdomInsight represents wisdom extracted from patterns
