@@ -393,7 +393,7 @@ func (sum *SelfUpdateManager) recordUpdate(toVersion string, success bool, error
 	}
 	
 	if errorMsg != "" {
-		return fmt.Errorf(errorMsg)
+		return fmt.Errorf("%s", errorMsg)
 	}
 	
 	return nil

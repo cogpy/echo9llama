@@ -237,7 +237,7 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	// Start main autonomous orchestration loop
 	go uao.runAutonomousLoop()
 	
-	fmt.Println("✨ Echo is now fully autonomous and aware\n")
+	fmt.Println("✨ Echo is now fully autonomous and aware")
 	
 	return nil
 }
@@ -429,7 +429,7 @@ func (uao *UnifiedAutonomousOrchestrator) transitionToRest() {
 		uao.echodreamIntegration.BeginDreamCycle()
 	}
 	
-	fmt.Println("   💤 Echo is now resting and consolidating knowledge\n")
+	fmt.Println("   💤 Echo is now resting and consolidating knowledge")
 }
 
 // transitionToWake transitions echo back to waking state
@@ -464,7 +464,7 @@ func (uao *UnifiedAutonomousOrchestrator) transitionToWake() {
 		fmt.Printf("   ✨ Integrated %d wisdom insights from rest\n", len(insights))
 	}
 	
-	fmt.Println("   ☀️ Echo is now awake and aware\n")
+	fmt.Println("   ☀️ Echo is now awake and aware")
 }
 
 // updateGlobalTelemetry updates the global telemetry shell with current state
@@ -592,7 +592,7 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	uao.running = false
 	uao.cancel()
 	
-	fmt.Println("😴 Echo has gone to sleep. Goodnight.\n")
+	fmt.Println("😴 Echo has gone to sleep. Goodnight.")
 	
 	return nil
 }
