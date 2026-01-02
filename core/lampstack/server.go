@@ -2,20 +2,22 @@ package lampstack
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
-// Server provides an HTTP API for the LAMPSTACK
+// Server provides an HTTP API for the LAMPSTACK using Echo framework
 type Server struct {
 	mu sync.RWMutex
 
 	stack   *Stack
-	address string
-	server  *http.Server
+	config  *ServerConfig
+	echo    *echo.Echo
 
 	// State
 	running   bool
@@ -29,28 +31,32 @@ type ServerConfig struct {
 	WriteTimeout    time.Duration `json:"write_timeout"`
 	EnableCORS      bool          `json:"enable_cors"`
 	EnableMetrics   bool          `json:"enable_metrics"`
+	EnableLogging   bool          `json:"enable_logging"`
+	EnableRecover   bool          `json:"enable_recover"`
 }
 
 // DefaultServerConfig returns default server configuration
 func DefaultServerConfig() *ServerConfig {
 	return &ServerConfig{
-		Address:      ":8080",
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-		EnableCORS:   true,
+		Address:       ":8080",
+		ReadTimeout:   30 * time.Second,
+		WriteTimeout:  60 * time.Second,
+		EnableCORS:    true,
 		EnableMetrics: true,
+		EnableLogging: true,
+		EnableRecover: true,
 	}
 }
 
-// NewServer creates a new LAMPSTACK server
+// NewServer creates a new LAMPSTACK server using Echo framework
 func NewServer(stack *Stack, config *ServerConfig) *Server {
 	if config == nil {
 		config = DefaultServerConfig()
 	}
 
 	return &Server{
-		stack:   stack,
-		address: config.Address,
+		stack:  stack,
+		config: config,
 	}
 }
 
@@ -63,30 +69,29 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
-	// Create router
-	mux := http.NewServeMux()
+	// Create Echo instance
+	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
+
+	// Configure middleware
+	s.configureMiddleware(e)
 
 	// Register routes
-	s.registerRoutes(mux)
+	s.registerRoutes(e)
 
-	// Create server
-	s.server = &http.Server{
-		Addr:         s.address,
-		Handler:      s.corsMiddleware(mux),
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 60 * time.Second,
-	}
+	s.echo = e
 
 	s.mu.Lock()
 	s.running = true
 	s.startTime = time.Now()
 	s.mu.Unlock()
 
-	fmt.Printf("🔷 LAMPSTACK Server starting on %s\n", s.address)
+	fmt.Printf("🔷 LAMPSTACK Echo Server starting on %s\n", s.config.Address)
 
-	// Start server
+	// Start server in goroutine
 	go func() {
-		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(s.config.Address); err != nil && err != http.ErrServerClosed {
 			fmt.Printf("   ⚠️  Server error: %v\n", err)
 		}
 	}()
@@ -103,10 +108,10 @@ func (s *Server) Stop(ctx context.Context) error {
 	}
 	s.mu.Unlock()
 
-	fmt.Println("🔷 LAMPSTACK Server stopping...")
+	fmt.Println("🔷 LAMPSTACK Echo Server stopping...")
 
-	if s.server != nil {
-		if err := s.server.Shutdown(ctx); err != nil {
+	if s.echo != nil {
+		if err := s.echo.Shutdown(ctx); err != nil {
 			return fmt.Errorf("shutdown error: %w", err)
 		}
 	}
@@ -115,61 +120,83 @@ func (s *Server) Stop(ctx context.Context) error {
 	s.running = false
 	s.mu.Unlock()
 
-	fmt.Println("🔷 LAMPSTACK Server stopped")
+	fmt.Println("🔷 LAMPSTACK Echo Server stopped")
 	return nil
 }
 
-// registerRoutes sets up HTTP routes
-func (s *Server) registerRoutes(mux *http.ServeMux) {
+// configureMiddleware sets up Echo middleware
+func (s *Server) configureMiddleware(e *echo.Echo) {
+	// Recovery middleware
+	if s.config.EnableRecover {
+		e.Use(middleware.Recover())
+	}
+
+	// Logging middleware
+	if s.config.EnableLogging {
+		e.Use(middleware.LoggerWithConfig(middleware.LoggerConfig{
+			Format: "  ${time_rfc3339} ${method} ${uri} ${status} ${latency_human}\n",
+		}))
+	}
+
+	// CORS middleware
+	if s.config.EnableCORS {
+		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins: []string{"*"},
+			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
+			AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
+		}))
+	}
+
+	// Request ID middleware
+	e.Use(middleware.RequestID())
+
+	// Timeout middleware
+	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+		Timeout: s.config.WriteTimeout,
+	}))
+}
+
+// registerRoutes sets up HTTP routes using Echo
+func (s *Server) registerRoutes(e *echo.Echo) {
 	// Health and info
-	mux.HandleFunc("/health", s.handleHealth)
-	mux.HandleFunc("/info", s.handleInfo)
-	mux.HandleFunc("/metrics", s.handleMetrics)
+	e.GET("/health", s.handleHealth)
+	e.GET("/info", s.handleInfo)
+	e.GET("/metrics", s.handleMetrics)
+
+	// API group
+	api := e.Group("/api")
 
 	// Generation API
-	mux.HandleFunc("/api/generate", s.handleGenerate)
-	mux.HandleFunc("/api/chat", s.handleChat)
+	api.POST("/generate", s.handleGenerate)
+	api.POST("/chat", s.handleChat)
 
-	// Cognitive API
-	mux.HandleFunc("/api/echo/think", s.handleThink)
-	mux.HandleFunc("/api/echo/reflect", s.handleReflect)
-	mux.HandleFunc("/api/echo/state", s.handleCognitiveState)
+	// Cognitive API (Echo endpoints)
+	echoAPI := api.Group("/echo")
+	echoAPI.POST("/think", s.handleThink)
+	echoAPI.POST("/reflect", s.handleReflect)
+	echoAPI.GET("/state", s.handleCognitiveState)
 
 	// Memory API
-	mux.HandleFunc("/api/memory/store", s.handleMemoryStore)
-	mux.HandleFunc("/api/memory/retrieve", s.handleMemoryRetrieve)
-	mux.HandleFunc("/api/memory/stats", s.handleMemoryStats)
+	memAPI := api.Group("/memory")
+	memAPI.POST("/store", s.handleMemoryStore)
+	memAPI.POST("/retrieve", s.handleMemoryRetrieve)
+	memAPI.GET("/stats", s.handleMemoryStats)
 
 	// Persistence API
-	mux.HandleFunc("/api/snapshot", s.handleSnapshot)
+	api.GET("/snapshot", s.handleSnapshotGet)
+	api.POST("/snapshot", s.handleSnapshotCreate)
 }
 
-// CORS middleware
-func (s *Server) corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+// Handlers using Echo context
 
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// Handlers
-
-func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	s.jsonResponse(w, map[string]interface{}{
+func (s *Server) handleHealth(c echo.Context) error {
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"status":  "ok",
 		"version": Version,
 	})
 }
 
-func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleInfo(c echo.Context) error {
 	s.mu.RLock()
 	uptime := time.Since(s.startTime)
 	s.mu.RUnlock()
@@ -183,7 +210,7 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	s.jsonResponse(w, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"name":      StackName,
 		"version":   Version,
 		"uptime":    uptime.String(),
@@ -196,247 +223,174 @@ func (s *Server) handleInfo(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleMetrics(c echo.Context) error {
 	metrics := s.stack.GetMetrics()
-	s.jsonResponse(w, metrics)
+	return c.JSON(http.StatusOK, metrics)
 }
 
-func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleGenerate(c echo.Context) error {
 	var request GenerationRequest
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
-	response, err := s.stack.Generate(r.Context(), &request)
+	response, err := s.stack.Generate(c.Request().Context(), &request)
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, response)
+	return c.JSON(http.StatusOK, response)
 }
 
-func (s *Server) handleChat(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleChat(c echo.Context) error {
 	var request struct {
 		Messages []Message `json:"messages"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
-	response, err := s.stack.Chat(r.Context(), request.Messages)
+	response, err := s.stack.Chat(c.Request().Context(), request.Messages)
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, response)
+	return c.JSON(http.StatusOK, response)
 }
 
-func (s *Server) handleThink(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleThink(c echo.Context) error {
 	var request struct {
 		Prompt string `json:"prompt"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
-	response, err := s.stack.Think(r.Context(), request.Prompt)
+	response, err := s.stack.Think(c.Request().Context(), request.Prompt)
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, response)
+	return c.JSON(http.StatusOK, response)
 }
 
-func (s *Server) handleReflect(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleReflect(c echo.Context) error {
 	var request struct {
 		Context string `json:"context"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
-	response, err := s.stack.Reflect(r.Context(), request.Context)
+	response, err := s.stack.Reflect(c.Request().Context(), request.Context)
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, response)
+	return c.JSON(http.StatusOK, response)
 }
 
-func (s *Server) handleCognitiveState(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "GET required")
-		return
-	}
-
+func (s *Server) handleCognitiveState(c echo.Context) error {
 	state, err := s.stack.GetCognitiveState()
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, state)
+	return c.JSON(http.StatusOK, state)
 }
 
-func (s *Server) handleMemoryStore(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleMemoryStore(c echo.Context) error {
 	var entry MemoryEntry
-	if err := json.NewDecoder(r.Body).Decode(&entry); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&entry); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
-	if err := s.stack.StoreMemory(r.Context(), &entry); err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+	if err := s.stack.StoreMemory(c.Request().Context(), &entry); err != nil {
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"status": "stored",
 		"id":     entry.ID,
 	})
 }
 
-func (s *Server) handleMemoryRetrieve(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "POST required")
-		return
-	}
-
+func (s *Server) handleMemoryRetrieve(c echo.Context) error {
 	var request struct {
 		Query string `json:"query"`
 		Limit int    `json:"limit"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		s.errorResponse(w, http.StatusBadRequest, "Invalid request body")
-		return
+	if err := c.Bind(&request); err != nil {
+		return c.JSON(http.StatusBadRequest, errorResponse("Invalid request body"))
 	}
 
 	if request.Limit <= 0 {
 		request.Limit = 10
 	}
 
-	memories, err := s.stack.RetrieveMemory(r.Context(), request.Query, request.Limit)
+	memories, err := s.stack.RetrieveMemory(c.Request().Context(), request.Query, request.Limit)
 	if err != nil {
-		s.errorResponse(w, http.StatusInternalServerError, err.Error())
-		return
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.jsonResponse(w, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]interface{}{
 		"memories": memories,
 		"count":    len(memories),
 	})
 }
 
-func (s *Server) handleMemoryStats(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		s.errorResponse(w, http.StatusMethodNotAllowed, "GET required")
-		return
-	}
-
+func (s *Server) handleMemoryStats(c echo.Context) error {
 	if s.stack.memory == nil {
-		s.errorResponse(w, http.StatusServiceUnavailable, "Memory not available")
-		return
+		return c.JSON(http.StatusServiceUnavailable, errorResponse("Memory not available"))
 	}
 
 	stats := s.stack.memory.GetStats()
-	s.jsonResponse(w, stats)
+	return c.JSON(http.StatusOK, stats)
 }
 
-func (s *Server) handleSnapshot(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		// Create snapshot
-		persistence, ok := s.stack.persistence.(*JSONPersistence)
-		if !ok {
-			s.errorResponse(w, http.StatusServiceUnavailable, "Persistence not available")
-			return
-		}
-
-		snapshot, err := persistence.CreateSnapshot(r.Context(), s.stack)
-		if err != nil {
-			s.errorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if err := persistence.SaveSnapshot(r.Context(), snapshot); err != nil {
-			s.errorResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		s.jsonResponse(w, map[string]interface{}{
-			"status":    "snapshot_created",
-			"timestamp": snapshot.Timestamp,
-		})
-		return
+func (s *Server) handleSnapshotCreate(c echo.Context) error {
+	persistence, ok := s.stack.persistence.(*JSONPersistence)
+	if !ok {
+		return c.JSON(http.StatusServiceUnavailable, errorResponse("Persistence not available"))
 	}
 
-	if r.Method == http.MethodGet {
-		// Get latest snapshot
-		persistence, ok := s.stack.persistence.(*JSONPersistence)
-		if !ok {
-			s.errorResponse(w, http.StatusServiceUnavailable, "Persistence not available")
-			return
-		}
-
-		snapshot, err := persistence.LoadLatestSnapshot(r.Context())
-		if err != nil {
-			s.errorResponse(w, http.StatusNotFound, err.Error())
-			return
-		}
-
-		s.jsonResponse(w, snapshot)
-		return
+	snapshot, err := persistence.CreateSnapshot(c.Request().Context(), s.stack)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
 	}
 
-	s.errorResponse(w, http.StatusMethodNotAllowed, "GET or POST required")
-}
+	if err := persistence.SaveSnapshot(c.Request().Context(), snapshot); err != nil {
+		return c.JSON(http.StatusInternalServerError, errorResponse(err.Error()))
+	}
 
-// Response helpers
-
-func (s *Server) jsonResponse(w http.ResponseWriter, data interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
-}
-
-func (s *Server) errorResponse(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": message,
-		"code":  code,
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status":    "snapshot_created",
+		"timestamp": snapshot.Timestamp,
 	})
+}
+
+func (s *Server) handleSnapshotGet(c echo.Context) error {
+	persistence, ok := s.stack.persistence.(*JSONPersistence)
+	if !ok {
+		return c.JSON(http.StatusServiceUnavailable, errorResponse("Persistence not available"))
+	}
+
+	snapshot, err := persistence.LoadLatestSnapshot(c.Request().Context())
+	if err != nil {
+		return c.JSON(http.StatusNotFound, errorResponse(err.Error()))
+	}
+
+	return c.JSON(http.StatusOK, snapshot)
+}
+
+// ErrorResponse represents an API error
+type ErrorResponse struct {
+	Error string `json:"error"`
+	Code  int    `json:"code,omitempty"`
+}
+
+func errorResponse(message string) ErrorResponse {
+	return ErrorResponse{Error: message}
 }
 
 // QuickStart creates and starts a LAMPSTACK server with default configuration
@@ -469,4 +423,14 @@ func QuickStart(ctx context.Context, address string) (*Server, error) {
 	}
 
 	return server, nil
+}
+
+// Echo returns the underlying Echo instance for advanced configuration
+func (s *Server) Echo() *echo.Echo {
+	return s.echo
+}
+
+// Stack returns the LAMPSTACK instance
+func (s *Server) Stack() *Stack {
+	return s.stack
 }
