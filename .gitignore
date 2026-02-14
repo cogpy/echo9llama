@@ -72,3 +72,4 @@ test_autonomous_v3_bin
 # Manus-generated files
 deep_tree_echo_state.json
 test_v4_wisdom_extraction.py
+/daechon
