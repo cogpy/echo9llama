@@ -462,7 +462,9 @@ func (ei *EchoIntegrator) synchronize(system *EchoCogSystem) {
 	}
 	
 	ei.LastSync = time.Now()
+	system.mu.Lock()
 	system.LastSync = time.Now()
+	system.mu.Unlock()
 }
 
 // handleDTEToAtomSpace handles DTE to AtomSpace sync
@@ -556,7 +558,7 @@ func (ecs *EchoCogSystem) runSynchronization(ctx context.Context) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	
-	for ecs.Running {
+	for ecs.ecsIsRunning() {
 		select {
 		case <-ctx.Done():
 			return
@@ -565,11 +567,21 @@ func (ecs *EchoCogSystem) runSynchronization(ctx context.Context) {
 			ecs.AtomSpace.SpreadAttention()
 			
 			// Forget low-importance atoms
-			if time.Since(ecs.LastSync) > 10*time.Second {
+			ecs.mu.RLock()
+			lastSync := ecs.LastSync
+			ecs.mu.RUnlock()
+			if time.Since(lastSync) > 10*time.Second {
 				ecs.AtomSpace.Forget()
 			}
 		}
 	}
+}
+
+// ecsIsRunning returns the running state under mutex protection
+func (ecs *EchoCogSystem) ecsIsRunning() bool {
+	ecs.mu.RLock()
+	defer ecs.mu.RUnlock()
+	return ecs.Running
 }
 
 // runBackgroundCognition runs background cognitive processes
@@ -577,7 +589,7 @@ func (ecs *EchoCogSystem) runBackgroundCognition(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 	
-	for ecs.Running {
+	for ecs.ecsIsRunning() {
 		select {
 		case <-ctx.Done():
 			return

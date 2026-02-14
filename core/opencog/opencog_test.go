@@ -90,7 +90,10 @@ func TestHypercyclicReactor(t *testing.T) {
 	metrics := reactor.GetMetrics()
 	t.Logf("Reactor metrics: %+v", metrics)
 	
-	if cycle.Iterations == 0 {
+	cycle.mu.RLock()
+	iters := cycle.Iterations
+	cycle.mu.RUnlock()
+	if iters == 0 {
 		t.Errorf("Expected some iterations, got 0")
 	}
 	

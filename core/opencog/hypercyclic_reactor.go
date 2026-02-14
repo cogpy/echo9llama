@@ -47,6 +47,7 @@ type HypercyclicReactor struct {
 
 // ReactionCycle represents a hypercyclic reaction cycle
 type ReactionCycle struct {
+	mu            sync.RWMutex
 	ID            string
 	Reactants     []string // Atom IDs
 	Products      []string // Atom IDs
@@ -549,7 +550,7 @@ func (hr *HypercyclicReactor) runReactionCycles(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Millisecond) // High frequency for temporal compression
 	defer ticker.Stop()
 	
-	for hr.Running {
+	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
 			return
@@ -617,20 +618,24 @@ func (hr *HypercyclicReactor) executeReactionCycle(cycle *ReactionCycle) {
 			}
 		}
 		
+		cycle.mu.Lock()
 		cycle.Iterations++
 		cycle.LastExecution = time.Now()
 		
 		// Energy accumulation
 		cycle.Energy *= 0.99
 		cycle.Energy += effectiveRate * 0.01
+		cycle.mu.Unlock()
 		
+		hr.mu.Lock()
 		hr.FusionEnergy += effectiveRate * 0.001
+		hr.mu.Unlock()
 	}
 }
 
 // runInferenceEngine runs the massively parallel inference engine
 func (hr *HypercyclicReactor) runInferenceEngine(ctx context.Context) {
-	for hr.Running {
+	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
 			return
@@ -646,7 +651,7 @@ func (hr *HypercyclicReactor) runTemporalCompression(ctx context.Context) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 	
-	for hr.Running {
+	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
 			return
@@ -663,17 +668,20 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 	
 	lastReactions := int64(0)
 	
-	for hr.Running {
+	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			hr.mu.RLock()
 			hr.Metrics.mu.Lock()
 			
 			// Count total reactions
 			totalReactions := int64(0)
 			for _, cycle := range hr.ReactionCycles {
+				cycle.mu.RLock()
 				totalReactions += cycle.Iterations
+				cycle.mu.RUnlock()
 			}
 			hr.Metrics.TotalReactions = totalReactions
 			
@@ -686,11 +694,16 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 			hr.Metrics.AverageEnergy = hr.FusionEnergy / math.Max(float64(len(hr.ReactionCycles)), 1.0)
 			
 			// Compression gain
+			hr.TemporalCompressor.mu.RLock()
 			hr.Metrics.CompressionGain = hr.TemporalCompressor.CompressionGain
+			hr.TemporalCompressor.mu.RUnlock()
 			
 			// Parallel efficiency
+			hr.WorkerPool.mu.RLock()
+			activeWorkers := hr.WorkerPool.ActiveWorkers
+			hr.WorkerPool.mu.RUnlock()
 			if hr.MaxConcurrency > 0 {
-				hr.Metrics.ParallelEfficiency = float64(hr.WorkerPool.ActiveWorkers) / float64(hr.MaxConcurrency)
+				hr.Metrics.ParallelEfficiency = float64(activeWorkers) / float64(hr.MaxConcurrency)
 			}
 			
 			// Throughput gain (reactions * compression * parallelism)
@@ -698,6 +711,7 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 			
 			hr.Metrics.LastUpdate = time.Now()
 			hr.Metrics.mu.Unlock()
+			hr.mu.RUnlock()
 		}
 	}
 }
@@ -802,8 +816,10 @@ func (wp *WorkerPool) executeInferenceTask(task *InferenceTask, reactor *Hypercy
 	result.Duration = time.Since(startTime)
 	result.Cost = result.Duration.Seconds()
 	
+	reactor.InferenceEngine.mu.Lock()
 	reactor.InferenceEngine.InferenceCount++
 	reactor.InferenceEngine.LastInference = time.Now()
+	reactor.InferenceEngine.mu.Unlock()
 	
 	return result
 }
@@ -991,12 +1007,21 @@ func (tc *TemporalCompressor) Compress() {
 	tc.Buffer = tc.Buffer[:0]
 }
 
+// isRunning returns the running state under mutex protection
+func (hr *HypercyclicReactor) isRunning() bool {
+	hr.mu.RLock()
+	defer hr.mu.RUnlock()
+	return hr.Running
+}
+
 // GetMetrics returns reactor metrics
 func (hr *HypercyclicReactor) GetMetrics() map[string]interface{} {
+	hr.mu.RLock()
 	hr.Metrics.mu.RLock()
-	defer hr.Metrics.mu.RUnlock()
-	
-	return map[string]interface{}{
+	hr.WorkerPool.mu.RLock()
+	hr.InferenceEngine.mu.RLock()
+
+	result := map[string]interface{}{
 		"total_reactions":      hr.Metrics.TotalReactions,
 		"reactions_per_second": hr.Metrics.ReactionsPerSecond,
 		"average_energy":       hr.Metrics.AverageEnergy,
@@ -1011,4 +1036,11 @@ func (hr *HypercyclicReactor) GetMetrics() map[string]interface{} {
 		"active_workers":       hr.WorkerPool.ActiveWorkers,
 		"inference_count":      hr.InferenceEngine.InferenceCount,
 	}
+
+	hr.InferenceEngine.mu.RUnlock()
+	hr.WorkerPool.mu.RUnlock()
+	hr.Metrics.mu.RUnlock()
+	hr.mu.RUnlock()
+
+	return result
 }

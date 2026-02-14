@@ -170,7 +170,9 @@ func (e *Engine) optimizeCycle() {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	
+	e.metrics.mu.Lock()
 	e.metrics.TotalCycles++
+	e.metrics.mu.Unlock()
 	
 	// Optimize each triad
 	e.optimizeKnowing()
@@ -186,7 +188,9 @@ func (e *Engine) optimizeCycle() {
 	// Update overall coherence
 	e.updateOverallCoherence()
 	
+	e.state.mu.Lock()
 	e.state.LastUpdate = time.Now()
+	e.state.mu.Unlock()
 }
 
 // optimizeKnowing optimizes the Ways of Knowing triad
@@ -234,7 +238,9 @@ func (e *Engine) integrateTriads() {
 	// Wisdom transforms Knowing
 	e.knowing.UpdateFromWisdom(e.wisdom)
 	
+	e.metrics.mu.Lock()
 	e.metrics.CrossTriadIntegrations++
+	e.metrics.mu.Unlock()
 }
 
 // applySophrosyne applies optimal self-regulation across all dimensions
@@ -248,7 +254,9 @@ func (e *Engine) applySophrosyne() {
 	// Apply weights to optimize overall system
 	e.realization.OptimizeWithWeights(weights, e.state)
 	
+	e.metrics.mu.Lock()
 	e.metrics.SophrosyneOptimizations++
+	e.metrics.mu.Unlock()
 }
 
 // calculateOptimalWeights determines optimal balancing weights
