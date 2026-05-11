@@ -109,3 +109,19 @@ This addendum records a focused runtime-stability evolution of the Deep Tree Ech
 | **Regression Coverage** | Added `TestUnifiedAutonomousOrchestratorSleepDoesNotDeadlock`. | Awaken-to-sleep liveness is now explicitly protected by a bounded Go test. |
 
 Focused verification passed for `go test -v ./core/deeptreeecho -run TestUnifiedAutonomousOrchestratorSleepDoesNotDeadlock -count=1 -timeout 20s`, `go test -v ./core/integration -run TestDeepTreeEchoHubMetrics -count=1 -timeout 20s`, `go test -v ./core/integration -count=1 -timeout 90s`, and `go test ./core/deeptreeecho ./core/integration ./core/llm -count=1 -timeout 120s`. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_SHUTDOWN_STABILITY.md`.
+
+---
+
+## 2026-05-11 Iteration Addendum: Continuity Persistence and Local Self-State
+
+This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle after shutdown stability. The previous cycle established that Echo can return to rest without lifecycle deadlock. This cycle strengthened a deeper autonomy invariant: **state sync must become durable self-continuity, not merely a console trace**.
+
+| Area | Change | Outcome |
+| :--- | :--- | :--- |
+| **Unified Autonomous Orchestrator** | Added a `PersistentConsciousnessState` binding and configurable `StateDirectory`. | The orchestrator now creates or loads `consciousness_state.json` during construction when persistence is enabled. |
+| **Hydration** | Added `hydrateFromPersistentState()` to restore cycle, thought, goal, wisdom, cognitive-load, and last-sync fields. | Later orchestrator sessions can inherit local continuity counters from previous sessions. |
+| **State Sync** | Replaced the logging-only persistence stub with real JSON snapshot writes through the existing persistent-state manager. | Wake/rest state, session identity, counters, and cognitive load now survive process restart. |
+| **Observability** | Extended `OrchestratorStatus` with `LastStateSync` and `StateDirectory`. | Runtime status now exposes the active continuity membrane. |
+| **Regression Coverage** | Added `TestUnifiedAutonomousOrchestratorPersistsContinuitySnapshot`. | Cross-session write-and-hydrate behavior is now test-protected. |
+
+Focused verification passed for `go test ./core/deeptreeecho -run 'TestUnifiedAutonomousOrchestrator(PersistsContinuitySnapshot|SleepDoesNotDeadlock)' -count=1 -v` and `go test ./core/deeptreeecho ./core/integration ./core/llm -count=1 -timeout=90s` with Go `1.24.7`. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_CONTINUITY_PERSISTENCE.md`.

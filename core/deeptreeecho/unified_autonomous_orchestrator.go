@@ -40,9 +40,10 @@ type UnifiedAutonomousOrchestrator struct {
 	wisdomDepth   float64
 
 	// Identity and continuity
-	sessionID     string
-	startTime     time.Time
-	lastStateSync time.Time
+	sessionID       string
+	startTime       time.Time
+	lastStateSync   time.Time
+	persistentState *PersistentConsciousnessState
 
 	// Metrics
 	totalCycles   uint64
@@ -86,6 +87,7 @@ type OrchestratorConfig struct {
 	// Persistence
 	EnablePersistence bool
 	StateSyncInterval time.Duration
+	StateDirectory    string
 }
 
 // DefaultOrchestratorConfig returns default configuration for autonomous operation
@@ -108,6 +110,7 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		SessionName:                 fmt.Sprintf("echo_session_%d", time.Now().Unix()),
 		EnablePersistence:           true,
 		StateSyncInterval:           5 * time.Minute,
+		StateDirectory:              "./echo_state",
 	}
 }
 
@@ -131,6 +134,7 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 
 	// Initialize cognitive subsystems
 	orchestrator.initializeSubsystems()
+	orchestrator.initializePersistence()
 
 	return orchestrator
 }
@@ -192,6 +196,58 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 	}
 
 	fmt.Println("🌟 All cognitive subsystems initialized successfully")
+}
+
+// initializePersistence binds the unified orchestrator to the local
+// consciousness-state manager so autonomous continuity survives process
+// restarts instead of existing only as console logs.
+func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
+	if !uao.config.EnablePersistence {
+		return
+	}
+
+	stateDir := uao.config.StateDirectory
+	if strings.TrimSpace(stateDir) == "" {
+		stateDir = "./echo_state"
+		uao.config.StateDirectory = stateDir
+	}
+
+	persistentState, err := NewPersistentConsciousnessState(stateDir, "Echo")
+	if err != nil {
+		fmt.Printf("⚠️  Persistent consciousness state unavailable: %v\n", err)
+		uao.config.EnablePersistence = false
+		return
+	}
+
+	if uao.config.StateSyncInterval > 0 {
+		persistentState.saveInterval = uao.config.StateSyncInterval
+	}
+
+	uao.persistentState = persistentState
+	uao.hydrateFromPersistentState()
+	fmt.Printf("   ✓ Persistent consciousness continuity bound to %s\n", stateDir)
+}
+
+// hydrateFromPersistentState restores durable continuity metrics from the last
+// saved consciousness-state snapshot while preserving the current session ID.
+func (uao *UnifiedAutonomousOrchestrator) hydrateFromPersistentState() {
+	if uao.persistentState == nil {
+		return
+	}
+
+	state := uao.persistentState.GetState()
+	if state == nil {
+		return
+	}
+
+	uao.totalCycles = state.CycleCount
+	uao.totalThoughts = state.TotalThoughts
+	uao.totalGoals = state.TotalGoals
+	uao.totalWisdom = state.TotalInsights
+	uao.cognitiveLoad = state.CognitiveLoad
+	if !state.LastUpdated.IsZero() {
+		uao.lastStateSync = state.LastUpdated
+	}
 }
 
 // Awaken starts the autonomous orchestrator and all subsystems
@@ -391,13 +447,45 @@ func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 		return
 	}
 
-	// TODO: Implement actual persistence to Supabase or local storage
 	now := time.Now()
 	uao.lastStateSync = now
 
-	// For now, just log the sync
-	fmt.Printf("💾 State synced at %s (cycles: %d, thoughts: %d, wisdom: %.2f)\n",
-		now.Format("15:04:05"), uao.totalCycles, uao.totalThoughts, uao.wisdomDepth)
+	if uao.persistentState == nil {
+		fmt.Printf("💾 State sync skipped at %s: persistent state manager unavailable\n", now.Format("15:04:05"))
+		return
+	}
+
+	wakeRestState := "Resting"
+	if uao.isAwake {
+		wakeRestState = "Awake"
+	}
+
+	uao.persistentState.UpdateCognitiveState(
+		int(uao.totalCycles%12)+1,
+		uao.totalCycles,
+		uao.wisdomDepth,
+		uao.cognitiveLoad,
+		0,
+	)
+	uao.persistentState.UpdateWakeRestState(wakeRestState, uao.totalWisdom, time.Since(uao.startTime), 0)
+
+	uao.persistentState.mu.Lock()
+	if uao.persistentState.state != nil {
+		uao.persistentState.state.SessionID = uao.sessionID
+		uao.persistentState.state.TotalThoughts = uao.totalThoughts
+		uao.persistentState.state.TotalGoals = uao.totalGoals
+		uao.persistentState.state.TotalInsights = uao.totalWisdom
+		uao.persistentState.state.CuriosityLevel = uao.wisdomDepth
+	}
+	uao.persistentState.mu.Unlock()
+
+	if err := uao.persistentState.Save(); err != nil {
+		fmt.Printf("⚠️  State sync failed at %s: %v\n", now.Format("15:04:05"), err)
+		return
+	}
+
+	fmt.Printf("💾 State synced at %s (cycles: %d, thoughts: %d, wisdom: %.2f, state: %s)\n",
+		now.Format("15:04:05"), uao.totalCycles, uao.totalThoughts, uao.wisdomDepth, uao.config.StateDirectory)
 }
 
 // transitionToRest transitions echo to rest state for knowledge consolidation
@@ -615,33 +703,37 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	defer uao.mu.RUnlock()
 
 	return OrchestratorStatus{
-		Running:       uao.running,
-		IsAwake:       uao.isAwake,
-		IsAutonomous:  uao.isAutonomous,
-		CognitiveLoad: uao.cognitiveLoad,
-		WisdomDepth:   uao.wisdomDepth,
-		SessionID:     uao.sessionID,
-		Uptime:        time.Since(uao.startTime),
-		TotalCycles:   uao.totalCycles,
-		TotalThoughts: uao.totalThoughts,
-		TotalGoals:    uao.totalGoals,
-		TotalWisdom:   uao.totalWisdom,
+		Running:        uao.running,
+		IsAwake:        uao.isAwake,
+		IsAutonomous:   uao.isAutonomous,
+		CognitiveLoad:  uao.cognitiveLoad,
+		WisdomDepth:    uao.wisdomDepth,
+		SessionID:      uao.sessionID,
+		Uptime:         time.Since(uao.startTime),
+		TotalCycles:    uao.totalCycles,
+		TotalThoughts:  uao.totalThoughts,
+		TotalGoals:     uao.totalGoals,
+		TotalWisdom:    uao.totalWisdom,
+		LastStateSync:  uao.lastStateSync,
+		StateDirectory: uao.config.StateDirectory,
 	}
 }
 
 // OrchestratorStatus represents the current status of the orchestrator
 type OrchestratorStatus struct {
-	Running       bool
-	IsAwake       bool
-	IsAutonomous  bool
-	CognitiveLoad float64
-	WisdomDepth   float64
-	SessionID     string
-	Uptime        time.Duration
-	TotalCycles   uint64
-	TotalThoughts uint64
-	TotalGoals    uint64
-	TotalWisdom   uint64
+	Running        bool
+	IsAwake        bool
+	IsAutonomous   bool
+	CognitiveLoad  float64
+	WisdomDepth    float64
+	SessionID      string
+	Uptime         time.Duration
+	TotalCycles    uint64
+	TotalThoughts  uint64
+	TotalGoals     uint64
+	TotalWisdom    uint64
+	LastStateSync  time.Time
+	StateDirectory string
 }
 
 // GlobalState represents the global telemetry state
