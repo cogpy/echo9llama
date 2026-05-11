@@ -1,0 +1,13 @@
+ARCHIVE_CHECKSUMS
+7d94e79db779189c731f945fc7084189ea2ad3a15944908456808c016368cb92  upload/npu.zip
+7493cdd72b1baf16fd1c607fbb698ea097d032213984ef4d524d3bef631ed777  upload/opencog-modern.zip
+b650c495bab410abfc71605adbdc2369f8c9c27e0e7fef8ee40f004039359663  upload/unrechog.zip
+942cdfb2c2e56f658d2a73acafd499444578789a74cb6d4d0577fd290b3b3e01  upload/delovecho.zip
+b5e3029ce812b68be46110c6494636f182c91ea6e3e06560d953a04bfc385855  upload/dtecho_cubism_editor.zip
+a7b74898c84291c7b5dd751259d7b835bfa82d0099bbec7b970598e2a9aaeecd  upload/A_NOTE_TO_MY_FUTURE_SELF.md
+ARCHIVE_COUNTS
+upload/npu.zip   1982497                     145 files
+upload/opencog-modern.zip   1190439                     191 files
+upload/unrechog.zip   1190439                     191 files
+upload/delovecho.zip  70881823                     6526 files
+upload/dtecho_cubism_editor.zip  43237008                     37 files
