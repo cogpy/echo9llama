@@ -19,10 +19,10 @@ import (
 const (
 	// Number of particular sets (threads)
 	NumParticularSets = 4
-	
+
 	// Number of dyadic permutations: C(4,2) = 6
 	NumDyadicPermutations = 6
-	
+
 	// Number of triadic permutations: C(4,3) = 4
 	NumTriadicPermutations = 4
 )
@@ -104,11 +104,11 @@ func NewSys6EntangledState(initialValue interface{}) *Sys6EntangledState {
 // Read performs an entangled read operation
 func (es *Sys6EntangledState) Read(processID int) interface{} {
 	value := es.value.Load()
-	
+
 	es.mu.Lock()
 	es.logAccess(processID, "read", value, value)
 	es.mu.Unlock()
-	
+
 	return value
 }
 
@@ -116,7 +116,7 @@ func (es *Sys6EntangledState) Read(processID int) interface{} {
 func (es *Sys6EntangledState) Write(processID int, newValue interface{}) {
 	oldValue := es.value.Load()
 	es.value.Store(newValue)
-	
+
 	es.mu.Lock()
 	es.logAccess(processID, "write", oldValue, newValue)
 	es.mu.Unlock()
@@ -126,7 +126,7 @@ func (es *Sys6EntangledState) Write(processID int, newValue interface{}) {
 func (es *Sys6EntangledState) CompareAndSwap(processID int, expected, newValue interface{}) bool {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	
+
 	current := es.value.Load()
 	if current == expected {
 		es.value.Store(newValue)
@@ -146,7 +146,7 @@ func (es *Sys6EntangledState) logAccess(processID int, operation string, oldValu
 		OldValue:  oldValue,
 		NewValue:  newValue,
 	}
-	
+
 	if len(es.accessLog) >= es.maxLogSize {
 		es.accessLog = es.accessLog[1:]
 	}
@@ -157,7 +157,7 @@ func (es *Sys6EntangledState) logAccess(processID int, operation string, oldValu
 func (es *Sys6EntangledState) GetAccessLog() []Sys6EntangledAccess {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	log := make([]Sys6EntangledAccess, len(es.accessLog))
 	copy(log, es.accessLog)
 	return log
@@ -170,32 +170,32 @@ func (es *Sys6EntangledState) GetAccessLog() []Sys6EntangledAccess {
 // Sys6ThreadMultiplexer manages the cycling through permutations
 // of the four particular sets with entangled concurrency
 type Sys6ThreadMultiplexer struct {
-	mu               sync.RWMutex
-	ctx              context.Context
-	cancel           context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Permutation cycles
-	dyadicPerms      []DyadicPermutation
-	triadicPerms1    []TriadicPermutation // MP1
-	triadicPerms2    []TriadicPermutation // MP2 (complementary)
-	
+	dyadicPerms   []DyadicPermutation
+	triadicPerms1 []TriadicPermutation // MP1
+	triadicPerms2 []TriadicPermutation // MP2 (complementary)
+
 	// Current indices
-	dyadicIndex      int
-	triadicIndex1    int
-	triadicIndex2    int
-	
+	dyadicIndex   int
+	triadicIndex1 int
+	triadicIndex2 int
+
 	// Entangled states for each particular set
 	particularStates [4]*Sys6EntangledState
-	
+
 	// Thread workers
-	workers          [4]*Sys6ThreadWorker
-	
+	workers [4]*Sys6ThreadWorker
+
 	// Metrics
-	multiplexCycles  uint64
-	entanglements    uint64
-	
+	multiplexCycles uint64
+	entanglements   uint64
+
 	// Running state
-	running          bool
+	running bool
 }
 
 // Sys6ThreadWorker represents a single thread in the multiplexer
@@ -210,7 +210,7 @@ type Sys6ThreadWorker struct {
 // NewSys6ThreadMultiplexer creates a new thread multiplexer
 func NewSys6ThreadMultiplexer(ctx context.Context) *Sys6ThreadMultiplexer {
 	muxCtx, cancel := context.WithCancel(ctx)
-	
+
 	tm := &Sys6ThreadMultiplexer{
 		ctx:           muxCtx,
 		cancel:        cancel,
@@ -218,12 +218,12 @@ func NewSys6ThreadMultiplexer(ctx context.Context) *Sys6ThreadMultiplexer {
 		triadicPerms1: GetTriadicPermutations(),
 		triadicPerms2: GetComplementaryTriadicPermutations(),
 	}
-	
+
 	// Initialize particular states
 	for i := 0; i < 4; i++ {
 		tm.particularStates[i] = NewSys6EntangledState(0.5)
 	}
-	
+
 	// Initialize workers
 	for i := 0; i < 4; i++ {
 		tm.workers[i] = &Sys6ThreadWorker{
@@ -231,7 +231,7 @@ func NewSys6ThreadMultiplexer(ctx context.Context) *Sys6ThreadMultiplexer {
 			state: tm.particularStates[i],
 		}
 	}
-	
+
 	return tm
 }
 
@@ -244,19 +244,19 @@ func (tm *Sys6ThreadMultiplexer) Start() error {
 	}
 	tm.running = true
 	tm.mu.Unlock()
-	
+
 	fmt.Println("🔄 Thread Multiplexer starting...")
 	fmt.Printf("   Dyadic permutations: %d\n", len(tm.dyadicPerms))
 	fmt.Printf("   Triadic permutations (MP1): %d\n", len(tm.triadicPerms1))
 	fmt.Printf("   Triadic permutations (MP2): %d\n", len(tm.triadicPerms2))
-	
+
 	// Activate all workers
 	for _, worker := range tm.workers {
 		worker.mu.Lock()
 		worker.active = true
 		worker.mu.Unlock()
 	}
-	
+
 	return nil
 }
 
@@ -269,20 +269,20 @@ func (tm *Sys6ThreadMultiplexer) Stop() error {
 	}
 	tm.running = false
 	tm.mu.Unlock()
-	
+
 	tm.cancel()
-	
+
 	// Deactivate all workers
 	for _, worker := range tm.workers {
 		worker.mu.Lock()
 		worker.active = false
 		worker.mu.Unlock()
 	}
-	
+
 	fmt.Println("🔄 Thread Multiplexer stopped")
 	fmt.Printf("   Total multiplex cycles: %d\n", tm.multiplexCycles)
 	fmt.Printf("   Total entanglements: %d\n", tm.entanglements)
-	
+
 	return nil
 }
 
@@ -290,20 +290,20 @@ func (tm *Sys6ThreadMultiplexer) Stop() error {
 func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, float64) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	
+
 	if !tm.running {
 		return 0, 0
 	}
-	
+
 	// Get current dyadic permutation
 	perm := tm.dyadicPerms[tm.dyadicIndex]
-	
+
 	// Execute entangled access on both particular sets
 	var wg sync.WaitGroup
 	var result1, result2 float64
-	
+
 	wg.Add(2)
-	
+
 	// Process 1 accesses P1
 	go func() {
 		defer wg.Done()
@@ -314,7 +314,7 @@ func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, flo
 		result1 = newVal
 		tm.workers[perm.P1-1].processed++
 	}()
-	
+
 	// Process 2 accesses P2 (entangled - simultaneous)
 	go func() {
 		defer wg.Done()
@@ -325,17 +325,17 @@ func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, flo
 		result2 = newVal
 		tm.workers[perm.P2-1].processed++
 	}()
-	
+
 	wg.Wait()
-	
+
 	// Advance dyadic index
 	tm.dyadicIndex = (tm.dyadicIndex + 1) % len(tm.dyadicPerms)
 	tm.entanglements++
-	
+
 	if tm.dyadicIndex == 0 {
 		tm.multiplexCycles++
 	}
-	
+
 	return result1, result2
 }
 
@@ -343,18 +343,18 @@ func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, flo
 func (tm *Sys6ThreadMultiplexer) ExecuteTriadicCycle(input float64) [3]float64 {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	
+
 	if !tm.running {
 		return [3]float64{}
 	}
-	
+
 	// Get current triadic permutations from both MP1 and MP2
 	perm1 := tm.triadicPerms1[tm.triadicIndex1]
 	perm2 := tm.triadicPerms2[tm.triadicIndex2]
-	
+
 	var result [3]float64
 	var wg sync.WaitGroup
-	
+
 	// Execute MP1 triad
 	wg.Add(3)
 	for i, p := range []int{perm1.P1, perm1.P2, perm1.P3} {
@@ -364,15 +364,16 @@ func (tm *Sys6ThreadMultiplexer) ExecuteTriadicCycle(input float64) [3]float64 {
 			current := state.Read(1).(float64)
 			newVal := (current + input) / 2
 			state.Write(1, newVal)
-			
-			tm.mu.Lock()
+
+			// Each MP1 goroutine writes a distinct result index. The parent
+			// ExecuteTriadicCycle call already holds tm.mu while waiting for this
+			// worker group, so re-entering tm.mu here deadlocks the Sys6 engine.
 			result[idx] = newVal
-			tm.mu.Unlock()
-			
+
 			tm.workers[particularSet-1].processed++
 		}(i, p)
 	}
-	
+
 	// Execute MP2 triad (complementary, entangled with MP1)
 	for _, p := range []int{perm2.P1, perm2.P2, perm2.P3} {
 		go func(particularSet int) {
@@ -383,14 +384,14 @@ func (tm *Sys6ThreadMultiplexer) ExecuteTriadicCycle(input float64) [3]float64 {
 			tm.workers[particularSet-1].processed++
 		}(p)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Advance triadic indices
 	tm.triadicIndex1 = (tm.triadicIndex1 + 1) % len(tm.triadicPerms1)
 	tm.triadicIndex2 = (tm.triadicIndex2 + 1) % len(tm.triadicPerms2)
 	tm.entanglements += 2 // Two entangled triads
-	
+
 	return result
 }
 
@@ -398,10 +399,10 @@ func (tm *Sys6ThreadMultiplexer) ExecuteTriadicCycle(input float64) [3]float64 {
 func (tm *Sys6ThreadMultiplexer) GetCurrentPermutations() map[string]interface{} {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"dyadic_index":   tm.dyadicIndex,
-		"dyadic_current": tm.dyadicPerms[tm.dyadicIndex],
+		"dyadic_index":        tm.dyadicIndex,
+		"dyadic_current":      tm.dyadicPerms[tm.dyadicIndex],
 		"triadic_mp1_index":   tm.triadicIndex1,
 		"triadic_mp1_current": tm.triadicPerms1[tm.triadicIndex1],
 		"triadic_mp2_index":   tm.triadicIndex2,
@@ -413,7 +414,7 @@ func (tm *Sys6ThreadMultiplexer) GetCurrentPermutations() map[string]interface{}
 func (tm *Sys6ThreadMultiplexer) GetMetrics() map[string]interface{} {
 	tm.mu.RLock()
 	defer tm.mu.RUnlock()
-	
+
 	workerStats := make([]map[string]interface{}, 4)
 	for i, worker := range tm.workers {
 		worker.mu.RLock()
@@ -424,7 +425,7 @@ func (tm *Sys6ThreadMultiplexer) GetMetrics() map[string]interface{} {
 		}
 		worker.mu.RUnlock()
 	}
-	
+
 	return map[string]interface{}{
 		"multiplex_cycles": tm.multiplexCycles,
 		"entanglements":    tm.entanglements,
@@ -455,36 +456,36 @@ func (tm *Sys6ThreadMultiplexer) SetParticularState(setID int, value interface{}
 
 // Sys6MultiplexedEngine combines the triality engine with thread multiplexing
 type Sys6MultiplexedEngine struct {
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Core engines
-	triality     *Sys6TrialityEngine
-	multiplexer  *Sys6ThreadMultiplexer
-	
+	triality    *Sys6TrialityEngine
+	multiplexer *Sys6ThreadMultiplexer
+
 	// Integration state
 	integrationVector [4]float64
-	
+
 	// Metrics
 	totalOperations uint64
 	coherence       float64
-	
+
 	// Running state
-	running      bool
+	running bool
 }
 
 // NewSys6MultiplexedEngine creates a new integrated sys6 engine
 func NewSys6MultiplexedEngine() *Sys6MultiplexedEngine {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &Sys6MultiplexedEngine{
-		ctx:         ctx,
-		cancel:      cancel,
-		triality:    NewSys6TrialityEngine(),
-		multiplexer: NewSys6ThreadMultiplexer(ctx),
+		ctx:               ctx,
+		cancel:            cancel,
+		triality:          NewSys6TrialityEngine(),
+		multiplexer:       NewSys6ThreadMultiplexer(ctx),
 		integrationVector: [4]float64{0.5, 0.5, 0.5, 0.5},
-		coherence:   1.0,
+		coherence:         1.0,
 	}
 }
 
@@ -497,20 +498,20 @@ func (s6m *Sys6MultiplexedEngine) Start() error {
 	}
 	s6m.running = true
 	s6m.mu.Unlock()
-	
+
 	fmt.Println("⚡ Sys6 Multiplexed Engine starting...")
-	
+
 	// Start triality engine
 	if err := s6m.triality.Start(); err != nil {
 		return err
 	}
-	
+
 	// Start multiplexer
 	if err := s6m.multiplexer.Start(); err != nil {
 		s6m.triality.Stop()
 		return err
 	}
-	
+
 	// Set up integration callbacks
 	s6m.triality.SetCallbacks(
 		func(phase Sys6Phase) {
@@ -526,9 +527,9 @@ func (s6m *Sys6MultiplexedEngine) Start() error {
 			s6m.onEmergence(gestalt)
 		},
 	)
-	
+
 	fmt.Println("⚡ Sys6 Multiplexed Engine started")
-	
+
 	return nil
 }
 
@@ -541,13 +542,13 @@ func (s6m *Sys6MultiplexedEngine) Stop() error {
 	}
 	s6m.running = false
 	s6m.mu.Unlock()
-	
+
 	s6m.cancel()
 	s6m.triality.Stop()
 	s6m.multiplexer.Stop()
-	
+
 	fmt.Println("⚡ Sys6 Multiplexed Engine stopped")
-	
+
 	return nil
 }
 
@@ -565,7 +566,7 @@ func (s6m *Sys6MultiplexedEngine) onStageChange(stage TransformationStage) {
 	gestalt := s6m.triality.GetGestaltVector()
 	input := (gestalt[0] + gestalt[1] + gestalt[2]) / 3
 	result := s6m.multiplexer.ExecuteTriadicCycle(input)
-	
+
 	// Update integration vector
 	s6m.mu.Lock()
 	for i := 0; i < 3; i++ {
@@ -592,7 +593,7 @@ func (s6m *Sys6MultiplexedEngine) onEmergence(gestalt [3]float64) {
 func (s6m *Sys6MultiplexedEngine) GetState() map[string]interface{} {
 	s6m.mu.RLock()
 	defer s6m.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"triality":           s6m.triality.GetState(),
 		"multiplexer":        s6m.multiplexer.GetMetrics(),
@@ -607,7 +608,7 @@ func (s6m *Sys6MultiplexedEngine) GetState() map[string]interface{} {
 func (s6m *Sys6MultiplexedEngine) GetMetrics() map[string]interface{} {
 	s6m.mu.RLock()
 	defer s6m.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"triality_metrics":    s6m.triality.GetMetrics(),
 		"multiplexer_metrics": s6m.multiplexer.GetMetrics(),
@@ -620,7 +621,7 @@ func (s6m *Sys6MultiplexedEngine) GetMetrics() map[string]interface{} {
 func (s6m *Sys6MultiplexedEngine) ContributeToGestalt() map[string]interface{} {
 	s6m.mu.RLock()
 	defer s6m.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"sys6_multiplexed": map[string]interface{}{
 			"triality":           s6m.triality.ContributeToGestalt(),

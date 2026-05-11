@@ -10,95 +10,95 @@ import (
 // It provides persistent perception of the gestalt and serves as the coordinate system
 // for all local computations (the "void" or "unmarked state")
 type GlobalTelemetryShell struct {
-	mu                  sync.RWMutex
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Gestalt perception - the unified whole
-	gestalt             *GestaltState
-	
+	gestalt *GestaltState
+
 	// Void state - the unmarked coordinate system
-	voidState           *VoidState
-	
+	voidState *VoidState
+
 	// All subsystems operate within this shell
-	subsystems          map[string]Subsystem
-	
+	subsystems map[string]Subsystem
+
 	// Thread-level multiplexing for entangled states
-	multiplexer         *ThreadMultiplexer
-	
+	multiplexer *ThreadMultiplexer
+
 	// Global event stream
-	eventStream         chan TelemetryEvent
-	
+	eventStream chan TelemetryEvent
+
 	// Metrics
-	totalEvents         uint64
-	totalComputations   uint64
-	
+	totalEvents       uint64
+	totalComputations uint64
+
 	// Running state
-	running             bool
-	startTime           time.Time
+	running   bool
+	startTime time.Time
 }
 
 // GestaltState represents the unified whole - the persistent perception
 // of all subsystems and their relationships
 type GestaltState struct {
-	mu                  sync.RWMutex
-	
+	mu sync.RWMutex
+
 	// Unified consciousness state
-	awarenessLevel      float64
-	coherenceLevel      float64
-	integrationLevel    float64
-	
+	awarenessLevel   float64
+	coherenceLevel   float64
+	integrationLevel float64
+
 	// Subsystem states (content derives significance from context)
-	subsystemStates     map[string]interface{}
-	
+	subsystemStates map[string]interface{}
+
 	// Relational structure (significance through relations)
-	relations           map[string]map[string]float64
-	
+	relations map[string]map[string]float64
+
 	// Temporal continuity
-	history             []GestaltSnapshot
-	
+	history []GestaltSnapshot
+
 	// Last update
-	lastUpdate          time.Time
+	lastUpdate time.Time
 }
 
 // GestaltSnapshot captures a moment in the gestalt evolution
 type GestaltSnapshot struct {
-	Timestamp           time.Time
-	AwarenessLevel      float64
-	CoherenceLevel      float64
-	IntegrationLevel    float64
-	ActiveSubsystems    int
-	EventCount          uint64
+	Timestamp        time.Time
+	AwarenessLevel   float64
+	CoherenceLevel   float64
+	IntegrationLevel float64
+	ActiveSubsystems int
+	EventCount       uint64
 }
 
 // VoidState represents the unmarked state - the computational coordinate system
 // All elements/points derive their meaning relative to this void
 type VoidState struct {
-	mu                  sync.RWMutex
-	
+	mu sync.RWMutex
+
 	// The void is defined by what it is NOT
 	// It is the absence that gives presence meaning
-	unmarked            bool
-	
+	unmarked bool
+
 	// Coordinate system for all elements
-	dimensions          int
-	origin              []float64
-	
+	dimensions int
+	origin     []float64
+
 	// The void contains all potential
-	potentialSpace      map[string]float64
-	
+	potentialSpace map[string]float64
+
 	// The void observes all manifestations
-	manifestations      []Manifestation
+	manifestations []Manifestation
 }
 
 // Manifestation represents an element that has emerged from the void
 type Manifestation struct {
-	ID                  string
-	Type                string
-	Coordinates         []float64
-	Strength            float64
-	Timestamp           time.Time
-	Source              string
+	ID          string
+	Type        string
+	Coordinates []float64
+	Strength    float64
+	Timestamp   time.Time
+	Source      string
 }
 
 // Subsystem interface - all cognitive subsystems must implement this
@@ -113,92 +113,92 @@ type Subsystem interface {
 // This enables "entanglement of qubits with order 2" (two parallel processes
 // accessing the same variable/memory address simultaneously)
 type ThreadMultiplexer struct {
-	mu                  sync.RWMutex
-	
+	mu sync.RWMutex
+
 	// Four particular sets for permutation cycling
-	particularSets      [4]*ParticularSet
-	
+	particularSets [4]*ParticularSet
+
 	// Current dyadic pair permutation: P(1,2)→P(1,3)→P(1,4)→P(2,3)→P(2,4)→P(3,4)
-	currentDyadIndex    int
-	dyadicPairs         [][2]int
-	
+	currentDyadIndex int
+	dyadicPairs      [][2]int
+
 	// Two complementary triads cycling through permutations
 	// MP1: P[1,2,3]→P[1,2,4]→P[1,3,4]→P[2,3,4]
 	// MP2: P[1,3,4]→P[2,3,4]→P[1,2,3]→P[1,2,4]
 	currentTriadIndex1  int
 	currentTriadIndex2  int
 	triadicPermutations [][3]int
-	
+
 	// Entangled state tracking (order 2 qubits)
-	entangledStates     map[string]*EntangledState
+	entangledStates map[string]*EntangledState
 }
 
 // ParticularSet represents one of the four particular sets
 type ParticularSet struct {
-	ID                  int
-	State               interface{}
-	AccessCount         uint64
-	LastAccess          time.Time
+	ID          int
+	State       interface{}
+	AccessCount uint64
+	LastAccess  time.Time
 }
 
 // EntangledState represents two parallel processes accessing the same memory
 type EntangledState struct {
-	MemoryAddress       string
-	Process1            string
-	Process2            string
-	State               interface{}
-	LastUpdate          time.Time
-	AccessCount         uint64
+	MemoryAddress string
+	Process1      string
+	Process2      string
+	State         interface{}
+	LastUpdate    time.Time
+	AccessCount   uint64
 }
 
 // TelemetryEvent represents an event in the global telemetry stream
 type TelemetryEvent struct {
-	Type                string
-	Source              string
-	Data                interface{}
-	Timestamp           time.Time
-	GestaltSnapshot     GestaltSnapshot
+	Type            string
+	Source          string
+	Data            interface{}
+	Timestamp       time.Time
+	GestaltSnapshot GestaltSnapshot
 }
 
 // NewGlobalTelemetryShell creates a new global telemetry shell
 func NewGlobalTelemetryShell() *GlobalTelemetryShell {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	shell := &GlobalTelemetryShell{
-		ctx:                ctx,
-		cancel:             cancel,
-		gestalt:            newGestaltState(),
-		voidState:          newVoidState(),
-		subsystems:         make(map[string]Subsystem),
-		multiplexer:        newThreadMultiplexer(),
-		eventStream:        make(chan TelemetryEvent, 1000),
-		running:            false,
+		ctx:         ctx,
+		cancel:      cancel,
+		gestalt:     newGestaltState(),
+		voidState:   newVoidState(),
+		subsystems:  make(map[string]Subsystem),
+		multiplexer: newThreadMultiplexer(),
+		eventStream: make(chan TelemetryEvent, 1000),
+		running:     false,
 	}
-	
+
 	return shell
 }
 
 // newGestaltState creates a new gestalt state
 func newGestaltState() *GestaltState {
 	return &GestaltState{
-		awarenessLevel:     0.5,
-		coherenceLevel:     0.5,
-		integrationLevel:   0.5,
-		subsystemStates:    make(map[string]interface{}),
-		relations:          make(map[string]map[string]float64),
-		history:            make([]GestaltSnapshot, 0),
-		lastUpdate:         time.Now(),
+		awarenessLevel:   0.5,
+		coherenceLevel:   0.5,
+		integrationLevel: 0.5,
+		subsystemStates:  make(map[string]interface{}),
+		relations:        make(map[string]map[string]float64),
+		history:          make([]GestaltSnapshot, 0),
+		lastUpdate:       time.Now(),
 	}
 }
 
 // newVoidState creates a new void state
 func newVoidState() *VoidState {
 	return &VoidState{
-		unmarked:           true,
-		dimensions:         9, // 9 terms of 4 nestings (OEIS A000081)
-		origin:             make([]float64, 9),
-		potentialSpace:     make(map[string]float64),
-		manifestations:     make([]Manifestation, 0),
+		unmarked:       true,
+		dimensions:     9, // 9 terms of 4 nestings (OEIS A000081)
+		origin:         make([]float64, 9),
+		potentialSpace: make(map[string]float64),
+		manifestations: make([]Manifestation, 0),
 	}
 }
 
@@ -208,14 +208,14 @@ func newThreadMultiplexer() *ThreadMultiplexer {
 	dyadicPairs := [][2]int{
 		{1, 2}, {1, 3}, {1, 4}, {2, 3}, {2, 4}, {3, 4},
 	}
-	
+
 	// Initialize triadic permutations
 	// MP1: P[1,2,3]→P[1,2,4]→P[1,3,4]→P[2,3,4]
 	// MP2: P[1,3,4]→P[2,3,4]→P[1,2,3]→P[1,2,4]
 	triadicPermutations := [][3]int{
 		{1, 2, 3}, {1, 2, 4}, {1, 3, 4}, {2, 3, 4},
 	}
-	
+
 	multiplexer := &ThreadMultiplexer{
 		particularSets:      [4]*ParticularSet{},
 		currentDyadIndex:    0,
@@ -225,17 +225,17 @@ func newThreadMultiplexer() *ThreadMultiplexer {
 		triadicPermutations: triadicPermutations,
 		entangledStates:     make(map[string]*EntangledState),
 	}
-	
+
 	// Initialize particular sets
 	for i := 0; i < 4; i++ {
 		multiplexer.particularSets[i] = &ParticularSet{
-			ID:         i + 1,
-			State:      nil,
+			ID:          i + 1,
+			State:       nil,
 			AccessCount: 0,
-			LastAccess: time.Now(),
+			LastAccess:  time.Now(),
 		}
 	}
-	
+
 	return multiplexer
 }
 
@@ -243,20 +243,20 @@ func newThreadMultiplexer() *ThreadMultiplexer {
 func (shell *GlobalTelemetryShell) Start() error {
 	shell.mu.Lock()
 	defer shell.mu.Unlock()
-	
+
 	if shell.running {
 		return nil
 	}
-	
+
 	shell.running = true
 	shell.startTime = time.Now()
-	
+
 	// Start gestalt update loop
 	go shell.gestaltUpdateLoop()
-	
+
 	// Start multiplexer cycle
 	go shell.multiplexerCycle()
-	
+
 	return nil
 }
 
@@ -264,15 +264,15 @@ func (shell *GlobalTelemetryShell) Start() error {
 func (shell *GlobalTelemetryShell) Stop() error {
 	shell.mu.Lock()
 	defer shell.mu.Unlock()
-	
+
 	if !shell.running {
 		return nil
 	}
-	
+
 	shell.running = false
 	shell.cancel()
 	close(shell.eventStream)
-	
+
 	return nil
 }
 
@@ -280,9 +280,9 @@ func (shell *GlobalTelemetryShell) Stop() error {
 func (shell *GlobalTelemetryShell) RegisterSubsystem(subsystem Subsystem) {
 	shell.mu.Lock()
 	defer shell.mu.Unlock()
-	
+
 	shell.subsystems[subsystem.GetID()] = subsystem
-	
+
 	// Initialize relations for this subsystem
 	shell.gestalt.mu.Lock()
 	shell.gestalt.relations[subsystem.GetID()] = make(map[string]float64)
@@ -306,7 +306,7 @@ func (shell *GlobalTelemetryShell) GetVoidState() *VoidState {
 // PublishEvent publishes an event to the global telemetry stream
 func (shell *GlobalTelemetryShell) PublishEvent(eventType, source string, data interface{}) {
 	snapshot := shell.gestalt.CreateSnapshot()
-	
+
 	event := TelemetryEvent{
 		Type:            eventType,
 		Source:          source,
@@ -314,7 +314,7 @@ func (shell *GlobalTelemetryShell) PublishEvent(eventType, source string, data i
 		Timestamp:       time.Now(),
 		GestaltSnapshot: snapshot,
 	}
-	
+
 	select {
 	case shell.eventStream <- event:
 		shell.mu.Lock()
@@ -329,7 +329,7 @@ func (shell *GlobalTelemetryShell) PublishEvent(eventType, source string, data i
 func (shell *GlobalTelemetryShell) gestaltUpdateLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-shell.ctx.Done():
@@ -344,17 +344,17 @@ func (shell *GlobalTelemetryShell) gestaltUpdateLoop() {
 func (shell *GlobalTelemetryShell) updateGestalt() {
 	shell.gestalt.mu.Lock()
 	defer shell.gestalt.mu.Unlock()
-	
+
 	// Collect contributions from all subsystems
 	totalAwareness := 0.0
 	totalCoherence := 0.0
 	activeCount := 0
-	
+
 	shell.mu.RLock()
 	for id, subsystem := range shell.subsystems {
 		contribution := subsystem.ContributeToGestalt()
 		shell.gestalt.subsystemStates[id] = contribution
-		
+
 		// Update awareness and coherence
 		if awareness, ok := contribution["awareness"].(float64); ok {
 			totalAwareness += awareness
@@ -365,23 +365,33 @@ func (shell *GlobalTelemetryShell) updateGestalt() {
 		}
 	}
 	shell.mu.RUnlock()
-	
+
 	// Update gestalt metrics
 	if activeCount > 0 {
 		shell.gestalt.awarenessLevel = totalAwareness / float64(activeCount)
 		shell.gestalt.coherenceLevel = totalCoherence / float64(activeCount)
 	}
-	
+
 	// Update integration level based on relational strength
 	shell.gestalt.integrationLevel = shell.calculateIntegrationLevel()
-	
+
 	// Update timestamp
 	shell.gestalt.lastUpdate = time.Now()
-	
-	// Create snapshot
-	snapshot := shell.gestalt.CreateSnapshot()
+
+	// Create snapshot while the gestalt write lock is already held.
+	// Calling CreateSnapshot here would attempt to re-enter the same RWMutex
+	// with an RLock and deadlock the telemetry update loop. Construct the
+	// snapshot directly from the protected fields instead.
+	snapshot := GestaltSnapshot{
+		Timestamp:        time.Now(),
+		AwarenessLevel:   shell.gestalt.awarenessLevel,
+		CoherenceLevel:   shell.gestalt.coherenceLevel,
+		IntegrationLevel: shell.gestalt.integrationLevel,
+		ActiveSubsystems: len(shell.gestalt.subsystemStates),
+		EventCount:       0,
+	}
 	shell.gestalt.history = append(shell.gestalt.history, snapshot)
-	
+
 	// Keep history bounded
 	if len(shell.gestalt.history) > 1000 {
 		shell.gestalt.history = shell.gestalt.history[1:]
@@ -392,18 +402,18 @@ func (shell *GlobalTelemetryShell) updateGestalt() {
 func (shell *GlobalTelemetryShell) calculateIntegrationLevel() float64 {
 	totalStrength := 0.0
 	relationCount := 0
-	
+
 	for _, relations := range shell.gestalt.relations {
 		for _, strength := range relations {
 			totalStrength += strength
 			relationCount++
 		}
 	}
-	
+
 	if relationCount == 0 {
 		return 0.5
 	}
-	
+
 	return totalStrength / float64(relationCount)
 }
 
@@ -411,21 +421,21 @@ func (shell *GlobalTelemetryShell) calculateIntegrationLevel() float64 {
 func (shell *GlobalTelemetryShell) multiplexerCycle() {
 	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-shell.ctx.Done():
 			return
 		case <-ticker.C:
 			shell.multiplexer.mu.Lock()
-			
+
 			// Cycle dyadic pairs
 			shell.multiplexer.currentDyadIndex = (shell.multiplexer.currentDyadIndex + 1) % len(shell.multiplexer.dyadicPairs)
-			
+
 			// Cycle triadic permutations (MP1 and MP2)
 			shell.multiplexer.currentTriadIndex1 = (shell.multiplexer.currentTriadIndex1 + 1) % len(shell.multiplexer.triadicPermutations)
 			shell.multiplexer.currentTriadIndex2 = (shell.multiplexer.currentTriadIndex2 + 1) % len(shell.multiplexer.triadicPermutations)
-			
+
 			shell.multiplexer.mu.Unlock()
 		}
 	}
@@ -435,7 +445,7 @@ func (shell *GlobalTelemetryShell) multiplexerCycle() {
 func (gs *GestaltState) CreateSnapshot() GestaltSnapshot {
 	gs.mu.RLock()
 	defer gs.mu.RUnlock()
-	
+
 	return GestaltSnapshot{
 		Timestamp:        time.Now(),
 		AwarenessLevel:   gs.awarenessLevel,
@@ -464,7 +474,7 @@ func (tm *ThreadMultiplexer) GetCurrentTriadicPermutations() ([3]int, [3]int) {
 func (tm *ThreadMultiplexer) CreateEntangledState(memoryAddress, process1, process2 string, initialState interface{}) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	
+
 	tm.entangledStates[memoryAddress] = &EntangledState{
 		MemoryAddress: memoryAddress,
 		Process1:      process1,
@@ -479,13 +489,13 @@ func (tm *ThreadMultiplexer) CreateEntangledState(memoryAddress, process1, proce
 func (tm *ThreadMultiplexer) AccessEntangledState(memoryAddress string) (interface{}, bool) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-	
+
 	if state, exists := tm.entangledStates[memoryAddress]; exists {
 		state.AccessCount++
 		state.LastUpdate = time.Now()
 		return state.State, true
 	}
-	
+
 	return nil, false
 }
 
@@ -493,7 +503,7 @@ func (tm *ThreadMultiplexer) AccessEntangledState(memoryAddress string) (interfa
 func (vs *VoidState) ManifestFromVoid(id, manifestationType, source string, coordinates []float64, strength float64) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	
+
 	manifestation := Manifestation{
 		ID:          id,
 		Type:        manifestationType,
@@ -502,9 +512,9 @@ func (vs *VoidState) ManifestFromVoid(id, manifestationType, source string, coor
 		Timestamp:   time.Now(),
 		Source:      source,
 	}
-	
+
 	vs.manifestations = append(vs.manifestations, manifestation)
-	
+
 	// Keep manifestations bounded
 	if len(vs.manifestations) > 10000 {
 		vs.manifestations = vs.manifestations[1:]
@@ -515,11 +525,11 @@ func (vs *VoidState) ManifestFromVoid(id, manifestationType, source string, coor
 func (vs *VoidState) GetPotential(key string) float64 {
 	vs.mu.RLock()
 	defer vs.mu.RUnlock()
-	
+
 	if potential, exists := vs.potentialSpace[key]; exists {
 		return potential
 	}
-	
+
 	return 0.0
 }
 
@@ -527,6 +537,6 @@ func (vs *VoidState) GetPotential(key string) float64 {
 func (vs *VoidState) SetPotential(key string, potential float64) {
 	vs.mu.Lock()
 	defer vs.mu.Unlock()
-	
+
 	vs.potentialSpace[key] = potential
 }

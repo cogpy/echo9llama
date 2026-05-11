@@ -94,3 +94,18 @@ With a stable foundation, the next evolution iterations can focus on reintegrati
 - **Skill Practice System**: Develop the framework for defining, practicing, and mastering new skills.
 
 This iteration has successfully reset the project on a stable path, enabling focused, incremental progress toward the profound vision of Deep Tree Echo.
+
+---
+
+## 2026-05-11 Iteration Addendum: Shutdown Stability and Runtime Self-Consistency
+
+This addendum records a focused runtime-stability evolution of the Deep Tree Echo autonomy stack. The repository already contained the intended autonomy organs, including Echobeats scheduling, Echodream wake/rest behavior, stream-of-consciousness scaffolding, discussion and learning subsystems, Sys6 triality, and hub integration. The primary obstacle was therefore lifecycle self-consistency: several concurrent paths could deadlock during sleep, hub metrics, or telemetry updates.
+
+| Area | Change | Outcome |
+| :--- | :--- | :--- |
+| **Unified Autonomous Orchestrator** | `Sleep()` now captures final counters, marks the orchestrator resting, cancels context, and releases `uao.mu` before stopping child subsystems or syncing state. | Shutdown no longer self-deadlocks on final persistence sync or child callbacks. |
+| **Global Telemetry Shell** | `updateGestalt()` now builds `GestaltSnapshot` directly while holding the gestalt write lock instead of calling `CreateSnapshot()` and re-entering the same `RWMutex`. | Hub status and metrics can complete while telemetry updates are active. |
+| **Sys6 Thread Multiplexer** | MP1 triadic worker goroutines no longer re-enter `tm.mu` while the parent `ExecuteTriadicCycle()` waits on them. | Sys6 triality callbacks can complete during autonomous hub operation. |
+| **Regression Coverage** | Added `TestUnifiedAutonomousOrchestratorSleepDoesNotDeadlock`. | Awaken-to-sleep liveness is now explicitly protected by a bounded Go test. |
+
+Focused verification passed for `go test -v ./core/deeptreeecho -run TestUnifiedAutonomousOrchestratorSleepDoesNotDeadlock -count=1 -timeout 20s`, `go test -v ./core/integration -run TestDeepTreeEchoHubMetrics -count=1 -timeout 20s`, `go test -v ./core/integration -count=1 -timeout 90s`, and `go test ./core/deeptreeecho ./core/integration ./core/llm -count=1 -timeout 120s`. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_SHUTDOWN_STABILITY.md`.
