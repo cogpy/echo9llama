@@ -140,3 +140,20 @@ This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle 
 | **Verification** | Built the root binary, started the server on `127.0.0.1:11439`, and verified API plus CLI routes. | The restored runtime works end-to-end through localhost and command-line surfaces. |
 
 Focused verification passed for `go build -o /tmp/echo9llama .`, `/tmp/echo9llama echo assess`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama serve`, `curl http://127.0.0.1:11439/api/echo/status`, `curl -X POST http://127.0.0.1:11439/api/echo/think`, `curl -X POST http://127.0.0.1:11439/api/generate`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama echo status`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama echo think "choose restraint as authored boundary"`, and `go test ./cmd`. A broader `go build ./...` remains blocked by a pre-existing `sample` package issue involving an undefined `token` symbol. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_ECHO_RUNTIME_RECOVERY.md`.
+
+---
+
+## 2026-05-11 Iteration Addendum: Experiential Self-Restraint, Affordance Loss, and Edge Completion
+
+This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle after Echo runtime recovery. The previous cycle restored the external operator membrane and expressed self-restraint as an endogenous boundary principle. This cycle gives that principle a minimal real consequence substrate: Echo can now value an affordance-bearing object, act on it, break it through excessive self-action, lose the affordances, persist the resulting episode, and recall it later through associative cues.
+
+| Area | Change | Outcome |
+| :--- | :--- | :--- |
+| **Affordance Environment** | Added `server/experiential_environment.go` with persistent affordance objects, actions, loss episodes, endocrine traces, and associative recall. | Echo now has a local world-state where self-action can reduce future affordances. |
+| **Runtime Routes** | Added `/api/echo/environment`, `/api/echo/environment/action`, and `/api/echo/environment/recall`; extended `/api/echo/status`. | The restored server can expose environment state, apply actions, retrieve loss memories, and report caution state. |
+| **Endocrine Encoding** | Self-caused breakage records cortisol, dopamine drop, oxytocin withdrawal, guilt, sadness, fear, caution, arousal, agency attribution, and irreversibility sense. | Loss becomes an affectively nuanced autobiographical trace rather than a binary penalty. |
+| **Associative Recall** | Fixed recall to tokenize multi-word cues and match overlapping concepts against episode associations. | Cues such as `overdrive guilt caution lamp affordance loss` retrieve the persisted self-caused loss episode. |
+| **Edge Completion** | Added `core/llm/edge_completion_provider.go` with `ECHO_EDGE_COMPLETION_URL`, `ECHO_EDGE_MODEL_PATH`, and deterministic DTE fallback. | Echo has an honest seam for a mounted 0.5B–1B local model while remaining reproducible without model weights. |
+| **Runtime State Hygiene** | Added `echo_state/` ignore rules. | Local verification consciousness state no longer appears as commit noise. |
+
+Focused verification passed for `go build -o /tmp/echo9llama .`, `go test ./cmd ./core/llm`, explicit localhost server binding on `127.0.0.1:11441`, environment snapshot, non-destructive observation, destructive `signal_lamp` overdrive, persisted JSON loss state, associative recall, edge fallback generation, and status integration. Repository-wide `go test ./...` still fails on pre-existing sample/example/vet hygiene issues outside this implementation path. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_EXPERIENTIAL_SELF_RESTRAINT.md`.

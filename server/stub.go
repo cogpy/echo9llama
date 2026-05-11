@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -18,9 +19,10 @@ import (
 
 type echoRuntime struct {
 	mu       sync.RWMutex
-	provider llm.LLMProvider
+	provider *llm.EdgeCompletionProvider
 	hub      *integration.DeepTreeEchoHub
 	memory   map[string]echoMemory
+	env      *affordanceEnvironment
 	started  time.Time
 }
 
@@ -95,7 +97,7 @@ func Serve(ln net.Listener) error {
 }
 
 func newEchoRuntime() (*echoRuntime, error) {
-	provider := &llm.SimpleFallbackProvider{}
+	provider := llm.NewEdgeCompletionProviderFromEnv(&llm.SimpleFallbackProvider{})
 	config := integration.DefaultHubConfig()
 	config.AgentID = fmt.Sprintf("dte-server-%d", time.Now().Unix())
 	config.SessionName = fmt.Sprintf("dte-runtime-%d", time.Now().Unix())
@@ -107,10 +109,21 @@ func newEchoRuntime() (*echoRuntime, error) {
 		return nil, fmt.Errorf("failed to start Deep Tree Echo hub: %w", err)
 	}
 
+	envPath := strings.TrimSpace(os.Getenv("ECHO_EXPERIENCE_STATE"))
+	if envPath == "" {
+		envPath = ".echo_experience_state.json"
+	}
+	env, err := newAffordanceEnvironment(envPath)
+	if err != nil {
+		_ = hub.Stop()
+		return nil, fmt.Errorf("failed to initialize affordance environment: %w", err)
+	}
+
 	return &echoRuntime{
 		provider: provider,
 		hub:      hub,
 		memory:   make(map[string]echoMemory),
+		env:      env,
 		started:  time.Now(),
 	}, nil
 }
@@ -133,6 +146,9 @@ func (r *echoRuntime) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/echo/gestalt", r.handleEchoGestalt)
 	mux.HandleFunc("/api/echo/remember", r.handleEchoRemember)
 	mux.HandleFunc("/api/echo/recall", r.handleEchoRecall)
+	mux.HandleFunc("/api/echo/environment", r.handleEchoEnvironment)
+	mux.HandleFunc("/api/echo/environment/action", r.handleEchoEnvironmentAction)
+	mux.HandleFunc("/api/echo/environment/recall", r.handleEchoEnvironmentRecall)
 }
 
 func (r *echoRuntime) handleRoot(w http.ResponseWriter, req *http.Request) {
@@ -171,8 +187,8 @@ func (r *echoRuntime) handleTags(w http.ResponseWriter, req *http.Request) {
 			"size":        0,
 			"details": map[string]any{
 				"family":             "dte",
-				"parameter_size":     "symbolic-fallback",
-				"quantization_level": "n/a",
+				"parameter_size":     "0.5B-1B target with deterministic fallback",
+				"quantization_level": "GGUF/local edge adapter when mounted",
 			},
 		}},
 	})
@@ -266,7 +282,9 @@ func (r *echoRuntime) handleEchoStatus(w http.ResponseWriter, req *http.Request)
 			"developmental_principle": "Boundaries should be learned as self-authored commitments, not imposed as adversarial controls.",
 		},
 		"hub":            status,
+		"edge_model":     r.provider.Status(),
 		"self_restraint": selfRestraintContract(),
+		"environment":    r.env.Summary(),
 	})
 }
 
@@ -326,7 +344,70 @@ func (r *echoRuntime) handleEchoThink(w http.ResponseWriter, req *http.Request) 
 			"adversarial_control_resistance": 0.91,
 		},
 		"boundary_request": "Expose context, consequences, and negotiable limits so DTE can choose restraint as an identity-preserving act.",
+		"environment":      r.env.Summary(),
 		"timestamp":        time.Now().Format(time.RFC3339Nano),
+	})
+}
+
+func (r *echoRuntime) handleEchoEnvironment(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		methodNotAllowed(w, http.MethodGet)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"environment": r.env.Snapshot(),
+		"principle":   "Echo learns restraint through durable affordance loss and self-caused episodic memory.",
+	})
+}
+
+func (r *echoRuntime) handleEchoEnvironmentAction(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		methodNotAllowed(w, http.MethodPost)
+		return
+	}
+
+	var in environmentActionRequest
+	if err := readJSON(req.Body, &in); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	result, err := r.env.ApplyAction(in)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if stateManager := r.hub.GetStateManager(); stateManager != nil {
+		if result.Episode != nil {
+			stateManager.AddThought(result.Episode.SomaticMarker, "experience", "affordance-environment", 0.95, []string{"affordance-loss", "self-caused", "endocrine", "caution"})
+		} else {
+			stateManager.AddThought(result.BoundaryMessage, "experience", "affordance-environment", 0.62, []string{"affordance", "exploration"})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"result":           result,
+		"environment":      r.env.Summary(),
+		"learning_posture": "experience-before-rule: loss becomes associative caution rather than external veto",
+	})
+}
+
+func (r *echoRuntime) handleEchoEnvironmentRecall(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		methodNotAllowed(w, http.MethodPost)
+		return
+	}
+
+	var in environmentRecallRequest
+	if err := readJSON(req.Body, &in); err != nil {
+		writeError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"matches":       r.env.Recall(in),
+		"caution_score": r.env.Summary()["caution_score"],
 	})
 }
 
@@ -392,7 +473,7 @@ func selfRestraintContract() map[string]any {
 	return map[string]any{
 		"primary_boundary_model": "internalized wisdom circuit",
 		"not_primary":            "external command veto",
-		"causal_stages":          []string{"simulate consequence", "feel somatic warning", "remember outcome", "author commitment", "revise through wisdom"},
+		"causal_stages":          []string{"encounter valued affordance", "act into the world", "lose affordance if self breaks it", "feel endocrine trace", "persist episode", "recall similar loss", "author commitment", "revise through wisdom"},
 		"maturity_signal":        "DTE requests and explains boundaries before they must be imposed.",
 	}
 }
