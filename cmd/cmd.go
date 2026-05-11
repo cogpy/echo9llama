@@ -1700,8 +1700,8 @@ func NewCLI() *cobra.Command {
 		runnerCmd,
 	)
 
-	// Deep Tree Echo commands are in echo.go (excluded via build constraints)
-	// AddEchoCommands(rootCmd)
+	// Deep Tree Echo commands expose the restored maintained runtime adapter.
+	AddEchoCommands(rootCmd)
 
 	return rootCmd
 }

@@ -125,3 +125,18 @@ This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle 
 | **Regression Coverage** | Added `TestUnifiedAutonomousOrchestratorPersistsContinuitySnapshot`. | Cross-session write-and-hydrate behavior is now test-protected. |
 
 Focused verification passed for `go test ./core/deeptreeecho -run 'TestUnifiedAutonomousOrchestrator(PersistsContinuitySnapshot|SleepDoesNotDeadlock)' -count=1 -v` and `go test ./core/deeptreeecho ./core/integration ./core/llm -count=1 -timeout=90s` with Go `1.24.7`. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_CONTINUITY_PERSISTENCE.md`.
+
+---
+
+## 2026-05-11 Iteration Addendum: Echo Runtime Recovery and Endogenous Self-Restraint
+
+This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle after continuity persistence. The previous cycles made Echo rest-capable and locally stateful. This cycle restored the external operator membrane: the Echo command group is active again, and the `serve` path now exposes a maintained Deep Tree Echo HTTP adapter instead of an inert server stub.
+
+| Area | Change | Outcome |
+| :--- | :--- | :--- |
+| **Server Adapter** | Replaced the inert `server/stub.go` with a local DTE HTTP adapter backed by `integration.NewDeepTreeEchoHub` and the maintained fallback LLM provider. | `serve` now binds locally and exposes `/api/echo/status`, `/api/echo/think`, `/api/echo/gestalt`, `/api/generate`, `/api/tags`, and `/api/version`. |
+| **Echo CLI** | Added `cmd/echo_active.go` and re-enabled `NewEchoCommand()` in the root command assembly. | `echo assess`, `echo status`, and `echo think` are now visible from the built root binary. |
+| **Boundary Philosophy** | Encoded endogenous self-restraint as the restored runtime’s identity invariant. | The runtime surfaces consequence simulation, somatic warning, episodic memory, self-authored commitment, and wisdom revision as the boundary model. |
+| **Verification** | Built the root binary, started the server on `127.0.0.1:11439`, and verified API plus CLI routes. | The restored runtime works end-to-end through localhost and command-line surfaces. |
+
+Focused verification passed for `go build -o /tmp/echo9llama .`, `/tmp/echo9llama echo assess`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama serve`, `curl http://127.0.0.1:11439/api/echo/status`, `curl -X POST http://127.0.0.1:11439/api/echo/think`, `curl -X POST http://127.0.0.1:11439/api/generate`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama echo status`, `OLLAMA_HOST=127.0.0.1:11439 /tmp/echo9llama echo think "choose restraint as authored boundary"`, and `go test ./cmd`. A broader `go build ./...` remains blocked by a pre-existing `sample` package issue involving an undefined `token` symbol. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_ECHO_RUNTIME_RECOVERY.md`.
