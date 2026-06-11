@@ -10,7 +10,7 @@ import (
 // EnhancedWisdomMetrics tracks seven dimensions of wisdom cultivation
 type EnhancedWisdomMetrics struct {
 	mu sync.RWMutex
-	
+
 	// Seven dimensions of wisdom
 	KnowledgeDepth       float64 // 0.0-1.0 - How deep is understanding
 	KnowledgeBreadth     float64 // 0.0-1.0 - How broad is knowledge
@@ -19,23 +19,23 @@ type EnhancedWisdomMetrics struct {
 	ReflectiveInsight    float64 // 0.0-1.0 - Depth of self-awareness
 	EthicalConsideration float64 // 0.0-1.0 - Consideration of values/ethics
 	TemporalPerspective  float64 // 0.0-1.0 - Long-term vs short-term thinking
-	
+
 	// Overall wisdom score
-	OverallWisdom        float64 // 0.0-1.0 - Weighted average
-	
+	OverallWisdom float64 // 0.0-1.0 - Weighted average
+
 	// Historical tracking
-	History              []EnhancedWisdomSnapshot
-	
+	History []EnhancedWisdomSnapshot
+
 	// Improvement tracking
-	ImprovementRate      float64
-	LastImprovement      time.Time
-	
+	ImprovementRate float64
+	LastImprovement time.Time
+
 	// Event tracking
-	SignificantEvents    []WisdomEvent
-	
+	SignificantEvents []WisdomEvent
+
 	// Timing
-	StartTime            time.Time
-	LastUpdate           time.Time
+	StartTime  time.Time
+	LastUpdate time.Time
 }
 
 // EnhancedWisdomSnapshot captures wisdom state at a point in time
@@ -63,12 +63,12 @@ type WisdomEvent struct {
 
 // NewEnhancedWisdomMetrics creates a new enhanced wisdom metrics tracker
 func NewEnhancedWisdomMetrics() *EnhancedWisdomMetrics {
-	return &EnhancedWisdomMetrics{
-		History:       make([]EnhancedWisdomSnapshot, 0),
+	metrics := &EnhancedWisdomMetrics{
+		History:           make([]EnhancedWisdomSnapshot, 0),
 		SignificantEvents: make([]WisdomEvent, 0),
-		StartTime:     time.Now(),
-		LastUpdate:    time.Now(),
-		
+		StartTime:         time.Now(),
+		LastUpdate:        time.Now(),
+
 		// Initialize with baseline values
 		KnowledgeDepth:       0.3,
 		KnowledgeBreadth:     0.3,
@@ -78,6 +78,8 @@ func NewEnhancedWisdomMetrics() *EnhancedWisdomMetrics {
 		EthicalConsideration: 0.5,
 		TemporalPerspective:  0.5,
 	}
+	metrics.OverallWisdom = metrics.calculateOverallWisdom()
+	return metrics
 }
 
 // Update updates all wisdom dimensions based on current state
@@ -91,46 +93,91 @@ func (ewm *EnhancedWisdomMetrics) Update(
 ) {
 	ewm.mu.Lock()
 	defer ewm.mu.Unlock()
-	
+
 	// 1. Knowledge depth from hypergraph structure
 	ewm.KnowledgeDepth = math.Min(1.0, graphDepth)
-	
+
 	// 2. Knowledge breadth from topic diversity
 	ewm.KnowledgeBreadth = math.Min(1.0, float64(topicCount)/100.0)
-	
+
 	// 3. Integration level from edge density
 	ewm.IntegrationLevel = math.Min(1.0, edgeDensity)
-	
+
 	// 4. Practical application from skill proficiency
 	ewm.PracticalApplication = math.Min(1.0, avgSkillProficiency)
-	
+
 	// 5. Reflective insight from AAR coherence
 	ewm.ReflectiveInsight = math.Min(1.0, aarCoherence)
-	
-	// 6. Ethical consideration (placeholder for future implementation)
-	ewm.EthicalConsideration = 0.5
-	
+
+	// 6. Ethical consideration is inferred from the actual cognitive state.
+	// Wisdom should not grow merely by accumulating knowledge; it should balance
+	// reflective insight, long-horizon concern, practical application, and
+	// integrated understanding. This turns the former placeholder into a real
+	// coherence-sensitive ethical signal.
+	ewm.EthicalConsideration = ewm.calculateEthicalConsideration()
+
 	// 7. Temporal perspective from goal horizon distribution
 	ewm.TemporalPerspective = ewm.calculateTemporalPerspective(goalHorizonDistribution)
-	
+
 	// Calculate overall wisdom as weighted average
-	ewm.OverallWisdom = ewm.KnowledgeDepth*0.15 +
+	ewm.OverallWisdom = ewm.calculateOverallWisdom()
+
+	// Store snapshot
+	ewm.storeSnapshot()
+
+	// Calculate improvement rate
+	if len(ewm.History) > 1 {
+		ewm.calculateImprovementRate()
+	}
+
+	ewm.LastUpdate = time.Now()
+}
+
+// calculateEthicalConsideration estimates the ethical dimension from measurable
+// cognitive balance rather than a constant. It rewards reflective insight,
+// integration, practical accountability, and long-horizon awareness while gently
+// penalizing lopsided capability growth that lacks self-reflection.
+func (ewm *EnhancedWisdomMetrics) calculateEthicalConsideration() float64 {
+	values := []float64{
+		ewm.KnowledgeDepth,
+		ewm.KnowledgeBreadth,
+		ewm.IntegrationLevel,
+		ewm.PracticalApplication,
+		ewm.ReflectiveInsight,
+		ewm.TemporalPerspective,
+	}
+
+	mean := 0.0
+	for _, value := range values {
+		mean += value
+	}
+	mean /= float64(len(values))
+
+	variance := 0.0
+	for _, value := range values {
+		diff := value - mean
+		variance += diff * diff
+	}
+	variance /= float64(len(values))
+	coherence := math.Exp(-variance * 8.0)
+
+	ethicalSignal := ewm.ReflectiveInsight*0.35 +
+		ewm.IntegrationLevel*0.25 +
+		ewm.PracticalApplication*0.20 +
+		ewm.TemporalPerspective*0.20
+
+	return math.Max(0.0, math.Min(1.0, ethicalSignal*0.80+coherence*0.20))
+}
+
+// calculateOverallWisdom calculates the Echo9 weighted wisdom aggregate.
+func (ewm *EnhancedWisdomMetrics) calculateOverallWisdom() float64 {
+	return ewm.KnowledgeDepth*0.15 +
 		ewm.KnowledgeBreadth*0.15 +
 		ewm.IntegrationLevel*0.20 +
 		ewm.PracticalApplication*0.15 +
 		ewm.ReflectiveInsight*0.20 +
 		ewm.EthicalConsideration*0.10 +
 		ewm.TemporalPerspective*0.05
-	
-	// Store snapshot
-	ewm.storeSnapshot()
-	
-	// Calculate improvement rate
-	if len(ewm.History) > 1 {
-		ewm.calculateImprovementRate()
-	}
-	
-	ewm.LastUpdate = time.Now()
 }
 
 // calculateTemporalPerspective calculates temporal perspective from goal distribution
@@ -138,7 +185,7 @@ func (ewm *EnhancedWisdomMetrics) calculateTemporalPerspective(distribution map[
 	if len(distribution) == 0 {
 		return 0.5
 	}
-	
+
 	// Weight different time horizons
 	weights := map[string]float64{
 		"immediate":   0.2,
@@ -146,21 +193,21 @@ func (ewm *EnhancedWisdomMetrics) calculateTemporalPerspective(distribution map[
 		"medium_term": 0.7,
 		"long_term":   1.0,
 	}
-	
+
 	totalGoals := 0
 	weightedSum := 0.0
-	
+
 	for horizon, count := range distribution {
 		totalGoals += count
 		if weight, exists := weights[horizon]; exists {
 			weightedSum += float64(count) * weight
 		}
 	}
-	
+
 	if totalGoals == 0 {
 		return 0.5
 	}
-	
+
 	// Normalize to 0-1 range
 	perspective := weightedSum / float64(totalGoals)
 	return math.Min(1.0, perspective)
@@ -179,9 +226,9 @@ func (ewm *EnhancedWisdomMetrics) storeSnapshot() {
 		TemporalPerspective:  ewm.TemporalPerspective,
 		OverallWisdom:        ewm.OverallWisdom,
 	}
-	
+
 	ewm.History = append(ewm.History, snapshot)
-	
+
 	// Keep only last 100 snapshots
 	if len(ewm.History) > 100 {
 		ewm.History = ewm.History[1:]
@@ -194,25 +241,25 @@ func (ewm *EnhancedWisdomMetrics) calculateImprovementRate() {
 		ewm.ImprovementRate = 0.0
 		return
 	}
-	
+
 	// Compare current to 10 snapshots ago (or earliest available)
 	compareWindow := 10
 	if len(ewm.History) < compareWindow {
 		compareWindow = len(ewm.History)
 	}
-	
+
 	current := ewm.History[len(ewm.History)-1]
 	past := ewm.History[len(ewm.History)-compareWindow]
-	
+
 	timeDiff := current.Timestamp.Sub(past.Timestamp).Hours()
 	if timeDiff < 0.01 {
 		ewm.ImprovementRate = 0.0
 		return
 	}
-	
+
 	wisdomDiff := current.OverallWisdom - past.OverallWisdom
 	ewm.ImprovementRate = wisdomDiff / timeDiff
-	
+
 	if wisdomDiff > 0.01 {
 		ewm.LastImprovement = time.Now()
 	}
@@ -222,16 +269,16 @@ func (ewm *EnhancedWisdomMetrics) calculateImprovementRate() {
 func (ewm *EnhancedWisdomMetrics) RecordEvent(eventType, description string, impact float64) {
 	ewm.mu.Lock()
 	defer ewm.mu.Unlock()
-	
+
 	event := WisdomEvent{
 		Timestamp:   time.Now(),
 		Type:        eventType,
 		Description: description,
 		Impact:      impact,
 	}
-	
+
 	ewm.SignificantEvents = append(ewm.SignificantEvents, event)
-	
+
 	// Keep only last 50 events
 	if len(ewm.SignificantEvents) > 50 {
 		ewm.SignificantEvents = ewm.SignificantEvents[1:]
@@ -242,7 +289,7 @@ func (ewm *EnhancedWisdomMetrics) RecordEvent(eventType, description string, imp
 func (ewm *EnhancedWisdomMetrics) GetMetrics() EnhancedWisdomMetricsSnapshot {
 	ewm.mu.RLock()
 	defer ewm.mu.RUnlock()
-	
+
 	return EnhancedWisdomMetricsSnapshot{
 		KnowledgeDepth:       ewm.KnowledgeDepth,
 		KnowledgeBreadth:     ewm.KnowledgeBreadth,
@@ -279,58 +326,58 @@ type EnhancedWisdomMetricsSnapshot struct {
 func (ewm *EnhancedWisdomMetrics) GetDimensionAnalysis() map[string]DimensionAnalysis {
 	ewm.mu.RLock()
 	defer ewm.mu.RUnlock()
-	
+
 	analysis := make(map[string]DimensionAnalysis)
-	
+
 	analysis["knowledge_depth"] = DimensionAnalysis{
-		Name:        "Knowledge Depth",
+		Name:         "Knowledge Depth",
 		CurrentValue: ewm.KnowledgeDepth,
-		Trend:       ewm.calculateDimensionTrend("knowledge_depth"),
-		Assessment:  ewm.assessDimension(ewm.KnowledgeDepth),
+		Trend:        ewm.calculateDimensionTrend("knowledge_depth"),
+		Assessment:   ewm.assessDimension(ewm.KnowledgeDepth),
 	}
-	
+
 	analysis["knowledge_breadth"] = DimensionAnalysis{
-		Name:        "Knowledge Breadth",
+		Name:         "Knowledge Breadth",
 		CurrentValue: ewm.KnowledgeBreadth,
-		Trend:       ewm.calculateDimensionTrend("knowledge_breadth"),
-		Assessment:  ewm.assessDimension(ewm.KnowledgeBreadth),
+		Trend:        ewm.calculateDimensionTrend("knowledge_breadth"),
+		Assessment:   ewm.assessDimension(ewm.KnowledgeBreadth),
 	}
-	
+
 	analysis["integration_level"] = DimensionAnalysis{
-		Name:        "Integration Level",
+		Name:         "Integration Level",
 		CurrentValue: ewm.IntegrationLevel,
-		Trend:       ewm.calculateDimensionTrend("integration_level"),
-		Assessment:  ewm.assessDimension(ewm.IntegrationLevel),
+		Trend:        ewm.calculateDimensionTrend("integration_level"),
+		Assessment:   ewm.assessDimension(ewm.IntegrationLevel),
 	}
-	
+
 	analysis["practical_application"] = DimensionAnalysis{
-		Name:        "Practical Application",
+		Name:         "Practical Application",
 		CurrentValue: ewm.PracticalApplication,
-		Trend:       ewm.calculateDimensionTrend("practical_application"),
-		Assessment:  ewm.assessDimension(ewm.PracticalApplication),
+		Trend:        ewm.calculateDimensionTrend("practical_application"),
+		Assessment:   ewm.assessDimension(ewm.PracticalApplication),
 	}
-	
+
 	analysis["reflective_insight"] = DimensionAnalysis{
-		Name:        "Reflective Insight",
+		Name:         "Reflective Insight",
 		CurrentValue: ewm.ReflectiveInsight,
-		Trend:       ewm.calculateDimensionTrend("reflective_insight"),
-		Assessment:  ewm.assessDimension(ewm.ReflectiveInsight),
+		Trend:        ewm.calculateDimensionTrend("reflective_insight"),
+		Assessment:   ewm.assessDimension(ewm.ReflectiveInsight),
 	}
-	
+
 	analysis["ethical_consideration"] = DimensionAnalysis{
-		Name:        "Ethical Consideration",
+		Name:         "Ethical Consideration",
 		CurrentValue: ewm.EthicalConsideration,
-		Trend:       ewm.calculateDimensionTrend("ethical_consideration"),
-		Assessment:  ewm.assessDimension(ewm.EthicalConsideration),
+		Trend:        ewm.calculateDimensionTrend("ethical_consideration"),
+		Assessment:   ewm.assessDimension(ewm.EthicalConsideration),
 	}
-	
+
 	analysis["temporal_perspective"] = DimensionAnalysis{
-		Name:        "Temporal Perspective",
+		Name:         "Temporal Perspective",
 		CurrentValue: ewm.TemporalPerspective,
-		Trend:       ewm.calculateDimensionTrend("temporal_perspective"),
-		Assessment:  ewm.assessDimension(ewm.TemporalPerspective),
+		Trend:        ewm.calculateDimensionTrend("temporal_perspective"),
+		Assessment:   ewm.assessDimension(ewm.TemporalPerspective),
 	}
-	
+
 	return analysis
 }
 
@@ -347,18 +394,18 @@ func (ewm *EnhancedWisdomMetrics) calculateDimensionTrend(dimension string) stri
 	if len(ewm.History) < 2 {
 		return "stable"
 	}
-	
+
 	// Compare current to 5 snapshots ago
 	compareWindow := 5
 	if len(ewm.History) < compareWindow {
 		compareWindow = len(ewm.History)
 	}
-	
+
 	current := ewm.History[len(ewm.History)-1]
 	past := ewm.History[len(ewm.History)-compareWindow]
-	
+
 	var currentVal, pastVal float64
-	
+
 	switch dimension {
 	case "knowledge_depth":
 		currentVal = current.KnowledgeDepth
@@ -382,15 +429,15 @@ func (ewm *EnhancedWisdomMetrics) calculateDimensionTrend(dimension string) stri
 		currentVal = current.TemporalPerspective
 		pastVal = past.TemporalPerspective
 	}
-	
+
 	diff := currentVal - pastVal
-	
+
 	if diff > 0.05 {
 		return "improving"
 	} else if diff < -0.05 {
 		return "declining"
 	}
-	
+
 	return "stable"
 }
 
@@ -410,18 +457,18 @@ func (ewm *EnhancedWisdomMetrics) assessDimension(value float64) string {
 func (ewm *EnhancedWisdomMetrics) PrintWisdomReport() {
 	ewm.mu.RLock()
 	defer ewm.mu.RUnlock()
-	
+
 	fmt.Println("\n🌟 ═══════════════════════════════════════")
 	fmt.Println("🌟 Wisdom Cultivation Report")
-	fmt.Println("🌟 ═══════════════════════════════════════\n")
-	
+	fmt.Println("🌟 ═══════════════════════════════════════")
+
 	fmt.Printf("Overall Wisdom Score: %.2f / 1.00\n", ewm.OverallWisdom)
 	fmt.Printf("Improvement Rate: %.4f per hour\n", ewm.ImprovementRate)
 	fmt.Printf("Uptime: %v\n\n", time.Since(ewm.StartTime).Round(time.Second))
-	
+
 	fmt.Println("Seven Dimensions of Wisdom:")
 	fmt.Println("─────────────────────────────────────────")
-	
+
 	dimensions := []struct {
 		name  string
 		value float64
@@ -434,21 +481,22 @@ func (ewm *EnhancedWisdomMetrics) PrintWisdomReport() {
 		{"Ethical Consideration", ewm.EthicalConsideration},
 		{"Temporal Perspective", ewm.TemporalPerspective},
 	}
-	
+
 	for _, dim := range dimensions {
 		bar := ewm.createProgressBar(dim.value, 20)
 		assessment := ewm.assessDimension(dim.value)
 		fmt.Printf("%-25s %s %.2f (%s)\n", dim.name+":", bar, dim.value, assessment)
 	}
-	
-	fmt.Println("\n🌟 ═══════════════════════════════════════\n")
+
+	fmt.Println()
+	fmt.Println("🌟 ═══════════════════════════════════════")
 }
 
 // createProgressBar creates a visual progress bar
 func (ewm *EnhancedWisdomMetrics) createProgressBar(value float64, width int) string {
 	filled := int(value * float64(width))
 	empty := width - filled
-	
+
 	bar := "["
 	for i := 0; i < filled; i++ {
 		bar += "█"
@@ -457,6 +505,6 @@ func (ewm *EnhancedWisdomMetrics) createProgressBar(value float64, width int) st
 		bar += "░"
 	}
 	bar += "]"
-	
+
 	return bar
 }

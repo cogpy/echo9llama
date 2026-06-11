@@ -15,13 +15,13 @@ import (
 
 // AgentOrchestrator is the master controller for autonomous Deep Tree Echo operation
 type AgentOrchestrator struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// Identity
-	identityName    string
-	sessionID       string
+	identityName string
+	sessionID    string
 
 	// Core subsystems
 	wakeRestManager *deeptreeecho.AutonomousWakeRestManager
@@ -32,55 +32,55 @@ type AgentOrchestrator struct {
 	memorySystem    *memory.HypergraphMemory
 
 	// LLM provider for autonomous thought
-	llmProvider     *deeptreeecho.MultiProviderLLM
+	llmProvider *deeptreeecho.MultiProviderLLM
 
 	// Discussion interface
 	discussionManager *echobeats.DiscussionManager
 	interestSystem    *echobeats.InterestPatternSystem
 
 	// Autonomous operation state
-	running         bool
-	startTime       time.Time
-	cycleCount      uint64
+	running    bool
+	startTime  time.Time
+	cycleCount uint64
 
 	// Configuration
-	config          *OrchestratorConfig
+	config *OrchestratorConfig
 }
 
 // OrchestratorConfig holds configuration for the orchestrator
 type OrchestratorConfig struct {
 	// Paths
-	StateDirectory      string
-	MemoryDirectory     string
+	StateDirectory  string
+	MemoryDirectory string
 
 	// Cognitive Parameters
-	InitialCuriosity    float64
-	LearningRate        float64
+	InitialCuriosity float64
+	LearningRate     float64
 
 	// Wake/Rest Configuration
-	MinWakeDuration     time.Duration
-	MaxWakeDuration     time.Duration
-	MinRestDuration     time.Duration
-	MaxRestDuration     time.Duration
+	MinWakeDuration time.Duration
+	MaxWakeDuration time.Duration
+	MinRestDuration time.Duration
+	MaxRestDuration time.Duration
 
 	// Feature Flags
-	EnableDiscussions   bool
-	EnableDreamCycles   bool
+	EnableDiscussions bool
+	EnableDreamCycles bool
 }
 
 // DefaultConfig returns a default configuration
 func DefaultConfig() *OrchestratorConfig {
 	return &OrchestratorConfig{
-		StateDirectory:      "./echo_state",
-		MemoryDirectory:     "./echo_memory",
-		InitialCuriosity:    0.8,
-		LearningRate:        0.5,
-		MinWakeDuration:     30 * time.Minute,
-		MaxWakeDuration:     4 * time.Hour,
-		MinRestDuration:     5 * time.Minute,
-		MaxRestDuration:     30 * time.Minute,
-		EnableDiscussions:   true,
-		EnableDreamCycles:   true,
+		StateDirectory:    "./echo_state",
+		MemoryDirectory:   "./echo_memory",
+		InitialCuriosity:  0.8,
+		LearningRate:      0.5,
+		MinWakeDuration:   30 * time.Minute,
+		MaxWakeDuration:   4 * time.Hour,
+		MinRestDuration:   5 * time.Minute,
+		MaxRestDuration:   30 * time.Minute,
+		EnableDiscussions: true,
+		EnableDreamCycles: true,
 	}
 }
 
@@ -134,7 +134,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	var interestSystem *echobeats.InterestPatternSystem
 	if config.EnableDiscussions {
 		interestSystem = echobeats.NewInterestPatternSystem(
-			config.StateDirectory+"/interests.json",
+			config.StateDirectory + "/interests.json",
 		)
 		discussionManager = echobeats.NewDiscussionManager(
 			interestSystem,
@@ -142,20 +142,20 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	}
 
 	orchestrator := &AgentOrchestrator{
-		ctx:                 ctx,
-		cancel:              cancel,
-		identityName:        identityName,
-		sessionID:           fmt.Sprintf("session_%d", time.Now().Unix()),
-		wakeRestManager:     wakeRestManager,
-		consciousness:       consciousnessStream,
-		scheduler:           scheduler,
-		dreamSystem:         dreamSystem,
-		persistentState:     persistentState,
-		memorySystem:        memorySystem,
-		llmProvider:         llmProvider,
-		discussionManager:   discussionManager,
-		interestSystem:      interestSystem,
-		config:              config,
+		ctx:               ctx,
+		cancel:            cancel,
+		identityName:      identityName,
+		sessionID:         fmt.Sprintf("session_%d", time.Now().Unix()),
+		wakeRestManager:   wakeRestManager,
+		consciousness:     consciousnessStream,
+		scheduler:         scheduler,
+		dreamSystem:       dreamSystem,
+		persistentState:   persistentState,
+		memorySystem:      memorySystem,
+		llmProvider:       llmProvider,
+		discussionManager: discussionManager,
+		interestSystem:    interestSystem,
+		config:            config,
 	}
 
 	// Wire up callbacks and integrations
@@ -337,7 +337,7 @@ func (ao *AgentOrchestrator) deepIntegrationCycle() {
 
 func (ao *AgentOrchestrator) onWake() error {
 	fmt.Println("☀️  Orchestrator: Wake callback - resuming autonomous operation")
-	
+
 	// Schedule introspection event
 	ao.scheduler.ScheduleEvent(&echobeats.CognitiveEvent{
 		Type:        echobeats.EventIntrospection,
@@ -377,7 +377,7 @@ func (ao *AgentOrchestrator) handleThoughtEvent(event *echobeats.CognitiveEvent)
 	ao.persistentState.AddThought(
 		event.ID,
 		thought,
-		string(event.Type),
+		fmt.Sprint(event.Type),
 		float64(event.Priority)/100.0,
 	)
 
@@ -396,7 +396,7 @@ func (ao *AgentOrchestrator) handleGoalEvent(event *echobeats.CognitiveEvent) er
 
 func (ao *AgentOrchestrator) handleIntrospectionEvent(event *echobeats.CognitiveEvent) error {
 	fmt.Println("🔍 Performing introspection...")
-	
+
 	// Generate insight about current state
 	state := ao.persistentState.GetState()
 	if state != nil {
@@ -438,13 +438,13 @@ func (ao *AgentOrchestrator) GetStatus() map[string]interface{} {
 	defer ao.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"identity":      ao.identityName,
-		"session":       ao.sessionID,
-		"running":       ao.running,
-		"uptime":        time.Since(ao.startTime).String(),
-		"cycle_count":   ao.cycleCount,
-		"wake_rest":     ao.wakeRestManager.GetMetrics(),
-		"persistence":   ao.persistentState.GetMetrics(),
+		"identity":    ao.identityName,
+		"session":     ao.sessionID,
+		"running":     ao.running,
+		"uptime":      time.Since(ao.startTime).String(),
+		"cycle_count": ao.cycleCount,
+		"wake_rest":   ao.wakeRestManager.GetMetrics(),
+		"persistence": ao.persistentState.GetMetrics(),
 	}
 
 	if ao.llmProvider != nil {

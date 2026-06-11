@@ -157,3 +157,18 @@ This addendum records the next `/echo-master ( /dte-autonomy-evolution )` cycle 
 | **Runtime State Hygiene** | Added `echo_state/` ignore rules. | Local verification consciousness state no longer appears as commit noise. |
 
 Focused verification passed for `go build -o /tmp/echo9llama .`, `go test ./cmd ./core/llm`, explicit localhost server binding on `127.0.0.1:11441`, environment snapshot, non-destructive observation, destructive `signal_lamp` overdrive, persisted JSON loss state, associative recall, edge fallback generation, and status integration. Repository-wide `go test ./...` still fails on pre-existing sample/example/vet hygiene issues outside this implementation path. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-05-11_EXPERIENTIAL_SELF_RESTRAINT.md`.
+
+---
+
+## 2026-06-11 Iteration Addendum: Wisdom-Cultivating Skill Practice and Core Validation
+
+This addendum records a focused evolution iteration that strengthened the bridge between autonomous activity and genuine skill cultivation. The main repair was replacing simulated random practice scoring in `core/skills/practice_system.go` with provider-backed evaluation through the existing LLM abstraction. When configured providers are unavailable, the fallback is now a deterministic rubric calculation based on scenario metrics, weights, thresholds, difficulty, and current skill level rather than random drift.
+
+| Area | Change | Outcome |
+| :--- | :--- | :--- |
+| **Skill Practice** | Added provider-manager injection, environment-based Anthropic/OpenRouter/OpenAI setup, JSON practice evaluation parsing, and deterministic rubric fallback. | Autonomous practice can now perform real evaluator-backed cognitive work when API keys are available and remains auditable offline. |
+| **Wisdom Metrics** | Replaced the fixed ethical-consideration placeholder with a state-derived coherence signal across reflection, integration, practical application, and temporal perspective. | Wisdom scoring now rewards balanced coherence rather than constant ethical credit. |
+| **Persistence Validation** | Added `ConnectTimeout` to the Dgraph client and bounded blocking gRPC dial attempts with context deadlines. | `go test ./core/persistence` now fails fast for unreachable Dgraph endpoints instead of hanging. |
+| **Core Vet Repairs** | Repaired redundant-newline print issues and event-type formatting in autonomous and echoself packages. | `go test ./core/...` now passes across the core package set. |
+
+Focused verification passed for `go test ./core/wisdom ./core/skills`, `go test ./core/deeptreeecho`, `go test ./core/persistence`, and the full bounded sweep `go test ./core/...`. The detailed report is available at `docs/iterations/EVOLUTION_ITERATION_2026-06-11_WISDOM_PRACTICE.md`.

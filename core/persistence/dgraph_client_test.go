@@ -112,9 +112,10 @@ func TestUnmarshalJSON(t *testing.T) {
 func TestDgraphClientConnectionFailure(t *testing.T) {
 	t.Run("ConnectionFailure", func(t *testing.T) {
 		config := &DgraphConfig{
-			Endpoint:   "nonexistent:9080",
-			RetryCount: 1,
-			RetryDelay: time.Millisecond * 100,
+			Endpoint:       "nonexistent:9080",
+			RetryCount:     1,
+			RetryDelay:     time.Millisecond * 100,
+			ConnectTimeout: time.Millisecond * 200,
 		}
 
 		client, err := NewDgraphClient(config)

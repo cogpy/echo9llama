@@ -16,22 +16,24 @@ import (
 
 // DgraphClient manages connections to Dgraph for persistent hypergraph storage
 type DgraphClient struct {
-	mu         sync.RWMutex
-	conn       *grpc.ClientConn
-	client     *dgo.Dgraph
-	ctx        context.Context
-	cancel     context.CancelFunc
-	endpoint   string
-	connected  bool
-	retryCount int
-	retryDelay time.Duration
+	mu             sync.RWMutex
+	conn           *grpc.ClientConn
+	client         *dgo.Dgraph
+	ctx            context.Context
+	cancel         context.CancelFunc
+	endpoint       string
+	connected      bool
+	retryCount     int
+	retryDelay     time.Duration
+	connectTimeout time.Duration
 }
 
 // DgraphConfig holds configuration for Dgraph connection
 type DgraphConfig struct {
-	Endpoint   string
-	RetryCount int
-	RetryDelay time.Duration
+	Endpoint       string
+	RetryCount     int
+	RetryDelay     time.Duration
+	ConnectTimeout time.Duration
 }
 
 // DefaultDgraphConfig returns default configuration
@@ -41,9 +43,10 @@ func DefaultDgraphConfig() *DgraphConfig {
 		endpoint = "localhost:9080"
 	}
 	return &DgraphConfig{
-		Endpoint:   endpoint,
-		RetryCount: 3,
-		RetryDelay: time.Second * 2,
+		Endpoint:       endpoint,
+		RetryCount:     3,
+		RetryDelay:     time.Second * 2,
+		ConnectTimeout: time.Second * 5,
 	}
 }
 
@@ -55,12 +58,23 @@ func NewDgraphClient(config *DgraphConfig) (*DgraphClient, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	if config.RetryCount <= 0 {
+		config.RetryCount = 1
+	}
+	if config.RetryDelay <= 0 {
+		config.RetryDelay = time.Second
+	}
+	if config.ConnectTimeout <= 0 {
+		config.ConnectTimeout = time.Second * 5
+	}
+
 	client := &DgraphClient{
-		ctx:        ctx,
-		cancel:     cancel,
-		endpoint:   config.Endpoint,
-		retryCount: config.RetryCount,
-		retryDelay: config.RetryDelay,
+		ctx:            ctx,
+		cancel:         cancel,
+		endpoint:       config.Endpoint,
+		retryCount:     config.RetryCount,
+		retryDelay:     config.RetryDelay,
+		connectTimeout: config.ConnectTimeout,
 	}
 
 	if err := client.connect(); err != nil {
@@ -78,15 +92,19 @@ func (dc *DgraphClient) connect() error {
 
 	var lastErr error
 	for i := 0; i < dc.retryCount; i++ {
+		dialCtx, cancel := context.WithTimeout(dc.ctx, dc.connectTimeout)
 		conn, err := grpc.DialContext(
-			dc.ctx,
+			dialCtx,
 			dc.endpoint,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithBlock(),
 		)
+		cancel()
 		if err != nil {
 			lastErr = err
-			time.Sleep(dc.retryDelay)
+			if i < dc.retryCount-1 {
+				time.Sleep(dc.retryDelay)
+			}
 			continue
 		}
 

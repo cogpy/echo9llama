@@ -22,48 +22,48 @@ import (
 // AutonomousAgent is the master coordinator for Deep Tree Echo
 // Integrates all subsystems for fully autonomous operation
 type AutonomousAgent struct {
-	mu                  sync.RWMutex
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Core subsystems
-	echoBeatsScheduler  *echobeats.EnhancedScheduler
-	wakeRestManager     *deeptreeecho.AutonomousWakeRestManager
-	streamOfConsc       *deeptreeecho.StreamOfConsciousness
-	dreamCycle          *echodream.DreamCycleIntegration
-	goalOrchestrator    *goals.GoalOrchestrator
-	
+	echoBeatsScheduler *echobeats.EnhancedScheduler
+	wakeRestManager    *deeptreeecho.AutonomousWakeRestManager
+	streamOfConsc      *deeptreeecho.StreamOfConsciousness
+	dreamCycle         *echodream.DreamCycleIntegration
+	goalOrchestrator   *goals.GoalOrchestrator
+
 	// Echo9 cognitive enhancements
-	wisdomTracker       *wisdom.SevenDimensionalWisdom
-	coherenceTracker    *echoself.CoherenceTracker
-	
+	wisdomTracker    *wisdom.SevenDimensionalWisdom
+	coherenceTracker *echoself.CoherenceTracker
+
 	// Iteration 014 enhancements
-	executionLoop       *AutonomousExecutionLoop
-	sleepWakeMachine    interface{} // *echodream.SleepWakeStateMachine
-	sys6Integration     interface{} // *deeptreeecho.Sys6CognitiveIntegration
-	
+	executionLoop    *AutonomousExecutionLoop
+	sleepWakeMachine interface{} // *echodream.SleepWakeStateMachine
+	sys6Integration  interface{} // *deeptreeecho.Sys6CognitiveIntegration
+
 	// LLM provider
-	llmProvider         llm.LLMProvider
-	
+	llmProvider llm.LLMProvider
+
 	// Identity
-	identity            string
-	coreValues          []string
-	wisdomDomains       []string
-	
+	identity      string
+	coreValues    []string
+	wisdomDomains []string
+
 	// State
-	startTime           time.Time
-	running             bool
-	
+	startTime time.Time
+	running   bool
+
 	// Metrics
-	totalCycles         uint64
-	totalThoughts       uint64
-	totalWisdom         uint64
+	totalCycles   uint64
+	totalThoughts uint64
+	totalWisdom   uint64
 }
 
 // NewAutonomousAgent creates a new autonomous agent
 func NewAutonomousAgent(llmProvider llm.LLMProvider) *AutonomousAgent {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Identity from replit.md
 	identity := "Deep Tree Echo"
 	coreValues := []string{
@@ -82,7 +82,7 @@ func NewAutonomousAgent(llmProvider llm.LLMProvider) *AutonomousAgent {
 		"Temporal Reasoning",
 		"Self-Reflection",
 	}
-	
+
 	agent := &AutonomousAgent{
 		ctx:           ctx,
 		cancel:        cancel,
@@ -91,42 +91,42 @@ func NewAutonomousAgent(llmProvider llm.LLMProvider) *AutonomousAgent {
 		coreValues:    coreValues,
 		wisdomDomains: wisdomDomains,
 	}
-	
+
 	// Initialize subsystems
 	agent.initializeSubsystems()
-	
+
 	// Wire subsystems together
 	agent.wireSubsystems()
-	
+
 	return agent
 }
 
 // initializeSubsystems creates all subsystems
 func (agent *AutonomousAgent) initializeSubsystems() {
 	fmt.Println("🌳 Deep Tree Echo: Initializing subsystems...")
-	
+
 	// EchoBeats scheduler (with 12-step loop and 3 inference engines)
 	agent.echoBeatsScheduler = echobeats.NewEnhancedScheduler()
 	fmt.Println("   ✓ EchoBeats scheduler initialized")
-	
+
 	// Wake/Rest cycle manager
 	agent.wakeRestManager = deeptreeecho.NewAutonomousWakeRestManager()
 	fmt.Println("   ✓ Wake/Rest manager initialized")
-	
+
 	// Stream-of-consciousness (will use simplified LLM provider)
 	agent.streamOfConsc = deeptreeecho.NewStreamOfConsciousness(
 		agent.llmProvider,
 	)
 	fmt.Println("   ✓ Stream-of-consciousness initialized")
-	
+
 	// EchoDream knowledge consolidation
 	agent.dreamCycle = echodream.NewDreamCycleIntegration()
 	fmt.Println("   ✓ EchoDream consolidation initialized")
-	
+
 	// Goal orchestrator
 	identityKernel := map[string]interface{}{
-		"identity":      agent.identity,
-		"core_values":   agent.coreValues,
+		"identity":       agent.identity,
+		"core_values":    agent.coreValues,
 		"wisdom_domains": agent.wisdomDomains,
 	}
 	agent.goalOrchestrator = goals.NewGoalOrchestrator(
@@ -134,23 +134,23 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 		"/tmp/goals.json",
 	)
 	fmt.Println("   ✓ Goal orchestrator initialized")
-	
+
 	// Seven-dimensional wisdom tracker (Echo9)
 	agent.wisdomTracker = wisdom.NewSevenDimensionalWisdom()
 	fmt.Println("   ✓ Seven-dimensional wisdom tracker initialized")
-	
+
 	// Echoself coherence tracker (Echo9)
 	agent.coherenceTracker = echoself.NewCoherenceTracker(agent.coreValues)
 	fmt.Println("   ✓ Echoself coherence tracker initialized")
-	
+
 	// Iteration 014: Autonomous execution loop
 	agent.executionLoop = NewAutonomousExecutionLoop(agent)
 	fmt.Println("   ✓ Autonomous execution loop initialized")
-	
+
 	// Iteration 014: Sleep/wake state machine (from echodream)
 	// agent.sleepWakeMachine = echodream.NewSleepWakeStateMachine()
 	// fmt.Println("   ✓ Sleep/wake state machine initialized")
-	
+
 	// Iteration 014: Sys6 cognitive integration
 	// agent.sys6Integration = deeptreeecho.NewSys6CognitiveIntegration(sys6Engine)
 	// fmt.Println("   ✓ Sys6 cognitive integration initialized")
@@ -159,13 +159,13 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 // wireSubsystems connects subsystems together
 func (agent *AutonomousAgent) wireSubsystems() {
 	fmt.Println("🔗 Deep Tree Echo: Wiring subsystems...")
-	
+
 	// Connect EchoBeats to other systems
 	agent.echoBeatsScheduler.SetWakeRestManager(agent.wakeRestManager)
 	agent.echoBeatsScheduler.SetGoalOrchestrator(agent.goalOrchestrator)
 	agent.echoBeatsScheduler.SetStreamOfConsciousness(agent.streamOfConsc)
 	agent.echoBeatsScheduler.SetDreamCycle(agent.dreamCycle)
-	
+
 	// Set wake/rest callbacks
 	agent.wakeRestManager.SetCallbacks(
 		agent.onWake,
@@ -173,7 +173,7 @@ func (agent *AutonomousAgent) wireSubsystems() {
 		agent.onDreamStart,
 		agent.onDreamEnd,
 	)
-	
+
 	fmt.Println("   ✓ Subsystems wired")
 }
 
@@ -187,7 +187,7 @@ func (agent *AutonomousAgent) Start() error {
 	agent.running = true
 	agent.startTime = time.Now()
 	agent.mu.Unlock()
-	
+
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🌳 Deep Tree Echo: Autonomous Agent Starting")
 	fmt.Println(strings.Repeat("=", 60))
@@ -195,39 +195,41 @@ func (agent *AutonomousAgent) Start() error {
 	fmt.Printf("Core Values: %v\n", agent.coreValues)
 	fmt.Printf("Wisdom Domains: %v\n", agent.wisdomDomains)
 	fmt.Println(strings.Repeat("=", 60) + "\n")
-	
+
 	// Start all subsystems in order
-	
+
 	// 1. Start EchoBeats scheduler (coordinates everything)
 	if err := agent.echoBeatsScheduler.Start(); err != nil {
 		return fmt.Errorf("failed to start EchoBeats: %w", err)
 	}
-	
+
 	// 2. Start wake/rest manager
 	if err := agent.wakeRestManager.Start(); err != nil {
 		return fmt.Errorf("failed to start wake/rest manager: %w", err)
 	}
-	
+
 	// 3. Start stream-of-consciousness
 	if err := agent.streamOfConsc.Start(); err != nil {
 		return fmt.Errorf("failed to start stream-of-consciousness: %w", err)
 	}
-	
+
 	// 4. Start goal orchestrator
 	if err := agent.goalOrchestrator.Start(); err != nil {
 		return fmt.Errorf("failed to start goal orchestrator: %w", err)
 	}
-	
+
 	// 5. Start autonomous execution loop (Iteration 014)
 	if err := agent.executionLoop.Start(); err != nil {
 		return fmt.Errorf("failed to start execution loop: %w", err)
 	}
-	
+
 	// Start monitoring
 	go agent.monitoringLoop()
-	
-	fmt.Println("\n✨ Deep Tree Echo: All systems operational - autonomous operation begun\n")
-	
+
+	fmt.Println()
+	fmt.Println("✨ Deep Tree Echo: All systems operational - autonomous operation begun")
+	fmt.Println()
+
 	return nil
 }
 
@@ -235,39 +237,39 @@ func (agent *AutonomousAgent) Start() error {
 func (agent *AutonomousAgent) Stop() error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
-	
+
 	if !agent.running {
 		return fmt.Errorf("agent not running")
 	}
-	
+
 	fmt.Println("\n🌳 Deep Tree Echo: Gracefully shutting down...")
 	agent.running = false
 	agent.cancel()
-	
+
 	// Stop subsystems in reverse order
-	
+
 	// Stop execution loop first
 	agent.executionLoop.Stop()
-	
+
 	if err := agent.goalOrchestrator.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping goal orchestrator: %v\n", err)
 	}
-	
+
 	if err := agent.streamOfConsc.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping stream-of-consciousness: %v\n", err)
 	}
-	
+
 	if err := agent.wakeRestManager.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping wake/rest manager: %v\n", err)
 	}
-	
+
 	if err := agent.echoBeatsScheduler.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping EchoBeats: %v\n", err)
 	}
-	
+
 	uptime := time.Since(agent.startTime)
 	fmt.Printf("\n🌳 Deep Tree Echo: Shutdown complete (uptime: %s)\n", uptime)
-	
+
 	return nil
 }
 
@@ -276,14 +278,14 @@ func (agent *AutonomousAgent) Run() error {
 	if err := agent.Start(); err != nil {
 		return err
 	}
-	
+
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	
+
 	<-sigChan
 	fmt.Println("\n\n🛑 Interrupt received...")
-	
+
 	return agent.Stop()
 }
 
@@ -291,7 +293,7 @@ func (agent *AutonomousAgent) Run() error {
 func (agent *AutonomousAgent) monitoringLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-agent.ctx.Done():
@@ -308,43 +310,43 @@ func (agent *AutonomousAgent) printStatus() {
 	agent.mu.RLock()
 	uptime := time.Since(agent.startTime)
 	agent.mu.RUnlock()
-	
+
 	fmt.Println("\n" + strings.Repeat("─", 60))
 	fmt.Printf("📊 Deep Tree Echo Status (uptime: %s)\n", uptime.Round(time.Second))
 	fmt.Println(strings.Repeat("─", 60))
-	
+
 	// Wake/Rest state
 	wakeRestMetrics := agent.wakeRestManager.GetMetrics()
 	fmt.Printf("State: %v | Fatigue: %.2f | Cognitive Load: %.2f\n",
 		wakeRestMetrics["current_state"],
 		wakeRestMetrics["fatigue_level"],
 		wakeRestMetrics["cognitive_load"])
-	
+
 	// EchoBeats status
 	echoBeatsStatus := agent.echoBeatsScheduler.GetStatus()
 	fmt.Printf("EchoBeats: Cycles=%v | Events=%v/%v\n",
 		echoBeatsStatus["loop_cycles"],
 		echoBeatsStatus["echobeats"].(map[string]interface{})["events_processed"],
 		echoBeatsStatus["echobeats"].(map[string]interface{})["events_scheduled"])
-	
+
 	// Goal status
 	goalMetrics := agent.goalOrchestrator.GetMetrics()
 	fmt.Printf("Goals: Active=%v | Completed=%v | Rate=%.2f%%\n",
 		goalMetrics["active_goals"],
 		goalMetrics["completed_goals"],
 		goalMetrics["completion_rate"].(float64)*100)
-	
+
 	// Wisdom cultivation (Echo9)
 	wisdomScore := agent.wisdomTracker.GetOverallWisdom()
 	coherenceScore := agent.wisdomTracker.GetCoherence()
 	fmt.Printf("Wisdom: Overall=%.1f%% | Coherence=%.1f%%\n",
 		wisdomScore*100, coherenceScore*100)
-	
+
 	// Identity coherence (Echo9)
 	identityCoherence := agent.coherenceTracker.GetCoherenceScore()
 	fmt.Printf("Identity: Coherence=%.1f%% | Signature=%s\n",
 		identityCoherence*100, agent.coherenceTracker.GetIdentitySignature()[:16]+"...")
-	
+
 	fmt.Println(strings.Repeat("─", 60) + "\n")
 }
 
@@ -352,41 +354,41 @@ func (agent *AutonomousAgent) printStatus() {
 
 func (agent *AutonomousAgent) onWake() error {
 	fmt.Println("☀️  Deep Tree Echo: Awakening - resuming conscious processing")
-	
+
 	// Resume stream-of-consciousness if paused
 	// (Implementation depends on SoC having pause/resume)
-	
+
 	return nil
 }
 
 func (agent *AutonomousAgent) onRest() error {
 	fmt.Println("💤 Deep Tree Echo: Entering rest - reducing cognitive activity")
-	
+
 	// Reduce thought generation rate
 	// (Implementation depends on SoC configuration)
-	
+
 	return nil
 }
 
 func (agent *AutonomousAgent) onDreamStart() error {
 	fmt.Println("🌙 Deep Tree Echo: Dream state - beginning knowledge consolidation")
-	
+
 	// Start EchoDream consolidation
 	if err := agent.dreamCycle.BeginDreamCycle(); err != nil {
 		return fmt.Errorf("failed to begin dream cycle: %w", err)
 	}
-	
+
 	return nil
 }
 
 func (agent *AutonomousAgent) onDreamEnd() error {
 	fmt.Println("🌅 Deep Tree Echo: Dream complete - integrating wisdom")
-	
+
 	// End EchoDream consolidation
 	if err := agent.dreamCycle.EndDreamCycle(); err != nil {
 		return fmt.Errorf("failed to end dream cycle: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -394,7 +396,7 @@ func (agent *AutonomousAgent) onDreamEnd() error {
 func (agent *AutonomousAgent) GetStatus() map[string]interface{} {
 	agent.mu.RLock()
 	defer agent.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"identity":       agent.identity,
 		"running":        agent.running,
@@ -448,19 +450,19 @@ func (p *SimpleLLMProvider) GenerateQuestion(contextStr string) (string, error) 
 func (agent *AutonomousAgent) UpdateWisdomAndCoherence() {
 	agent.mu.RLock()
 	defer agent.mu.RUnlock()
-	
+
 	// TODO: Gather actual metrics from subsystems
 	// For now, use placeholder values that demonstrate integration
-	
+
 	// Wisdom dimensions (would come from actual hypergraph, skills, etc.)
-	graphDepth := 0.6       // From hypergraph memory depth
-	graphBreadth := 0.5     // From topic diversity
-	edgeDensity := 0.7      // From hypergraph connections
-	skillProf := 0.65       // From skills system
-	aarCoherence := 0.75    // From relevance realization
-	morality := 0.8         // From ethical considerations
-	timeHorizon := 0.7      // From goal time horizons
-	
+	graphDepth := 0.6    // From hypergraph memory depth
+	graphBreadth := 0.5  // From topic diversity
+	edgeDensity := 0.7   // From hypergraph connections
+	skillProf := 0.65    // From skills system
+	aarCoherence := 0.75 // From relevance realization
+	morality := 0.8      // From ethical considerations
+	timeHorizon := 0.7   // From goal time horizons
+
 	agent.wisdomTracker.Update(
 		graphDepth,
 		graphBreadth,
@@ -470,7 +472,7 @@ func (agent *AutonomousAgent) UpdateWisdomAndCoherence() {
 		morality,
 		timeHorizon,
 	)
-	
+
 	// Coherence tracking
 	agent.coherenceTracker.Update()
 }
@@ -488,7 +490,7 @@ func (agent *AutonomousAgent) RecordReflection(
 		WhatWouldIChangeNext: changeNext,
 		CoherenceImpact:      impact,
 	}
-	
+
 	agent.coherenceTracker.RecordReflection(reflection)
 }
 
@@ -506,7 +508,7 @@ func (agent *AutonomousAgent) RecordMemoryEcho(
 		AnomalyDetected:   anomalyDetected,
 		MembraneContext:   membraneContext,
 	}
-	
+
 	agent.coherenceTracker.RecordMemoryEcho(memory)
 }
 
