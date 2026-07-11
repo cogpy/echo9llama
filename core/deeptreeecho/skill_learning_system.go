@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ type SkillLearningSystem struct {
 	
 	// Running state
 	running         bool
+	practicing      bool
 }
 
 // Skill represents a learnable capability
@@ -303,7 +305,13 @@ func (sls *SkillLearningSystem) PracticeSkill(skillID string) error {
 		sls.mu.Unlock()
 		return fmt.Errorf("skill not found: %s", skillID)
 	}
+	sls.practicing = true
 	sls.mu.Unlock()
+	defer func() {
+		sls.mu.Lock()
+		sls.practicing = false
+		sls.mu.Unlock()
+	}()
 	
 	startTime := time.Now()
 	
@@ -498,4 +506,54 @@ func (sls *SkillLearningSystem) GetSkillProfile() string {
 	}
 	
 	return profile
+}
+
+// IsPracticing reports whether a skill practice session is currently in
+// progress. Used by the orchestrator to factor learning activity into
+// cognitive load.
+func (sls *SkillLearningSystem) IsPracticing() bool {
+	sls.mu.RLock()
+	defer sls.mu.RUnlock()
+	return sls.practicing
+}
+
+// GetSkillsNeedingPractice returns skills sorted by practice priority:
+// lowest proficiency and longest time since last practice come first.
+func (sls *SkillLearningSystem) GetSkillsNeedingPractice() []*Skill {
+	sls.mu.RLock()
+	defer sls.mu.RUnlock()
+
+	needing := make([]*Skill, 0, len(sls.skills))
+	for _, skill := range sls.skills {
+		if skill.Proficiency < 0.9 {
+			needing = append(needing, skill)
+		}
+	}
+
+	// Priority = (1 - proficiency) + staleness bonus
+	sort.Slice(needing, func(i, j int) bool {
+		pi := (1.0 - needing[i].Proficiency) + stalenessBonus(needing[i].LastPracticed)
+		pj := (1.0 - needing[j].Proficiency) + stalenessBonus(needing[j].LastPracticed)
+		return pi > pj
+	})
+
+	return needing
+}
+
+// stalenessBonus adds practice priority for skills not practiced recently
+func stalenessBonus(lastPracticed time.Time) float64 {
+	if lastPracticed.IsZero() {
+		return 0.5 // never practiced
+	}
+	hours := time.Since(lastPracticed).Hours()
+	switch {
+	case hours > 24:
+		return 0.4
+	case hours > 6:
+		return 0.2
+	case hours > 1:
+		return 0.1
+	default:
+		return 0.0
+	}
 }

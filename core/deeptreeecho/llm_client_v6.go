@@ -46,7 +46,7 @@ func (llm *LLMClientV6) GenerateWithAnthropic(prompt string) (string, error) {
 
 	// Prepare request
 	reqBody := AnthropicRequest{
-		Model:     "claude-3-5-sonnet-20241022",
+		Model:     "claude-sonnet-4-5",
 		MaxTokens: 1024,
 		Messages: []AnthropicMessage{
 			{
@@ -111,7 +111,7 @@ func (llm *LLMClientV6) GenerateWithOpenRouter(prompt string, model string) (str
 	}
 
 	if model == "" {
-		model = "anthropic/claude-3.5-sonnet"
+		model = "anthropic/claude-sonnet-4.5"
 	}
 
 	// Prepare request (OpenRouter uses OpenAI-compatible format)

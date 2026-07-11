@@ -54,7 +54,7 @@ func NewMultiProviderLLM() *MultiProviderLLM {
 func (m *MultiProviderLLM) initializeProviders() {
 	// Try Anthropic (Claude)
 	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
-		provider := NewAnthropicProvider(apiKey, "claude-3-5-sonnet-20241022")
+		provider := NewAnthropicProvider(apiKey, "claude-sonnet-4-5")
 		if provider != nil {
 			m.AddProvider(provider)
 			fmt.Println("✅ Initialized Anthropic Claude provider")
@@ -63,7 +63,7 @@ func (m *MultiProviderLLM) initializeProviders() {
 	
 	// Try OpenRouter (multi-model access)
 	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
-		provider := NewOpenRouterProvider(apiKey, "anthropic/claude-3.5-sonnet")
+		provider := NewOpenRouterProvider(apiKey, "anthropic/claude-sonnet-4.5")
 		if provider != nil {
 			m.AddProvider(provider)
 			fmt.Println("✅ Initialized OpenRouter provider")

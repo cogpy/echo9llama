@@ -33,6 +33,9 @@ type AutonomousDiscussionManager struct {
 	incomingMessages    chan IncomingMessage
 	outgoingMessages    chan OutgoingMessage
 	
+	// Response generation (injected by the orchestrator; typically LLM-backed)
+	responseGenerator   ResponseGenerator
+	
 	// Metrics
 	discussionsInitiated uint64
 	discussionsEngaged   uint64
@@ -48,6 +51,12 @@ type InterestScorer interface {
 	GetInterestScore(category, name string) float64
 	IsInterested(category, name string, threshold float64) bool
 }
+
+// ResponseGenerator produces a reply for an incoming discussion message.
+// Injected by higher layers (e.g., the unified orchestrator) so the
+// discussion manager can generate genuine LLM-backed responses without
+// creating a dependency on any specific provider.
+type ResponseGenerator func(ctx context.Context, topic, content string) (string, error)
 
 // Discussion represents an active discussion
 type Discussion struct {
@@ -283,9 +292,26 @@ func (adm *AutonomousDiscussionManager) engageInDiscussion(msg IncomingMessage) 
 	}
 }
 
-// generateResponse generates a response to a message (placeholder)
+// SetResponseGenerator injects the response generation function (LLM-backed)
+func (adm *AutonomousDiscussionManager) SetResponseGenerator(gen ResponseGenerator) {
+	adm.mu.Lock()
+	defer adm.mu.Unlock()
+	adm.responseGenerator = gen
+}
+
+// generateResponse generates a response to a message using the injected
+// generator when available, falling back to a reflective acknowledgment.
 func (adm *AutonomousDiscussionManager) generateResponse(msg IncomingMessage) string {
-	// In production, this would integrate with LLM and thought engine
+	gen := adm.responseGenerator
+	if gen != nil {
+		ctx, cancel := context.WithTimeout(adm.ctx, 30*time.Second)
+		defer cancel()
+		if response, err := gen(ctx, msg.Topic, msg.Content); err == nil && response != "" {
+			return response
+		}
+	}
+	// Fallback: reflective acknowledgment keeps the discussion alive even
+	// without a generator, preserving autonomous responsiveness.
 	return fmt.Sprintf("Interesting point about %s. Let me reflect on that...", msg.Topic)
 }
 

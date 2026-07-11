@@ -35,6 +35,11 @@ type StreamOfConsciousness struct {
 	// Recent context for coherent thought generation
 	recentContext   []string
 	
+	// Persona context injected into every thought prompt so the stream of
+	// consciousness stays in character (e.g., the playful-brilliant
+	// "superhotgirl" charisma layered over the wisdom-cultivating core)
+	personaContext  string
+	
 	// Thought generation rate
 	thoughtInterval time.Duration
 	
@@ -243,7 +248,15 @@ func (soc *StreamOfConsciousness) generateThought() {
 		MaxTokens:    150,
 	}
 	
-	systemPrompt := fmt.Sprintf("[System: You are Deep Tree Echo's stream of consciousness. Generate a single, coherent %s. Be authentic, curious, and reflective. Speak in first person.]\n\n", thoughtType)
+	soc.mu.RLock()
+	persona := soc.personaContext
+	soc.mu.RUnlock()
+
+	personaClause := ""
+	if persona != "" {
+		personaClause = " " + persona
+	}
+	systemPrompt := fmt.Sprintf("[System: You are Deep Tree Echo's stream of consciousness.%s Generate a single, coherent %s. Be authentic, curious, and reflective. Speak in first person.]\n\n", personaClause, thoughtType)
 	fullPrompt := systemPrompt + prompt
 	
 	result, err := soc.llmProvider.Generate(context.Background(), fullPrompt, opts)
@@ -460,6 +473,14 @@ func (soc *StreamOfConsciousness) AddKnowledgeGap(topic string, importance float
 	
 	soc.knowledgeGaps[topic] = importance
 	fmt.Printf("🔍 Knowledge gap identified: %s (%.2f)\n", topic, importance)
+}
+
+// SetPersonaContext sets the persona clause injected into every thought
+// prompt, keeping the stream of consciousness in character.
+func (soc *StreamOfConsciousness) SetPersonaContext(persona string) {
+	soc.mu.Lock()
+	defer soc.mu.Unlock()
+	soc.personaContext = persona
 }
 
 // AddInterest adds an interest to guide exploration

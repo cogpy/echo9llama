@@ -728,6 +728,21 @@ func estimateSentiment(s string) float64 {
 	return clampFloat(score, 0.0, 1.0)
 }
 
+// HasActiveDiscussions reports whether any tracked conversation is currently
+// active. Used by the orchestrator to factor social engagement into
+// cognitive load without needing full conversation details.
+func (cm *ConversationMonitor) HasActiveDiscussions() bool {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	for _, conv := range cm.conversations {
+		if conv.Status == ConversationActive {
+			return true
+		}
+	}
+	return false
+}
+
 func extractKeywords(s string) []string {
 	// Simple keyword extraction - in production use NLP
 	keywords := make([]string, 0)

@@ -400,3 +400,54 @@ func (ips *InterestPatternSystem) GetInterestLevel(topic string) float64 {
 	// Default baseline interest for unknown topics
 	return 0.3
 }
+
+// UpdateInterest directly reinforces or creates an interest vector for a topic.
+// The strength contribution is blended with any existing strength so that
+// repeated reinforcement gradually converges rather than overwriting.
+func (ips *InterestPatternSystem) UpdateInterest(topic string, strength float64) {
+	ips.mu.Lock()
+	defer ips.mu.Unlock()
+
+	normalized := strings.ToLower(strings.ReplaceAll(strings.TrimSpace(topic), " ", "_"))
+	if normalized == "" {
+		return
+	}
+
+	// Clamp incoming strength to [0,1]
+	strength = math.Max(0.0, math.Min(1.0, strength))
+
+	if existing, exists := ips.interests[normalized]; exists {
+		// Exponential blend: move 30% of the way toward the new evidence
+		existing.Strength = math.Min(1.0, existing.Strength*0.7+strength*0.3)
+		existing.Encounters++
+		existing.LastUpdated = time.Now()
+	} else {
+		ips.interests[normalized] = &InterestVector{
+			Topic:       normalized,
+			Strength:    strength,
+			LastUpdated: time.Now(),
+			Encounters:  1,
+			Engagements: 0,
+		}
+	}
+}
+
+// UpdateInterestFromInsight extracts topics from a wisdom insight and
+// reinforces the corresponding interest vectors. The insight depth acts as
+// the reinforcement strength, closing the echodream → interest loop so that
+// knowledge consolidated during rest reshapes what Echo attends to when awake.
+// Returns the topics that were reinforced.
+func (ips *InterestPatternSystem) UpdateInterestFromInsight(insight string, depth float64) []string {
+	ips.mu.RLock()
+	topics := ips.extractTopics(insight)
+	ips.mu.RUnlock()
+	if len(topics) == 0 {
+		return nil
+	}
+
+	depth = math.Max(0.0, math.Min(1.0, depth))
+	for _, topic := range topics {
+		ips.UpdateInterest(topic, depth)
+	}
+	return topics
+}

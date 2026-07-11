@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 // test_iteration_020.go - Iteration 014 (numbered 020 in test sequence)
 // Tests for Moral Agency Layer, PIE-NN Integration, and Wisdom Cultivation
 //

@@ -87,7 +87,7 @@ func (a *MultiAPIProvider) initializeProviders() {
 			Name:      "openrouter",
 			BaseURL:   "https://openrouter.ai/api/v1",
 			APIKey:    apiKey,
-			Model:     "anthropic/claude-3.5-sonnet",
+			Model:     "anthropic/claude-sonnet-4.5",
 			Available: true,
 			Priority:  90,
 		}

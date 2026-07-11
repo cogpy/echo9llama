@@ -41,9 +41,45 @@ type PersistentIdentity struct {
 	lastSaveError       error
 }
 
+// IdentitySnapshot is a lock-free copy of PersistentIdentity state used for
+// serialization. It mirrors the exported fields of PersistentIdentity without
+// embedding the mutex, so checkpoints never copy lock values.
+type IdentitySnapshot struct {
+	IdentitySignature   string        `json:"identity_signature"`
+	CoreValues          []string      `json:"core_values"`
+	WisdomDomains       []string      `json:"wisdom_domains"`
+	BirthTime           time.Time     `json:"birth_time"`
+	TotalUptime         time.Duration `json:"total_uptime"`
+	TotalCycles         uint64        `json:"total_cycles"`
+	TotalThoughts       uint64        `json:"total_thoughts"`
+	TotalWisdom         float64       `json:"total_wisdom"`
+	CoherenceScore      float64       `json:"coherence_score"`
+	CurrentSessionStart time.Time     `json:"current_session_start"`
+	SessionCount        uint64        `json:"session_count"`
+	LastCheckpoint      time.Time     `json:"last_checkpoint"`
+}
+
+// snapshotLocked builds an IdentitySnapshot. Caller must hold pi.mu.
+func (pi *PersistentIdentity) snapshotLocked() IdentitySnapshot {
+	return IdentitySnapshot{
+		IdentitySignature:   pi.IdentitySignature,
+		CoreValues:          append([]string(nil), pi.CoreValues...),
+		WisdomDomains:       append([]string(nil), pi.WisdomDomains...),
+		BirthTime:           pi.BirthTime,
+		TotalUptime:         pi.TotalUptime,
+		TotalCycles:         pi.TotalCycles,
+		TotalThoughts:       pi.TotalThoughts,
+		TotalWisdom:         pi.TotalWisdom,
+		CoherenceScore:      pi.CoherenceScore,
+		CurrentSessionStart: pi.CurrentSessionStart,
+		SessionCount:        pi.SessionCount,
+		LastCheckpoint:      pi.LastCheckpoint,
+	}
+}
+
 // IdentityCheckpoint represents a saved state
 type IdentityCheckpoint struct {
-	Identity            PersistentIdentity         `json:"identity"`
+	Identity            IdentitySnapshot           `json:"identity"`
 	CognitiveState      map[string]interface{}     `json:"cognitive_state"`
 	MemorySnapshot      map[string]interface{}     `json:"memory_snapshot"`
 	InterestPatterns    map[string]interface{}     `json:"interest_patterns"`
@@ -126,7 +162,7 @@ func (pi *PersistentIdentity) SaveCheckpoint(cognitiveState, memorySnapshot, int
 	defer pi.mu.Unlock()
 	
 	checkpoint := IdentityCheckpoint{
-		Identity:         *pi,
+		Identity:         pi.snapshotLocked(),
 		CognitiveState:   cognitiveState,
 		MemorySnapshot:   memorySnapshot,
 		InterestPatterns: interestPatterns,

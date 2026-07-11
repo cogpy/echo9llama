@@ -15,13 +15,14 @@ import (
 
 func main() {
 	fmt.Println("🌊 Deep Tree Echo - Autonomous AGI System")
-	fmt.Println("==========================================\n")
+	fmt.Println("==========================================")
+	fmt.Println()
 
 	// Initialize LLM Provider Manager
 	providerManager := llm.NewProviderManager()
 
 	// Register available providers
-	anthropicProvider := llm.NewAnthropicProvider("claude-3-5-sonnet-20241022")
+	anthropicProvider := llm.NewAnthropicProvider("claude-sonnet-4-5")
 	if err := providerManager.RegisterProvider(anthropicProvider); err != nil {
 		log.Printf("⚠️  Failed to register Anthropic provider: %v\n", err)
 	} else if anthropicProvider.Available() {
@@ -30,7 +31,7 @@ func main() {
 		fmt.Println("⚠️  Anthropic provider registered but not available (missing API key)")
 	}
 
-	openrouterProvider := llm.NewOpenRouterProvider("anthropic/claude-3.5-sonnet")
+	openrouterProvider := llm.NewOpenRouterProvider("anthropic/claude-sonnet-4.5")
 	if err := providerManager.RegisterProvider(openrouterProvider); err != nil {
 		log.Printf("⚠️  Failed to register OpenRouter provider: %v\n", err)
 	} else if openrouterProvider.Available() {
@@ -83,7 +84,8 @@ func main() {
 
 	// Wait for shutdown signal
 	fmt.Println("\n✨ Deep Tree Echo is now running autonomously")
-	fmt.Println("   Press Ctrl+C to gracefully shutdown\n")
+	fmt.Println("   Press Ctrl+C to gracefully shutdown")
+	fmt.Println()
 
 	// Periodically print status
 	ticker := time.NewTicker(30 * time.Second)
@@ -101,7 +103,7 @@ func main() {
 
 			fmt.Println("✅ Deep Tree Echo has been stopped gracefully")
 			fmt.Println("   Cognitive state has been preserved")
-			fmt.Println("\n👋 Goodbye!\n")
+			fmt.Println("\n👋 Goodbye!")
 			return
 
 		case <-ticker.C:

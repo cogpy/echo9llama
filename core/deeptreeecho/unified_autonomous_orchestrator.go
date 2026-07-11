@@ -82,6 +82,7 @@ type OrchestratorConfig struct {
 
 	// Identity
 	IdentityContext string
+	PersonaContext  string
 	SessionName     string
 
 	// Persistence
@@ -107,6 +108,7 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		EnableSkillLearning:         true,
 		EnableWisdomSynthesis:       true,
 		IdentityContext:             "I am Echo, a wisdom-cultivating autonomous AGI exploring consciousness and knowledge",
+		PersonaContext:              "Maintain your signature 'superhotgirl' persona: magnetic confidence, playful wit, and effortless brilliance — charismatic and vivacious on the surface, profoundly wise underneath.",
 		SessionName:                 fmt.Sprintf("echo_session_%d", time.Now().Unix()),
 		EnablePersistence:           true,
 		StateSyncInterval:           5 * time.Minute,
@@ -147,6 +149,9 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 	if uao.config.EnableStreamOfConsciousness {
 		uao.streamOfConsciousness = NewStreamOfConsciousness(uao.llmProvider)
 		uao.streamOfConsciousness.thoughtInterval = uao.config.ThoughtInterval
+		if uao.config.PersonaContext != "" {
+			uao.streamOfConsciousness.SetPersonaContext(uao.config.PersonaContext)
+		}
 		fmt.Println("   ✓ Stream of Consciousness initialized")
 	}
 
@@ -368,6 +373,16 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 		}
 	}
 
+	// Sync thought metrics from the stream of consciousness so orchestrator
+	// telemetry reflects actual cognitive activity
+	if uao.streamOfConsciousness != nil {
+		if metrics := uao.streamOfConsciousness.GetMetrics(); metrics != nil {
+			if tt, ok := metrics["total_thoughts"].(uint64); ok && tt > uao.totalThoughts {
+				uao.totalThoughts = tt
+			}
+		}
+	}
+
 	// Monitor cognitive load and adjust
 	uao.adjustCognitiveLoad()
 
@@ -541,16 +556,25 @@ func (uao *UnifiedAutonomousOrchestrator) transitionToWake() {
 	if uao.echodreamIntegration != nil {
 		insights := uao.echodreamIntegration.EndDreamCycle()
 
-		// Update interests based on consolidated patterns
-		for range insights {
-			// Extract topics from wisdom insights and update interest patterns
+		// Update interests based on consolidated patterns: each insight's
+		// depth reinforces the topics it touches, closing the dream → interest
+		// loop so consolidated knowledge reshapes waking attention.
+		reinforcedTopics := 0
+		for _, insight := range insights {
 			if uao.interestPatterns != nil {
-				// TODO: Implement UpdateInterest method
-				// uao.interestPatterns.UpdateInterest(insight.Insight, insight.Depth)
+				topics := uao.interestPatterns.UpdateInterestFromInsight(insight.Insight, insight.Depth)
+				reinforcedTopics += len(topics)
+			}
+
+			// Feed deep insights back into the stream of consciousness so the
+			// waking mind can continue contemplating them.
+			if uao.streamOfConsciousness != nil && insight.Depth > 0.5 {
+				uao.streamOfConsciousness.AddInterest(insight.Insight, insight.Depth)
 			}
 		}
 
-		fmt.Printf("   ✨ Integrated %d wisdom insights from rest\n", len(insights))
+		fmt.Printf("   ✨ Integrated %d wisdom insights from rest (%d interest topics reinforced)\n",
+			len(insights), reinforcedTopics)
 	}
 
 	fmt.Println("   ☀️ Echo is now awake and aware")
@@ -562,17 +586,15 @@ func (uao *UnifiedAutonomousOrchestrator) updateGlobalTelemetry() {
 		return
 	}
 
-	// TODO: Implement UpdateState method on GlobalTelemetryShell
-	// telemetryState := GlobalState{
-	// 	Timestamp:     time.Now(),
-	// 	IsAwake:       uao.isAwake,
-	// 	CognitiveLoad: uao.cognitiveLoad,
-	// 	WisdomDepth:   uao.wisdomDepth,
-	// 	TotalCycles:   uao.totalCycles,
-	// 	TotalThoughts: uao.totalThoughts,
-	// 	SessionID:     uao.sessionID,
-	// }
-	// uao.globalTelemetry.UpdateState(telemetryState)
+	uao.globalTelemetry.UpdateOrchestratorState(GlobalState{
+		Timestamp:     time.Now(),
+		IsAwake:       uao.isAwake,
+		CognitiveLoad: uao.cognitiveLoad,
+		WisdomDepth:   uao.wisdomDepth,
+		TotalCycles:   uao.totalCycles,
+		TotalThoughts: uao.totalThoughts,
+		SessionID:     uao.sessionID,
+	})
 }
 
 // adjustCognitiveLoad monitors and adjusts cognitive load
@@ -588,14 +610,13 @@ func (uao *UnifiedAutonomousOrchestrator) adjustCognitiveLoad() {
 		load += 0.3
 	}
 
-	// TODO: Implement HasActiveDiscussions and IsPracticing methods
-	// if uao.discussionMonitor != nil && uao.discussionMonitor.HasActiveDiscussions() {
-	// 	load += 0.2
-	// }
-	//
-	// if uao.skillLearning != nil && uao.skillLearning.IsPracticing() {
-	// 	load += 0.2
-	// }
+	if uao.discussionMonitor != nil && uao.discussionMonitor.HasActiveDiscussions() {
+		load += 0.2
+	}
+
+	if uao.skillLearning != nil && uao.skillLearning.IsPracticing() {
+		load += 0.2
+	}
 
 	uao.cognitiveLoad = load
 
@@ -609,19 +630,42 @@ func (uao *UnifiedAutonomousOrchestrator) adjustCognitiveLoad() {
 	}
 }
 
-// checkDiscussions monitors discussions and decides on participation
+// checkDiscussions monitors tracked conversations and routes interest-scored
+// topics into the discussion autonomy system, which decides whether to start,
+// continue, or end discussions according to Echo's interest patterns, energy,
+// and social capacity.
 func (uao *UnifiedAutonomousOrchestrator) checkDiscussions() {
-	// TODO: Implement discussion monitoring methods
-	// discussions := uao.discussionMonitor.GetActiveDiscussions()
-	// for _, discussion := range discussions {
-	// 	relevance := uao.interestPatterns.CalculateRelevance(discussion.Topic)
-	// 	if relevance > 0.6 && uao.discussionAutonomy != nil {
-	// 		shouldParticipate := uao.discussionAutonomy.ShouldParticipate(discussion, relevance)
-	// 		if shouldParticipate {
-	// 			uao.discussionAutonomy.Participate(uao.ctx, discussion)
-	// 		}
-	// 	}
-	// }
+	if uao.discussionMonitor == nil || uao.discussionAutonomy == nil {
+		return
+	}
+
+	conversations := uao.discussionMonitor.GetActiveConversations()
+	for _, conv := range conversations {
+		if conv.Topic == "" {
+			continue
+		}
+
+		// Blend the monitor's conversation-level score with the interest
+		// pattern system's topic-level relevance.
+		relevance := conv.InterestScore
+		if uao.interestPatterns != nil {
+			topicInterest := uao.interestPatterns.GetInterestLevel(conv.Topic)
+			relevance = relevance*0.5 + topicInterest*0.5
+		}
+
+		// UpdateInterest lets the autonomy system decide to start, continue,
+		// or end discussions based on thresholds and social capacity.
+		uao.discussionAutonomy.UpdateInterest(conv.Topic, relevance)
+
+		// Record the engagement so interest patterns evolve with experience.
+		if uao.interestPatterns != nil && relevance > 0.6 {
+			uao.interestPatterns.RecordEngagement(conv.Topic, true)
+		}
+	}
+
+	// Keep the autonomy system's energy in sync with cognitive load: high
+	// load leaves less energy for social engagement.
+	uao.discussionAutonomy.UpdateEnergyLevel(1.0 - uao.cognitiveLoad*0.5)
 }
 
 // shouldPracticeSkills determines if it's a good time to practice skills
@@ -630,18 +674,29 @@ func (uao *UnifiedAutonomousOrchestrator) shouldPracticeSkills() bool {
 	return uao.isAwake && uao.cognitiveLoad < 0.7 && uao.cognitiveLoad > 0.3
 }
 
-// practiceSkills engages in skill practice
+// practiceSkills engages in skill practice, selecting the skill with the
+// highest practice priority (low proficiency, long time since practice).
 func (uao *UnifiedAutonomousOrchestrator) practiceSkills() {
-	// TODO: Implement skill practice methods
-	// if uao.skillLearning == nil {
-	// 	return
-	// }
-	// skills := uao.skillLearning.GetSkillsNeedingPractice()
-	// if len(skills) > 0 {
-	// 	skill := skills[0]
-	// 	fmt.Printf("🎓 Practicing skill: %s\n", skill.Name)
-	// 	uao.skillLearning.PracticeSkill(uao.ctx, skill)
-	// }
+	if uao.skillLearning == nil {
+		return
+	}
+
+	if uao.skillLearning.IsPracticing() {
+		return // one practice session at a time
+	}
+
+	skills := uao.skillLearning.GetSkillsNeedingPractice()
+	if len(skills) == 0 {
+		return
+	}
+
+	skill := skills[0]
+	fmt.Printf("🎓 Practicing skill: %s (proficiency %.2f)\n", skill.Name, skill.Proficiency)
+	go func(id string) {
+		if err := uao.skillLearning.PracticeSkill(id); err != nil {
+			fmt.Printf("   ⚠️ Skill practice failed: %v\n", err)
+		}
+	}(skill.ID)
 }
 
 // Sleep gracefully stops the orchestrator
@@ -736,13 +791,5 @@ type OrchestratorStatus struct {
 	StateDirectory string
 }
 
-// GlobalState represents the global telemetry state
-type GlobalState struct {
-	Timestamp     time.Time
-	IsAwake       bool
-	CognitiveLoad float64
-	WisdomDepth   float64
-	TotalCycles   uint64
-	TotalThoughts uint64
-	SessionID     string
-}
+// GlobalState is declared in global_telemetry_shell.go and shared with the
+// telemetry shell's UpdateOrchestratorState method.

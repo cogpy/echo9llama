@@ -21,7 +21,7 @@ type OpenRouterProvider struct {
 // NewOpenRouterProvider creates a new OpenRouter provider
 func NewOpenRouterProvider(model string) *OpenRouterProvider {
 	if model == "" {
-		model = "anthropic/claude-3.5-sonnet" // Default to Claude via OpenRouter
+		model = "anthropic/claude-sonnet-4.5" // Default to Claude via OpenRouter
 	}
 	
 	return &OpenRouterProvider{

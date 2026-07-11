@@ -59,7 +59,11 @@ func (mp *MultiProviderLLM) initializeProviders() {
 
 	// Try Anthropic Claude (high priority for autonomous reasoning)
 	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
-		provider := NewAnthropicProvider("claude-3-5-sonnet-20241022")
+		model := os.Getenv("ECHO_ANTHROPIC_MODEL")
+		if model == "" {
+			model = "claude-sonnet-4-5"
+		}
+		provider := NewAnthropicProvider(model)
 		mp.AddProvider(provider)
 		fmt.Println("✓ Anthropic Claude provider initialized")
 	}
@@ -67,14 +71,22 @@ func (mp *MultiProviderLLM) initializeProviders() {
 	// Try OpenRouter (good fallback with multiple models)
 	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
 		// Use a fast, capable model for autonomous thought generation
-		provider := NewOpenRouterProvider("anthropic/claude-3.5-sonnet")
+		model := os.Getenv("ECHO_OPENROUTER_MODEL")
+		if model == "" {
+			model = "anthropic/claude-sonnet-4.5"
+		}
+		provider := NewOpenRouterProvider(model)
 		mp.AddProvider(provider)
 		fmt.Println("✓ OpenRouter provider initialized")
 	}
 
 	// Try OpenAI (if available)
 	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
-		provider := NewOpenAIProvider("gpt-4")
+		model := os.Getenv("ECHO_OPENAI_MODEL")
+		if model == "" {
+			model = "gpt-4o"
+		}
+		provider := NewOpenAIProvider(model)
 		mp.AddProvider(provider)
 		fmt.Println("✓ OpenAI provider initialized")
 	}

@@ -448,14 +448,22 @@ func (tseb *TwelveStepEchoBeats) getMode(step int) CognitiveMode {
 	return ModeReflective
 }
 
-// GetMetrics returns current metrics
+// GetMetrics returns a copy of the current metrics (without the lock)
 func (tseb *TwelveStepEchoBeats) GetMetrics() *TwelveStepMetrics {
 	tseb.metrics.mu.RLock()
 	defer tseb.metrics.mu.RUnlock()
 	
-	// Return a copy
-	metricsCopy := *tseb.metrics
-	return &metricsCopy
+	// Field-wise copy so the sync.RWMutex is never copied
+	return &TwelveStepMetrics{
+		TotalCycles:            tseb.metrics.TotalCycles,
+		StepExecutionTimes:     tseb.metrics.StepExecutionTimes,
+		EngineActivations:      tseb.metrics.EngineActivations,
+		RelevanceRealizations:  tseb.metrics.RelevanceRealizations,
+		AffordanceInteractions: tseb.metrics.AffordanceInteractions,
+		SalienceSimulations:    tseb.metrics.SalienceSimulations,
+		PhaseTransitions:       tseb.metrics.PhaseTransitions,
+		ModeTransitions:        tseb.metrics.ModeTransitions,
+	}
 }
 
 // GetStatus returns current status

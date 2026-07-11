@@ -39,6 +39,10 @@ func main() {
 		config.IdentityContext = identity
 	}
 
+	if persona := os.Getenv("ECHO_PERSONA"); persona != "" {
+		config.PersonaContext = persona
+	}
+
 	// Create unified autonomous orchestrator
 	orchestrator := deeptreeecho.NewUnifiedAutonomousOrchestrator(llmProvider, config)
 
@@ -68,30 +72,21 @@ func main() {
 	fmt.Println("👋 Echo has shut down gracefully")
 }
 
-// initializeLLMProvider creates an LLM provider based on available API keys
+// initializeLLMProvider creates a resilient multi-provider LLM with automatic
+// failover across Anthropic, OpenRouter, and OpenAI based on available keys.
 func initializeLLMProvider() (llm.LLMProvider, error) {
-	// Check for Anthropic API key
-	if apiKey := os.Getenv("ANTHROPIC_API_KEY"); apiKey != "" {
-		fmt.Println("✓ Using Anthropic Claude API")
-		provider := deeptreeecho.NewAnthropicProvider(apiKey, "claude-3-5-sonnet-20241022")
-		return provider, nil
+	if os.Getenv("ANTHROPIC_API_KEY") == "" &&
+		os.Getenv("OPENROUTER_API_KEY") == "" &&
+		os.Getenv("OPENAI_API_KEY") == "" {
+		return nil, fmt.Errorf("no LLM API key found. Please set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY")
 	}
 
-	// Check for OpenRouter API key
-	if apiKey := os.Getenv("OPENROUTER_API_KEY"); apiKey != "" {
-		fmt.Println("✓ Using OpenRouter API")
-		provider := deeptreeecho.NewOpenRouterProvider(apiKey, "anthropic/claude-3.5-sonnet")
-		return provider, nil
+	provider := llm.NewMultiProviderLLM()
+	if !provider.Available() {
+		return nil, fmt.Errorf("no LLM providers could be initialized from available API keys")
 	}
-
-	// Check for OpenAI API key
-	if apiKey := os.Getenv("OPENAI_API_KEY"); apiKey != "" {
-		fmt.Println("✓ Using OpenAI-compatible API")
-		provider := deeptreeecho.NewOpenAIProvider(apiKey, "gpt-4")
-		return provider, nil
-	}
-
-	return nil, fmt.Errorf("no LLM API key found. Please set ANTHROPIC_API_KEY, OPENROUTER_API_KEY, or OPENAI_API_KEY")
+	fmt.Println("✓ Multi-provider LLM initialized (automatic failover enabled)")
+	return provider, nil
 }
 
 // reportStatus periodically reports orchestrator status

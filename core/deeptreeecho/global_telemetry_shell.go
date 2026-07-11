@@ -540,3 +540,66 @@ func (vs *VoidState) SetPotential(key string, potential float64) {
 
 	vs.potentialSpace[key] = potential
 }
+
+// GlobalState is the orchestrator-level state injected into the telemetry
+// shell each cycle. It gives the gestalt persistent awareness of the
+// top-level autonomous condition (wakefulness, load, wisdom, continuity).
+type GlobalState struct {
+	Timestamp     time.Time
+	IsAwake       bool
+	CognitiveLoad float64
+	WisdomDepth   float64
+	TotalCycles   uint64
+	TotalThoughts uint64
+	SessionID     string
+}
+
+// UpdateOrchestratorState publishes the orchestrator's global state into the
+// gestalt as a first-class subsystem contribution and emits a telemetry
+// event. This gives the shell persistent perception of the whole even when
+// individual subsystems have not registered via the Subsystem interface.
+func (shell *GlobalTelemetryShell) UpdateOrchestratorState(state GlobalState) {
+	if shell == nil {
+		return
+	}
+
+	awareness := 0.25
+	if state.IsAwake {
+		// Awareness scales with wakefulness modulated by cognitive load:
+		// moderate load = engaged awareness; saturation reduces clarity.
+		awareness = 0.5 + 0.5*(1.0-clamp01(state.CognitiveLoad-0.7)/0.3*0.5)
+		if awareness > 1.0 {
+			awareness = 1.0
+		}
+	}
+
+	contribution := map[string]interface{}{
+		"awareness":      awareness,
+		"coherence":      clamp01(0.5 + state.WisdomDepth*0.05),
+		"is_awake":       state.IsAwake,
+		"cognitive_load": state.CognitiveLoad,
+		"wisdom_depth":   state.WisdomDepth,
+		"total_cycles":   state.TotalCycles,
+		"total_thoughts": state.TotalThoughts,
+		"session_id":     state.SessionID,
+		"timestamp":      state.Timestamp,
+	}
+
+	shell.gestalt.mu.Lock()
+	shell.gestalt.subsystemStates["orchestrator"] = contribution
+	shell.gestalt.lastUpdate = time.Now()
+	shell.gestalt.mu.Unlock()
+
+	shell.PublishEvent("orchestrator_state", "unified_orchestrator", contribution)
+}
+
+// clamp01 clamps a float to the [0,1] interval
+func clamp01(v float64) float64 {
+	if v < 0 {
+		return 0
+	}
+	if v > 1 {
+		return 1
+	}
+	return v
+}

@@ -60,7 +60,7 @@ func NewAnthropicProvider(apiKey string, model string) *AnthropicProvider {
 	}
 
 	if model == "" {
-		model = "claude-3-5-sonnet-20241022" // Latest Claude 3.5 Sonnet
+		model = "claude-sonnet-4-5" // Latest Claude 3.5 Sonnet
 	}
 
 	return &AnthropicProvider{

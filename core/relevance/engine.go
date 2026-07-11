@@ -386,24 +386,50 @@ func (e *Engine) UpdateFromExperience(exp *Experience) {
 	e.integrateTriads()
 }
 
-// GetState returns current ennead state
+// GetState returns a copy of the current ennead state (without the lock)
 func (e *Engine) GetState() *EnneadState {
 	e.state.mu.RLock()
 	defer e.state.mu.RUnlock()
 	
-	// Return copy
-	stateCopy := *e.state
-	return &stateCopy
+	// Field-wise copy so the sync.RWMutex is never copied
+	return &EnneadState{
+		PropositionalKnowledge:   e.state.PropositionalKnowledge,
+		ProceduralKnowledge:      e.state.ProceduralKnowledge,
+		PerspectivalKnowledge:    e.state.PerspectivalKnowledge,
+		ParticipatoryKnowledge:   e.state.ParticipatoryKnowledge,
+		NomologicalUnderstanding: e.state.NomologicalUnderstanding,
+		NormativeUnderstanding:   e.state.NormativeUnderstanding,
+		NarrativeUnderstanding:   e.state.NarrativeUnderstanding,
+		MoralDevelopment:         e.state.MoralDevelopment,
+		MeaningRealization:       e.state.MeaningRealization,
+		MasteryAchievement:       e.state.MasteryAchievement,
+		OverallCoherence:         e.state.OverallCoherence,
+		RelevanceOptimization:    e.state.RelevanceOptimization,
+		LastUpdate:               e.state.LastUpdate,
+	}
 }
 
-// GetMetrics returns current metrics
+// GetMetrics returns a copy of the current metrics (without the lock)
 func (e *Engine) GetMetrics() *EnneadMetrics {
 	e.metrics.mu.RLock()
 	defer e.metrics.mu.RUnlock()
 	
-	// Return copy
-	metricsCopy := *e.metrics
-	return &metricsCopy
+	// Field-wise copy so the sync.RWMutex is never copied
+	return &EnneadMetrics{
+		TotalCycles:                  e.metrics.TotalCycles,
+		PropositionalUpdates:         e.metrics.PropositionalUpdates,
+		ProceduralPractices:          e.metrics.ProceduralPractices,
+		PerspectivalShifts:           e.metrics.PerspectivalShifts,
+		ParticipatoryTransformations: e.metrics.ParticipatoryTransformations,
+		NomologicalInsights:          e.metrics.NomologicalInsights,
+		NormativeAlignments:          e.metrics.NormativeAlignments,
+		NarrativeDevelopments:        e.metrics.NarrativeDevelopments,
+		MoralGrowths:                 e.metrics.MoralGrowths,
+		MeaningMakings:               e.metrics.MeaningMakings,
+		MasteryAchievements:          e.metrics.MasteryAchievements,
+		CrossTriadIntegrations:       e.metrics.CrossTriadIntegrations,
+		SophrosyneOptimizations:      e.metrics.SophrosyneOptimizations,
+	}
 }
 
 // GetStatus returns comprehensive status

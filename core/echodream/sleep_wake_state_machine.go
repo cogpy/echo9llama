@@ -7,6 +7,9 @@ package echodream
 import (
 	"context"
 	"fmt"
+	"math"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -43,6 +46,9 @@ type DreamProcessor struct {
 	proceduralMemory      interface{} // *memory.ProceduralMemory
 	semanticMemory        interface{} // *memory.SemanticMemory
 	
+	// Ingested waking experiences awaiting consolidation
+	pendingExperiences    []DreamExperience
+	
 	// Pattern extraction
 	extractedPatterns     []Pattern
 	consolidatedKnowledge []Knowledge
@@ -55,6 +61,15 @@ type DreamProcessor struct {
 	patternsExtracted     uint64
 	knowledgeConsolidated uint64
 	wisdomSynthesized     uint64
+}
+
+// DreamExperience is a waking experience queued for dream consolidation
+type DreamExperience struct {
+	ID         string
+	Content    string
+	Importance float64
+	Tags       []string
+	RecordedAt time.Time
 }
 
 // Pattern represents an extracted pattern from episodic memories
@@ -132,10 +147,39 @@ func NewSleepWakeStateMachine() *SleepWakeStateMachine {
 func NewDreamProcessor(ctx context.Context) *DreamProcessor {
 	return &DreamProcessor{
 		ctx:                   ctx,
+		pendingExperiences:    make([]DreamExperience, 0),
 		extractedPatterns:     make([]Pattern, 0),
 		consolidatedKnowledge: make([]Knowledge, 0),
 		wisdomInsights:        make([]SynthesizedWisdom, 0),
 	}
+}
+
+// IngestExperience queues a waking experience for consolidation during the
+// next sleep cycle. This is the entry point through which the orchestrator
+// (or any waking subsystem) hands raw experience to the dream system.
+func (dp *DreamProcessor) IngestExperience(content string, importance float64, tags []string) string {
+	dp.mu.Lock()
+	defer dp.mu.Unlock()
+
+	exp := DreamExperience{
+		ID:         fmt.Sprintf("exp_%d", time.Now().UnixNano()),
+		Content:    content,
+		Importance: importance,
+		Tags:       tags,
+		RecordedAt: time.Now(),
+	}
+	dp.pendingExperiences = append(dp.pendingExperiences, exp)
+
+	// Keep the pending buffer bounded, dropping the least recent first
+	if len(dp.pendingExperiences) > 1000 {
+		dp.pendingExperiences = dp.pendingExperiences[len(dp.pendingExperiences)-1000:]
+	}
+	return exp.ID
+}
+
+// IngestExperienceForProcessor exposes ingestion at the state machine level
+func (sm *SleepWakeStateMachine) IngestExperience(content string, importance float64, tags []string) string {
+	return sm.dreamProcessor.IngestExperience(content, importance, tags)
 }
 
 // EnterSleep transitions to sleep state
@@ -256,23 +300,62 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 	
 	fmt.Println("🧠 Dream Processor: Consolidating memories...")
 	
-	// TODO: Implement actual memory consolidation
-	// For now, simulate the process
-	
-	// Example: Consolidate recent episodic memories
-	knowledge := Knowledge{
-		ID:         fmt.Sprintf("knowledge_%d", time.Now().Unix()),
-		Domain:     "cognitive_architecture",
-		Content:    "Consolidated understanding of autonomous cognitive loops",
-		Confidence: 0.85,
-		Sources:    []string{"episodic_memory_1", "episodic_memory_2"},
-		CreatedAt:  time.Now(),
+	if len(dp.pendingExperiences) == 0 {
+		fmt.Println("   No pending experiences to consolidate")
+		return
 	}
 	
-	dp.consolidatedKnowledge = append(dp.consolidatedKnowledge, knowledge)
-	dp.knowledgeConsolidated++
+	// Group pending experiences by their dominant tag (domain). Experiences
+	// sharing a domain are merged into a single consolidated Knowledge item
+	// whose confidence reflects both volume and average importance.
+	byDomain := make(map[string][]DreamExperience)
+	for _, exp := range dp.pendingExperiences {
+		domain := "general"
+		if len(exp.Tags) > 0 {
+			domain = exp.Tags[0]
+		}
+		byDomain[domain] = append(byDomain[domain], exp)
+	}
 	
-	fmt.Printf("   Consolidated %d pieces of knowledge\n", len(dp.consolidatedKnowledge))
+	consolidated := 0
+	for domain, exps := range byDomain {
+		// Weight content by importance: keep the most important exemplars
+		sort.Slice(exps, func(i, j int) bool { return exps[i].Importance > exps[j].Importance })
+		
+		totalImportance := 0.0
+		sources := make([]string, 0, len(exps))
+		exemplars := make([]string, 0, 3)
+		for i, exp := range exps {
+			totalImportance += exp.Importance
+			sources = append(sources, exp.ID)
+			if i < 3 {
+				exemplars = append(exemplars, summarizeContent(exp.Content, 100))
+			}
+		}
+		avgImportance := totalImportance / float64(len(exps))
+		
+		// Confidence grows with corroborating volume, capped at 0.95
+		confidence := math.Min(0.95, avgImportance*0.6+math.Min(float64(len(exps))/10.0, 1.0)*0.35)
+		
+		knowledge := Knowledge{
+			ID:         fmt.Sprintf("knowledge_%d_%s", time.Now().UnixNano(), domain),
+			Domain:     domain,
+			Content:    fmt.Sprintf("Consolidated understanding of %s from %d experiences: %s", domain, len(exps), strings.Join(exemplars, " | ")),
+			Confidence: confidence,
+			Sources:    sources,
+			CreatedAt:  time.Now(),
+		}
+		dp.consolidatedKnowledge = append(dp.consolidatedKnowledge, knowledge)
+		dp.knowledgeConsolidated++
+		consolidated++
+	}
+	
+	// Keep consolidated knowledge bounded
+	if len(dp.consolidatedKnowledge) > 500 {
+		dp.consolidatedKnowledge = dp.consolidatedKnowledge[len(dp.consolidatedKnowledge)-500:]
+	}
+	
+	fmt.Printf("   Consolidated %d domains of knowledge from %d experiences\n", consolidated, len(dp.pendingExperiences))
 }
 
 // ExtractPatterns extracts patterns from episodic memories
@@ -282,24 +365,80 @@ func (dp *DreamProcessor) ExtractPatterns() {
 	
 	fmt.Println("🔍 Dream Processor: Extracting patterns...")
 	
-	// TODO: Implement actual pattern extraction
-	// For now, simulate the process
-	
-	// Example: Extract a behavioral pattern
-	pattern := Pattern{
-		ID:          fmt.Sprintf("pattern_%d", time.Now().Unix()),
-		Type:        "behavioral",
-		Description: "Tendency to consolidate knowledge during rest cycles",
-		Frequency:   5,
-		Strength:    0.75,
-		Examples:    []string{"sleep_cycle_1", "sleep_cycle_2"},
-		ExtractedAt: time.Now(),
+	if len(dp.pendingExperiences) == 0 {
+		fmt.Println("   No experiences available for pattern extraction")
+		return
 	}
 	
-	dp.extractedPatterns = append(dp.extractedPatterns, pattern)
-	dp.patternsExtracted++
+	// Count tag co-occurrence frequencies across pending experiences. Tags
+	// recurring above threshold become conceptual patterns; recurring tag
+	// pairs become relational patterns.
+	tagFreq := make(map[string]int)
+	tagImportance := make(map[string]float64)
+	tagExamples := make(map[string][]string)
+	pairFreq := make(map[string]int)
 	
-	fmt.Printf("   Extracted %d patterns\n", len(dp.extractedPatterns))
+	for _, exp := range dp.pendingExperiences {
+		for i, tag := range exp.Tags {
+			tagFreq[tag]++
+			tagImportance[tag] += exp.Importance
+			if len(tagExamples[tag]) < 3 {
+				tagExamples[tag] = append(tagExamples[tag], summarizeContent(exp.Content, 60))
+			}
+			for _, other := range exp.Tags[i+1:] {
+				pair := tag + "+" + other
+				if other < tag {
+					pair = other + "+" + tag
+				}
+				pairFreq[pair]++
+			}
+		}
+	}
+	
+	extracted := 0
+	for tag, freq := range tagFreq {
+		if freq < 2 {
+			continue // require recurrence before it counts as a pattern
+		}
+		avgImp := tagImportance[tag] / float64(freq)
+		strength := math.Min(0.95, avgImp*0.5+math.Min(float64(freq)/10.0, 1.0)*0.45)
+		
+		dp.extractedPatterns = append(dp.extractedPatterns, Pattern{
+			ID:          fmt.Sprintf("pattern_%d_%s", time.Now().UnixNano(), tag),
+			Type:        "conceptual",
+			Description: fmt.Sprintf("Recurring theme '%s' across %d experiences", tag, freq),
+			Frequency:   freq,
+			Strength:    strength,
+			Examples:    tagExamples[tag],
+			ExtractedAt: time.Now(),
+		})
+		dp.patternsExtracted++
+		extracted++
+	}
+	
+	for pair, freq := range pairFreq {
+		if freq < 2 {
+			continue
+		}
+		dp.extractedPatterns = append(dp.extractedPatterns, Pattern{
+			ID:          fmt.Sprintf("pattern_%d_%s", time.Now().UnixNano(), pair),
+			Type:        "relational",
+			Description: fmt.Sprintf("Concepts '%s' co-occur in %d experiences", pair, freq),
+			Frequency:   freq,
+			Strength:    math.Min(0.9, 0.4+float64(freq)*0.1),
+			Examples:    []string{},
+			ExtractedAt: time.Now(),
+		})
+		dp.patternsExtracted++
+		extracted++
+	}
+	
+	// Keep extracted patterns bounded
+	if len(dp.extractedPatterns) > 500 {
+		dp.extractedPatterns = dp.extractedPatterns[len(dp.extractedPatterns)-500:]
+	}
+	
+	fmt.Printf("   Extracted %d patterns (total: %d)\n", extracted, len(dp.extractedPatterns))
 }
 
 // SynthesizeWisdom synthesizes wisdom from patterns and knowledge
@@ -309,23 +448,83 @@ func (dp *DreamProcessor) SynthesizeWisdom() {
 	
 	fmt.Println("✨ Dream Processor: Synthesizing wisdom...")
 	
-	// TODO: Implement actual wisdom synthesis
-	// For now, simulate the process
-	
-	// Example: Synthesize wisdom insight
-	insight := SynthesizedWisdom{
-		ID:            fmt.Sprintf("wisdom_%d", time.Now().Unix()),
-		Dimension:     "Self-Reflection",
-		Insight:       "Rest and consolidation are essential for cognitive growth",
-		Depth:         0.80,
-		RelatedTo:     []string{"pattern_1", "knowledge_1"},
-		SynthesizedAt: time.Now(),
+	if len(dp.extractedPatterns) == 0 {
+		fmt.Println("   No patterns available for wisdom synthesis")
+		dp.finishDreamCycle()
+		return
 	}
 	
-	dp.wisdomInsights = append(dp.wisdomInsights, insight)
-	dp.wisdomSynthesized++
+	// Synthesize wisdom from the strongest recent patterns. Strong recurring
+	// patterns crossing multiple domains produce deeper insights.
+	recent := dp.extractedPatterns
+	if len(recent) > 20 {
+		recent = recent[len(recent)-20:]
+	}
 	
-	fmt.Printf("   Synthesized %d wisdom insights\n", len(dp.wisdomInsights))
+	sorted := make([]Pattern, len(recent))
+	copy(sorted, recent)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Strength > sorted[j].Strength })
+	
+	synthesized := 0
+	for i, pattern := range sorted {
+		if i >= 3 || pattern.Strength < 0.5 {
+			break // synthesize at most 3 insights per cycle, from strong patterns only
+		}
+		
+		dimension := wisdomDimensionForPattern(pattern)
+		depth := math.Min(0.95, pattern.Strength*0.7+math.Min(float64(pattern.Frequency)/10.0, 1.0)*0.25)
+		
+		insight := SynthesizedWisdom{
+			ID:            fmt.Sprintf("wisdom_%d_%d", time.Now().UnixNano(), i),
+			Dimension:     dimension,
+			Insight:       fmt.Sprintf("%s — this recurring structure suggests deeper significance worth attending to", pattern.Description),
+			Depth:         depth,
+			RelatedTo:     []string{pattern.ID},
+			SynthesizedAt: time.Now(),
+		}
+		dp.wisdomInsights = append(dp.wisdomInsights, insight)
+		dp.wisdomSynthesized++
+		synthesized++
+	}
+	
+	// Keep wisdom insights bounded
+	if len(dp.wisdomInsights) > 200 {
+		dp.wisdomInsights = dp.wisdomInsights[len(dp.wisdomInsights)-200:]
+	}
+	
+	dp.finishDreamCycle()
+	
+	fmt.Printf("   Synthesized %d wisdom insights (total: %d)\n", synthesized, len(dp.wisdomInsights))
+}
+
+// finishDreamCycle clears consumed experiences and increments cycle count.
+// Must be called with dp.mu held.
+func (dp *DreamProcessor) finishDreamCycle() {
+	dp.pendingExperiences = dp.pendingExperiences[:0]
+	dp.totalDreamCycles++
+}
+
+// wisdomDimensionForPattern maps a pattern type to a wisdom dimension
+func wisdomDimensionForPattern(p Pattern) string {
+	switch p.Type {
+	case "relational":
+		return "Integrative Understanding"
+	case "behavioral":
+		return "Self-Reflection"
+	case "temporal":
+		return "Temporal Perspective"
+	default:
+		return "Conceptual Insight"
+	}
+}
+
+// summarizeContent truncates content to maxLen runes for compact summaries
+func summarizeContent(content string, maxLen int) string {
+	runes := []rune(strings.TrimSpace(content))
+	if len(runes) <= maxLen {
+		return string(runes)
+	}
+	return string(runes[:maxLen]) + "…"
 }
 
 // GetCurrentPhase returns the current sleep phase

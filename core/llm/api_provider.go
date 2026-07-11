@@ -33,13 +33,13 @@ func NewAPIProvider(provider, model string) (*APIProvider, error) {
 		apiKey = os.Getenv("ANTHROPIC_API_KEY")
 		baseURL = "https://api.anthropic.com/v1"
 		if model == "" {
-			model = "claude-3-5-sonnet-20241022"
+			model = "claude-sonnet-4-5"
 		}
 	case "openrouter":
 		apiKey = os.Getenv("OPENROUTER_API_KEY")
 		baseURL = "https://openrouter.ai/api/v1"
 		if model == "" {
-			model = "anthropic/claude-3.5-sonnet"
+			model = "anthropic/claude-sonnet-4.5"
 		}
 	case "openai":
 		apiKey = os.Getenv("OPENAI_API_KEY")
