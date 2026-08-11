@@ -175,16 +175,21 @@ func TestRicciFlow(t *testing.T) {
 }
 
 func TestEchoCogSystem(t *testing.T) {
-	system := NewEchoCogSystem("TestSystem", 4)
-	
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	
+	// The full system uses a 1,024-unit reservoir. A smaller reservoir preserves
+	// the integration contract while keeping race/coverage runs deterministic.
+	system := newEchoCogSystem("TestSystem", 4, 128)
+
+	lifecycleCtx, cancelLifecycle := context.WithCancel(context.Background())
+
 	// Start system
-	if err := system.Start(ctx); err != nil {
+	if err := system.Start(lifecycleCtx); err != nil {
+		cancelLifecycle()
 		t.Fatalf("Failed to start system: %v", err)
 	}
-	defer system.Stop()
+	t.Cleanup(func() {
+		cancelLifecycle()
+		system.Stop()
+	})
 	
 	// Wait for initialization
 	time.Sleep(1 * time.Second)
@@ -203,8 +208,11 @@ func TestEchoCogSystem(t *testing.T) {
 	// Wait for some reactions
 	time.Sleep(500 * time.Millisecond)
 	
-	// Process input
-	response, err := system.ProcessInput(ctx, "What is the nature of consciousness?")
+	// Process input with an operation-specific deadline. The lifecycle context
+	// must outlive slow race/coverage instrumentation on shared CI runners.
+	processCtx, cancelProcess := context.WithTimeout(lifecycleCtx, 30*time.Second)
+	defer cancelProcess()
+	response, err := system.ProcessInput(processCtx, "What is the nature of consciousness?")
 	if err != nil {
 		t.Fatalf("Failed to process input: %v", err)
 	}

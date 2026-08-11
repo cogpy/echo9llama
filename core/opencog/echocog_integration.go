@@ -165,8 +165,16 @@ const (
 	PriorityStrategy   DistributionStrategy = "Priority"
 )
 
-// NewEchoCogSystem creates a new integrated EchoCog system
+// NewEchoCogSystem creates a new integrated EchoCog system.
 func NewEchoCogSystem(name string, maxConcurrency int) *EchoCogSystem {
+	return newEchoCogSystem(name, maxConcurrency, 1024)
+}
+
+func newEchoCogSystem(name string, maxConcurrency, reservoirSize int) *EchoCogSystem {
+	if reservoirSize <= 0 {
+		reservoirSize = 1024
+	}
+
 	// Create Deep Tree Echo embodied cognition
 	deepTreeEcho := dte.NewEmbodiedCognition(name)
 	
@@ -177,7 +185,7 @@ func NewEchoCogSystem(name string, maxConcurrency int) *EchoCogSystem {
 	reactor := NewHypercyclicReactor(atomSpace, maxConcurrency)
 	
 	// Create DTESN
-	dtesn := NewDTESN(128, 1024, 128) // Input, Reservoir, Output dimensions
+	dtesn := NewDTESN(128, reservoirSize, 128) // Input, Reservoir, Output dimensions
 	
 	// Create concurrent executor
 	executor := NewConcurrentExecutor(maxConcurrency)
