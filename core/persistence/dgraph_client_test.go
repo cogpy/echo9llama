@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgraph-io/dgo/v230/protos/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,6 +43,12 @@ func TestDgraphConfig(t *testing.T) {
 		assert.Equal(t, 5, config.RetryCount)
 		assert.Equal(t, time.Second*5, config.RetryDelay)
 	})
+}
+
+func TestMutationRequiresExplicitCommit(t *testing.T) {
+	assert.False(t, mutationRequiresExplicitCommit(nil))
+	assert.True(t, mutationRequiresExplicitCommit(&api.Mutation{}))
+	assert.False(t, mutationRequiresExplicitCommit(&api.Mutation{CommitNow: true}))
 }
 
 // TestMarshalJSON tests the JSON marshaling helper

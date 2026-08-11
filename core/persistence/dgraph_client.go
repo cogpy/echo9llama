@@ -163,8 +163,16 @@ func (dc *DgraphClient) NewReadOnlyTransaction() *dgo.Txn {
 	return dc.client.NewReadOnlyTxn()
 }
 
+func mutationRequiresExplicitCommit(mu *api.Mutation) bool {
+	return mu != nil && !mu.CommitNow
+}
+
 // Mutate performs a mutation operation
 func (dc *DgraphClient) Mutate(ctx context.Context, mu *api.Mutation) (*api.Response, error) {
+	if mu == nil {
+		return nil, fmt.Errorf("mutation is required")
+	}
+
 	txn := dc.NewTransaction()
 	defer txn.Discard(ctx)
 
@@ -173,6 +181,12 @@ func (dc *DgraphClient) Mutate(ctx context.Context, mu *api.Mutation) (*api.Resp
 		return nil, err
 	}
 
+	// Dgraph finalizes the transaction inside Mutate when CommitNow is set.
+	// Committing that transaction again returns ErrFinished and makes a
+	// successful mutation appear to have failed.
+	if !mutationRequiresExplicitCommit(mu) {
+		return resp, nil
+	}
 	if err := txn.Commit(ctx); err != nil {
 		return nil, err
 	}

@@ -3,7 +3,7 @@
 # Note: Previous Python version archived in pyversion branch
 
 # Build stage
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25.12-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git ca-certificates tzdata
@@ -43,12 +43,8 @@ COPY --from=builder /echoself /app/echoself
 # Copy schema files
 COPY --from=builder /src/core/memory/schema.dql /app/schema.dql
 
-# Environment variables
+# Non-secret defaults. Provider and database credentials must be injected at runtime.
 ENV DGRAPH_ENDPOINT=dgraph-alpha:9080
-ENV ANTHROPIC_API_KEY=""
-ENV OPENROUTER_API_KEY=""
-ENV SUPABASE_URL=""
-ENV SUPABASE_KEY=""
 
 # Expose ports
 # 8080: HTTP API (health, status, metrics)

@@ -265,6 +265,9 @@ jobs:
   security:
     name: Security Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -281,12 +284,12 @@ jobs:
           govulncheck ./...
 
       - name: Run gosec
-        uses: securego/gosec@master
+        uses: securego/gosec@v2.28.0
         with:
-          args: '-no-fail -fmt sarif -out results.sarif ./...'
+          args: '-no-fail -fmt sarif -out results.sarif ./core/... ./cmd/...'
 
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: results.sarif
 

@@ -1,11 +1,40 @@
+.git
+.github
 .vscode
+.env
+.env.*
+.cache
+
+# Local/generated build outputs
 ollama
 app
 macapp
 dist
 build
-.env
-.cache
-test_data
-.git
+node_modules
+chatserver
+echo-autonomous-minimal
+orchestrator/orchestrator
+test_[0-9]*
+*.test
+*.out
+coverage*
 
+# Large local model and media artifacts are not needed to compile cmd/autonomous
+models
+*.gguf
+*.bin
+*.onnx
+*.safetensors
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.wav
+
+# Local runtime state and test fixtures
+.ci-echo-state
+echo_state
+*.log
+test_data
