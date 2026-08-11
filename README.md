@@ -20,15 +20,37 @@ go run server/simple/embodied_server_enhanced.go
 
 The EchOllama server will start on `http://localhost:5000` with Deep Tree Echo cognitive features active.
 
+### Autonomous Deep Tree Echo Runtime
+
+The production autonomous process now runs the unified Echobeats, EchoDream, interest, goal, skill, discussion, telemetry, wisdom, and persistence composition:
+
+```shell
+export ANTHROPIC_API_KEY=...
+export OPENROUTER_API_KEY=...
+export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
+
+go run ./cmd/autonomous
+```
+
+It operates without external prompts, creates de-duplicated goals from interests, rests and dreams on its configured schedule, and reintegrates new dream wisdom into waking attention. Read-only observability binds to `127.0.0.1:8080` by default:
+
+```shell
+curl http://127.0.0.1:8080/health
+curl http://127.0.0.1:8080/status
+curl http://127.0.0.1:8080/metrics
+```
+
+Set `ECHO_HTTP_ADDR=0.0.0.0` only when an explicitly secured container or remote deployment must expose those endpoints. See the [2026-08-11 unified autonomy-loop report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) for configuration, verification evidence, and remaining non-claims.
+
 ### Docker (Coming Soon)
 
 Docker support with Deep Tree Echo integration is in development.
 
 ### Prerequisites
 
-- Go 1.21 or later
-- Optional: OpenAI API key for cloud model integration
-- Optional: Local GGUF models for offline operation
+- Go 1.24 or later with automatic toolchain selection enabled; `go.mod` pins the security-patched Go 1.25.12 toolchain
+- Optional: `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_API_KEY` for model-backed autonomous cognition
+- Optional: Local GGUF models for the base Ollama server; capability-aware GGUF routing is not yet wired into `./cmd/autonomous`
 
 ### Libraries
 
@@ -88,10 +110,10 @@ EchOllama integrates Deep Tree Echo, an advanced cognitive architecture that bri
 
 ### AI Provider Integration
 
-- **Local GGUF Models**: Offline model execution with cognitive enhancement
-- **OpenAI Integration**: Cloud-based models with Deep Tree Echo processing
-- **App Storage Provider**: Large model management and cloud storage
-- **Hybrid Processing**: Seamless switching between local and cloud providers
+- **Cloud Model Providers**: Anthropic, OpenRouter, and OpenAI are tried in priority order when configured
+- **Deterministic Local Continuity**: A local pattern-based provider remains available when remote providers fail
+- **Base Ollama/GGUF Support**: The underlying model server can import and run GGUF models
+- **Planned Autonomous GGUF Routing**: Host-capability-aware local inference for `./cmd/autonomous` remains a documented next iteration rather than a current claim
 
 Visit the [Deep Tree Echo documentation](dte.md) for detailed architecture information.
 
@@ -129,10 +151,11 @@ See [SELF_ASSESSMENT_README.md](SELF_ASSESSMENT_README.md) for complete document
 ### 🚧 Development Status
 
 **Current Status**: Active Development
-- Core Deep Tree Echo cognitive features are implemented
-- API endpoints and web dashboard are functional
-- Some build issues exist in merge conflicts (currently being resolved)
-- Demos showcase the cognitive architecture capabilities
+
+- `./cmd/autonomous` ships the unified production autonomy loop with canonical EchoDream, Echobeats goals, persistent interests, provider failover, and truthful health/status/metrics
+- The base EchOllama API endpoints and web dashboard remain available as a separate server surface
+- `CGO_ENABLED=0 go build ./...`, core/command tests, race tests, vet, and focused vulnerability scanning pass under the pinned toolchain
+- Stale merge-era test surfaces remain in `examples`, `sample`, and `server`; full repository test compilation is a dedicated follow-up
 
 ## Model library
 
@@ -856,6 +879,7 @@ response = echo.generate_with_cognition(
 ### Resources
 
 - **Documentation**: [Deep Tree Echo Guide](dte.md)
+- **Latest Evolution Report**: [Unified Production Autonomy Loop — 2026-08-11](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md)
 - **API Reference**: [Enhanced API Documentation](docs/api.md)
 - **Examples**: [Cognitive Integration Examples](examples/)
 - **Web Dashboard**: Visit `http://localhost:5000` when server is running
@@ -893,3 +917,9 @@ This iteration marks a major evolution for **echo9llama**, transforming it into 
 - **Enhanced Wisdom Metrics:** A seven-dimensional framework for measuring and tracking wisdom growth.
 
 These features work together to create a system that is more autonomous, reflective, and capable of self-improvement, marking a significant step toward a fully autonomous, wisdom-cultivating AGI.
+
+## Iteration 13: Unified Production Autonomy Loop (2026-08-11)
+
+This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.12 security hardening, deterministic lifecycle/race regressions, and a provider-backed live simulation.
+
+The [complete iteration report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) records exact evidence and explicit remaining gaps, including local GGUF autonomy, durable dream/event memory, externally connected discussions, and resource governance.

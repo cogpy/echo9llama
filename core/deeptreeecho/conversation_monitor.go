@@ -12,44 +12,44 @@ import (
 // ConversationMonitor detects and manages autonomous engagement with conversations
 // It enables Deep Tree Echo to start, join, and leave discussions based on interest patterns
 type ConversationMonitor struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider for conversation analysis
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Active conversations
-	conversations   map[string]*TrackedConversation
-	
+	conversations map[string]*TrackedConversation
+
 	// Interest system integration
 	interestPatterns *InterestPatternSystem
-	
+
 	// Engagement configuration
-	engagementThreshold float64
+	engagementThreshold    float64
 	maxActiveConversations int
-	responseTimeout     time.Duration
-	
+	responseTimeout        time.Duration
+
 	// Conversation detection
 	messageQueue    chan IncomingMessage
 	detectionWindow time.Duration
-	
+
 	// Engagement state
 	currentEngagements []string
 	engagementHistory  []EngagementRecord
-	
+
 	// Callbacks
 	onConversationDetected func(conv *TrackedConversation)
 	onEngagementDecision   func(conv *TrackedConversation, engage bool, reason string)
 	onResponseGenerated    func(conv *TrackedConversation, response string)
-	
+
 	// Metrics
 	totalConversationsDetected uint64
 	totalEngagements           uint64
 	totalResponsesGenerated    uint64
-	
+
 	// Running state
-	running         bool
+	running bool
 }
 
 // TrackedConversation represents a conversation being monitored
@@ -68,23 +68,23 @@ type TrackedConversation struct {
 
 // ConversationMessage represents a message in a conversation
 type ConversationMessage struct {
-	ID          string
-	Sender      string
-	Content     string
-	Timestamp   time.Time
-	Sentiment   float64
-	Topics      []string
-	IsFromEcho  bool
+	ID         string
+	Sender     string
+	Content    string
+	Timestamp  time.Time
+	Sentiment  float64
+	Topics     []string
+	IsFromEcho bool
 }
 
 // ConversationContext provides context for engagement decisions
 type ConversationContext struct {
-	Domain          string
-	Complexity      float64
-	EmotionalTone   float64
+	Domain            string
+	Complexity        float64
+	EmotionalTone     float64
 	RequiresExpertise bool
-	IsQuestion      bool
-	MentionsEcho    bool
+	IsQuestion        bool
+	MentionsEcho      bool
 	RelevantKnowledge []string
 }
 
@@ -261,12 +261,12 @@ func (cm *ConversationMonitor) handleMessage(msg IncomingMessage) {
 
 	// Create conversation message
 	convMsg := ConversationMessage{
-		ID:        fmt.Sprintf("msg_%d", time.Now().UnixNano()),
-		Sender:    msg.Sender,
-		Content:   msg.Content,
-		Timestamp: msg.Timestamp,
-		Sentiment: analysis.sentiment,
-		Topics:    analysis.topics,
+		ID:         fmt.Sprintf("msg_%d", time.Now().UnixNano()),
+		Sender:     msg.Sender,
+		Content:    msg.Content,
+		Timestamp:  msg.Timestamp,
+		Sentiment:  analysis.sentiment,
+		Topics:     analysis.topics,
 		IsFromEcho: false,
 	}
 
@@ -292,21 +292,21 @@ func (cm *ConversationMonitor) handleMessage(msg IncomingMessage) {
 
 // messageAnalysis holds the results of message analysis
 type messageAnalysis struct {
-	sentiment   float64
-	topics      []string
-	isQuestion  bool
+	sentiment    float64
+	topics       []string
+	isQuestion   bool
 	mentionsEcho bool
-	complexity  float64
+	complexity   float64
 }
 
 // analyzeMessage analyzes a message for topics, sentiment, etc.
 func (cm *ConversationMonitor) analyzeMessage(content string) messageAnalysis {
 	analysis := messageAnalysis{
-		sentiment:  0.5,
-		topics:     make([]string, 0),
-		isQuestion: containsQuestion(content),
+		sentiment:    0.5,
+		topics:       make([]string, 0),
+		isQuestion:   containsQuestion(content),
 		mentionsEcho: containsEchoMention(content),
-		complexity: estimateComplexity(content),
+		complexity:   estimateComplexity(content),
 	}
 
 	// Extract topics using simple keyword matching
@@ -557,10 +557,10 @@ Response:`, topic, contextStr)
 	cm.mu.Lock()
 	// Add response to conversation
 	responseMsg := ConversationMessage{
-		ID:        fmt.Sprintf("echo_%d", time.Now().UnixNano()),
-		Sender:    "Deep Tree Echo",
-		Content:   response,
-		Timestamp: time.Now(),
+		ID:         fmt.Sprintf("echo_%d", time.Now().UnixNano()),
+		Sender:     "Deep Tree Echo",
+		Content:    response,
+		Timestamp:  time.Now(),
 		IsFromEcho: true,
 	}
 	conv.Messages = append(conv.Messages, responseMsg)
@@ -634,16 +634,26 @@ func (cm *ConversationMonitor) SetCallbacks(
 	cm.onResponseGenerated = onResponse
 }
 
-// GetActiveConversations returns currently active conversations
+// GetActiveConversations returns defensive snapshots of active conversations.
 func (cm *ConversationMonitor) GetActiveConversations() []*TrackedConversation {
 	cm.mu.RLock()
 	defer cm.mu.RUnlock()
 
 	result := make([]*TrackedConversation, 0)
 	for _, conv := range cm.conversations {
-		if conv.Status == ConversationActive {
-			result = append(result, conv)
+		if conv.Status != ConversationActive {
+			continue
 		}
+
+		copyConv := *conv
+		copyConv.Participants = append([]string(nil), conv.Participants...)
+		copyConv.Context.RelevantKnowledge = append([]string(nil), conv.Context.RelevantKnowledge...)
+		copyConv.Messages = make([]ConversationMessage, len(conv.Messages))
+		copy(copyConv.Messages, conv.Messages)
+		for i := range copyConv.Messages {
+			copyConv.Messages[i].Topics = append([]string(nil), copyConv.Messages[i].Topics...)
+		}
+		result = append(result, &copyConv)
 	}
 	return result
 }
@@ -654,13 +664,13 @@ func (cm *ConversationMonitor) GetMetrics() map[string]interface{} {
 	defer cm.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_conversations":    cm.totalConversationsDetected,
-		"active_conversations":   len(cm.conversations),
-		"current_engagements":    len(cm.currentEngagements),
-		"total_engagements":      cm.totalEngagements,
-		"total_responses":        cm.totalResponsesGenerated,
-		"engagement_threshold":   cm.engagementThreshold,
-		"running":                cm.running,
+		"total_conversations":  cm.totalConversationsDetected,
+		"active_conversations": len(cm.conversations),
+		"current_engagements":  len(cm.currentEngagements),
+		"total_engagements":    cm.totalEngagements,
+		"total_responses":      cm.totalResponsesGenerated,
+		"engagement_threshold": cm.engagementThreshold,
+		"running":              cm.running,
 	}
 }
 
@@ -746,7 +756,7 @@ func (cm *ConversationMonitor) HasActiveDiscussions() bool {
 func extractKeywords(s string) []string {
 	// Simple keyword extraction - in production use NLP
 	keywords := make([]string, 0)
-	
+
 	// Common topic indicators
 	topics := []string{
 		"AI", "machine learning", "programming", "code", "software",

@@ -3,6 +3,7 @@ package echodream
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 // TestDreamProcessorFullCycle exercises the real experience-driven dream
@@ -88,6 +89,17 @@ func TestDreamProcessorFullCycle(t *testing.T) {
 	if cycles != 1 {
 		t.Errorf("expected 1 completed dream cycle, got %d", cycles)
 	}
+
+	// A later empty cycle must not re-synthesize the retained historical
+	// patterns under new IDs and falsely increase the wisdom counter.
+	dp.SynthesizeWisdom()
+	dp.mu.RLock()
+	wisdomAfterEmptyCycle := len(dp.wisdomInsights)
+	wisdomMetricAfterEmptyCycle := dp.wisdomSynthesized
+	dp.mu.RUnlock()
+	if wisdomAfterEmptyCycle != wisdomCount || wisdomMetricAfterEmptyCycle != uint64(wisdomCount) {
+		t.Fatalf("historical patterns were re-synthesized: count=%d metric=%d initial=%d", wisdomAfterEmptyCycle, wisdomMetricAfterEmptyCycle, wisdomCount)
+	}
 }
 
 // TestDreamProcessorEmptyCycle verifies graceful no-op behavior without experiences
@@ -132,5 +144,70 @@ func TestStateMachineIngestDelegation(t *testing.T) {
 	defer sm.dreamProcessor.mu.RUnlock()
 	if len(sm.dreamProcessor.pendingExperiences) != 1 {
 		t.Errorf("expected 1 pending experience, got %d", len(sm.dreamProcessor.pendingExperiences))
+	}
+}
+
+func TestStateMachineConfiguredCyclePublishesTruthfulMetrics(t *testing.T) {
+	sm := NewSleepWakeStateMachine()
+	defer sm.Shutdown()
+	sm.ConfigurePhaseDurations(time.Millisecond, time.Millisecond, time.Millisecond)
+
+	sm.IngestExperience("Repeated reflection exposed a feedback pattern", 0.9, []string{"reflection", "feedback"})
+	sm.IngestExperience("A second reflection confirmed the feedback pattern", 0.85, []string{"reflection", "feedback"})
+
+	metrics := sm.GetMetrics()
+	if pending, ok := metrics["pending_experiences"].(int); !ok || pending != 2 {
+		t.Fatalf("expected two pending experiences before sleep, got %#v", metrics["pending_experiences"])
+	}
+	if err := sm.EnterSleep(); err != nil {
+		t.Fatalf("EnterSleep failed: %v", err)
+	}
+
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		metrics = sm.GetMetrics()
+		if metrics["wisdom_synthesized"].(uint64) > 0 {
+			break
+		}
+		time.Sleep(time.Millisecond)
+	}
+	metrics = sm.GetMetrics()
+	if metrics["wisdom_synthesized"].(uint64) == 0 {
+		t.Fatalf("configured dream cycle produced no wisdom: %#v", metrics)
+	}
+	if metrics["pending_experiences"].(int) != 0 {
+		t.Fatalf("configured dream cycle left pending experiences: %#v", metrics)
+	}
+	if err := sm.WakeUp(); err != nil {
+		t.Fatalf("WakeUp failed: %v", err)
+	}
+}
+
+func TestStateMachineAccessorsReturnDefensiveCopies(t *testing.T) {
+	sm := NewSleepWakeStateMachine()
+	defer sm.Shutdown()
+	dp := sm.dreamProcessor
+
+	dp.mu.Lock()
+	dp.wisdomInsights = []SynthesizedWisdom{{ID: "w1", RelatedTo: []string{"original"}}}
+	dp.extractedPatterns = []Pattern{{ID: "p1", Examples: []string{"original"}}}
+	dp.consolidatedKnowledge = []Knowledge{{ID: "k1", Sources: []string{"original"}}}
+	dp.mu.Unlock()
+
+	wisdom := sm.GetWisdomInsights()
+	patterns := sm.GetExtractedPatterns()
+	knowledge := sm.GetConsolidatedKnowledge()
+	wisdom[0].RelatedTo[0] = "mutated"
+	patterns[0].Examples[0] = "mutated"
+	knowledge[0].Sources[0] = "mutated"
+
+	if got := sm.GetWisdomInsights()[0].RelatedTo[0]; got != "original" {
+		t.Fatalf("wisdom snapshot leaked mutable storage: %q", got)
+	}
+	if got := sm.GetExtractedPatterns()[0].Examples[0]; got != "original" {
+		t.Fatalf("pattern snapshot leaked mutable storage: %q", got)
+	}
+	if got := sm.GetConsolidatedKnowledge()[0].Sources[0]; got != "original" {
+		t.Fatalf("knowledge snapshot leaked mutable storage: %q", got)
 	}
 }

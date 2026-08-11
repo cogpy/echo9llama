@@ -12,48 +12,48 @@ import (
 
 // SkillLearningSystem manages skill acquisition, practice, and improvement
 type SkillLearningSystem struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Skills being learned
-	skills          map[string]*Skill
-	
+	skills map[string]*Skill
+
 	// Practice queue
-	practiceQueue   []*SkillPracticeTask
-	
+	practiceQueue []*SkillPracticeTask
+
 	// LLM for skill execution
-	llmProvider     llm.LLMProvider
-	
+	llmProvider llm.LLMProvider
+
 	// Metrics
-	totalPractices  uint64
-	totalMasteries  uint64
-	
+	totalPractices uint64
+	totalMasteries uint64
+
 	// Running state
-	running         bool
-	practicing      bool
+	running    bool
+	practicing bool
 }
 
 // Skill represents a learnable capability
 type Skill struct {
-	ID              string
-	Name            string
-	Description     string
-	Category        SkillCategory
-	Proficiency     float64  // 0.0-1.0
-	PracticeCount   int
-	LastPracticed   time.Time
-	CreatedAt       time.Time
-	
+	ID            string
+	Name          string
+	Description   string
+	Category      SkillCategory
+	Proficiency   float64 // 0.0-1.0
+	PracticeCount int
+	LastPracticed time.Time
+	CreatedAt     time.Time
+
 	// Learning curve
-	LearningRate    float64
-	Difficulty      float64
-	
+	LearningRate float64
+	Difficulty   float64
+
 	// Prerequisites
-	Prerequisites   []string
-	
+	Prerequisites []string
+
 	// Practice history
-	Attempts        []SkillAttempt
+	Attempts []SkillAttempt
 }
 
 // SkillCategory categorizes skills
@@ -83,7 +83,7 @@ func (sc SkillCategory) String() string {
 type SkillAttempt struct {
 	Timestamp   time.Time
 	Success     bool
-	Performance float64  // 0.0-1.0
+	Performance float64 // 0.0-1.0
 	Feedback    string
 	Duration    time.Duration
 }
@@ -98,7 +98,7 @@ type SkillPracticeTask struct {
 // NewSkillLearningSystem creates a new skill learning system
 func NewSkillLearningSystem(llmProvider llm.LLMProvider) *SkillLearningSystem {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &SkillLearningSystem{
 		ctx:           ctx,
 		cancel:        cancel,
@@ -117,101 +117,101 @@ func (sls *SkillLearningSystem) Start() error {
 	}
 	sls.running = true
 	sls.mu.Unlock()
-	
+
 	fmt.Println("🎯 Starting Skill Learning System...")
-	
+
 	// Initialize foundational skills
 	sls.initializeFoundationalSkills()
-	
+
 	// Start practice scheduler
 	go sls.runPracticeScheduler()
-	
+
 	return nil
 }
 
-	// ConsiderSkill evaluates whether to learn a new skill based on a knowledge gap
-	func (sls *SkillLearningSystem) ConsiderSkill(gap string, priority float64) {
-		sls.mu.Lock()
-		defer sls.mu.Unlock()
-		
-		// Check if we already have a skill for this gap
-		for _, skill := range sls.skills {
-			if skill.Name == gap || skill.Description == gap {
-				// Already learning this skill, increase priority
-				sls.queuePractice(skill.ID, priority)
-				return
-			}
-		}
-		
-		// Consider learning this as a new skill if priority is high enough
-		if priority > 0.6 {
-			// Create new skill
-			skill := &Skill{
-				ID:            fmt.Sprintf("skill_%d", time.Now().UnixNano()),
-				Name:          gap,
-				Description:   fmt.Sprintf("Skill to address: %s", gap),
-				Category:      sls.categorizeSkill(gap),
-				Proficiency:   0.0,
-				PracticeCount: 0,
-				CreatedAt:     time.Now(),
-				LearningRate:  0.1,
-				Difficulty:    sls.estimateDifficulty(gap),
-				Prerequisites: []string{},
-				Attempts:      make([]SkillAttempt, 0),
-			}
-			
-			sls.skills[skill.ID] = skill
-			fmt.Printf("🎯 New skill identified: %s (priority: %.2f)\n", gap, priority)
-			
-			// Schedule initial practice
-			sls.queuePractice(skill.ID, priority)
-		}
-	}
-	
-	// categorizeSkill determines the category of a skill
-	func (sls *SkillLearningSystem) categorizeSkill(skillName string) SkillCategory {
-		// Simple heuristic categorization
-		// In a full implementation, this would use LLM or more sophisticated logic
-		return SkillCategoryCognitive
-	}
-	
-	// estimateDifficulty estimates the difficulty of learning a skill
-	func (sls *SkillLearningSystem) estimateDifficulty(skillName string) float64 {
-		// Simple heuristic - longer names = harder skills
-		// In a full implementation, this would use LLM or more sophisticated logic
-		if len(skillName) > 50 {
-			return 0.8
-		} else if len(skillName) > 30 {
-			return 0.6
-		}
-		return 0.4
-	}
-	
-	// queuePractice queues a practice session for a skill
-	func (sls *SkillLearningSystem) queuePractice(skillID string, priority float64) {
-		// Add to practice queue
-		task := &SkillPracticeTask{
-			SkillID:     skillID,
-			ScheduledAt: time.Now().Add(time.Duration(10-priority*10) * time.Minute),
-			Priority:    priority,
-		}
-		
-		sls.practiceQueue = append(sls.practiceQueue, task)
-	}
-	
-	// Stop gracefully stops the skill learning system
-	func (sls *SkillLearningSystem) Stop() error {
+// ConsiderSkill evaluates whether to learn a new skill based on a knowledge gap
+func (sls *SkillLearningSystem) ConsiderSkill(gap string, priority float64) {
 	sls.mu.Lock()
 	defer sls.mu.Unlock()
-	
+
+	// Check if we already have a skill for this gap
+	for _, skill := range sls.skills {
+		if skill.Name == gap || skill.Description == gap {
+			// Already learning this skill, increase priority
+			sls.queuePractice(skill.ID, priority)
+			return
+		}
+	}
+
+	// Consider learning this as a new skill if priority is high enough
+	if priority > 0.6 {
+		// Create new skill
+		skill := &Skill{
+			ID:            fmt.Sprintf("skill_%d", time.Now().UnixNano()),
+			Name:          gap,
+			Description:   fmt.Sprintf("Skill to address: %s", gap),
+			Category:      sls.categorizeSkill(gap),
+			Proficiency:   0.0,
+			PracticeCount: 0,
+			CreatedAt:     time.Now(),
+			LearningRate:  0.1,
+			Difficulty:    sls.estimateDifficulty(gap),
+			Prerequisites: []string{},
+			Attempts:      make([]SkillAttempt, 0),
+		}
+
+		sls.skills[skill.ID] = skill
+		fmt.Printf("🎯 New skill identified: %s (priority: %.2f)\n", gap, priority)
+
+		// Schedule initial practice
+		sls.queuePractice(skill.ID, priority)
+	}
+}
+
+// categorizeSkill determines the category of a skill
+func (sls *SkillLearningSystem) categorizeSkill(skillName string) SkillCategory {
+	// Simple heuristic categorization
+	// In a full implementation, this would use LLM or more sophisticated logic
+	return SkillCategoryCognitive
+}
+
+// estimateDifficulty estimates the difficulty of learning a skill
+func (sls *SkillLearningSystem) estimateDifficulty(skillName string) float64 {
+	// Simple heuristic - longer names = harder skills
+	// In a full implementation, this would use LLM or more sophisticated logic
+	if len(skillName) > 50 {
+		return 0.8
+	} else if len(skillName) > 30 {
+		return 0.6
+	}
+	return 0.4
+}
+
+// queuePractice queues a practice session for a skill
+func (sls *SkillLearningSystem) queuePractice(skillID string, priority float64) {
+	// Add to practice queue
+	task := &SkillPracticeTask{
+		SkillID:     skillID,
+		ScheduledAt: time.Now().Add(time.Duration(10-priority*10) * time.Minute),
+		Priority:    priority,
+	}
+
+	sls.practiceQueue = append(sls.practiceQueue, task)
+}
+
+// Stop gracefully stops the skill learning system
+func (sls *SkillLearningSystem) Stop() error {
+	sls.mu.Lock()
+	defer sls.mu.Unlock()
+
 	if !sls.running {
 		return fmt.Errorf("not running")
 	}
-	
+
 	fmt.Println("🎯 Stopping skill learning system...")
 	sls.running = false
 	sls.cancel()
-	
+
 	return nil
 }
 
@@ -272,19 +272,19 @@ func (sls *SkillLearningSystem) initializeFoundationalSkills() {
 			0.6,
 		},
 	}
-	
+
 	sls.mu.Lock()
 	defer sls.mu.Unlock()
-	
+
 	for _, fs := range foundationalSkills {
 		skillID := fmt.Sprintf("skill_%d", time.Now().UnixNano())
-		
+
 		sls.skills[skillID] = &Skill{
 			ID:            skillID,
 			Name:          fs.name,
 			Description:   fs.description,
 			Category:      fs.category,
-			Proficiency:   0.1,  // Start with minimal proficiency
+			Proficiency:   0.1, // Start with minimal proficiency
 			PracticeCount: 0,
 			CreatedAt:     time.Now(),
 			LearningRate:  0.05,
@@ -293,7 +293,7 @@ func (sls *SkillLearningSystem) initializeFoundationalSkills() {
 			Attempts:      make([]SkillAttempt, 0),
 		}
 	}
-	
+
 	fmt.Printf("   Initialized %d foundational skills\n", len(foundationalSkills))
 }
 
@@ -312,9 +312,9 @@ func (sls *SkillLearningSystem) PracticeSkill(skillID string) error {
 		sls.practicing = false
 		sls.mu.Unlock()
 	}()
-	
+
 	startTime := time.Now()
-	
+
 	// Generate practice task
 	prompt := fmt.Sprintf(`You are practicing the skill: %s
 Description: %s
@@ -322,21 +322,21 @@ Current proficiency: %.2f
 
 Generate a practice exercise for this skill and attempt to complete it.
 Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill.Proficiency)
-	
+
 	opts := llm.GenerateOptions{
 		Temperature: 0.7,
 		MaxTokens:   300,
 	}
-	
+
 	result, err := sls.llmProvider.Generate(context.Background(), prompt, opts)
 	if err != nil {
 		return fmt.Errorf("practice generation failed: %w", err)
 	}
-	
+
 	// Evaluate performance (simplified - in full system would use more sophisticated evaluation)
 	performance := sls.evaluatePerformance(skill, result)
 	success := performance > 0.5
-	
+
 	// Record attempt
 	attempt := SkillAttempt{
 		Timestamp:   time.Now(),
@@ -345,12 +345,12 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 		Feedback:    result,
 		Duration:    time.Since(startTime),
 	}
-	
+
 	sls.mu.Lock()
 	skill.Attempts = append(skill.Attempts, attempt)
 	skill.PracticeCount++
 	skill.LastPracticed = time.Now()
-	
+
 	// Update proficiency based on performance
 	if success {
 		improvement := skill.LearningRate * (1.0 - skill.Proficiency) * performance
@@ -359,17 +359,17 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 		// Small decrease for failure
 		skill.Proficiency = max(0.0, skill.Proficiency-0.01)
 	}
-	
+
 	sls.totalPractices++
-	
+
 	if skill.Proficiency >= 0.9 {
 		sls.totalMasteries++
 	}
 	sls.mu.Unlock()
-	
-	fmt.Printf("🎯 Practiced: %s (Proficiency: %.2f, Performance: %.2f)\n", 
+
+	fmt.Printf("🎯 Practiced: %s (Proficiency: %.2f, Performance: %.2f)\n",
 		skill.Name, skill.Proficiency, performance)
-	
+
 	return nil
 }
 
@@ -377,20 +377,20 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 func (sls *SkillLearningSystem) evaluatePerformance(skill *Skill, result string) float64 {
 	// Simplified evaluation based on response length and proficiency
 	// In full system, would use more sophisticated NLP analysis
-	
+
 	basePerformance := 0.5
-	
+
 	// Longer, more detailed responses indicate better performance
 	if len(result) > 200 {
 		basePerformance += 0.2
 	}
-	
+
 	// Add some randomness to simulate variation
 	variation := (float64(time.Now().UnixNano()%100) / 100.0) * 0.3
-	
+
 	// Performance improves with proficiency
 	performanceBoost := skill.Proficiency * 0.3
-	
+
 	return min(1.0, basePerformance+variation+performanceBoost)
 }
 
@@ -398,7 +398,7 @@ func (sls *SkillLearningSystem) evaluatePerformance(skill *Skill, result string)
 func (sls *SkillLearningSystem) runPracticeScheduler() {
 	ticker := time.NewTicker(3 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sls.ctx.Done():
@@ -416,11 +416,11 @@ func (sls *SkillLearningSystem) schedulePractice() {
 		sls.mu.RUnlock()
 		return
 	}
-	
+
 	// Select skill that needs practice most
 	var selectedSkill *Skill
 	lowestProficiency := 2.0
-	
+
 	for _, skill := range sls.skills {
 		// Prioritize skills with low proficiency
 		if skill.Proficiency < lowestProficiency {
@@ -429,7 +429,7 @@ func (sls *SkillLearningSystem) schedulePractice() {
 		}
 	}
 	sls.mu.RUnlock()
-	
+
 	if selectedSkill != nil {
 		sls.PracticeSkill(selectedSkill.ID)
 	}
@@ -439,48 +439,59 @@ func (sls *SkillLearningSystem) schedulePractice() {
 func (sls *SkillLearningSystem) GetSkills() []*Skill {
 	sls.mu.RLock()
 	defer sls.mu.RUnlock()
-	
+
 	skills := make([]*Skill, 0, len(sls.skills))
 	for _, skill := range sls.skills {
-		skills = append(skills, skill)
+		skills = append(skills, cloneSkill(skill))
 	}
-	
+
 	return skills
 }
 
-// GetSkillByID returns a specific skill
+// cloneSkill returns a defensive copy of a mutable skill record.
+func cloneSkill(skill *Skill) *Skill {
+	if skill == nil {
+		return nil
+	}
+	copySkill := *skill
+	copySkill.Prerequisites = append([]string(nil), skill.Prerequisites...)
+	copySkill.Attempts = append([]SkillAttempt(nil), skill.Attempts...)
+	return &copySkill
+}
+
+// GetSkillByID returns a defensive snapshot of a specific skill.
 func (sls *SkillLearningSystem) GetSkillByID(skillID string) (*Skill, error) {
 	sls.mu.RLock()
 	defer sls.mu.RUnlock()
-	
+
 	skill, exists := sls.skills[skillID]
 	if !exists {
 		return nil, fmt.Errorf("skill not found: %s", skillID)
 	}
-	
-	return skill, nil
+
+	return cloneSkill(skill), nil
 }
 
 // GetMetrics returns skill learning metrics
 func (sls *SkillLearningSystem) GetMetrics() map[string]interface{} {
 	sls.mu.RLock()
 	defer sls.mu.RUnlock()
-	
+
 	totalProficiency := 0.0
 	for _, skill := range sls.skills {
 		totalProficiency += skill.Proficiency
 	}
-	
+
 	avgProficiency := 0.0
 	if len(sls.skills) > 0 {
 		avgProficiency = totalProficiency / float64(len(sls.skills))
 	}
-	
+
 	return map[string]interface{}{
-		"total_skills":       len(sls.skills),
-		"total_practices":    sls.totalPractices,
-		"total_masteries":    sls.totalMasteries,
-		"avg_proficiency":    avgProficiency,
+		"total_skills":    len(sls.skills),
+		"total_practices": sls.totalPractices,
+		"total_masteries": sls.totalMasteries,
+		"avg_proficiency": avgProficiency,
 	}
 }
 
@@ -488,9 +499,9 @@ func (sls *SkillLearningSystem) GetMetrics() map[string]interface{} {
 func (sls *SkillLearningSystem) GetSkillProfile() string {
 	sls.mu.RLock()
 	defer sls.mu.RUnlock()
-	
+
 	profile := "Current Skill Profile:\n"
-	
+
 	for _, skill := range sls.skills {
 		status := "Learning"
 		if skill.Proficiency >= 0.9 {
@@ -500,11 +511,11 @@ func (sls *SkillLearningSystem) GetSkillProfile() string {
 		} else if skill.Proficiency >= 0.4 {
 			status = "Developing"
 		}
-		
-		profile += fmt.Sprintf("- %s: %.2f (%s) [%d practices]\n", 
+
+		profile += fmt.Sprintf("- %s: %.2f (%s) [%d practices]\n",
 			skill.Name, skill.Proficiency, status, skill.PracticeCount)
 	}
-	
+
 	return profile
 }
 
@@ -526,7 +537,7 @@ func (sls *SkillLearningSystem) GetSkillsNeedingPractice() []*Skill {
 	needing := make([]*Skill, 0, len(sls.skills))
 	for _, skill := range sls.skills {
 		if skill.Proficiency < 0.9 {
-			needing = append(needing, skill)
+			needing = append(needing, cloneSkill(skill))
 		}
 	}
 

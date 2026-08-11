@@ -10,10 +10,14 @@ type SimpleFallbackProvider struct{}
 
 // Generate generates a simple pattern-based response
 func (s *SimpleFallbackProvider) Generate(ctx context.Context, prompt string, opts GenerateOptions) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+
 	// Simple pattern-based responses for autonomous operation
 	var response string
 	promptLower := strings.ToLower(prompt)
-	
+
 	if strings.Contains(promptLower, "relevant") || strings.Contains(promptLower, "focus") {
 		response = "I sense that exploring the nature of autonomous cognition and wisdom cultivation is most relevant right now."
 	} else if strings.Contains(promptLower, "action") || strings.Contains(promptLower, "affordance") {
@@ -33,20 +37,24 @@ func (s *SimpleFallbackProvider) Generate(ctx context.Context, prompt string, op
 	} else {
 		response = "I am exploring the depths of autonomous cognition, seeking wisdom through continuous reflection and growth."
 	}
-	
+
 	return response, nil
 }
 
 // StreamGenerate generates a simple streaming response
 func (s *SimpleFallbackProvider) StreamGenerate(ctx context.Context, prompt string, opts GenerateOptions) (<-chan StreamChunk, error) {
 	ch := make(chan StreamChunk, 1)
-	
+
 	go func() {
 		defer close(ch)
-		response, _ := s.Generate(ctx, prompt, opts)
+		response, err := s.Generate(ctx, prompt, opts)
+		if err != nil {
+			ch <- StreamChunk{Error: err, Done: true}
+			return
+		}
 		ch <- StreamChunk{Content: response, Done: true}
 	}()
-	
+
 	return ch, nil
 }
 

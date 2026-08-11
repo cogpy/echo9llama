@@ -1,9 +1,9 @@
 module github.com/cogpy/echo9llama
 
-// Deep Tree Echo - compatible with Go 1.21+
+// Deep Tree Echo - Go 1.24 language baseline; secure toolchain pinned below
 go 1.24.0
 
-toolchain go1.24.7
+toolchain go1.25.12
 
 require (
 	github.com/containerd/console v1.0.3
@@ -44,22 +44,14 @@ require (
 	github.com/chewxy/hm v1.0.0 // indirect
 	github.com/chewxy/math32 v1.11.0 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
-	github.com/cockroachdb/errors v1.12.0 // indirect
-	github.com/cockroachdb/logtags v0.0.0-20241215232642-bb51bb14a506 // indirect
-	github.com/cockroachdb/redact v1.1.6 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/getsentry/sentry-go v0.40.0 // indirect
 	github.com/goccy/go-yaml v1.19.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/flatbuffers v24.3.25+incompatible // indirect
-	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/labstack/echo/v4 v4.15.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/milvus-io/milvus-proto/go-api/v2 v2.4.10-0.20240819025435-512e3b98866a // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
@@ -69,9 +61,6 @@ require (
 	github.com/supabase-community/functions-go v0.0.0-20220927045802-22373e6cb51d // indirect
 	github.com/supabase-community/gotrue-go v1.2.0 // indirect
 	github.com/supabase-community/storage-go v0.7.0 // indirect
-	github.com/tidwall/gjson v1.14.4 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
@@ -118,7 +107,7 @@ require (
 
 require (
 	github.com/dgraph-io/dgo/v230 v230.0.1
-	github.com/milvus-io/milvus-sdk-go/v2 v2.4.2
+	github.com/labstack/echo/v4 v4.15.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pdevine/tensor v0.0.0-20250402003834-09d804610a08
 	google.golang.org/grpc v1.78.0

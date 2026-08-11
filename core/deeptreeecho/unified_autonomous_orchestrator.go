@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
 )
+
+const maxExperienceLedgerEntries = 5000
 
 // UnifiedAutonomousOrchestrator is the top-level autonomous agent that
 // self-initiates and coordinates all cognitive subsystems for fully autonomous operation.
@@ -21,7 +24,7 @@ type UnifiedAutonomousOrchestrator struct {
 	// Core cognitive subsystems
 	streamOfConsciousness *StreamOfConsciousness
 	echobeatsScheduler    *EchobeatsScheduler
-	echodreamIntegration  *EchoDreamKnowledgeIntegration
+	dreamCycle            *echodream.SleepWakeStateMachine
 	wakeRestCycle         *AutonomousWakeRestManager
 	interestPatterns      *InterestPatternSystem
 	skillLearning         *SkillLearningSystem
@@ -44,6 +47,13 @@ type UnifiedAutonomousOrchestrator struct {
 	startTime       time.Time
 	lastStateSync   time.Time
 	persistentState *PersistentConsciousnessState
+
+	// Bounded idempotency ledger for experiences handed to EchoDream. A
+	// dedicated mutex avoids lock inversion when asynchronous skill outcomes
+	// arrive while the orchestration loop holds uao.mu.
+	experienceMu          sync.Mutex
+	ingestedExperienceIDs map[string]struct{}
+	experienceOrder       []string
 
 	// Metrics
 	totalCycles   uint64
@@ -68,9 +78,12 @@ type OrchestratorConfig struct {
 	WisdomSynthesisInterval time.Duration
 
 	// Wake/rest configuration
-	WakeDuration time.Duration
-	RestDuration time.Duration
-	AutoWakeRest bool
+	WakeDuration       time.Duration
+	RestDuration       time.Duration
+	DreamLightDuration time.Duration
+	DreamDeepDuration  time.Duration
+	DreamREMDuration   time.Duration
+	AutoWakeRest       bool
 
 	// Autonomy settings
 	EnableStreamOfConsciousness bool
@@ -94,13 +107,17 @@ type OrchestratorConfig struct {
 // DefaultOrchestratorConfig returns default configuration for autonomous operation
 func DefaultOrchestratorConfig() OrchestratorConfig {
 	return OrchestratorConfig{
-		MainLoopInterval:            5 * time.Second,
-		ThoughtInterval:             10 * time.Second,
-		GoalReviewInterval:          1 * time.Minute,
-		WisdomSynthesisInterval:     10 * time.Minute,
-		WakeDuration:                4 * time.Hour,
-		RestDuration:                30 * time.Minute,
-		AutoWakeRest:                true,
+		MainLoopInterval:        5 * time.Second,
+		ThoughtInterval:         10 * time.Second,
+		GoalReviewInterval:      1 * time.Minute,
+		WisdomSynthesisInterval: 10 * time.Minute,
+		WakeDuration:            4 * time.Hour,
+		RestDuration:            30 * time.Minute,
+		DreamLightDuration:      2 * time.Minute,
+		DreamDeepDuration:       5 * time.Minute,
+		DreamREMDuration:        3 * time.Minute,
+		AutoWakeRest:            true,
+
 		EnableStreamOfConsciousness: true,
 		EnableEchobeats:             true,
 		EnableEchodream:             true,
@@ -121,17 +138,19 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 	ctx, cancel := context.WithCancel(context.Background())
 
 	orchestrator := &UnifiedAutonomousOrchestrator{
-		ctx:               ctx,
-		cancel:            cancel,
-		llmProvider:       llmProvider,
-		config:            config,
-		sessionID:         config.SessionName,
-		startTime:         time.Now(),
-		isAwake:           true,
-		isAutonomous:      true,
-		cognitiveLoad:     0.5,
-		wisdomDepth:       0.0,
-		orchestrationLoop: make(chan struct{}, 1),
+		ctx:                   ctx,
+		cancel:                cancel,
+		llmProvider:           llmProvider,
+		config:                config,
+		sessionID:             config.SessionName,
+		startTime:             time.Now(),
+		isAwake:               true,
+		isAutonomous:          true,
+		cognitiveLoad:         0.5,
+		wisdomDepth:           0.0,
+		orchestrationLoop:     make(chan struct{}, 1),
+		ingestedExperienceIDs: make(map[string]struct{}),
+		experienceOrder:       make([]string, 0, 1024),
 	}
 
 	// Initialize cognitive subsystems
@@ -158,18 +177,41 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 	// Echobeats scheduler for goal-directed cognitive loops
 	if uao.config.EnableEchobeats {
 		uao.echobeatsScheduler = NewEchobeatsScheduler(uao.llmProvider)
+		uao.echobeatsScheduler.SetOnGoalAchieved(func(goal ScheduledGoal) {
+			uao.ingestDreamExperienceOnce(
+				"goal-completed:"+goal.ID,
+				fmt.Sprintf("Completed goal: %s", goal.Description),
+				goal.Priority,
+				[]string{"goal", "completed"},
+			)
+		})
 		fmt.Println("   ✓ Echobeats Scheduler initialized")
 	}
 
-	// Echodream for knowledge integration during rest
+	// EchoDream is the canonical experience-driven sleep/wake processor. The
+	// legacy deeptreeecho dream implementation remains available for compatibility
+	// but is not part of the production orchestration path.
 	if uao.config.EnableEchodream {
-		uao.echodreamIntegration = NewEchoDreamKnowledgeIntegration(uao.llmProvider)
-		fmt.Println("   ✓ Echodream Knowledge Integration initialized")
+		uao.dreamCycle = echodream.NewSleepWakeStateMachine()
+		uao.dreamCycle.ConfigurePhaseDurations(
+			uao.config.DreamLightDuration,
+			uao.config.DreamDeepDuration,
+			uao.config.DreamREMDuration,
+		)
+		fmt.Println("   ✓ Canonical EchoDream Sleep/Wake State Machine initialized")
 	}
 
-	// Wake/rest cycle management
+	// The wake/rest manager is the sole transition authority. Its callbacks keep
+	// orchestrator state, conscious processing, and EchoDream synchronized.
 	if uao.config.AutoWakeRest {
 		uao.wakeRestCycle = NewAutonomousWakeRestManager()
+		uao.wakeRestCycle.ConfigureDurations(uao.config.WakeDuration, uao.config.RestDuration)
+		uao.wakeRestCycle.SetCallbacks(
+			uao.onWake,
+			uao.onRest,
+			uao.onDreamStart,
+			uao.onDreamEnd,
+		)
 		fmt.Println("   ✓ Autonomous Wake/Rest Cycle initialized")
 	}
 
@@ -253,6 +295,9 @@ func (uao *UnifiedAutonomousOrchestrator) hydrateFromPersistentState() {
 	if !state.LastUpdated.IsZero() {
 		uao.lastStateSync = state.LastUpdated
 	}
+	if uao.interestPatterns != nil && len(state.InterestTopics) > 0 {
+		uao.interestPatterns.RestoreInterests(state.InterestTopics)
+	}
 }
 
 // Awaken starts the autonomous orchestrator and all subsystems
@@ -274,24 +319,69 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	fmt.Printf("Identity: %s\n", uao.config.IdentityContext)
 	fmt.Println(strings.Repeat("=", 60) + "\n")
 
-	// Start stream of consciousness
+	// Start every constructed subsystem in dependency order. If any component
+	// fails, unwind already-started components so the production process cannot
+	// report a half-awake autonomous state.
+	cleanups := make([]func(), 0, 8)
+	startSubsystem := func(name string, start func() error, stop func() error) error {
+		if err := start(); err != nil {
+			for i := len(cleanups) - 1; i >= 0; i-- {
+				cleanups[i]()
+			}
+			uao.mu.Lock()
+			uao.running = false
+			uao.isAwake = false
+			uao.mu.Unlock()
+			return fmt.Errorf("failed to start %s: %w", name, err)
+		}
+		cleanups = append(cleanups, func() { _ = stop() })
+		return nil
+	}
+
+	if uao.interestPatterns != nil {
+		if err := startSubsystem("interest patterns", uao.interestPatterns.Start, uao.interestPatterns.Stop); err != nil {
+			return err
+		}
+	}
+	if uao.skillLearning != nil {
+		if err := startSubsystem("skill learning", uao.skillLearning.Start, uao.skillLearning.Stop); err != nil {
+			return err
+		}
+	}
+	if uao.discussionMonitor != nil {
+		if err := startSubsystem("conversation monitor", uao.discussionMonitor.Start, uao.discussionMonitor.Stop); err != nil {
+			return err
+		}
+	}
+	if uao.discussionAutonomy != nil {
+		if err := startSubsystem("discussion autonomy", uao.discussionAutonomy.Start, uao.discussionAutonomy.Stop); err != nil {
+			return err
+		}
+		uao.syncDiscussionInterests()
+	}
+	if uao.globalTelemetry != nil {
+		if err := startSubsystem("global telemetry", uao.globalTelemetry.Start, uao.globalTelemetry.Stop); err != nil {
+			return err
+		}
+	}
+	if uao.wisdomSynthesis != nil {
+		if err := startSubsystem("wisdom synthesis", uao.wisdomSynthesis.Start, uao.wisdomSynthesis.Stop); err != nil {
+			return err
+		}
+	}
 	if uao.streamOfConsciousness != nil {
-		if err := uao.streamOfConsciousness.Start(); err != nil {
-			return fmt.Errorf("failed to start stream of consciousness: %w", err)
+		if err := startSubsystem("stream of consciousness", uao.streamOfConsciousness.Start, uao.streamOfConsciousness.Stop); err != nil {
+			return err
 		}
 	}
-
-	// Start echobeats scheduler
 	if uao.echobeatsScheduler != nil {
-		if err := uao.echobeatsScheduler.Start(); err != nil {
-			return fmt.Errorf("failed to start echobeats: %w", err)
+		if err := startSubsystem("echobeats", uao.echobeatsScheduler.Start, uao.echobeatsScheduler.Stop); err != nil {
+			return err
 		}
 	}
-
-	// Start wake/rest cycle if enabled
 	if uao.wakeRestCycle != nil {
-		if err := uao.wakeRestCycle.Start(); err != nil {
-			return fmt.Errorf("failed to start wake/rest cycle: %w", err)
+		if err := startSubsystem("wake/rest cycle", uao.wakeRestCycle.Start, uao.wakeRestCycle.Stop); err != nil {
+			return err
 		}
 	}
 
@@ -341,40 +431,21 @@ func (uao *UnifiedAutonomousOrchestrator) runAutonomousLoop() {
 	}
 }
 
-// performCognitiveCycle executes one cycle of the autonomous cognitive loop
+// performCognitiveCycle executes one cycle of the autonomous cognitive loop.
+// Wake/rest transitions are owned by AutonomousWakeRestManager callbacks; this
+// loop never polls a second transition state machine or traps itself asleep.
 func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	uao.mu.Lock()
-	defer uao.mu.Unlock()
-
 	if !uao.isAwake {
-		// During rest, perform echodream consolidation
-		if uao.echodreamIntegration != nil {
-			uao.echodreamIntegration.ConsolidateKnowledge(uao.ctx)
+		if uao.globalTelemetry != nil {
+			uao.updateGlobalTelemetry()
 		}
+		uao.mu.Unlock()
 		return
 	}
 
 	uao.totalCycles++
 
-	// Update global telemetry with current state
-	if uao.globalTelemetry != nil {
-		uao.updateGlobalTelemetry()
-	}
-
-	// Check if wake/rest transition is needed
-	if uao.wakeRestCycle != nil {
-		shouldRest := uao.wakeRestCycle.ShouldTransitionToRest()
-		shouldWake := uao.wakeRestCycle.ShouldTransitionToWake()
-
-		if shouldRest && uao.isAwake {
-			uao.transitionToRest()
-		} else if shouldWake && !uao.isAwake {
-			uao.transitionToWake()
-		}
-	}
-
-	// Sync thought metrics from the stream of consciousness so orchestrator
-	// telemetry reflects actual cognitive activity
 	if uao.streamOfConsciousness != nil {
 		if metrics := uao.streamOfConsciousness.GetMetrics(); metrics != nil {
 			if tt, ok := metrics["total_thoughts"].(uint64); ok && tt > uao.totalThoughts {
@@ -383,16 +454,28 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 		}
 	}
 
-	// Monitor cognitive load and adjust
 	uao.adjustCognitiveLoad()
+	cognitiveLoad := uao.cognitiveLoad
+	shouldPractice := uao.skillLearning != nil && uao.shouldPracticeSkills()
+	if uao.globalTelemetry != nil {
+		uao.updateGlobalTelemetry()
+	}
+	uao.mu.Unlock()
 
-	// Check for interesting discussions to participate in
+	// New prompt-independent thoughts become bounded EchoDream experiences while
+	// Echo is awake instead of being bulk-replayed on every rest cycle.
+	uao.captureThoughtExperiences()
+
+	// Cognitive load is the fatigue signal used by the sole wake/rest authority.
+	if uao.wakeRestCycle != nil {
+		uao.wakeRestCycle.UpdateCognitiveLoad(cognitiveLoad)
+	}
+
 	if uao.discussionMonitor != nil && uao.discussionAutonomy != nil {
 		uao.checkDiscussions()
 	}
 
-	// Practice skills if appropriate
-	if uao.skillLearning != nil && uao.shouldPracticeSkills() {
+	if shouldPractice {
 		uao.practiceSkills()
 	}
 }
@@ -411,14 +494,35 @@ func (uao *UnifiedAutonomousOrchestrator) reviewAndUpdateGoals() {
 	// Get current interests
 	topInterests := uao.interestPatterns.GetTopInterests(5)
 
-	// Generate goals based on interests
-	for _, interest := range topInterests {
-		description := fmt.Sprintf("Explore and deepen understanding of: %s", interest.Topic)
-		uao.echobeatsScheduler.AddGoal(description, interest.Strength)
-		uao.totalGoals++
+	// Generate goals based on interests and record each chosen direction as a
+	// durable dream experience. Existing non-completed descriptions are reused
+	// instead of being enqueued again on every review interval.
+	existing := make(map[string]struct{})
+	for _, goal := range uao.echobeatsScheduler.GetGoalQueue() {
+		if goal.Status != GoalCompleted {
+			existing[goal.Description] = struct{}{}
+		}
 	}
 
-	fmt.Printf("   ✓ Generated %d new goals from interests\n", len(topInterests))
+	generated := 0
+	for _, interest := range topInterests {
+		description := fmt.Sprintf("Explore and deepen understanding of: %s", interest.Topic)
+		if _, exists := existing[description]; exists {
+			continue
+		}
+		goalID := uao.echobeatsScheduler.AddGoal(description, interest.Strength)
+		existing[description] = struct{}{}
+		generated++
+		uao.totalGoals++
+		uao.ingestDreamExperienceOnce(
+			"goal-created:"+goalID,
+			description,
+			interest.Strength,
+			[]string{"goal", "created", interest.Topic},
+		)
+	}
+
+	fmt.Printf("   ✓ Generated %d new goals from interests\n", generated)
 }
 
 // synthesizeWisdom performs wisdom synthesis from accumulated knowledge
@@ -447,6 +551,12 @@ func (uao *UnifiedAutonomousOrchestrator) synthesizeWisdom() {
 		if err == nil && wisdom != nil {
 			uao.wisdomDepth += wisdom.Depth
 			uao.totalWisdom++
+			uao.ingestDreamExperienceOnce(
+				fmt.Sprintf("waking-wisdom:%d", time.Now().UnixNano()),
+				wisdom.Insight,
+				wisdom.Depth,
+				[]string{"wisdom", "waking-reflection"},
+			)
 			fmt.Printf("   ✨ Wisdom synthesized: %s (depth: %.2f)\n",
 				truncate(wisdom.Insight, 80), wisdom.Depth)
 		}
@@ -456,128 +566,285 @@ func (uao *UnifiedAutonomousOrchestrator) synthesizeWisdom() {
 // syncPersistentState saves current cognitive state to persistent storage
 func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 	uao.mu.Lock()
-	defer uao.mu.Unlock()
-
 	if !uao.config.EnablePersistence {
+		uao.mu.Unlock()
 		return
 	}
 
 	now := time.Now()
 	uao.lastStateSync = now
+	persistentState := uao.persistentState
+	isAwake := uao.isAwake
+	totalCycles := uao.totalCycles
+	totalThoughts := uao.totalThoughts
+	totalGoals := uao.totalGoals
+	totalWisdom := uao.totalWisdom
+	wisdomDepth := uao.wisdomDepth
+	cognitiveLoad := uao.cognitiveLoad
+	sessionID := uao.sessionID
+	startTime := uao.startTime
+	stateDirectory := uao.config.StateDirectory
+	uao.mu.Unlock()
 
-	if uao.persistentState == nil {
+	if persistentState == nil {
 		fmt.Printf("💾 State sync skipped at %s: persistent state manager unavailable\n", now.Format("15:04:05"))
 		return
 	}
 
 	wakeRestState := "Resting"
-	if uao.isAwake {
+	if isAwake {
 		wakeRestState = "Awake"
 	}
+	interestTopics := map[string]float64{}
+	if uao.interestPatterns != nil {
+		interestTopics = uao.interestPatterns.GetAllInterests()
+	}
 
-	uao.persistentState.UpdateCognitiveState(
-		int(uao.totalCycles%12)+1,
-		uao.totalCycles,
-		uao.wisdomDepth,
-		uao.cognitiveLoad,
+	persistentState.UpdateCognitiveState(
+		int(totalCycles%12)+1,
+		totalCycles,
+		wisdomDepth,
+		cognitiveLoad,
 		0,
 	)
-	uao.persistentState.UpdateWakeRestState(wakeRestState, uao.totalWisdom, time.Since(uao.startTime), 0)
+	persistentState.UpdateWakeRestState(wakeRestState, totalWisdom, time.Since(startTime), 0)
 
-	uao.persistentState.mu.Lock()
-	if uao.persistentState.state != nil {
-		uao.persistentState.state.SessionID = uao.sessionID
-		uao.persistentState.state.TotalThoughts = uao.totalThoughts
-		uao.persistentState.state.TotalGoals = uao.totalGoals
-		uao.persistentState.state.TotalInsights = uao.totalWisdom
-		uao.persistentState.state.CuriosityLevel = uao.wisdomDepth
+	persistentState.mu.Lock()
+	if persistentState.state != nil {
+		persistentState.state.SessionID = sessionID
+		persistentState.state.TotalThoughts = totalThoughts
+		persistentState.state.TotalGoals = totalGoals
+		persistentState.state.TotalInsights = totalWisdom
+		persistentState.state.CuriosityLevel = wisdomDepth
+		persistentState.state.InterestTopics = interestTopics
 	}
-	uao.persistentState.mu.Unlock()
+	persistentState.mu.Unlock()
 
-	if err := uao.persistentState.Save(); err != nil {
+	if err := persistentState.Save(); err != nil {
 		fmt.Printf("⚠️  State sync failed at %s: %v\n", now.Format("15:04:05"), err)
 		return
 	}
 
 	fmt.Printf("💾 State synced at %s (cycles: %d, thoughts: %d, wisdom: %.2f, state: %s)\n",
-		now.Format("15:04:05"), uao.totalCycles, uao.totalThoughts, uao.wisdomDepth, uao.config.StateDirectory)
+		now.Format("15:04:05"), totalCycles, totalThoughts, wisdomDepth, stateDirectory)
 }
 
-// transitionToRest transitions echo to rest state for knowledge consolidation
-func (uao *UnifiedAutonomousOrchestrator) transitionToRest() {
-	fmt.Println("\n🌙 Transitioning to rest for knowledge consolidation...")
-
+// onRest is invoked by the wake/rest manager after it becomes the sole
+// transition authority. It pauses waking cognition and starts canonical EchoDream.
+func (uao *UnifiedAutonomousOrchestrator) onRest() error {
+	uao.mu.Lock()
+	if !uao.isAwake {
+		uao.mu.Unlock()
+		return nil
+	}
 	uao.isAwake = false
+	stream := uao.streamOfConsciousness
+	scheduler := uao.echobeatsScheduler
+	dream := uao.dreamCycle
+	uao.mu.Unlock()
 
-	// Pause stream of consciousness
-	if uao.streamOfConsciousness != nil {
-		uao.streamOfConsciousness.Pause()
+	fmt.Println("\n🌙 Transitioning to rest for knowledge consolidation...")
+	uao.captureThoughtExperiences()
+
+	if stream != nil {
+		stream.Pause()
 	}
-
-	// Pause echobeats
-	if uao.echobeatsScheduler != nil {
-		uao.echobeatsScheduler.Pause()
+	if scheduler != nil {
+		scheduler.Pause()
 	}
-
-	// Begin echodream consolidation
-	if uao.echodreamIntegration != nil {
-		// Transfer thoughts to echodream for consolidation
-		if uao.streamOfConsciousness != nil {
-			thoughts := uao.streamOfConsciousness.GetAllThoughts()
-			for _, thought := range thoughts {
-				uao.echodreamIntegration.AddMemory(thought.Content, thought.Importance, thought.Tags)
-			}
+	if dream != nil && !dream.IsAsleep() {
+		if err := dream.EnterSleep(); err != nil {
+			return fmt.Errorf("enter EchoDream sleep: %w", err)
 		}
-
-		// Start dream consolidation
-		uao.echodreamIntegration.BeginDreamCycle()
 	}
 
 	fmt.Println("   💤 Echo is now resting and consolidating knowledge")
+	return nil
 }
 
-// transitionToWake transitions echo back to waking state
-func (uao *UnifiedAutonomousOrchestrator) transitionToWake() {
+// onDreamStart records the manager's dream-state transition. EchoDream itself
+// was started by onRest so light, deep, and REM phases remain one coherent cycle.
+func (uao *UnifiedAutonomousOrchestrator) onDreamStart() error {
+	fmt.Println("   🌙 EchoDream entered active dream integration")
+	return nil
+}
+
+// onDreamEnd marks the manager's transition out of dream state. Wisdom is
+// integrated in onWake after EchoDream has been told to wake.
+func (uao *UnifiedAutonomousOrchestrator) onDreamEnd() error {
+	fmt.Println("   🌅 EchoDream cycle completed; preparing waking integration")
+	return nil
+}
+
+// onWake resumes waking cognition and integrates each newly synthesized dream
+// insight exactly once into interests, conscious attention, and durable metrics.
+func (uao *UnifiedAutonomousOrchestrator) onWake() error {
 	fmt.Println("\n🌅 Waking up with consolidated knowledge...")
 
+	if uao.dreamCycle != nil && uao.dreamCycle.IsAsleep() {
+		if err := uao.dreamCycle.WakeUp(); err != nil {
+			return fmt.Errorf("wake EchoDream: %w", err)
+		}
+	}
+
+	integrated, reinforced := uao.integrateDreamWisdom()
+
+	uao.mu.Lock()
 	uao.isAwake = true
+	stream := uao.streamOfConsciousness
+	scheduler := uao.echobeatsScheduler
+	uao.mu.Unlock()
 
-	// Resume stream of consciousness
-	if uao.streamOfConsciousness != nil {
-		uao.streamOfConsciousness.Resume()
+	if stream != nil {
+		stream.Resume()
+	}
+	if scheduler != nil {
+		scheduler.Resume()
 	}
 
-	// Resume echobeats
-	if uao.echobeatsScheduler != nil {
-		uao.echobeatsScheduler.Resume()
+	fmt.Printf("   ✨ Integrated %d new wisdom insights from rest (%d interest topics reinforced)\n", integrated, reinforced)
+	fmt.Println("   ☀️ Echo is now awake and aware")
+	return nil
+}
+
+// markExperienceOnce records a source event in a bounded FIFO idempotency
+// ledger. It is safe to call from asynchronous skill and scheduler callbacks.
+func (uao *UnifiedAutonomousOrchestrator) markExperienceOnce(sourceID string) bool {
+	sourceID = strings.TrimSpace(sourceID)
+	if sourceID == "" {
+		return false
 	}
 
-	// End echodream cycle and integrate knowledge
-	if uao.echodreamIntegration != nil {
-		insights := uao.echodreamIntegration.EndDreamCycle()
+	uao.experienceMu.Lock()
+	defer uao.experienceMu.Unlock()
 
-		// Update interests based on consolidated patterns: each insight's
-		// depth reinforces the topics it touches, closing the dream → interest
-		// loop so consolidated knowledge reshapes waking attention.
-		reinforcedTopics := 0
-		for _, insight := range insights {
-			if uao.interestPatterns != nil {
-				topics := uao.interestPatterns.UpdateInterestFromInsight(insight.Insight, insight.Depth)
-				reinforcedTopics += len(topics)
+	if _, exists := uao.ingestedExperienceIDs[sourceID]; exists {
+		return false
+	}
+
+	uao.ingestedExperienceIDs[sourceID] = struct{}{}
+	uao.experienceOrder = append(uao.experienceOrder, sourceID)
+	if len(uao.experienceOrder) > maxExperienceLedgerEntries {
+		overflow := len(uao.experienceOrder) - maxExperienceLedgerEntries
+		for _, expired := range uao.experienceOrder[:overflow] {
+			delete(uao.ingestedExperienceIDs, expired)
+		}
+		uao.experienceOrder = append([]string(nil), uao.experienceOrder[overflow:]...)
+	}
+	return true
+}
+
+// ingestDreamExperienceOnce forwards a normalized, non-duplicate experience to
+// the canonical EchoDream processor.
+func (uao *UnifiedAutonomousOrchestrator) ingestDreamExperienceOnce(sourceID, content string, importance float64, tags []string) bool {
+	content = strings.TrimSpace(content)
+	if uao.dreamCycle == nil || content == "" || !uao.markExperienceOnce("experience:"+sourceID) {
+		return false
+	}
+
+	if importance < 0 {
+		importance = 0
+	} else if importance > 1 {
+		importance = 1
+	}
+	uao.dreamCycle.IngestExperience(content, importance, append([]string(nil), tags...))
+	return true
+}
+
+// captureThoughtExperiences hands each retained autonomous thought to
+// EchoDream at most once, even when the stream buffer is revisited.
+func (uao *UnifiedAutonomousOrchestrator) captureThoughtExperiences() int {
+	if uao.streamOfConsciousness == nil || uao.dreamCycle == nil {
+		return 0
+	}
+
+	ingested := 0
+	for _, thought := range uao.streamOfConsciousness.GetAllThoughts() {
+		sourceID := thought.ID
+		if sourceID == "" {
+			sourceID = fmt.Sprintf("thought:%d", thought.Timestamp.UnixNano())
+		}
+		tags := []string{"thought", strings.ToLower(thought.Type.String())}
+		tags = append(tags, thought.Tags...)
+		if uao.ingestDreamExperienceOnce(sourceID, thought.Content, thought.Importance, tags) {
+			ingested++
+		}
+	}
+	return ingested
+}
+
+// captureConversationExperiences records unseen incoming and Echo-authored
+// messages so dream consolidation can learn from social outcomes and interests.
+func (uao *UnifiedAutonomousOrchestrator) captureConversationExperiences(conversations []*TrackedConversation) int {
+	ingested := 0
+	for _, conv := range conversations {
+		if conv == nil {
+			continue
+		}
+		for index, message := range conv.Messages {
+			messageID := message.ID
+			if messageID == "" {
+				messageID = fmt.Sprintf("%s:%d:%d", conv.ID, message.Timestamp.UnixNano(), index)
 			}
-
-			// Feed deep insights back into the stream of consciousness so the
-			// waking mind can continue contemplating them.
-			if uao.streamOfConsciousness != nil && insight.Depth > 0.5 {
-				uao.streamOfConsciousness.AddInterest(insight.Insight, insight.Depth)
+			senderClass := "external"
+			if message.IsFromEcho {
+				senderClass = "echo"
+			}
+			tags := []string{"discussion", senderClass, conv.Topic}
+			tags = append(tags, message.Topics...)
+			importance := 0.4 + conv.InterestScore*0.5
+			if uao.ingestDreamExperienceOnce("discussion:"+conv.ID+":"+messageID, message.Content, importance, tags) {
+				ingested++
 			}
 		}
+	}
+	return ingested
+}
 
-		fmt.Printf("   ✨ Integrated %d wisdom insights from rest (%d interest topics reinforced)\n",
-			len(insights), reinforcedTopics)
+// syncDiscussionInterests seeds social initiative from the same canonical
+// interest graph used for goal formation without immediately starting a burst
+// of discussions; the discussion loop evaluates opportunities on its cadence.
+func (uao *UnifiedAutonomousOrchestrator) syncDiscussionInterests() {
+	if uao.interestPatterns == nil || uao.discussionAutonomy == nil {
+		return
+	}
+	for topic, strength := range uao.interestPatterns.GetAllInterests() {
+		uao.discussionAutonomy.AddInterestPattern(topic, strength)
+	}
+}
+
+// integrateDreamWisdom reinforces attention and continuity with each canonical
+// EchoDream insight exactly once across repeated wake calls.
+func (uao *UnifiedAutonomousOrchestrator) integrateDreamWisdom() (integrated, reinforced int) {
+	if uao.dreamCycle == nil {
+		return 0, 0
 	}
 
-	fmt.Println("   ☀️ Echo is now awake and aware")
+	for _, insight := range uao.dreamCycle.GetWisdomInsights() {
+		if !uao.markExperienceOnce("integrated-wisdom:" + insight.ID) {
+			continue
+		}
+
+		if uao.interestPatterns != nil {
+			topics := uao.interestPatterns.UpdateInterestFromInsight(insight.Insight, insight.Depth)
+			reinforced += len(topics)
+			if uao.discussionAutonomy != nil {
+				for _, topic := range topics {
+					uao.discussionAutonomy.AddInterestPattern(topic, uao.interestPatterns.GetInterestLevel(topic))
+				}
+			}
+		}
+		if uao.streamOfConsciousness != nil && insight.Depth > 0.5 {
+			uao.streamOfConsciousness.AddInterest(insight.Insight, insight.Depth)
+		}
+
+		uao.mu.Lock()
+		uao.wisdomDepth += insight.Depth
+		uao.totalWisdom++
+		uao.mu.Unlock()
+		integrated++
+	}
+	return integrated, reinforced
 }
 
 // updateGlobalTelemetry updates the global telemetry shell with current state
@@ -640,6 +907,7 @@ func (uao *UnifiedAutonomousOrchestrator) checkDiscussions() {
 	}
 
 	conversations := uao.discussionMonitor.GetActiveConversations()
+	uao.captureConversationExperiences(conversations)
 	for _, conv := range conversations {
 		if conv.Topic == "" {
 			continue
@@ -691,12 +959,34 @@ func (uao *UnifiedAutonomousOrchestrator) practiceSkills() {
 	}
 
 	skill := skills[0]
-	fmt.Printf("🎓 Practicing skill: %s (proficiency %.2f)\n", skill.Name, skill.Proficiency)
-	go func(id string) {
-		if err := uao.skillLearning.PracticeSkill(id); err != nil {
+	skillID := skill.ID
+	skillName := skill.Name
+	before := skill.Proficiency
+	practiceKey := fmt.Sprintf("skill:%s:%d", skillID, time.Now().UnixNano())
+	fmt.Printf("🎓 Practicing skill: %s (proficiency %.2f)\n", skillName, before)
+	go func() {
+		if err := uao.skillLearning.PracticeSkill(skillID); err != nil {
+			uao.ingestDreamExperienceOnce(
+				practiceKey,
+				fmt.Sprintf("Practice of %s failed: %v", skillName, err),
+				0.6,
+				[]string{"skill", "failure", skillName},
+			)
 			fmt.Printf("   ⚠️ Skill practice failed: %v\n", err)
+			return
 		}
-	}(skill.ID)
+
+		after := before
+		if updated, err := uao.skillLearning.GetSkillByID(skillID); err == nil {
+			after = updated.Proficiency
+		}
+		uao.ingestDreamExperienceOnce(
+			practiceKey,
+			fmt.Sprintf("Practiced %s; proficiency changed from %.3f to %.3f", skillName, before, after),
+			0.8,
+			[]string{"skill", "practice", skillName},
+		)
+	}()
 }
 
 // Sleep gracefully stops the orchestrator
@@ -729,18 +1019,37 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	fmt.Printf("Wisdom depth: %.2f\n", wisdomDepth)
 	fmt.Println(strings.Repeat("=", 60) + "\n")
 
-	// Stop all subsystems outside uao.mu so each component can finish any in-flight
-	// callbacks without lock inversion against the orchestrator.
-	if uao.streamOfConsciousness != nil {
-		uao.streamOfConsciousness.Stop()
-	}
-
-	if uao.echobeatsScheduler != nil {
-		uao.echobeatsScheduler.Stop()
-	}
-
+	// Stop all subsystems outside uao.mu in reverse dependency order so each
+	// component can finish callbacks without lock inversion or goroutine leaks.
 	if uao.wakeRestCycle != nil {
-		uao.wakeRestCycle.Stop()
+		_ = uao.wakeRestCycle.Stop()
+	}
+	if uao.echobeatsScheduler != nil {
+		_ = uao.echobeatsScheduler.Stop()
+	}
+	if uao.streamOfConsciousness != nil {
+		_ = uao.streamOfConsciousness.Stop()
+	}
+	if uao.wisdomSynthesis != nil {
+		_ = uao.wisdomSynthesis.Stop()
+	}
+	if uao.globalTelemetry != nil {
+		_ = uao.globalTelemetry.Stop()
+	}
+	if uao.discussionAutonomy != nil {
+		_ = uao.discussionAutonomy.Stop()
+	}
+	if uao.discussionMonitor != nil {
+		_ = uao.discussionMonitor.Stop()
+	}
+	if uao.skillLearning != nil {
+		_ = uao.skillLearning.Stop()
+	}
+	if uao.interestPatterns != nil {
+		_ = uao.interestPatterns.Stop()
+	}
+	if uao.dreamCycle != nil {
+		uao.dreamCycle.Shutdown()
 	}
 
 	// Sync final state after cancellation and child shutdown; syncPersistentState
@@ -752,12 +1061,10 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	return nil
 }
 
-// GetStatus returns current orchestrator status
+// GetStatus returns a truthful snapshot of production orchestration state.
 func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	uao.mu.RLock()
-	defer uao.mu.RUnlock()
-
-	return OrchestratorStatus{
+	status := OrchestratorStatus{
 		Running:        uao.running,
 		IsAwake:        uao.isAwake,
 		IsAutonomous:   uao.isAutonomous,
@@ -772,23 +1079,53 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 		LastStateSync:  uao.lastStateSync,
 		StateDirectory: uao.config.StateDirectory,
 	}
+	wakeRest := uao.wakeRestCycle
+	dream := uao.dreamCycle
+	provider := uao.llmProvider
+	uao.mu.RUnlock()
+
+	if provider != nil {
+		status.Provider = provider.Name()
+		status.ProviderAvailable = provider.Available()
+	}
+	if wakeRest != nil {
+		status.WakeRestState = wakeRest.GetCurrentState().String()
+	}
+	if dream != nil {
+		metrics := dream.GetMetrics()
+		status.DreamPhase, _ = metrics["current_phase"].(string)
+		status.PendingExperiences, _ = metrics["pending_experiences"].(int)
+		status.DreamWisdom, _ = metrics["wisdom_synthesized"].(uint64)
+	}
+
+	uao.experienceMu.Lock()
+	status.ExperienceLedgerSize = len(uao.experienceOrder)
+	uao.experienceMu.Unlock()
+	return status
 }
 
-// OrchestratorStatus represents the current status of the orchestrator
+// OrchestratorStatus represents the current status of the orchestrator.
 type OrchestratorStatus struct {
-	Running        bool
-	IsAwake        bool
-	IsAutonomous   bool
-	CognitiveLoad  float64
-	WisdomDepth    float64
-	SessionID      string
-	Uptime         time.Duration
-	TotalCycles    uint64
-	TotalThoughts  uint64
-	TotalGoals     uint64
-	TotalWisdom    uint64
-	LastStateSync  time.Time
-	StateDirectory string
+	Running              bool
+	IsAwake              bool
+	IsAutonomous         bool
+	CognitiveLoad        float64
+	WisdomDepth          float64
+	SessionID            string
+	Uptime               time.Duration
+	TotalCycles          uint64
+	TotalThoughts        uint64
+	TotalGoals           uint64
+	TotalWisdom          uint64
+	LastStateSync        time.Time
+	StateDirectory       string
+	Provider             string
+	ProviderAvailable    bool
+	WakeRestState        string
+	DreamPhase           string
+	PendingExperiences   int
+	DreamWisdom          uint64
+	ExperienceLedgerSize int
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

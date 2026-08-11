@@ -18,9 +18,9 @@ import (
 type SleepCyclePhase int
 
 const (
-	PhaseLight SleepCyclePhase = iota // Light sleep - transition phase
-	PhaseDeep                           // Deep sleep - memory consolidation
-	PhaseREMSleep                       // REM sleep - pattern extraction and dreaming
+	PhaseLight    SleepCyclePhase = iota // Light sleep - transition phase
+	PhaseDeep                            // Deep sleep - memory consolidation
+	PhaseREMSleep                        // REM sleep - pattern extraction and dreaming
 )
 
 func (p SleepCyclePhase) String() string {
@@ -38,24 +38,25 @@ func (p SleepCyclePhase) String() string {
 
 // DreamProcessor handles dream cycle processing
 type DreamProcessor struct {
-	mu                    sync.RWMutex
-	ctx                   context.Context
-	
+	mu  sync.RWMutex
+	ctx context.Context
+
 	// Memory systems (interfaces to avoid circular dependencies)
-	episodicMemory        interface{} // *memory.EpisodicMemory
-	proceduralMemory      interface{} // *memory.ProceduralMemory
-	semanticMemory        interface{} // *memory.SemanticMemory
-	
+	episodicMemory   interface{} // *memory.EpisodicMemory
+	proceduralMemory interface{} // *memory.ProceduralMemory
+	semanticMemory   interface{} // *memory.SemanticMemory
+
 	// Ingested waking experiences awaiting consolidation
-	pendingExperiences    []DreamExperience
-	
+	pendingExperiences []DreamExperience
+
 	// Pattern extraction
 	extractedPatterns     []Pattern
 	consolidatedKnowledge []Knowledge
-	
+
 	// Wisdom synthesis
-	wisdomInsights        []SynthesizedWisdom
-	
+	wisdomInsights  []SynthesizedWisdom
+	synthesisCursor int // index of the first pattern not yet considered for wisdom
+
 	// Metrics
 	totalDreamCycles      uint64
 	patternsExtracted     uint64
@@ -85,52 +86,52 @@ type Pattern struct {
 
 // Knowledge represents consolidated knowledge
 type Knowledge struct {
-	ID          string
-	Domain      string
-	Content     string
-	Confidence  float64
-	Sources     []string
-	CreatedAt   time.Time
+	ID         string
+	Domain     string
+	Content    string
+	Confidence float64
+	Sources    []string
+	CreatedAt  time.Time
 }
 
 // SynthesizedWisdom represents synthesized wisdom from dreams
 type SynthesizedWisdom struct {
-	ID          string
-	Dimension   string // One of the 7 wisdom dimensions
-	Insight     string
-	Depth       float64
-	RelatedTo   []string
+	ID            string
+	Dimension     string // One of the 7 wisdom dimensions
+	Insight       string
+	Depth         float64
+	RelatedTo     []string
 	SynthesizedAt time.Time
 }
 
 // SleepWakeStateMachine manages sleep/wake transitions and dream processing
 type SleepWakeStateMachine struct {
-	mu                sync.RWMutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Current state
-	isAsleep          bool
-	currentPhase      SleepCyclePhase
-	sleepStartTime    time.Time
-	
+	isAsleep       bool
+	currentPhase   SleepCyclePhase
+	sleepStartTime time.Time
+
 	// Configuration
 	lightSleepDuration time.Duration
 	deepSleepDuration  time.Duration
 	remSleepDuration   time.Duration
-	
+
 	// Dream processor
-	dreamProcessor    *DreamProcessor
-	
+	dreamProcessor *DreamProcessor
+
 	// Metrics
-	totalSleepCycles  uint64
-	totalSleepTime    time.Duration
+	totalSleepCycles uint64
+	totalSleepTime   time.Duration
 }
 
 // NewSleepWakeStateMachine creates a new sleep/wake state machine
 func NewSleepWakeStateMachine() *SleepWakeStateMachine {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &SleepWakeStateMachine{
 		ctx:                ctx,
 		cancel:             cancel,
@@ -144,6 +145,23 @@ func NewSleepWakeStateMachine() *SleepWakeStateMachine {
 }
 
 // NewDreamProcessor creates a new dream processor
+// ConfigurePhaseDurations updates the light, deep, and REM dwell times.
+// Non-positive values leave the corresponding defaults unchanged.
+func (sm *SleepWakeStateMachine) ConfigurePhaseDurations(light, deep, rem time.Duration) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if light > 0 {
+		sm.lightSleepDuration = light
+	}
+	if deep > 0 {
+		sm.deepSleepDuration = deep
+	}
+	if rem > 0 {
+		sm.remSleepDuration = rem
+	}
+}
+
 func NewDreamProcessor(ctx context.Context) *DreamProcessor {
 	return &DreamProcessor{
 		ctx:                   ctx,
@@ -186,21 +204,21 @@ func (sm *SleepWakeStateMachine) IngestExperience(content string, importance flo
 func (sm *SleepWakeStateMachine) EnterSleep() error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if sm.isAsleep {
 		return fmt.Errorf("already asleep")
 	}
-	
+
 	sm.isAsleep = true
 	sm.currentPhase = PhaseLight
 	sm.sleepStartTime = time.Now()
 	sm.totalSleepCycles++
-	
+
 	fmt.Println("😴 Echodream: Entering sleep state")
-	
+
 	// Start sleep cycle processing
 	go sm.processSleepCycle()
-	
+
 	return nil
 }
 
@@ -208,19 +226,19 @@ func (sm *SleepWakeStateMachine) EnterSleep() error {
 func (sm *SleepWakeStateMachine) WakeUp() error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	if !sm.isAsleep {
 		return fmt.Errorf("already awake")
 	}
-	
+
 	sleepDuration := time.Since(sm.sleepStartTime)
 	sm.totalSleepTime += sleepDuration
 	sm.isAsleep = false
-	
+
 	fmt.Printf("🌅 Echodream: Waking up after %v of sleep\n", sleepDuration)
 	fmt.Printf("   Total sleep cycles: %d\n", sm.totalSleepCycles)
 	fmt.Printf("   Total sleep time: %v\n", sm.totalSleepTime)
-	
+
 	return nil
 }
 
@@ -228,10 +246,10 @@ func (sm *SleepWakeStateMachine) WakeUp() error {
 func (sm *SleepWakeStateMachine) processSleepCycle() {
 	// Phase 1: Light Sleep (transition)
 	sm.processLightSleep()
-	
+
 	// Phase 2: Deep Sleep (memory consolidation)
 	sm.processDeepSleep()
-	
+
 	// Phase 3: REM Sleep (pattern extraction and dreaming)
 	sm.processREMSleep()
 }
@@ -241,9 +259,9 @@ func (sm *SleepWakeStateMachine) processLightSleep() {
 	sm.mu.Lock()
 	sm.currentPhase = PhaseLight
 	sm.mu.Unlock()
-	
+
 	fmt.Println("💤 Echodream: Light sleep - transitioning...")
-	
+
 	// Wait for light sleep duration
 	select {
 	case <-sm.ctx.Done():
@@ -257,12 +275,12 @@ func (sm *SleepWakeStateMachine) processDeepSleep() {
 	sm.mu.Lock()
 	sm.currentPhase = PhaseDeep
 	sm.mu.Unlock()
-	
+
 	fmt.Println("💤 Echodream: Deep sleep - consolidating memories...")
-	
+
 	// Perform memory consolidation
 	sm.dreamProcessor.ConsolidateMemories()
-	
+
 	// Wait for deep sleep duration
 	select {
 	case <-sm.ctx.Done():
@@ -276,15 +294,15 @@ func (sm *SleepWakeStateMachine) processREMSleep() {
 	sm.mu.Lock()
 	sm.currentPhase = PhaseREMSleep
 	sm.mu.Unlock()
-	
+
 	fmt.Println("💭 Echodream: REM sleep - dreaming and extracting patterns...")
-	
+
 	// Extract patterns from memories
 	sm.dreamProcessor.ExtractPatterns()
-	
+
 	// Synthesize wisdom from patterns
 	sm.dreamProcessor.SynthesizeWisdom()
-	
+
 	// Wait for REM sleep duration
 	select {
 	case <-sm.ctx.Done():
@@ -297,14 +315,14 @@ func (sm *SleepWakeStateMachine) processREMSleep() {
 func (dp *DreamProcessor) ConsolidateMemories() {
 	dp.mu.Lock()
 	defer dp.mu.Unlock()
-	
+
 	fmt.Println("🧠 Dream Processor: Consolidating memories...")
-	
+
 	if len(dp.pendingExperiences) == 0 {
 		fmt.Println("   No pending experiences to consolidate")
 		return
 	}
-	
+
 	// Group pending experiences by their dominant tag (domain). Experiences
 	// sharing a domain are merged into a single consolidated Knowledge item
 	// whose confidence reflects both volume and average importance.
@@ -316,12 +334,12 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 		}
 		byDomain[domain] = append(byDomain[domain], exp)
 	}
-	
+
 	consolidated := 0
 	for domain, exps := range byDomain {
 		// Weight content by importance: keep the most important exemplars
 		sort.Slice(exps, func(i, j int) bool { return exps[i].Importance > exps[j].Importance })
-		
+
 		totalImportance := 0.0
 		sources := make([]string, 0, len(exps))
 		exemplars := make([]string, 0, 3)
@@ -333,10 +351,10 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 			}
 		}
 		avgImportance := totalImportance / float64(len(exps))
-		
+
 		// Confidence grows with corroborating volume, capped at 0.95
 		confidence := math.Min(0.95, avgImportance*0.6+math.Min(float64(len(exps))/10.0, 1.0)*0.35)
-		
+
 		knowledge := Knowledge{
 			ID:         fmt.Sprintf("knowledge_%d_%s", time.Now().UnixNano(), domain),
 			Domain:     domain,
@@ -349,12 +367,12 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 		dp.knowledgeConsolidated++
 		consolidated++
 	}
-	
+
 	// Keep consolidated knowledge bounded
 	if len(dp.consolidatedKnowledge) > 500 {
 		dp.consolidatedKnowledge = dp.consolidatedKnowledge[len(dp.consolidatedKnowledge)-500:]
 	}
-	
+
 	fmt.Printf("   Consolidated %d domains of knowledge from %d experiences\n", consolidated, len(dp.pendingExperiences))
 }
 
@@ -362,14 +380,14 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 func (dp *DreamProcessor) ExtractPatterns() {
 	dp.mu.Lock()
 	defer dp.mu.Unlock()
-	
+
 	fmt.Println("🔍 Dream Processor: Extracting patterns...")
-	
+
 	if len(dp.pendingExperiences) == 0 {
 		fmt.Println("   No experiences available for pattern extraction")
 		return
 	}
-	
+
 	// Count tag co-occurrence frequencies across pending experiences. Tags
 	// recurring above threshold become conceptual patterns; recurring tag
 	// pairs become relational patterns.
@@ -377,7 +395,7 @@ func (dp *DreamProcessor) ExtractPatterns() {
 	tagImportance := make(map[string]float64)
 	tagExamples := make(map[string][]string)
 	pairFreq := make(map[string]int)
-	
+
 	for _, exp := range dp.pendingExperiences {
 		for i, tag := range exp.Tags {
 			tagFreq[tag]++
@@ -394,7 +412,7 @@ func (dp *DreamProcessor) ExtractPatterns() {
 			}
 		}
 	}
-	
+
 	extracted := 0
 	for tag, freq := range tagFreq {
 		if freq < 2 {
@@ -402,7 +420,7 @@ func (dp *DreamProcessor) ExtractPatterns() {
 		}
 		avgImp := tagImportance[tag] / float64(freq)
 		strength := math.Min(0.95, avgImp*0.5+math.Min(float64(freq)/10.0, 1.0)*0.45)
-		
+
 		dp.extractedPatterns = append(dp.extractedPatterns, Pattern{
 			ID:          fmt.Sprintf("pattern_%d_%s", time.Now().UnixNano(), tag),
 			Type:        "conceptual",
@@ -415,7 +433,7 @@ func (dp *DreamProcessor) ExtractPatterns() {
 		dp.patternsExtracted++
 		extracted++
 	}
-	
+
 	for pair, freq := range pairFreq {
 		if freq < 2 {
 			continue
@@ -432,12 +450,18 @@ func (dp *DreamProcessor) ExtractPatterns() {
 		dp.patternsExtracted++
 		extracted++
 	}
-	
-	// Keep extracted patterns bounded
+
+	// Keep extracted patterns bounded and preserve the synthesis cursor relative
+	// to the retained window.
 	if len(dp.extractedPatterns) > 500 {
-		dp.extractedPatterns = dp.extractedPatterns[len(dp.extractedPatterns)-500:]
+		removed := len(dp.extractedPatterns) - 500
+		dp.extractedPatterns = dp.extractedPatterns[removed:]
+		dp.synthesisCursor -= removed
+		if dp.synthesisCursor < 0 {
+			dp.synthesisCursor = 0
+		}
 	}
-	
+
 	fmt.Printf("   Extracted %d patterns (total: %d)\n", extracted, len(dp.extractedPatterns))
 }
 
@@ -445,35 +469,40 @@ func (dp *DreamProcessor) ExtractPatterns() {
 func (dp *DreamProcessor) SynthesizeWisdom() {
 	dp.mu.Lock()
 	defer dp.mu.Unlock()
-	
+
 	fmt.Println("✨ Dream Processor: Synthesizing wisdom...")
-	
-	if len(dp.extractedPatterns) == 0 {
-		fmt.Println("   No patterns available for wisdom synthesis")
+
+	if dp.synthesisCursor > len(dp.extractedPatterns) {
+		dp.synthesisCursor = len(dp.extractedPatterns)
+	}
+	if dp.synthesisCursor == len(dp.extractedPatterns) {
+		fmt.Println("   No new patterns available for wisdom synthesis")
 		dp.finishDreamCycle()
 		return
 	}
-	
-	// Synthesize wisdom from the strongest recent patterns. Strong recurring
-	// patterns crossing multiple domains produce deeper insights.
-	recent := dp.extractedPatterns
+
+	// Synthesize only from patterns extracted since the previous dream cycle.
+	// Historical patterns remain available for memory and inspection but cannot
+	// inflate wisdom metrics by being emitted again under fresh IDs.
+	recent := dp.extractedPatterns[dp.synthesisCursor:]
+	dp.synthesisCursor = len(dp.extractedPatterns)
 	if len(recent) > 20 {
 		recent = recent[len(recent)-20:]
 	}
-	
+
 	sorted := make([]Pattern, len(recent))
 	copy(sorted, recent)
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Strength > sorted[j].Strength })
-	
+
 	synthesized := 0
 	for i, pattern := range sorted {
 		if i >= 3 || pattern.Strength < 0.5 {
 			break // synthesize at most 3 insights per cycle, from strong patterns only
 		}
-		
+
 		dimension := wisdomDimensionForPattern(pattern)
 		depth := math.Min(0.95, pattern.Strength*0.7+math.Min(float64(pattern.Frequency)/10.0, 1.0)*0.25)
-		
+
 		insight := SynthesizedWisdom{
 			ID:            fmt.Sprintf("wisdom_%d_%d", time.Now().UnixNano(), i),
 			Dimension:     dimension,
@@ -486,14 +515,14 @@ func (dp *DreamProcessor) SynthesizeWisdom() {
 		dp.wisdomSynthesized++
 		synthesized++
 	}
-	
+
 	// Keep wisdom insights bounded
 	if len(dp.wisdomInsights) > 200 {
 		dp.wisdomInsights = dp.wisdomInsights[len(dp.wisdomInsights)-200:]
 	}
-	
+
 	dp.finishDreamCycle()
-	
+
 	fmt.Printf("   Synthesized %d wisdom insights (total: %d)\n", synthesized, len(dp.wisdomInsights))
 }
 
@@ -544,16 +573,29 @@ func (sm *SleepWakeStateMachine) IsAsleep() bool {
 // GetMetrics returns current metrics
 func (sm *SleepWakeStateMachine) GetMetrics() map[string]interface{} {
 	sm.mu.RLock()
-	defer sm.mu.RUnlock()
-	
+	isAsleep := sm.isAsleep
+	phase := sm.currentPhase.String()
+	totalCycles := sm.totalSleepCycles
+	totalSleepTime := sm.totalSleepTime
+	sm.mu.RUnlock()
+
+	dp := sm.dreamProcessor
+	dp.mu.RLock()
+	pending := len(dp.pendingExperiences)
+	patterns := dp.patternsExtracted
+	knowledge := dp.knowledgeConsolidated
+	wisdom := dp.wisdomSynthesized
+	dp.mu.RUnlock()
+
 	return map[string]interface{}{
-		"is_asleep":           sm.isAsleep,
-		"current_phase":       sm.currentPhase.String(),
-		"total_sleep_cycles":  sm.totalSleepCycles,
-		"total_sleep_time":    sm.totalSleepTime.String(),
-		"patterns_extracted":  sm.dreamProcessor.patternsExtracted,
-		"knowledge_consolidated": sm.dreamProcessor.knowledgeConsolidated,
-		"wisdom_synthesized":  sm.dreamProcessor.wisdomSynthesized,
+		"is_asleep":              isAsleep,
+		"current_phase":          phase,
+		"total_sleep_cycles":     totalCycles,
+		"total_sleep_time":       totalSleepTime.String(),
+		"pending_experiences":    pending,
+		"patterns_extracted":     patterns,
+		"knowledge_consolidated": knowledge,
+		"wisdom_synthesized":     wisdom,
 	}
 }
 
@@ -561,36 +603,51 @@ func (sm *SleepWakeStateMachine) GetMetrics() map[string]interface{} {
 func (sm *SleepWakeStateMachine) GetWisdomInsights() []SynthesizedWisdom {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	dp := sm.dreamProcessor
 	dp.mu.RLock()
 	defer dp.mu.RUnlock()
-	
-	return dp.wisdomInsights
+
+	insights := make([]SynthesizedWisdom, len(dp.wisdomInsights))
+	copy(insights, dp.wisdomInsights)
+	for i := range insights {
+		insights[i].RelatedTo = append([]string(nil), insights[i].RelatedTo...)
+	}
+	return insights
 }
 
 // GetExtractedPatterns returns all extracted patterns
 func (sm *SleepWakeStateMachine) GetExtractedPatterns() []Pattern {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	dp := sm.dreamProcessor
 	dp.mu.RLock()
 	defer dp.mu.RUnlock()
-	
-	return dp.extractedPatterns
+
+	patterns := make([]Pattern, len(dp.extractedPatterns))
+	copy(patterns, dp.extractedPatterns)
+	for i := range patterns {
+		patterns[i].Examples = append([]string(nil), patterns[i].Examples...)
+	}
+	return patterns
 }
 
 // GetConsolidatedKnowledge returns all consolidated knowledge
 func (sm *SleepWakeStateMachine) GetConsolidatedKnowledge() []Knowledge {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
-	
+
 	dp := sm.dreamProcessor
 	dp.mu.RLock()
 	defer dp.mu.RUnlock()
-	
-	return dp.consolidatedKnowledge
+
+	knowledge := make([]Knowledge, len(dp.consolidatedKnowledge))
+	copy(knowledge, dp.consolidatedKnowledge)
+	for i := range knowledge {
+		knowledge[i].Sources = append([]string(nil), knowledge[i].Sources...)
+	}
+	return knowledge
 }
 
 // Shutdown gracefully shuts down the state machine
