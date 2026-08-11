@@ -155,7 +155,7 @@ See [SELF_ASSESSMENT_README.md](SELF_ASSESSMENT_README.md) for complete document
 - `./cmd/autonomous` ships the unified production autonomy loop with canonical EchoDream, Echobeats goals, persistent interests, provider failover, and truthful health/status/metrics
 - The base EchOllama API endpoints and web dashboard remain available as a separate server surface
 - `CGO_ENABLED=0 go build ./...`, core/command tests, race tests, vet, `govulncheck ./...`, the no-new-production-issues lint gate, and the real-process E2E contract pass under the pinned toolchain
-- The comprehensive CI workflow uses current Go/actions, the official Dgraph standalone service, and accurate health/status/metrics E2E checks
+- The comprehensive CI workflow uses current Go/actions, the official Dgraph standalone service, and accurate health/status/metrics E2E checks; the final comprehensive CI and six-language CodeQL runs are green
 - Stale merge-era test surfaces remain in `examples`, `sample`, and `server`; full repository test compilation is a dedicated follow-up
 
 ## Model library
@@ -921,6 +921,6 @@ These features work together to create a system that is more autonomous, reflect
 
 ## Iteration 13: Unified Production Autonomy Loop (2026-08-11)
 
-This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.12 security hardening, full-repository dependency remediation, a no-new-production-issues lint gate, corrected Dgraph/E2E CI infrastructure, deterministic lifecycle/race regressions, and a provider-backed live simulation.
+This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.12 security hardening, full-repository dependency remediation, a no-new-production-issues lint gate, corrected Dgraph/E2E/Docker/SARIF infrastructure, deterministic lifecycle/race regressions, and a provider-backed live simulation. The final comprehensive CI and CodeQL runs pass.
 
 The [complete iteration report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) records exact evidence and explicit remaining gaps, including local GGUF autonomy, durable dream/event memory, externally connected discussions, and resource governance.
