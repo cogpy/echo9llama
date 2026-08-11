@@ -12,8 +12,9 @@ import (
 // ConversationMonitor detects and manages autonomous engagement with conversations
 // It enables Deep Tree Echo to start, join, and leave discussions based on interest patterns
 type ConversationMonitor struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the monitor and cancels its persistent message loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// LLM provider for conversation analysis

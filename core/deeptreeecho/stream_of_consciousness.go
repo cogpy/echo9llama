@@ -11,8 +11,9 @@ import (
 
 // StreamOfConsciousness generates continuous autonomous thoughts
 type StreamOfConsciousness struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the stream and cancels its persistent thought loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// LLM provider

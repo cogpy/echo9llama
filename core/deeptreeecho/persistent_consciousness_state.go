@@ -12,8 +12,9 @@ import (
 
 // PersistentConsciousnessState manages persistent state across sessions
 type PersistentConsciousnessState struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the manager and cancels its persistent autosave loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// State file path
@@ -110,11 +111,11 @@ func NewPersistentConsciousnessState(stateDir string, identityName string) (*Per
 
 	// Consciousness state may contain private thoughts, goals, and identity
 	// continuity. Keep the directory owner-only, including when it pre-exists.
-	if err := os.MkdirAll(stateDir, 0700); err != nil {
+	if err := os.MkdirAll(stateDir, 0o700); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to create state directory: %w", err)
 	}
-	if err := os.Chmod(stateDir, 0700); err != nil {
+	if err := os.Chmod(stateDir, 0o700); err != nil {
 		cancel()
 		return nil, fmt.Errorf("failed to secure state directory: %w", err)
 	}
@@ -244,7 +245,7 @@ func (pcs *PersistentConsciousnessState) save() error {
 		_ = temp.Close()
 		_ = os.Remove(tempFile)
 	}
-	if err := temp.Chmod(0600); err != nil {
+	if err := temp.Chmod(0o600); err != nil {
 		cleanup()
 		return fmt.Errorf("failed to secure temporary state file: %w", err)
 	}
@@ -264,7 +265,7 @@ func (pcs *PersistentConsciousnessState) save() error {
 		_ = os.Remove(tempFile)
 		return fmt.Errorf("failed to replace state file: %w", err)
 	}
-	if err := os.Chmod(pcs.stateFile, 0600); err != nil {
+	if err := os.Chmod(pcs.stateFile, 0o600); err != nil {
 		return fmt.Errorf("failed to secure state file: %w", err)
 	}
 

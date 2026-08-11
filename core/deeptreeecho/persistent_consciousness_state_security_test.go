@@ -13,7 +13,7 @@ func TestPersistentConsciousnessStateUsesPrivateAtomicStorage(t *testing.T) {
 	}
 
 	stateDir := filepath.Join(t.TempDir(), "state")
-	if err := os.MkdirAll(stateDir, 0755); err != nil {
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatalf("prepare state directory: %v", err)
 	}
 
@@ -29,8 +29,8 @@ func TestPersistentConsciousnessStateUsesPrivateAtomicStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat state directory: %v", err)
 	}
-	if got := directoryInfo.Mode().Perm(); got != 0700 {
-		t.Fatalf("expected state directory mode 0700, got %04o", got)
+	if got := directoryInfo.Mode().Perm(); got != 0o700 {
+		t.Fatalf("expected state directory mode 0o700, got %04o", got)
 	}
 
 	stateFile := filepath.Join(stateDir, "consciousness_state.json")
@@ -38,8 +38,8 @@ func TestPersistentConsciousnessStateUsesPrivateAtomicStorage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat state file: %v", err)
 	}
-	if got := fileInfo.Mode().Perm(); got != 0600 {
-		t.Fatalf("expected state file mode 0600, got %04o", got)
+	if got := fileInfo.Mode().Perm(); got != 0o600 {
+		t.Fatalf("expected state file mode 0o600, got %04o", got)
 	}
 
 	temporaryFiles, err := filepath.Glob(filepath.Join(stateDir, ".consciousness-state-*.tmp"))

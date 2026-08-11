@@ -1,5 +1,4 @@
-run:
-  timeout: 5m
+version: "2"
 linters:
   enable:
     - asasalint
@@ -7,35 +6,50 @@ linters:
     - bodyclose
     - containedctx
     - gocheckcompilerdirectives
-    - gofmt
-    - gofumpt
-    - gosimple
-    - govet
-    - ineffassign
     - intrange
     - makezero
     - misspell
     - nilerr
     - nolintlint
     - nosprintfhostport
-    - staticcheck
     - unconvert
     - usetesting
     - wastedassign
     - whitespace
   disable:
-    - usestdlibvars
     - errcheck
-linters-settings:
-  staticcheck:
-    checks:
-      - all
-      - -SA1019 # omit Deprecated check
+    - usestdlibvars
+  settings:
+    staticcheck:
+      checks:
+        - all
+        - -SA1019
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 severity:
-  default-severity: error
+  default: error
   rules:
     - linters:
         - gofmt
         - goimports
         - intrange
       severity: info
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

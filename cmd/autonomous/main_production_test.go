@@ -34,7 +34,7 @@ func TestProductionConstructorReturnsUnifiedRuntime(t *testing.T) {
 	t.Setenv("ECHO_STATE_DIRECTORY", t.TempDir())
 	t.Setenv("ECHO_SESSION_NAME", "production-constructor-test")
 
-	var orchestrator *deeptreeecho.UnifiedAutonomousOrchestrator = newProductionOrchestrator(productionMockProvider{})
+	orchestrator := newProductionOrchestrator(productionMockProvider{})
 	if orchestrator == nil {
 		t.Fatal("production constructor returned nil")
 	}

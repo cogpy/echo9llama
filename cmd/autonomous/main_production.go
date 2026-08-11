@@ -216,7 +216,11 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_experience_ledger_size gauge\necho_experience_ledger_size %d\n", status.ExperienceLedgerSize)
 	})
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		fmt.Fprintln(w, "Deep Tree Echo — unified autonomous consciousness")
 		fmt.Fprintln(w, "GET /health  readiness and wake state")

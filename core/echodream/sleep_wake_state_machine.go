@@ -38,13 +38,7 @@ func (p SleepCyclePhase) String() string {
 
 // DreamProcessor handles dream cycle processing
 type DreamProcessor struct {
-	mu  sync.RWMutex
-	ctx context.Context
-
-	// Memory systems (interfaces to avoid circular dependencies)
-	episodicMemory   interface{} // *memory.EpisodicMemory
-	proceduralMemory interface{} // *memory.ProceduralMemory
-	semanticMemory   interface{} // *memory.SemanticMemory
+	mu sync.RWMutex
 
 	// Ingested waking experiences awaiting consolidation
 	pendingExperiences []DreamExperience
@@ -106,8 +100,9 @@ type SynthesizedWisdom struct {
 
 // SleepWakeStateMachine manages sleep/wake transitions and dream processing
 type SleepWakeStateMachine struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is the owned lifecycle context used to interrupt every dream phase.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// Current state
@@ -144,7 +139,6 @@ func NewSleepWakeStateMachine() *SleepWakeStateMachine {
 	}
 }
 
-// NewDreamProcessor creates a new dream processor
 // ConfigurePhaseDurations updates the light, deep, and REM dwell times.
 // Non-positive values leave the corresponding defaults unchanged.
 func (sm *SleepWakeStateMachine) ConfigurePhaseDurations(light, deep, rem time.Duration) {
@@ -162,9 +156,9 @@ func (sm *SleepWakeStateMachine) ConfigurePhaseDurations(light, deep, rem time.D
 	}
 }
 
-func NewDreamProcessor(ctx context.Context) *DreamProcessor {
+// NewDreamProcessor creates a new dream processor.
+func NewDreamProcessor(_ context.Context) *DreamProcessor {
 	return &DreamProcessor{
-		ctx:                   ctx,
 		pendingExperiences:    make([]DreamExperience, 0),
 		extractedPatterns:     make([]Pattern, 0),
 		consolidatedKnowledge: make([]Knowledge, 0),

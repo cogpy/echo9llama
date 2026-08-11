@@ -10,8 +10,9 @@ import (
 // AutonomousWakeRestManager manages autonomous wake/rest cycles
 // Integrates with echodream for knowledge consolidation during rest
 type AutonomousWakeRestManager struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the manager and cancels its persistent evaluation loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// State

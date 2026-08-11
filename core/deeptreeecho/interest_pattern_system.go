@@ -11,8 +11,9 @@ import (
 
 // InterestPatternSystem manages interest vectors and engagement decisions
 type InterestPatternSystem struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the system and cancels its autonomous interest loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// Interest vectors for different topics/domains

@@ -77,7 +77,7 @@ func TestDreamExperienceIngestionIsIdempotentAndBounded(t *testing.T) {
 		t.Fatalf("expected one pending experience after duplicate suppression, got %d", got)
 	}
 
-	for i := 0; i < maxExperienceLedgerEntries+50; i++ {
+	for i := range maxExperienceLedgerEntries + 50 {
 		orchestrator.markExperienceOnce(fmt.Sprintf("ledger-%d", i))
 	}
 	if got := orchestrator.GetStatus().ExperienceLedgerSize; got != maxExperienceLedgerEntries {

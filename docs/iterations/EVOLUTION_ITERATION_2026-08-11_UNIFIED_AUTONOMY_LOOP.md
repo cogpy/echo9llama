@@ -26,7 +26,8 @@ This iteration promotes the unified orchestrator into the real production entry 
 | Cognitive accessors exposed nested mutable slices. | Asynchronous dream ingestion could race with thought, conversation, and skill mutation. | Accessors now return defensive deep snapshots; race regressions cover the boundary.[2] [4] |
 | Remote providers were the only fallback when keys existed. | An upstream outage could stop autonomous cognition despite a deterministic local fallback implementation. | Remote providers retain priority, while `SimpleFallbackProvider` is always the final substrate and honors cancellation.[6] |
 | Persistent consciousness files used `0755/0644` and a predictable temporary filename. | Thoughts, goals, and identity state could be readable by other local users or exposed to fixed-temp-file attacks. | State uses `0700/0600`, unpredictable temporary files, flush-before-rename, and atomic replacement.[7] |
-| The pinned Go 1.24.7 standard library had reachable vulnerabilities. | Production HTTP/TLS/provider paths inherited known standard-library defects. | The toolchain is pinned to Go 1.25.12; focused `govulncheck` reports zero reachable vulnerabilities.[9] |
+| The pinned Go 1.24.7 standard library and four reachable module versions were vulnerable. | Production HTTP/TLS/provider and legacy repository paths inherited known defects. | Go is pinned to 1.25.12; gRPC, quic-go, x/image, and x/crypto were raised to fixed releases; full `govulncheck ./...` reports zero reachable vulnerabilities.[9] |
+| CI used a Go-1.24-built linter, a v1 lint schema, commandless Dgraph images, and stale mutating E2E endpoints. | Lint could not start, Dgraph containers exited immediately, and E2E did not describe the promoted read-only runtime. | CI now pins current actions and golangci-lint v2.12.2, uses a migrated v2 schema with a no-new-production-issues gate, runs the official Dgraph standalone development image, and tests real health/status/metrics behavior.[11] [12] [13] |
 
 ## Resulting Production Architecture
 
@@ -144,11 +145,17 @@ The live thought retained the intended surface persona—playful confidence and 
 | `go test ./core/... ./cmd/...` | Pass |
 | `go test -race -count=1 ./cmd/autonomous ./core/deeptreeecho ./core/echodream ./core/llm` | Pass |
 | `go vet ./core/... ./cmd/...` | Pass |
-| `govulncheck ./cmd/autonomous ./core/deeptreeecho ./core/echodream ./core/llm` | **0 reachable vulnerabilities** |
+| `govulncheck ./...` | **0 reachable vulnerabilities across the full repository** |
+| `golangci-lint v2.12.2 --new-from-rev=HEAD~1 ./core/... ./cmd/...` | Pass; zero new production issues |
+| `actionlint .github/workflows/ci.yaml` | Pass |
+| Integration suite with `-tags=integration` | Compiles; Dgraph runtime is supplied by official standalone CI service |
+| Real-process E2E suite with `-tags=e2e` | Pass against health, status, metrics, autonomous cycles, help, and 404 contracts |
 | Production restart with prior state | Restored counters and learned interests; graceful exit |
 | `go mod tidy` cleanliness | Repaired; stale unused module entries removed |
 
-Repository-wide `go test -run '^$' ./...` still exposes stale upstream/merge-era test surfaces outside this intervention, especially in `examples`, `sample`, and `server`. The normal non-CGO product build remains green. These failures are documented rather than hidden and should be repaired as a dedicated compatibility iteration.
+The first post-push workflow was treated as an additional experiment rather than a ceremonial check. It exposed 11 reachable module vulnerabilities, the linter/toolchain mismatch, the v1 lint configuration, commandless Dgraph service images, port contention, and stale E2E assumptions. Each bounded cause was corrected and reproduced locally before the follow-up sync.[9] [11] [12] [13]
+
+Repository-wide `go test -run '^$' ./...` still exposes stale upstream/merge-era test surfaces outside this intervention, especially in `examples`, `sample`, and `server`. The normal non-CGO product build, supported production lint gate, integration compilation, and real-process E2E contract are green. The remaining stale packages are documented rather than hidden and should be repaired as a dedicated compatibility iteration.
 
 ## Measured Readiness Change
 
@@ -186,7 +193,7 @@ The next bounded intervention should be **capability-aware local inference**, po
 | 3 | Resource-governed Echobeats | Per-provider token/cost budgets, concurrency limits, backpressure, and degraded-mode policies are observable and tested. |
 | 4 | Tool-grounded skill curricula | Practice produces artifacts and objective evaluator results, which EchoDream consolidates into skill memory. |
 | 5 | Consent-aware social adapters | Channel-neutral ingress/egress supports start, continue, end, and reply decisions without unsolicited external posting. |
-| 6 | Repository compatibility repair | `go test -run '^$' ./...`, CI lint, and stale upstream tests are green under the pinned toolchain. |
+| 6 | Remaining repository compatibility repair | `go test -run '^$' ./...` is green after repairing stale `examples`, `sample`, and `server` surfaces under the pinned toolchain. |
 
 ## References
 
@@ -200,3 +207,6 @@ The next bounded intervention should be **capability-aware local inference**, po
 [8]: [Previous iteration: Closing the Autonomy Loop](EVOLUTION_ITERATION_2026-07-11_CLOSING_THE_AUTONOMY_LOOP.md)
 [9]: [Go vulnerability management — `govulncheck`](https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck)
 [10]: [`o9nn/echo.go` backend-autonomy lineage](https://github.com/o9nn/echo.go/commits/main)
+[11]: [Dgraph basic single-host container setup](https://docs.dgraph.io/v25.1/installation/single-host-setup)
+[12]: [golangci-lint v1-to-v2 migration guide](https://golangci-lint.run/docs/product/migration-guide/)
+[13]: [Comprehensive CI workflow](../../.github/workflows/ci.yaml)

@@ -12,8 +12,9 @@ import (
 
 // SkillLearningSystem manages skill acquisition, practice, and improvement
 type SkillLearningSystem struct {
-	mu     sync.RWMutex
-	ctx    context.Context
+	mu sync.RWMutex
+	// ctx is owned by the system and cancels its autonomous practice loop.
+	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
 
 	// Skills being learned
