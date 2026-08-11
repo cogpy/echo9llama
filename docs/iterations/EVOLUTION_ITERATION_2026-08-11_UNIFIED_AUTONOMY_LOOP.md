@@ -31,6 +31,7 @@ This iteration promotes the unified orchestrator into the real production entry 
 | Dgraph `CommitNow` mutations were committed a second time by the wrapper. | Real CRUD, graph, hypergraph, and bulk integration tests reported `Transaction has already been committed or discarded`. | The wrapper returns after Dgraph's atomic commit and commits explicitly only when `CommitNow` is false; the full Dgraph integration suite now passes.[13] [14] |
 | The autonomous container still built on Go 1.24 and declared credential placeholders in image layers. | The Go-1.25 module could not build in Docker, and image scanning flagged secret-bearing `ENV` instructions. | The builder is pinned to `golang:1.25.12-alpine`, credentials are runtime-only, and the build context excludes local models and generated binaries.[15] |
 | Full-repository gosec SARIF contained locationless legacy findings. | GitHub accepted the upload but could not process it for Code Scanning. | Gosec v2.28.0 scans the supported production scope, every result has an artifact location, and CodeQL Action v4 uploads successfully.[13] [14] |
+| The OpenCog integration test built the production 1,024-unit reservoir under race/coverage and tied system lifetime to a 10-second operation deadline. | Loaded Linux and macOS runners could time out even though the production code was healthy. | An internal sized constructor preserves the 1,024-unit production default while the test builds a 128-unit fixture and separates lifecycle cancellation from the input deadline; both OS unit jobs now pass consistently.[14] |
 
 ## Resulting Production Architecture
 
@@ -153,12 +154,12 @@ The live thought retained the intended surface persona—playful confidence and 
 | `actionlint .github/workflows/ci.yaml` | Pass |
 | Integration suite with `-tags=integration` | Compiles; Dgraph runtime is supplied by official standalone CI service |
 | Real-process E2E suite with `-tags=e2e` | Pass against health, status, metrics, autonomous cycles, help, and 404 contracts |
-| Remote comprehensive CI run `31488199821` | **Pass**: tidy, lint, Linux/macOS builds, unit tests, full govulncheck, gosec SARIF upload, benchmarks, Dgraph integration, Docker build, and real-process E2E.[14] |
+| Remote comprehensive CI run `31491322692` | **Pass on the exact final code revision**: tidy, lint, Linux/macOS builds and race/coverage unit tests, full govulncheck, gosec SARIF upload, benchmarks, Dgraph integration, Docker build, and real-process E2E.[14] |
 | Remote CodeQL run `31488198353` | **Pass** across Actions, C/C++, C#, Go, JavaScript/TypeScript, and Python analyses.[16] |
 | Production restart with prior state | Restored counters and learned interests; graceful exit |
 | `go mod tidy` cleanliness | Repaired; stale unused module entries removed |
 
-The remote workflows were treated as additional experiments rather than ceremonial checks. The first pass exposed 11 reachable module vulnerabilities, the linter/toolchain mismatch, the v1 lint configuration, commandless Dgraph service images, port contention, and stale E2E assumptions. The second pass confirmed those repairs and exposed the deeper Dgraph double-commit, Go-1.24 Docker builder, and locationless SARIF defects. After bounded correction and local reproduction, the final comprehensive workflow passed every job, and CodeQL completed all six language analyses successfully.[9] [11] [12] [13] [14] [16]
+The remote workflows were treated as additional experiments rather than ceremonial checks. The first pass exposed 11 reachable module vulnerabilities, the linter/toolchain mismatch, the v1 lint configuration, commandless Dgraph service images, port contention, and stale E2E assumptions. The second pass confirmed those repairs and exposed the deeper Dgraph double-commit, Go-1.24 Docker builder, and locationless SARIF defects. A later documentation-only rerun exposed the OpenCog race/coverage fixture's load-sensitive deadline. After bounded correction and exact local reproduction, comprehensive run `31491322692` passed every job on the final code revision, while CodeQL completed all six language analyses successfully.[9] [11] [12] [13] [14] [16]
 
 Repository-wide `go test -run '^$' ./...` still exposes stale upstream/merge-era test surfaces outside this intervention, especially in `examples`, `sample`, and `server`. The normal non-CGO product build, supported production lint gate, integration compilation, and real-process E2E contract are green. The remaining stale packages are documented rather than hidden and should be repaired as a dedicated compatibility iteration.
 
@@ -215,6 +216,6 @@ The next bounded intervention should be **capability-aware local inference**, po
 [11]: [Dgraph basic single-host container setup](https://docs.dgraph.io/v25.1/installation/single-host-setup)
 [12]: [golangci-lint v1-to-v2 migration guide](https://golangci-lint.run/docs/product/migration-guide/)
 [13]: [Comprehensive CI workflow](../../.github/workflows/ci.yaml)
-[14]: [Successful comprehensive CI run 31488199821](https://github.com/cogpy/echo9llama/actions/runs/31488199821)
+[14]: [Successful comprehensive CI run 31491322692](https://github.com/cogpy/echo9llama/actions/runs/31491322692)
 [15]: [Docker Hub `golang:1.25.12-alpine` tag](https://hub.docker.com/v2/repositories/library/golang/tags/1.25.12-alpine)
 [16]: [Successful CodeQL run 31488198353](https://github.com/cogpy/echo9llama/actions/runs/31488198353)
