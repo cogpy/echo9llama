@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/backendcap"
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/llm"
 )
@@ -29,6 +30,15 @@ func (productionMockProvider) StreamGenerate(context.Context, string, llm.Genera
 func (productionMockProvider) Name() string    { return "production-mock" }
 func (productionMockProvider) Available() bool { return true }
 func (productionMockProvider) MaxTokens() int  { return 4096 }
+
+type productionBackendProvider struct {
+	productionMockProvider
+	backend llm.BackendRoutingState
+}
+
+func (provider productionBackendProvider) GetBackendState() llm.BackendRoutingState {
+	return provider.backend
+}
 
 func TestProductionConstructorReturnsUnifiedRuntime(t *testing.T) {
 	t.Setenv("ECHO_STATE_DIRECTORY", t.TempDir())
@@ -60,6 +70,9 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_DREAM_DEEP_DURATION", "20ms")
 	t.Setenv("ECHO_DREAM_REM_DURATION", "30ms")
 	t.Setenv("ECHO_STATE_SYNC_INTERVAL", "invalid")
+	t.Setenv("ECHO_LOCAL_WARMUP_TIMEOUT", "7s")
+	t.Setenv("ECHO_LOCAL_WARM_ON_WAKE", "true")
+	t.Setenv("ECHO_LOCAL_COOL_ON_REST", "false")
 
 	config := loadOrchestratorConfigFromEnvironment()
 	if config.SessionName != "env-session" || config.IdentityContext != "A persistent test identity" {
@@ -79,6 +92,9 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	}
 	if config.StateSyncInterval <= 0 {
 		t.Fatal("invalid duration should leave a positive default state-sync interval")
+	}
+	if config.LocalModelWarmupTimeout != 7*time.Second || !config.WarmLocalModelOnWake || config.CoolLocalModelOnRest {
+		t.Fatalf("native lifecycle configuration was not applied: %#v", config)
 	}
 }
 
@@ -154,5 +170,59 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	}
 	if _, exposed := statusPayload["state_directory"]; exposed {
 		t.Fatalf("status endpoint exposed private state path: %#v", statusPayload)
+	}
+}
+
+func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
+	secretPath := "/private/models/echo-secret.gguf"
+	provider := productionBackendProvider{backend: llm.BackendRoutingState{
+		SelectedProvider: "local_gguf",
+		SelectedModelID:  "opaque-echo",
+		SelectedKind:     backendcap.BackendNativeCPU,
+		Degraded:         true,
+		FallbackCount:    3,
+		Decision: backendcap.Decision{
+			Selected: backendcap.Capability{ModelID: "opaque-echo", ModelPath: secretPath},
+		},
+		LocalModel: llm.LocalModelRegistryState{
+			SelectedModel:    backendcap.Capability{ModelID: "opaque-echo", ModelPath: secretPath},
+			DiscoveredModels: []backendcap.Capability{{ModelID: "opaque-echo", ModelPath: secretPath}},
+			Loaded:           true,
+			MemorySafe:       true,
+			InFlight:         2,
+		},
+	}}
+	config := deeptreeecho.DefaultOrchestratorConfig()
+	config.EnablePersistence = false
+	config.AutoWakeRest = false
+	orchestrator := deeptreeecho.NewUnifiedAutonomousOrchestrator(provider, config)
+	handler := newProductionHandler(orchestrator)
+
+	statusResponse := httptest.NewRecorder()
+	handler.ServeHTTP(statusResponse, httptest.NewRequest(http.MethodGet, "/status", nil))
+	if statusResponse.Code != http.StatusOK {
+		t.Fatalf("status endpoint failed: %d", statusResponse.Code)
+	}
+	body := statusResponse.Body.String()
+	if strings.Contains(body, secretPath) || strings.Contains(body, "model_path") && strings.Contains(body, "/private") {
+		t.Fatalf("status leaked private model path: %s", body)
+	}
+	if !strings.Contains(body, `"selected_provider":"local_gguf"`) || !strings.Contains(body, `"selected_model_id":"opaque-echo"`) {
+		t.Fatalf("status omitted backend identity: %s", body)
+	}
+
+	metricsResponse := httptest.NewRecorder()
+	handler.ServeHTTP(metricsResponse, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	metrics := metricsResponse.Body.String()
+	for _, expected := range []string{
+		"echo_backend_degraded 1",
+		"echo_provider_fallback_total 3",
+		"echo_local_model_loaded 1",
+		"echo_local_model_memory_safe 1",
+		"echo_local_model_in_flight 2",
+	} {
+		if !strings.Contains(metrics, expected) {
+			t.Fatalf("metrics missing %q:\n%s", expected, metrics)
+		}
 	}
 }

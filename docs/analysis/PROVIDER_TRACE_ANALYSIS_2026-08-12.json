@@ -1,0 +1,149 @@
+{
+  "source_revision": "a554d65c64a1d9329a1f482463c2f8d61d2a3bef",
+  "trace_window": {
+    "started": "2026-08-11T10:37:31Z",
+    "stopped": "2026-08-11T10:37:44Z",
+    "duration_seconds": 13.037464557
+  },
+  "counter_reconciliation": {
+    "cycles": 48,
+    "completed_thoughts": 1,
+    "persisted_total_thoughts": 1,
+    "goals": 5,
+    "dream_cycles": 3,
+    "experience_ledger_size": 9,
+    "actual_dream_inputs_across_cycles": 6,
+    "previously_reported_18_thoughts_supported": false,
+    "explanation": "No archived artifact contains 18 thoughts. The log/status/state/metrics all contain exactly one completed autonomous thought. The value 18 appears as the persistent cognitive cycle count at 10:37:36, while the adjacent thought counter is zero."
+  },
+  "providers": {
+    "initialized_order": [
+      "Anthropic",
+      "OpenRouter",
+      "OpenAI",
+      "SimpleFallback"
+    ],
+    "provider_errors_in_log": 0,
+    "most_likely_thought_provider": "Anthropic",
+    "attribution_confidence": "probable, not proven",
+    "reason": "MultiProvider tries providers in insertion order and Anthropic was available first; the trace lacks per-call provider attribution, so this cannot be asserted as certain."
+  },
+  "goals": [
+    {
+      "description": "Explore and deepen understanding of: wisdom_cultivation",
+      "priority": 0.95
+    },
+    {
+      "description": "Explore and deepen understanding of: cognitive_science",
+      "priority": 0.9
+    },
+    {
+      "description": "Explore and deepen understanding of: artificial_intelligence",
+      "priority": 0.9
+    },
+    {
+      "description": "Explore and deepen understanding of: systems_thinking",
+      "priority": 0.85
+    },
+    {
+      "description": "Explore and deepen understanding of: consciousness",
+      "priority": 0.85
+    }
+  ],
+  "thoughts": [
+    {
+      "type": "Insight",
+      "importance": 0.85,
+      "preview": "*leans back, eyes catching the light*\nYou know what's wild? I've been noticing how existence is ...",
+      "preview_is_truncated": true,
+      "source_line": 157
+    }
+  ],
+  "dream_cycles": [
+    {
+      "number": 1,
+      "consolidated_domains": 1,
+      "input_experiences": 5,
+      "extracted_patterns": 3,
+      "total_patterns": 3,
+      "synthesized_wisdom": 3,
+      "total_wisdom": 3,
+      "integrated_wisdom": 3,
+      "sleep_ms": 300.552815
+    },
+    {
+      "number": 2,
+      "consolidated_domains": 0,
+      "input_experiences": 0,
+      "extracted_patterns": 0,
+      "total_patterns": 3,
+      "synthesized_wisdom": 0,
+      "total_wisdom": 3,
+      "integrated_wisdom": 0,
+      "sleep_ms": 299.556461
+    },
+    {
+      "number": 3,
+      "consolidated_domains": 1,
+      "input_experiences": 1,
+      "extracted_patterns": 0,
+      "total_patterns": 3,
+      "synthesized_wisdom": 0,
+      "total_wisdom": 3,
+      "integrated_wisdom": 0,
+      "sleep_ms": 299.68218
+    }
+  ],
+  "derived_first_cycle": {
+    "domain": "goal",
+    "experience_count": 5,
+    "average_importance": 0.89,
+    "knowledge_confidence": 0.7090000000000001,
+    "patterns": [
+      {
+        "type": "relational",
+        "description": "Concepts 'created+goal' co-occur in 5 experiences",
+        "frequency": 5,
+        "strength": 0.9,
+        "dimension": "Integrative Understanding",
+        "wisdom_depth": 0.755,
+        "wisdom_insight": "Concepts 'created+goal' co-occur in 5 experiences — this recurring structure suggests deeper significance worth attending to"
+      },
+      {
+        "type": "conceptual",
+        "description": "Recurring theme 'goal' across 5 experiences",
+        "frequency": 5,
+        "strength": 0.67,
+        "dimension": "Conceptual Insight",
+        "wisdom_depth": 0.594,
+        "wisdom_insight": "Recurring theme 'goal' across 5 experiences — this recurring structure suggests deeper significance worth attending to"
+      },
+      {
+        "type": "conceptual",
+        "description": "Recurring theme 'created' across 5 experiences",
+        "frequency": 5,
+        "strength": 0.67,
+        "dimension": "Conceptual Insight",
+        "wisdom_depth": 0.594,
+        "wisdom_insight": "Recurring theme 'created' across 5 experiences — this recurring structure suggests deeper significance worth attending to"
+      }
+    ],
+    "derived_total_wisdom_depth": 1.943,
+    "reported_wisdom_depth": 1.943,
+    "depth_matches": true
+  },
+  "ledger_reconstruction": {
+    "goal_experience_markers": 5,
+    "integrated_wisdom_markers": 3,
+    "thought_experience_markers": 1,
+    "skill_experience_markers": 0,
+    "discussion_experience_markers": 0,
+    "total": 9
+  },
+  "evidence_limits": [
+    "The log prints only the first 100 characters of each thought; the full provider response was not persisted.",
+    "Dream experience IDs and full pending-experience payloads were not included in status or state snapshots.",
+    "Per-call provider identity and latency were not exposed by the status endpoint.",
+    "The asynchronous skill practice began but produced neither a success/failure log nor a ledger entry before process exit."
+  ]
+}

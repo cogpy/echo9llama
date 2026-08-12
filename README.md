@@ -32,7 +32,7 @@ export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
 go run ./cmd/autonomous
 ```
 
-It operates without external prompts, creates de-duplicated goals from interests, rests and dreams on its configured schedule, and reintegrates new dream wisdom into waking attention. Read-only observability binds to `127.0.0.1:8080` by default:
+It operates without external prompts, creates de-duplicated goals from interests, rests and dreams on its configured schedule, reintegrates new dream wisdom into waking attention, and routes cognitive work by backend capability. Read-only observability binds to `127.0.0.1:8080` by default:
 
 ```shell
 curl http://127.0.0.1:8080/health
@@ -40,7 +40,21 @@ curl http://127.0.0.1:8080/status
 curl http://127.0.0.1:8080/metrics
 ```
 
-Set `ECHO_HTTP_ADDR=0.0.0.0` only when an explicitly secured container or remote deployment must expose those endpoints. See the [2026-08-11 unified autonomy-loop report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) for configuration, verification evidence, and remaining non-claims.
+Set `ECHO_HTTP_ADDR=0.0.0.0` only when an explicitly secured container or remote deployment must expose those endpoints.
+
+For native local cognition, use a CGO-enabled build and configure one or more GGUF files or directories. The router verifies model format, canonical roots, context capacity, host/cgroup memory, and current concurrency before selecting the model:
+
+```shell
+export ECHO_PROVIDER_MODE=local_first
+export ECHO_MODEL_PATHS="$HOME/models/echo-instruct.gguf"
+export ECHO_MODEL_ROOTS="$HOME/models"
+export ECHO_LOCAL_WARM_ON_WAKE=true
+export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
+
+CGO_ENABLED=1 go run ./cmd/autonomous
+```
+
+Use `ECHO_PROVIDER_MODE=offline` to prohibit remote providers, `remote_first` to retain local GGUF only as recovery, or `balanced` for capability-scored hybrid routing. See the [native LocalGGUF and capability-routing report](docs/iterations/EVOLUTION_ITERATION_2026-08-12_NATIVE_LOCALGGUF_CAPABILITY_ROUTING.md) and the [detailed architecture plan](docs/architecture/NATIVE_LOCALGGUF_AND_CAPABILITY_SCHEDULING.md).
 
 ### Docker (Coming Soon)
 
@@ -50,7 +64,7 @@ Docker support with Deep Tree Echo integration is in development.
 
 - Go 1.25 or later with automatic toolchain selection enabled; `go.mod` pins the security-patched Go 1.25.12 toolchain
 - Optional: `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_API_KEY` for model-backed autonomous cognition
-- Optional: Local GGUF models for the base Ollama server; capability-aware GGUF routing is not yet wired into `./cmd/autonomous`
+- Optional: A CGO-capable C/C++ toolchain and one or more GGUF models for native, capability-aware `./cmd/autonomous` inference
 
 ### Libraries
 
@@ -110,12 +124,13 @@ EchOllama integrates Deep Tree Echo, an advanced cognitive architecture that bri
 
 ### AI Provider Integration
 
-- **Cloud Model Providers**: Anthropic, OpenRouter, and OpenAI are tried in priority order when configured
-- **Deterministic Local Continuity**: A local pattern-based provider remains available when remote providers fail
-- **Base Ollama/GGUF Support**: The underlying model server can import and run GGUF models
-- **Planned Autonomous GGUF Routing**: Host-capability-aware local inference for `./cmd/autonomous` remains a documented next iteration rather than a current claim
+- **Capability-Aware Hybrid Routing**: `balanced`, `local_first`, `remote_first`, and `offline` policies select only backends that satisfy context, output, privacy, memory, concurrency, and fallback constraints
+- **Native GGUF Inference**: CGO builds discover concrete local models, enforce configured roots and memory policy, and run generation through the maintained llama binding
+- **Cloud Model Providers**: Anthropic, OpenRouter, and OpenAI remain available when configured and permitted by workload policy
+- **Deterministic Local Continuity**: A pattern-based fallback remains last and is reported truthfully as degraded rather than as model-backed inference
+- **Substrate-Aware Echobeats**: Relevance, affordance, and salience tasks carry distinct routing requirements and retain exact provider/model/degradation evidence
 
-Visit the [Deep Tree Echo documentation](dte.md) for detailed architecture information.
+Visit the [Deep Tree Echo documentation](docs/architecture/dte.md) for detailed architecture information.
 
 ### 🔍 Self-Assessment and Introspection
 
@@ -879,8 +894,9 @@ response = echo.generate_with_cognition(
 
 ### Resources
 
-- **Documentation**: [Deep Tree Echo Guide](dte.md)
-- **Latest Evolution Report**: [Unified Production Autonomy Loop — 2026-08-11](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md)
+- **Documentation**: [Deep Tree Echo Guide](docs/architecture/dte.md)
+- **Latest Evolution Report**: [Native LocalGGUF and Capability-Aware Echobeats — 2026-08-12](docs/iterations/EVOLUTION_ITERATION_2026-08-12_NATIVE_LOCALGGUF_CAPABILITY_ROUTING.md)
+- **Corrected Cognition Trace**: [Provider-backed simulation analysis — 2026-08-12](docs/analysis/PROVIDER_TRACE_ANALYSIS_2026-08-12.md)
 - **API Reference**: [Enhanced API Documentation](docs/api.md)
 - **Examples**: [Cognitive Integration Examples](examples/)
 - **Web Dashboard**: Visit `http://localhost:5000` when server is running
@@ -924,3 +940,9 @@ These features work together to create a system that is more autonomous, reflect
 This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.12 security hardening, full-repository dependency remediation, a no-new-production-issues lint gate, corrected Dgraph/E2E/Docker/SARIF infrastructure, deterministic lifecycle/race regressions, and a provider-backed live simulation. The final comprehensive CI and CodeQL runs pass.
 
 The [complete iteration report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) records exact evidence and explicit remaining gaps, including local GGUF autonomy, durable dream/event memory, externally connected discussions, and resource governance.
+
+## Iteration 14: Native LocalGGUF and Capability-Aware Echobeats (2026-08-12)
+
+This iteration integrates the reusable native-backend centers from `o9nn/echo.go` into the canonical production path without importing its parallel runtime. The repository now has root-safe GGUF discovery, host/cgroup memory policy, one lifecycle-owned native provider and registry, four provider modes, hard workload constraints, bounded per-trace route telemetry, streaming no-replay safety, and exact backend evidence on Echobeats tasks. UAO coordinates model warmup, rest residency, and terminal cleanup; `/status` and `/metrics` expose opaque model identity and readiness without model paths.
+
+The [complete native-routing report](docs/iterations/EVOLUTION_ITERATION_2026-08-12_NATIVE_LOCALGGUF_CAPABILITY_ROUTING.md) records the code map, `o9nn/echo.go` migration decisions, real-model evidence, production configuration, and remaining limits. The [detailed plan](docs/architecture/NATIVE_LOCALGGUF_AND_CAPABILITY_SCHEDULING.md) contains the complete contracts and acceptance gates. The [corrected provider-trace analysis](docs/analysis/PROVIDER_TRACE_ANALYSIS_2026-08-12.md) also establishes that the prior archived run contained one autonomous thought and 18 main cycles—not 18 thoughts.

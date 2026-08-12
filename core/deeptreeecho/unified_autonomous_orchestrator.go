@@ -33,8 +33,9 @@ type UnifiedAutonomousOrchestrator struct {
 	globalTelemetry       *GlobalTelemetryShell
 	wisdomSynthesis       *WisdomSynthesis
 
-	// LLM provider
-	llmProvider llm.LLMProvider
+	// LLM provider and optional native local-runtime lifecycle owned by it.
+	llmProvider  llm.LLMProvider
+	localRuntime llm.LocalRuntimeController
 
 	// Autonomous state
 	isAwake       bool
@@ -78,12 +79,15 @@ type OrchestratorConfig struct {
 	WisdomSynthesisInterval time.Duration
 
 	// Wake/rest configuration
-	WakeDuration       time.Duration
-	RestDuration       time.Duration
-	DreamLightDuration time.Duration
-	DreamDeepDuration  time.Duration
-	DreamREMDuration   time.Duration
-	AutoWakeRest       bool
+	WakeDuration            time.Duration
+	RestDuration            time.Duration
+	DreamLightDuration      time.Duration
+	DreamDeepDuration       time.Duration
+	DreamREMDuration        time.Duration
+	AutoWakeRest            bool
+	WarmLocalModelOnWake    bool
+	CoolLocalModelOnRest    bool
+	LocalModelWarmupTimeout time.Duration
 
 	// Autonomy settings
 	EnableStreamOfConsciousness bool
@@ -117,6 +121,9 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		DreamDeepDuration:       5 * time.Minute,
 		DreamREMDuration:        3 * time.Minute,
 		AutoWakeRest:            true,
+		WarmLocalModelOnWake:    false,
+		CoolLocalModelOnRest:    true,
+		LocalModelWarmupTimeout: 2 * time.Minute,
 
 		EnableStreamOfConsciousness: true,
 		EnableEchobeats:             true,
@@ -151,6 +158,11 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 		orchestrationLoop:     make(chan struct{}, 1),
 		ingestedExperienceIDs: make(map[string]struct{}),
 		experienceOrder:       make([]string, 0, 1024),
+	}
+	if owner, ok := llmProvider.(interface {
+		LocalRuntime() llm.LocalRuntimeController
+	}); ok {
+		orchestrator.localRuntime = owner.LocalRuntime()
 	}
 
 	// Initialize cognitive subsystems
@@ -300,6 +312,32 @@ func (uao *UnifiedAutonomousOrchestrator) hydrateFromPersistentState() {
 	}
 }
 
+func (uao *UnifiedAutonomousOrchestrator) warmLocalModel(reason string) error {
+	if uao.localRuntime == nil || !uao.config.WarmLocalModelOnWake {
+		return nil
+	}
+	timeout := uao.config.LocalModelWarmupTimeout
+	if timeout <= 0 {
+		timeout = 2 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(uao.ctx, timeout)
+	defer cancel()
+	if err := uao.localRuntime.Warmup(ctx); err != nil {
+		return fmt.Errorf("%s: %w", reason, err)
+	}
+	return nil
+}
+
+func (uao *UnifiedAutonomousOrchestrator) maintainLocalRuntime() {
+	if uao.localRuntime == nil {
+		return
+	}
+	if uao.localRuntime.MaybeUnloadForMemoryPressure("unloaded by unified orchestrator memory-pressure policy") {
+		return
+	}
+	uao.localRuntime.UnloadIdle("unloaded by unified orchestrator idle policy")
+}
+
 // Awaken starts the autonomous orchestrator and all subsystems
 func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	uao.mu.Lock()
@@ -318,6 +356,10 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	fmt.Printf("Time: %s\n", time.Now().Format(time.RFC3339))
 	fmt.Printf("Identity: %s\n", uao.config.IdentityContext)
 	fmt.Println(strings.Repeat("=", 60) + "\n")
+
+	if err := uao.warmLocalModel("wake warmup"); err != nil {
+		fmt.Printf("⚠️  Native model warmup unavailable; continuing through routed providers: %v\n", err)
+	}
 
 	// Start every constructed subsystem in dependency order. If any component
 	// fails, unwind already-started components so the production process cannot
@@ -465,6 +507,7 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	// New prompt-independent thoughts become bounded EchoDream experiences while
 	// Echo is awake instead of being bulk-replayed on every rest cycle.
 	uao.captureThoughtExperiences()
+	uao.maintainLocalRuntime()
 
 	// Cognitive load is the fatigue signal used by the sole wake/rest authority.
 	if uao.wakeRestCycle != nil {
@@ -652,6 +695,9 @@ func (uao *UnifiedAutonomousOrchestrator) onRest() error {
 	if scheduler != nil {
 		scheduler.Pause()
 	}
+	if uao.localRuntime != nil && uao.config.CoolLocalModelOnRest {
+		uao.localRuntime.Cooldown("unloaded for canonical EchoDream rest transition")
+	}
 	if dream != nil && !dream.IsAsleep() {
 		if err := dream.EnterSleep(); err != nil {
 			return fmt.Errorf("enter EchoDream sleep: %w", err)
@@ -688,6 +734,9 @@ func (uao *UnifiedAutonomousOrchestrator) onWake() error {
 	}
 
 	integrated, reinforced := uao.integrateDreamWisdom()
+	if err := uao.warmLocalModel("post-dream wake warmup"); err != nil {
+		fmt.Printf("⚠️  Native model wake warmup unavailable; continuing through routed providers: %v\n", err)
+	}
 
 	uao.mu.Lock()
 	uao.isAwake = true
@@ -1048,6 +1097,9 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	if uao.interestPatterns != nil {
 		_ = uao.interestPatterns.Stop()
 	}
+	if uao.localRuntime != nil {
+		_ = uao.localRuntime.Close()
+	}
 	if uao.dreamCycle != nil {
 		uao.dreamCycle.Shutdown()
 	}
@@ -1087,6 +1139,11 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	if provider != nil {
 		status.Provider = provider.Name()
 		status.ProviderAvailable = provider.Available()
+		if backendProvider, ok := provider.(interface {
+			GetBackendState() llm.BackendRoutingState
+		}); ok {
+			status.Backend = backendProvider.GetBackendState()
+		}
 	}
 	if wakeRest != nil {
 		status.WakeRestState = wakeRest.GetCurrentState().String()
@@ -1121,6 +1178,7 @@ type OrchestratorStatus struct {
 	StateDirectory       string
 	Provider             string
 	ProviderAvailable    bool
+	Backend              llm.BackendRoutingState
 	WakeRestState        string
 	DreamPhase           string
 	PendingExperiences   int

@@ -123,6 +123,15 @@ type Context struct {
 	numThreads int
 }
 
+// Free releases the native llama context. It is safe to call repeatedly.
+func (c *Context) Free() {
+	if c == nil || c.c == nil {
+		return
+	}
+	C.llama_free(c.c)
+	c.c = nil
+}
+
 var ErrKvCacheFull = errors.New("could not find a kv cache slot")
 
 func (c *Context) Decode(batch *Batch) error {
@@ -361,7 +370,7 @@ func (b *Batch) Add(token int, embed []float32, pos int, logits bool, seqIds ...
 	unsafe.Slice(b.c.n_seq_id, b.allocSize())[b.c.n_tokens] = C.int(len(seqIds))
 
 	for i, s := range seqIds {
-		unsafe.Slice((unsafe.Slice(b.c.seq_id, b.allocSize())[b.c.n_tokens]), C.int(len(seqIds)))[i] = C.int32_t(s)
+		unsafe.Slice(unsafe.Slice(b.c.seq_id, b.allocSize())[b.c.n_tokens], C.int(len(seqIds)))[i] = C.int32_t(s)
 	}
 
 	if logits {
@@ -559,6 +568,17 @@ func NewSamplingContext(model *Model, params SamplingParams) (*SamplingContext, 
 	runtime.SetFinalizer(context, func(s *SamplingContext) { C.common_sampler_cfree(s.c) })
 
 	return context, nil
+}
+
+// Free releases the native sampling context. It is safe to call repeatedly
+// and disables the finalizer so the C object cannot be freed twice.
+func (s *SamplingContext) Free() {
+	if s == nil || s.c == nil {
+		return
+	}
+	runtime.SetFinalizer(s, nil)
+	C.common_sampler_cfree(s.c)
+	s.c = nil
 }
 
 func (s *SamplingContext) Reset() {

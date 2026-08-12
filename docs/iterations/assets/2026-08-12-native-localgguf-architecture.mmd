@@ -1,0 +1,43 @@
+flowchart LR
+  UAO[UnifiedAutonomousOrchestrator\nWake/Rest Authority]
+  EB[EchobeatsScheduler\n3 Logical Engines]
+  SOC[Stream / Skills / Discussions / Wisdom]
+  MP[MultiProviderLLM\nSingle Routing Authority]
+  BC[backendcap\nConstraints + Scoring]
+  REG[LocalModelRegistry\nDiscovery + Residency]
+  LG[LocalGGUFProvider\nSingle Native Generation Slot]
+  LL[Maintained ./llama Binding\nModel + Context + Sampler]
+  REM[Anthropic / OpenRouter / OpenAI]
+  FB[Deterministic Fallback]
+  HOST[Host + cgroup Memory Probe]
+  GGUF[Allowed GGUF Roots\nBounded Metadata Probe]
+  DREAM[EchoDream\nLifecycle Experiences]
+  OBS[Scrubbed Status / Metrics]
+
+  UAO -->|start/stop cognition| EB
+  UAO -->|warm/cool/close policy| REG
+  UAO -->|runtime events| DREAM
+  EB -->|intent + tokens + latency| MP
+  SOC -->|routing requirements| MP
+  MP -->|provider capabilities| BC
+  REG -->|selected model capability| BC
+  BC -->|ordered decision| MP
+  MP -->|local route| REG
+  REG -->|registry-managed provider| LG
+  LG --> LL
+  MP -->|remote route| REM
+  MP -->|last-resort continuity| FB
+  HOST --> REG
+  GGUF --> REG
+  REG -->|scrubbed state| OBS
+  MP -->|decision + attempt telemetry| OBS
+  OBS --> UAO
+
+  classDef authority fill:#1f4b5c,stroke:#8ee3f5,color:#fff,stroke-width:2px;
+  classDef native fill:#4c2c69,stroke:#d2a8ff,color:#fff;
+  classDef external fill:#4f3b16,stroke:#ffd166,color:#fff;
+  classDef cognition fill:#174c38,stroke:#7ce2b1,color:#fff;
+  class UAO,MP authority;
+  class REG,LG,LL,BC,HOST,GGUF native;
+  class REM,FB external;
+  class EB,SOC,DREAM,OBS cognition;

@@ -20,7 +20,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-08-11-unified-autonomy"
+const productionIteration = "2026-08-12-native-localgguf-routing"
 
 func main() {
 	fmt.Println()
@@ -109,6 +109,9 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyDurationEnv("ECHO_DREAM_LIGHT_DURATION", &config.DreamLightDuration)
 	applyDurationEnv("ECHO_DREAM_DEEP_DURATION", &config.DreamDeepDuration)
 	applyDurationEnv("ECHO_DREAM_REM_DURATION", &config.DreamREMDuration)
+	applyDurationEnv("ECHO_LOCAL_WARMUP_TIMEOUT", &config.LocalModelWarmupTimeout)
+	applyBoolEnv("ECHO_LOCAL_WARM_ON_WAKE", &config.WarmLocalModelOnWake)
+	applyBoolEnv("ECHO_LOCAL_COOL_ON_REST", &config.CoolLocalModelOnRest)
 
 	return config
 }
@@ -116,6 +119,21 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 func applyStringEnv(name string, destination *string) {
 	if value := strings.TrimSpace(os.Getenv(name)); value != "" {
 		*destination = value
+	}
+}
+
+func applyBoolEnv(name string, destination *bool) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return
+	}
+	switch strings.ToLower(value) {
+	case "1", "true", "yes", "on":
+		*destination = true
+	case "0", "false", "no", "off":
+		*destination = false
+	default:
+		log.Printf("ignoring invalid %s=%q; expected a boolean", name, value)
 	}
 }
 
@@ -187,6 +205,7 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"uptime":                 status.Uptime.String(),
 			"provider":               status.Provider,
 			"provider_available":     status.ProviderAvailable,
+			"backend":                publicBackendState(status.Backend),
 			"wake_rest_state":        status.WakeRestState,
 			"dream_phase":            status.DreamPhase,
 			"pending_experiences":    status.PendingExperiences,
@@ -214,6 +233,11 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_wisdom_total counter\necho_wisdom_total %d\n", status.TotalWisdom)
 		fmt.Fprintf(w, "# TYPE echo_dream_pending_experiences gauge\necho_dream_pending_experiences %d\n", status.PendingExperiences)
 		fmt.Fprintf(w, "# TYPE echo_experience_ledger_size gauge\necho_experience_ledger_size %d\n", status.ExperienceLedgerSize)
+		fmt.Fprintf(w, "# TYPE echo_backend_degraded gauge\necho_backend_degraded %d\n", boolMetric(status.Backend.Degraded))
+		fmt.Fprintf(w, "# TYPE echo_provider_fallback_total counter\necho_provider_fallback_total %d\n", status.Backend.FallbackCount)
+		fmt.Fprintf(w, "# TYPE echo_local_model_loaded gauge\necho_local_model_loaded %d\n", boolMetric(status.Backend.LocalModel.Loaded))
+		fmt.Fprintf(w, "# TYPE echo_local_model_memory_safe gauge\necho_local_model_memory_safe %d\n", boolMetric(status.Backend.LocalModel.MemorySafe))
+		fmt.Fprintf(w, "# TYPE echo_local_model_in_flight gauge\necho_local_model_in_flight %d\n", status.Backend.LocalModel.InFlight)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -229,6 +253,15 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 	})
 
 	return mux
+}
+
+func publicBackendState(state llm.BackendRoutingState) llm.BackendRoutingState {
+	state.Decision.Selected.ModelPath = ""
+	state.LocalModel.SelectedModel.ModelPath = ""
+	for index := range state.LocalModel.DiscoveredModels {
+		state.LocalModel.DiscoveredModels[index].ModelPath = ""
+	}
+	return state
 }
 
 func boolMetric(value bool) int {
