@@ -537,7 +537,7 @@ from echollama import DeepTreeEcho
 
 echo = DeepTreeEcho('http://localhost:5000')
 response = echo.generate_with_cognition(
-    prompt="Your question", 
+    prompt="Your question",
     cognitive_features=['memory', 'emotion', 'spatial']
 )
 ```
@@ -674,7 +674,7 @@ response = echo.generate_with_cognition(
 - [AppFlowy](https://github.com/AppFlowy-IO/AppFlowy) (AI collaborative workspace with Ollama, cross-platform and self-hostable)
 - [Lumina](https://github.com/cushydigit/lumina.git) (A lightweight, minimal React.js frontend for interacting with Ollama servers)
 - [Tiny Notepad](https://pypi.org/project/tiny-notepad) (A lightweight, notepad-like interface to chat with ollama available on PyPI)
-- [macLlama (macOS native)](https://github.com/hellotunamayo/macLlama) (A native macOS GUI application for interacting with Ollama models, featuring a chat interface.) 
+- [macLlama (macOS native)](https://github.com/hellotunamayo/macLlama) (A native macOS GUI application for interacting with Ollama models, featuring a chat interface.)
 - [GPTranslate](https://github.com/philberndt/GPTranslate) (A fast and lightweight, AI powered desktop translation application written with Rust and Tauri. Features real-time translation with OpenAI/Azure/Ollama.)
 - [ollama launcher](https://github.com/NGC13009/ollama-launcher) (A launcher for Ollama, aiming to provide users with convenient functions such as ollama server launching, management, or configuration.)
 - [ai-hub](https://github.com/Aj-Seven/ai-hub) (AI Hub supports multiple models via API keys and Chat support via Ollama API.)
@@ -943,6 +943,6 @@ The [complete iteration report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_U
 
 ## Iteration 14: Native LocalGGUF and Capability-Aware Echobeats (2026-08-12)
 
-This iteration integrates the reusable native-backend centers from `o9nn/echo.go` into the canonical production path without importing its parallel runtime. The repository now has root-safe GGUF discovery, host/cgroup memory policy, one lifecycle-owned native provider and registry, four provider modes, hard workload constraints, bounded per-trace route telemetry, streaming no-replay safety, and exact backend evidence on Echobeats tasks. UAO coordinates model warmup, rest residency, and terminal cleanup; `/status` and `/metrics` expose opaque model identity and readiness without model paths.
+This iteration integrates the reusable native-backend centers from `o9nn/echo.go` into the canonical production path without importing its parallel runtime. The repository now has root-safe GGUF discovery, host/cgroup memory policy, one lifecycle-owned native provider and registry, four provider modes, hard workload constraints, bounded per-trace route telemetry, streaming no-replay safety, and exact backend evidence on Echobeats tasks. UAO coordinates model warmup, rest residency, and terminal cleanup; `/status` and `/metrics` expose opaque model identity and readiness without model paths. The [implementation commit](https://github.com/cogpy/echo9llama/commit/6b9c6d9de709690d47d70f24dfc64a1b0e300d54) passed [comprehensive CI](https://github.com/cogpy/echo9llama/actions/runs/31562403301) and [CodeQL](https://github.com/cogpy/echo9llama/actions/runs/31562402587).
 
 The [complete native-routing report](docs/iterations/EVOLUTION_ITERATION_2026-08-12_NATIVE_LOCALGGUF_CAPABILITY_ROUTING.md) records the code map, `o9nn/echo.go` migration decisions, real-model evidence, production configuration, and remaining limits. The [detailed plan](docs/architecture/NATIVE_LOCALGGUF_AND_CAPABILITY_SCHEDULING.md) contains the complete contracts and acceptance gates. The [corrected provider-trace analysis](docs/analysis/PROVIDER_TRACE_ANALYSIS_2026-08-12.md) also establishes that the prior archived run contained one autonomous thought and 18 main cycles—not 18 thoughts.

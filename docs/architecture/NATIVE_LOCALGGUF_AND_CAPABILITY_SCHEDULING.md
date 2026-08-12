@@ -221,7 +221,7 @@ The default `balanced` mode with no configured model path preserves the current 
 
 ## Definition of Done
 
-The iteration is complete only when the production binary can discover a concrete GGUF model, prove it fits the host envelope, route an eligible Echobeats task to it, identify that substrate in scrubbed telemetry, fall through safely under capacity/failure, unload it under explicit policy, and preserve all existing remote-provider and deterministic-continuity behavior. Local validation now satisfies every code-level condition: no-CGO, explicit `nollama`, and CGO builds pass; changed concurrency paths pass race detection; a real 2,048-context GGUF model ran the production autonomous loop; and security scanning reports zero reachable vulnerabilities. Canonical remote workflows remain the final synchronization gate.
+The iteration is complete only when the production binary can discover a concrete GGUF model, prove it fits the host envelope, route an eligible Echobeats task to it, identify that substrate in scrubbed telemetry, fall through safely under capacity/failure, unload it under explicit policy, and preserve all existing remote-provider and deterministic-continuity behavior. Local validation satisfies every code-level condition: no-CGO, explicit `nollama`, and CGO builds pass; changed concurrency paths pass race detection; a real 2,048-context GGUF model ran the production autonomous loop; and security scanning reports zero reachable vulnerabilities. The synchronized implementation commit also passed comprehensive CI and CodeQL.[9] [10]
 
 ## References
 
@@ -233,3 +233,5 @@ The iteration is complete only when the production binary can discover a concret
 [6]: https://github.com/cogpy/echo9llama/blob/a554d65c64a1d9329a1f482463c2f8d61d2a3bef/llama/llama.go "Canonical maintained llama binding"
 [7]: https://github.com/o9nn/echo.go/blob/5a10fda415b7fc2e7594b0f69ede6c0cf602750a/core/llm/local_gguf_provider.go "Alias native LocalGGUFProvider"
 [8]: https://github.com/o9nn/echo.go/blob/5a10fda415b7fc2e7594b0f69ede6c0cf602750a/core/llm/local_model_registry.go "Alias LocalModelRegistry"
+[9]: https://github.com/cogpy/echo9llama/actions/runs/31562403301 "Successful comprehensive CI run for native-routing commit 6b9c6d9d"
+[10]: https://github.com/cogpy/echo9llama/actions/runs/31562402587 "Successful CodeQL run for native-routing commit 6b9c6d9d"

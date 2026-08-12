@@ -164,7 +164,8 @@ With no configured model paths, production behavior remains remote-provider plus
 | Real 2,048-context GPT-2 GGUF long-prompt generation and streaming | Passed |
 | Real-model offline autonomous production simulation | Passed |
 | Module-tidy stability and diff hygiene | Passed |
-| Canonical remote workflows | Pending exact synchronized commit |
+| Comprehensive CI for commit `6b9c6d9d` | Passed: lint, Linux/macOS builds and race tests, security, tidy, benchmarks, Dgraph integration, Docker, E2E, and summary.[7] |
+| CodeQL for commit `6b9c6d9d` | Passed across Go, C/C++, JavaScript/TypeScript, Python, C#, and Actions.[8] |
 
 ## Remaining Limits and Next Priorities
 
@@ -195,3 +196,5 @@ The result advances Deep Tree Echo from provider-aware autonomy toward **substra
 [4]: https://github.com/o9nn/echo.go/compare/74bd2d3c%5E...5a10fda4 "o9nn/echo.go native-backend evolution lineage"
 [5]: https://github.com/o9nn/echo.go/blob/5a10fda415b7fc2e7594b0f69ede6c0cf602750a/core/llm/multi_provider.go "Alias MultiProvider with local initialization disabled"
 [6]: ../../core/llm/local_gguf_provider_integration_test.go "Real-GGUF long-prompt native integration regression"
+[7]: https://github.com/cogpy/echo9llama/actions/runs/31562403301 "Successful comprehensive CI run for native-routing commit 6b9c6d9d"
+[8]: https://github.com/cogpy/echo9llama/actions/runs/31562402587 "Successful CodeQL run for native-routing commit 6b9c6d9d"
