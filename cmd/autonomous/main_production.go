@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -20,7 +21,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-08-12-native-localgguf-routing"
+const productionIteration = "2026-09-11-replay-safe-e1-enaction"
 
 func main() {
 	fmt.Println()
@@ -98,6 +99,11 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyStringEnv("ECHO_IDENTITY", &config.IdentityContext)
 	applyStringEnv("ECHO_PERSONA", &config.PersonaContext)
 	applyStringEnv("ECHO_STATE_DIRECTORY", &config.StateDirectory)
+	applyStringEnv("ECHO_EVENT_STORE_PATH", &config.EventStorePath)
+	applyStringEnv("ECHO_WORKSPACE_DIRECTORY", &config.WorkspaceDirectory)
+	mode := string(config.EnactionMode)
+	applyStringEnv("ECHO_ENACTION_MODE", &mode)
+	config.EnactionMode = deeptreeecho.ParseEnactionMode(mode)
 
 	applyDurationEnv("ECHO_MAIN_LOOP_INTERVAL", &config.MainLoopInterval)
 	applyDurationEnv("ECHO_THOUGHT_INTERVAL", &config.ThoughtInterval)
@@ -110,8 +116,12 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyDurationEnv("ECHO_DREAM_DEEP_DURATION", &config.DreamDeepDuration)
 	applyDurationEnv("ECHO_DREAM_REM_DURATION", &config.DreamREMDuration)
 	applyDurationEnv("ECHO_LOCAL_WARMUP_TIMEOUT", &config.LocalModelWarmupTimeout)
+	applyDurationEnv("ECHO_ACTION_TIMEOUT", &config.ActionTimeout)
 	applyBoolEnv("ECHO_LOCAL_WARM_ON_WAKE", &config.WarmLocalModelOnWake)
 	applyBoolEnv("ECHO_LOCAL_COOL_ON_REST", &config.CoolLocalModelOnRest)
+	applyBoolEnv("ECHO_ENABLE_ENACTION", &config.EnableEnaction)
+	applyPositiveIntEnv("ECHO_MAX_ARTIFACT_BYTES", &config.MaxArtifactBytes)
+	applyPositiveIntEnv("ECHO_MAX_ARTIFACTS_PER_WAKE", &config.MaxArtifactsPerWake)
 
 	return config
 }
@@ -146,6 +156,19 @@ func applyDurationEnv(name string, destination *time.Duration) {
 	parsed, err := time.ParseDuration(value)
 	if err != nil || parsed <= 0 {
 		log.Printf("ignoring invalid %s=%q; expected a positive Go duration", name, value)
+		return
+	}
+	*destination = parsed
+}
+
+func applyPositiveIntEnv(name string, destination *int) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		log.Printf("ignoring invalid %s=%q; expected a positive integer", name, value)
 		return
 	}
 	*destination = parsed
@@ -189,6 +212,9 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"awake":              status.IsAwake,
 			"wake_rest_state":    status.WakeRestState,
 			"provider_available": status.ProviderAvailable,
+			"enaction_enabled":   status.EnactionEnabled,
+			"enaction_mode":      status.EnactionMode,
+			"event_ledger_ready": status.EventLedgerReady,
 			"timestamp":          time.Now().UTC().Format(time.RFC3339),
 		})
 	})
@@ -219,6 +245,11 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"dream_wisdom":           status.DreamWisdom,
 			"last_state_sync":        status.LastStateSync.UTC().Format(time.RFC3339),
 			"persistence_enabled":    status.StateDirectory != "",
+			"enaction_enabled":       status.EnactionEnabled,
+			"enaction_mode":          status.EnactionMode,
+			"enaction_paused":        status.EnactionPaused,
+			"event_ledger_ready":     status.EventLedgerReady,
+			"cognitive_events":       status.EventCount,
 		})
 	})
 
@@ -238,6 +269,10 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_local_model_loaded gauge\necho_local_model_loaded %d\n", boolMetric(status.Backend.LocalModel.Loaded))
 		fmt.Fprintf(w, "# TYPE echo_local_model_memory_safe gauge\necho_local_model_memory_safe %d\n", boolMetric(status.Backend.LocalModel.MemorySafe))
 		fmt.Fprintf(w, "# TYPE echo_local_model_in_flight gauge\necho_local_model_in_flight %d\n", status.Backend.LocalModel.InFlight)
+		fmt.Fprintf(w, "# TYPE echo_enaction_enabled gauge\necho_enaction_enabled %d\n", boolMetric(status.EnactionEnabled))
+		fmt.Fprintf(w, "# TYPE echo_enaction_paused gauge\necho_enaction_paused %d\n", boolMetric(status.EnactionPaused))
+		fmt.Fprintf(w, "# TYPE echo_event_ledger_ready gauge\necho_event_ledger_ready %d\n", boolMetric(status.EventLedgerReady))
+		fmt.Fprintf(w, "# TYPE echo_cognitive_events_total counter\necho_cognitive_events_total %d\n", status.EventCount)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -33,6 +34,9 @@ type SkillLearningSystem struct {
 	// Running state
 	running    bool
 	practicing bool
+
+	// Applied evidence IDs prevent replay from awarding proficiency twice.
+	appliedEvidence map[string]struct{}
 }
 
 // Skill represents a learnable capability
@@ -100,13 +104,16 @@ type SkillPracticeTask struct {
 func NewSkillLearningSystem(llmProvider llm.LLMProvider) *SkillLearningSystem {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &SkillLearningSystem{
-		ctx:           ctx,
-		cancel:        cancel,
-		skills:        make(map[string]*Skill),
-		practiceQueue: make([]*SkillPracticeTask, 0),
-		llmProvider:   llmProvider,
+	system := &SkillLearningSystem{
+		ctx:             ctx,
+		cancel:          cancel,
+		skills:          make(map[string]*Skill),
+		practiceQueue:   make([]*SkillPracticeTask, 0),
+		llmProvider:     llmProvider,
+		appliedEvidence: make(map[string]struct{}),
 	}
+	system.initializeFoundationalSkills()
+	return system
 }
 
 // Start begins the skill learning system
@@ -121,7 +128,7 @@ func (sls *SkillLearningSystem) Start() error {
 
 	fmt.Println("🎯 Starting Skill Learning System...")
 
-	// Initialize foundational skills
+	// Idempotently ensure the foundational registry is present.
 	sls.initializeFoundationalSkills()
 
 	// Start practice scheduler
@@ -278,7 +285,10 @@ func (sls *SkillLearningSystem) initializeFoundationalSkills() {
 	defer sls.mu.Unlock()
 
 	for _, fs := range foundationalSkills {
-		skillID := fmt.Sprintf("skill_%d", time.Now().UnixNano())
+		skillID := stableSkillID(fs.name)
+		if _, exists := sls.skills[skillID]; exists {
+			continue
+		}
 
 		sls.skills[skillID] = &Skill{
 			ID:            skillID,
@@ -296,6 +306,12 @@ func (sls *SkillLearningSystem) initializeFoundationalSkills() {
 	}
 
 	fmt.Printf("   Initialized %d foundational skills\n", len(foundationalSkills))
+}
+
+func stableSkillID(name string) string {
+	value := strings.ToLower(strings.TrimSpace(name))
+	value = strings.NewReplacer(" ", "_", "-", "_", "/", "_").Replace(value)
+	return "skill_" + value
 }
 
 // PracticeSkill executes a practice session for a skill
@@ -334,16 +350,14 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 		return fmt.Errorf("practice generation failed: %w", err)
 	}
 
-	// Evaluate performance (simplified - in full system would use more sophisticated evaluation)
-	performance := sls.evaluatePerformance(skill, result)
-	success := performance > 0.5
-
-	// Record attempt
+	// A generated rehearsal is useful context, but it is not outcome evidence.
+	// Record it without changing proficiency. Only ApplyEvaluatorEvidence may
+	// award skill growth from an observed deterministic evaluation.
 	attempt := SkillAttempt{
 		Timestamp:   time.Now(),
-		Success:     success,
-		Performance: performance,
-		Feedback:    result,
+		Success:     false,
+		Performance: 0,
+		Feedback:    "unverified rehearsal candidate: " + result,
 		Duration:    time.Since(startTime),
 	}
 
@@ -351,48 +365,80 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 	skill.Attempts = append(skill.Attempts, attempt)
 	skill.PracticeCount++
 	skill.LastPracticed = time.Now()
-
-	// Update proficiency based on performance
-	if success {
-		improvement := skill.LearningRate * (1.0 - skill.Proficiency) * performance
-		skill.Proficiency = min(1.0, skill.Proficiency+improvement)
-	} else {
-		// Small decrease for failure
-		skill.Proficiency = max(0.0, skill.Proficiency-0.01)
-	}
-
 	sls.totalPractices++
-
-	if skill.Proficiency >= 0.9 {
-		sls.totalMasteries++
-	}
+	proficiency := skill.Proficiency
 	sls.mu.Unlock()
 
-	fmt.Printf("🎯 Practiced: %s (Proficiency: %.2f, Performance: %.2f)\n",
-		skill.Name, skill.Proficiency, performance)
+	fmt.Printf("🎯 Rehearsed: %s (Proficiency unchanged at %.2f; awaiting evaluator evidence)\n",
+		skill.Name, proficiency)
 
 	return nil
 }
 
-// evaluatePerformance assesses skill performance (simplified)
-func (sls *SkillLearningSystem) evaluatePerformance(skill *Skill, result string) float64 {
-	// Simplified evaluation based on response length and proficiency
-	// In full system, would use more sophisticated NLP analysis
-
-	basePerformance := 0.5
-
-	// Longer, more detailed responses indicate better performance
-	if len(result) > 200 {
-		basePerformance += 0.2
+// ApplyEvaluatorEvidence applies one observed, independently evaluated result.
+// Replaying the same evidence ID is an idempotent no-op.
+func (sls *SkillLearningSystem) ApplyEvaluatorEvidence(
+	skillName, evidenceID string,
+	score float64,
+	passed bool,
+	feedback string,
+) (bool, error) {
+	skillName = strings.TrimSpace(skillName)
+	evidenceID = strings.TrimSpace(evidenceID)
+	if skillName == "" || evidenceID == "" {
+		return false, fmt.Errorf("skill name and evidence ID are required")
+	}
+	if score < 0 || score > 1 {
+		return false, fmt.Errorf("evaluator score must be between 0 and 1")
 	}
 
-	// Add some randomness to simulate variation
-	variation := (float64(time.Now().UnixNano()%100) / 100.0) * 0.3
+	sls.mu.Lock()
+	defer sls.mu.Unlock()
+	if sls.appliedEvidence == nil {
+		sls.appliedEvidence = make(map[string]struct{})
+	}
+	if _, exists := sls.appliedEvidence[evidenceID]; exists {
+		return false, nil
+	}
 
-	// Performance improves with proficiency
-	performanceBoost := skill.Proficiency * 0.3
+	skillID := stableSkillID(skillName)
+	skill, exists := sls.skills[skillID]
+	if !exists {
+		skill = &Skill{
+			ID:            skillID,
+			Name:          skillName,
+			Description:   "Evidence-grounded capability: " + skillName,
+			Category:      SkillCategoryTechnical,
+			Proficiency:   0,
+			CreatedAt:     time.Now(),
+			LearningRate:  0.1,
+			Difficulty:    0.5,
+			Prerequisites: make([]string, 0),
+			Attempts:      make([]SkillAttempt, 0),
+		}
+		sls.skills[skillID] = skill
+	}
 
-	return min(1.0, basePerformance+variation+performanceBoost)
+	wasMastered := skill.Proficiency >= 0.9
+	attempt := SkillAttempt{
+		Timestamp:   time.Now(),
+		Success:     passed,
+		Performance: score,
+		Feedback:    fmt.Sprintf("evidence=%s: %s", evidenceID, strings.TrimSpace(feedback)),
+	}
+	skill.Attempts = append(skill.Attempts, attempt)
+	skill.PracticeCount++
+	skill.LastPracticed = attempt.Timestamp
+	if passed {
+		improvement := skill.LearningRate * (1.0 - skill.Proficiency) * score
+		skill.Proficiency = min(1.0, skill.Proficiency+improvement)
+	}
+	sls.totalPractices++
+	if !wasMastered && skill.Proficiency >= 0.9 {
+		sls.totalMasteries++
+	}
+	sls.appliedEvidence[evidenceID] = struct{}{}
+	return true, nil
 }
 
 // runPracticeScheduler schedules regular skill practice

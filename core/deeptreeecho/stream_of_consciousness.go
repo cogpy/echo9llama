@@ -11,7 +11,8 @@ import (
 
 // StreamOfConsciousness generates continuous autonomous thoughts
 type StreamOfConsciousness struct {
-	mu sync.RWMutex
+	mu           sync.RWMutex
+	generationMu sync.Mutex
 	// ctx is owned by the stream and cancels its persistent thought loop.
 	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
@@ -167,6 +168,14 @@ func (soc *StreamOfConsciousness) run() {
 
 // generateThought creates a new autonomous thought
 func (soc *StreamOfConsciousness) generateThought() {
+	soc.generationMu.Lock()
+	defer soc.generationMu.Unlock()
+	// Pause may race with the ticker after its initial isAwake check. Recheck
+	// after acquiring the generation admission lock so no new call starts after
+	// the pause barrier has closed.
+	if !soc.isAwake() {
+		return
+	}
 	soc.mu.RLock()
 	focus := soc.currentFocus
 	mood := soc.currentMood
@@ -573,11 +582,14 @@ func (soc *StreamOfConsciousness) GetMetrics() map[string]interface{} {
 	}
 }
 
-// Pause pauses thought generation
+// Pause is a quiescence barrier: when it returns, no thought generation or
+// provider call remains in flight and no new generation can be admitted.
 func (soc *StreamOfConsciousness) Pause() {
 	soc.mu.Lock()
-	defer soc.mu.Unlock()
 	soc.awake = false
+	soc.mu.Unlock()
+	soc.generationMu.Lock()
+	soc.generationMu.Unlock()
 }
 
 // Resume resumes thought generation

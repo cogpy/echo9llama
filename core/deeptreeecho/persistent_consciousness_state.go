@@ -2,6 +2,8 @@ package deeptreeecho
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -40,6 +42,7 @@ type PersistentConsciousnessState struct {
 type ConsciousnessState struct {
 	// Identity
 	IdentityName string `json:"identity_name"`
+	IdentityID   string `json:"identity_id"`
 	SessionID    string `json:"session_id"`
 
 	// Timestamps
@@ -137,6 +140,7 @@ func NewPersistentConsciousnessState(stateDir string, identityName string) (*Per
 		fmt.Println("ℹ️  No existing state found, creating new consciousness state")
 		pcs.state = &ConsciousnessState{
 			IdentityName:     identityName,
+			IdentityID:       generateIdentityID(),
 			SessionID:        generateSessionID(),
 			CreatedAt:        time.Now(),
 			LastUpdated:      time.Now(),
@@ -149,6 +153,9 @@ func NewPersistentConsciousnessState(stateDir string, identityName string) (*Per
 			SkillsInProgress: make([]string, 0),
 		}
 	} else {
+		if pcs.state.IdentityID == "" {
+			pcs.state.IdentityID = generateIdentityID()
+		}
 		fmt.Printf("✅ Loaded existing consciousness state (session: %s)\n", pcs.state.SessionID)
 		fmt.Printf("   Created: %v | Last Updated: %v\n",
 			pcs.state.CreatedAt.Format("2006-01-02 15:04"),
@@ -415,4 +422,12 @@ func (pcs *PersistentConsciousnessState) GetMetrics() map[string]interface{} {
 // generateSessionID generates a unique session ID
 func generateSessionID() string {
 	return fmt.Sprintf("session_%d", time.Now().Unix())
+}
+
+func generateIdentityID() string {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err == nil {
+		return "echo_" + hex.EncodeToString(value[:])
+	}
+	return fmt.Sprintf("echo_%d", time.Now().UnixNano())
 }

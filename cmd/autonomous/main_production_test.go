@@ -57,6 +57,14 @@ func TestProductionConstructorReturnsUnifiedRuntime(t *testing.T) {
 	}
 }
 
+func TestProductionEnactionDefaultsToObserve(t *testing.T) {
+	t.Setenv("ECHO_ENACTION_MODE", "")
+	config := loadOrchestratorConfigFromEnvironment()
+	if config.EnactionMode != deeptreeecho.EnactionObserve {
+		t.Fatalf("unsafe default enaction mode: %q", config.EnactionMode)
+	}
+}
+
 func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_SESSION_NAME", "env-session")
 	t.Setenv("ECHO_IDENTITY", "A persistent test identity")
@@ -73,6 +81,10 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_LOCAL_WARMUP_TIMEOUT", "7s")
 	t.Setenv("ECHO_LOCAL_WARM_ON_WAKE", "true")
 	t.Setenv("ECHO_LOCAL_COOL_ON_REST", "false")
+	t.Setenv("ECHO_ENACTION_MODE", "local-sandbox")
+	t.Setenv("ECHO_ACTION_TIMEOUT", "11s")
+	t.Setenv("ECHO_MAX_ARTIFACT_BYTES", "4096")
+	t.Setenv("ECHO_MAX_ARTIFACTS_PER_WAKE", "3")
 
 	config := loadOrchestratorConfigFromEnvironment()
 	if config.SessionName != "env-session" || config.IdentityContext != "A persistent test identity" {
@@ -95,6 +107,9 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	}
 	if config.LocalModelWarmupTimeout != 7*time.Second || !config.WarmLocalModelOnWake || config.CoolLocalModelOnRest {
 		t.Fatalf("native lifecycle configuration was not applied: %#v", config)
+	}
+	if config.EnactionMode != deeptreeecho.EnactionLocalSandbox || config.ActionTimeout != 11*time.Second || config.MaxArtifactBytes != 4096 || config.MaxArtifactsPerWake != 3 {
+		t.Fatalf("enaction configuration was not applied: %#v", config)
 	}
 }
 

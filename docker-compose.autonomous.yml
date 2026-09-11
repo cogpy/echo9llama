@@ -8,10 +8,19 @@ services:
     container_name: deep-tree-echo
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - ECHO_HTTP_ADDR=0.0.0.0
+      - ECHO_STATE_DIRECTORY=/app/data/echo_state
+      - ECHO_EVENT_STORE_PATH=/app/data/echo_state/cognitive_events.db
+      - ECHO_WORKSPACE_DIRECTORY=/app/data/echo_state/workspace
+      - ECHO_ENABLE_ENACTION=true
+      - ECHO_ENACTION_MODE=${ECHO_ENACTION_MODE:-observe}
+      - ECHO_ACTION_TIMEOUT=${ECHO_ACTION_TIMEOUT:-90s}
+      - ECHO_MAX_ARTIFACT_BYTES=${ECHO_MAX_ARTIFACT_BYTES:-32768}
+      - ECHO_MAX_ARTIFACTS_PER_WAKE=${ECHO_MAX_ARTIFACTS_PER_WAKE:-8}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs

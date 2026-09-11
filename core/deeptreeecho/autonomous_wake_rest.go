@@ -10,7 +10,8 @@ import (
 // AutonomousWakeRestManager manages autonomous wake/rest cycles
 // Integrates with echodream for knowledge consolidation during rest
 type AutonomousWakeRestManager struct {
-	mu sync.RWMutex
+	mu           sync.RWMutex
+	transitionMu sync.Mutex
 	// ctx is owned by the manager and cancels its persistent evaluation loop.
 	ctx    context.Context //nolint:containedctx
 	cancel context.CancelFunc
@@ -290,27 +291,38 @@ func (m *AutonomousWakeRestManager) evaluateNeedForWake(dreamTime time.Duration)
 
 // transitionToRest transitions to rest state
 func (m *AutonomousWakeRestManager) transitionToRest() {
-	m.mu.Lock()
+	m.transitionMu.Lock()
+	defer m.transitionMu.Unlock()
+
+	m.mu.RLock()
 	if m.currentState != StateAwake {
-		m.mu.Unlock()
+		m.mu.RUnlock()
 		return
 	}
-
 	awakeTime := time.Since(m.stateStartTime)
-	m.totalWakeTime += awakeTime
-
-	m.currentState = StateResting
-	m.stateStartTime = time.Now()
-	m.mu.Unlock()
+	onRest := m.onRest
+	fatigueLevel := m.fatigueLevel
+	cognitiveLoad := m.cognitiveLoad
+	m.mu.RUnlock()
 
 	fmt.Printf("\n💤 Transitioning to REST (awake for %v)\n", awakeTime.Round(time.Second))
-	fmt.Printf("   Fatigue: %.2f | Cognitive Load: %.2f\n", m.fatigueLevel, m.cognitiveLoad)
+	fmt.Printf("   Fatigue: %.2f | Cognitive Load: %.2f\n", fatigueLevel, cognitiveLoad)
 
-	if m.onRest != nil {
-		if err := m.onRest(); err != nil {
+	// The callback establishes stream, scheduler, and enaction quiescence. Do
+	// not make resting externally observable until those barriers have returned.
+	if onRest != nil {
+		if err := onRest(); err != nil {
 			fmt.Printf("⚠️  Rest callback error: %v\n", err)
 		}
 	}
+
+	m.mu.Lock()
+	if m.currentState == StateAwake {
+		m.totalWakeTime += awakeTime
+		m.currentState = StateResting
+		m.stateStartTime = time.Now()
+	}
+	m.mu.Unlock()
 }
 
 // transitionToDream transitions to dream state

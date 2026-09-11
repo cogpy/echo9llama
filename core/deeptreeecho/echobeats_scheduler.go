@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,13 +12,14 @@ import (
 )
 
 // EchobeatsScheduler implements the 12-step 3-phase cognitive loop
-// with 3 concurrent inference engines for goal-directed scheduling
+// with three logical inference engines on a sequential cadence for goal-directed scheduling.
 type EchobeatsScheduler struct {
 	mu     sync.RWMutex
+	stepMu sync.Mutex      // Serializes pause requests with active steps.
 	ctx    context.Context //nolint:containedctx // Scheduler owns this lifecycle context from Start through Stop.
 	cancel context.CancelFunc
 
-	// Three concurrent inference engines
+	// Three logical inference engines on a sequential cadence
 	engine1 *InferenceEngine
 	engine2 *InferenceEngine
 	engine3 *InferenceEngine
@@ -36,9 +38,10 @@ type EchobeatsScheduler struct {
 	futureAnticipation []string
 
 	// Goal-directed scheduling
-	goalQueue      []ScheduledGoal
-	priorityMatrix map[string]float64
-	temporalPlan   []TemporalEvent
+	goalQueue           []ScheduledGoal
+	priorityMatrix      map[string]float64
+	temporalPlan        []TemporalEvent
+	appliedGoalEvidence map[string]struct{}
 
 	// Triad processing (tetrahedral synchronization)
 	triadStates   [4]TriadState
@@ -48,6 +51,7 @@ type EchobeatsScheduler struct {
 	onCycleComplete     func(metrics CycleMetrics)
 	onGoalAchieved      func(goal ScheduledGoal)
 	onEmergenceDetected func(pattern string, strength float64)
+	onAffordance        func(step int) (summary string, verified bool)
 
 	// Metrics
 	totalSteps      uint64
@@ -57,10 +61,11 @@ type EchobeatsScheduler struct {
 
 	// Running state
 	running      bool
+	paused       bool
 	adaptiveMode bool
 }
 
-// InferenceEngine represents one of three concurrent engines
+// InferenceEngine represents one of three logical engines on a sequential cadence.
 type InferenceEngine struct {
 	ID          int
 	mu          sync.RWMutex
@@ -185,21 +190,22 @@ func NewEchobeatsScheduler(llmProvider llm.LLMProvider) *EchobeatsScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sched := &EchobeatsScheduler{
-		ctx:                ctx,
-		cancel:             cancel,
-		llmProvider:        llmProvider,
-		engine1:            newInferenceEngine(1),
-		engine2:            newInferenceEngine(2),
-		engine3:            newInferenceEngine(3),
-		currentStep:        1,
-		currentPhase:       PhaseExpressive,
-		pastPerformance:    make([]string, 0),
-		futureAnticipation: make([]string, 0),
-		goalQueue:          make([]ScheduledGoal, 0),
-		priorityMatrix:     make(map[string]float64),
-		temporalPlan:       make([]TemporalEvent, 0),
-		phaseRotation:      0.0,
-		adaptiveMode:       true,
+		ctx:                 ctx,
+		cancel:              cancel,
+		llmProvider:         llmProvider,
+		engine1:             newInferenceEngine(1),
+		engine2:             newInferenceEngine(2),
+		engine3:             newInferenceEngine(3),
+		currentStep:         1,
+		currentPhase:        PhaseExpressive,
+		pastPerformance:     make([]string, 0),
+		futureAnticipation:  make([]string, 0),
+		goalQueue:           make([]ScheduledGoal, 0),
+		priorityMatrix:      make(map[string]float64),
+		temporalPlan:        make([]TemporalEvent, 0),
+		appliedGoalEvidence: make(map[string]struct{}),
+		phaseRotation:       0.0,
+		adaptiveMode:        true,
 	}
 
 	// Initialize tetrahedral triads
@@ -267,7 +273,7 @@ func (sched *EchobeatsScheduler) Start() error {
 	sched.mu.Unlock()
 
 	fmt.Println("🎵 Starting Echobeats 12-Step Cognitive Loop...")
-	fmt.Println("   Architecture: 3 Concurrent Inference Engines")
+	fmt.Println("   Architecture: three logical inference engines on a sequential cadence")
 	fmt.Println("   Phases: Expressive (1-4) → Reflective (5-8) → Anticipatory (9-12)")
 	fmt.Println("   Pattern: 7 Expressive + 5 Reflective Steps")
 
@@ -309,10 +315,19 @@ func (sched *EchobeatsScheduler) run() {
 
 // executeStep performs one step of the 12-step loop
 func (sched *EchobeatsScheduler) executeStep() {
-	sched.mu.Lock()
+	// Serializing with Pause makes a completed Pause a barrier: after it
+	// returns, no steps or provider calls can begin until Resume.
+	sched.stepMu.Lock()
+	defer sched.stepMu.Unlock()
+
+	sched.mu.RLock()
+	if sched.paused {
+		sched.mu.RUnlock()
+		return
+	}
 	step := sched.currentStep
 	phase := sched.currentPhase
-	sched.mu.Unlock()
+	sched.mu.RUnlock()
 
 	fmt.Printf("🎵 Echobeats Step %d/%d [%s Phase]\n", step, 12, phase.String())
 
@@ -445,12 +460,40 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 	engine.currentTask = task
 	engine.mu.Unlock()
 
-	// Simulate affordance interaction
+	// The production orchestrator supplies a bounded, policy-gated enaction
+	// callback. Without one, this remains reflective affordance planning only.
+	sched.mu.RLock()
+	onAffordance := sched.onAffordance
+	sched.mu.RUnlock()
+	if onAffordance != nil {
+		result, verified := onAffordance(stepNum)
+		now := time.Now()
+		task.CompletionTime = &now
+		task.Result = result
+		task.Success = verified
+		engine.mu.Lock()
+		engine.taskHistory = append(engine.taskHistory, *task)
+		engine.currentTask = nil
+		if verified {
+			engine.performance = engine.performance*0.9 + 0.1
+		}
+		engine.mu.Unlock()
+		sched.mu.Lock()
+		sched.pastPerformance = append(sched.pastPerformance, result)
+		if len(sched.pastPerformance) > 10 {
+			sched.pastPerformance = sched.pastPerformance[1:]
+		}
+		sched.mu.Unlock()
+		fmt.Printf("      [Engine %d] → %s\n", engineID, truncate(result, 60))
+		return
+	}
+
+	// Reflect on an affordance without claiming an external effect.
 	sched.mu.RLock()
 	commitment := sched.presentCommitment
 	sched.mu.RUnlock()
 
-	prompt := fmt.Sprintf("[System: You are taking action based on your commitment. Be specific.]\n\nGiven commitment '%s', what action can you take? (Brief)", commitment)
+	prompt := fmt.Sprintf("[System: You are considering a possible affordance. Describe a proposal, not a completed action.]\n\nGiven commitment '%s', what bounded action could be considered? (Brief)", commitment)
 
 	opts := llm.GenerateOptions{
 		Temperature: 0.6,
@@ -483,7 +526,6 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 	engine.mu.Lock()
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
-	engine.performance = min(1.0, engine.performance+0.02)
 	engine.mu.Unlock()
 
 	sched.mu.Lock()
@@ -690,7 +732,13 @@ func (sched *EchobeatsScheduler) GetActiveGoal() *ScheduledGoal {
 
 	for i := range sched.goalQueue {
 		if sched.goalQueue[i].Status == GoalActive || sched.goalQueue[i].Status == GoalPending {
-			return &sched.goalQueue[i]
+			goal := sched.goalQueue[i]
+			if goal.Deadline != nil {
+				deadline := *goal.Deadline
+				goal.Deadline = &deadline
+			}
+			goal.Dependencies = append([]string(nil), goal.Dependencies...)
+			return &goal
 		}
 	}
 	return nil
@@ -721,6 +769,51 @@ func (sched *EchobeatsScheduler) UpdateGoalProgress(goalID string, progress floa
 			break
 		}
 	}
+}
+
+// ApplyGoalEvidence projects one durable evaluator-backed progress event. The
+// same evidence ID is never applied twice, including during repeated replay.
+func (sched *EchobeatsScheduler) ApplyGoalEvidence(goalID, description, evidenceID string, delta float64) bool {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	if strings.TrimSpace(goalID) == "" || strings.TrimSpace(evidenceID) == "" || delta <= 0 {
+		return false
+	}
+	if sched.appliedGoalEvidence == nil {
+		sched.appliedGoalEvidence = make(map[string]struct{})
+	}
+	if _, exists := sched.appliedGoalEvidence[evidenceID]; exists {
+		return false
+	}
+	index := -1
+	for i := range sched.goalQueue {
+		if sched.goalQueue[i].ID == goalID {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		now := time.Now()
+		sched.goalQueue = append(sched.goalQueue, ScheduledGoal{
+			ID: goalID, Description: description, Priority: 0.5,
+			Status: GoalPending, CreatedAt: now, UpdatedAt: now,
+		})
+		index = len(sched.goalQueue) - 1
+		sched.priorityMatrix[goalID] = 0.5
+	}
+	goal := &sched.goalQueue[index]
+	goal.Progress = min(1, goal.Progress+delta)
+	goal.UpdatedAt = time.Now()
+	if goal.Progress >= 1 {
+		if goal.Status != GoalCompleted {
+			goal.Status = GoalCompleted
+			sched.goalsCompleted++
+		}
+	} else {
+		goal.Status = GoalActive
+	}
+	sched.appliedGoalEvidence[evidenceID] = struct{}{}
+	return true
 }
 
 // ScheduleTemporalEvent adds an event to the temporal plan
@@ -835,6 +928,14 @@ func (sched *EchobeatsScheduler) SetOnEmergenceDetected(callback func(string, fl
 	sched.onEmergenceDetected = callback
 }
 
+// SetOnAffordance binds the scheduler's action phase to an observed enaction
+// implementation. The callback must return true only for independently verified effects.
+func (sched *EchobeatsScheduler) SetOnAffordance(callback func(step int) (string, bool)) {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	sched.onAffordance = callback
+}
+
 // RotatePhase advances the phase rotation for tetrahedral synchronization
 func (sched *EchobeatsScheduler) RotatePhase() {
 	sched.mu.Lock()
@@ -921,16 +1022,28 @@ func (sched *EchobeatsScheduler) GetCompleteCycleMetrics() CycleMetrics {
 
 // Pause pauses the scheduler
 func (sched *EchobeatsScheduler) Pause() {
+	// Wait for any current step before recording the paused state so that no
+	// provider call remains in flight once Pause returns.
+	sched.stepMu.Lock()
+	defer sched.stepMu.Unlock()
+
 	sched.mu.Lock()
 	defer sched.mu.Unlock()
-	// Pause scheduler operations
+	sched.paused = true
 }
 
 // Resume resumes the scheduler
 func (sched *EchobeatsScheduler) Resume() {
 	sched.mu.Lock()
 	defer sched.mu.Unlock()
-	// Resume scheduler operations
+	sched.paused = false
+}
+
+// IsPaused returns whether the scheduler is paused.
+func (sched *EchobeatsScheduler) IsPaused() bool {
+	sched.mu.RLock()
+	defer sched.mu.RUnlock()
+	return sched.paused
 }
 
 // IsRunning returns whether the scheduler is running

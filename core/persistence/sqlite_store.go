@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,11 +15,13 @@ import (
 
 // SQLiteStore provides persistent storage for the autonomous system
 type SQLiteStore struct {
-	mu       sync.RWMutex
-	db       *sql.DB
-	dbPath   string
-	isOpen   bool
+	mu     sync.RWMutex
+	db     *sql.DB
+	dbPath string
+	isOpen bool
 }
+
+const sqliteBusyTimeoutMilliseconds = 5000
 
 // ThoughtRecord represents a persisted thought
 type ThoughtRecord struct {
@@ -31,11 +36,11 @@ type ThoughtRecord struct {
 
 // MemoryRecord represents a persisted memory
 type MemoryRecord struct {
-	ID          int64
-	Content     string
-	Type        string
-	Timestamp   time.Time
-	Strength    float64
+	ID           int64
+	Content      string
+	Type         string
+	Timestamp    time.Time
+	Strength     float64
 	Associations string // JSON-encoded associations
 }
 
@@ -64,15 +69,20 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 	store := &SQLiteStore{
 		dbPath: dbPath,
 	}
-	
+
 	if err := store.Open(); err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
-	
+
 	if err := store.initSchema(); err != nil {
+		_ = store.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
-	
+	if err := store.secureSQLiteFiles(); err != nil {
+		_ = store.Close()
+		return nil, fmt.Errorf("failed to secure database files: %w", err)
+	}
+
 	return store, nil
 }
 
@@ -80,28 +90,158 @@ func NewSQLiteStore(dbPath string) (*SQLiteStore, error) {
 func (s *SQLiteStore) Open() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if s.isOpen {
 		return nil
 	}
-	
+	if err := s.prepareSQLitePath(); err != nil {
+		return err
+	}
+
 	db, err := sql.Open("sqlite3", s.dbPath)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
-	
+
+	// A single connection keeps connection-scoped SQLite safety PRAGMAs
+	// consistently applied while serializing writes to the embedded ledger.
 	// Set connection pool settings
 	db.SetMaxOpenConns(1) // SQLite works best with single connection
 	db.SetMaxIdleConns(1)
-	
+
 	// Test connection
 	if err := db.Ping(); err != nil {
+		_ = db.Close()
 		return fmt.Errorf("failed to ping database: %w", err)
 	}
-	
+	if err := configureSQLiteConnection(db); err != nil {
+		_ = db.Close()
+		return err
+	}
+	if err := s.secureSQLiteFiles(); err != nil {
+		_ = db.Close()
+		return err
+	}
+
 	s.db = db
 	s.isOpen = true
-	
+
+	return nil
+}
+
+// prepareSQLitePath establishes an owner-only parent before SQLite creates a
+// persistent database. URI filenames are rejected because they may bypass the
+// owner-only filesystem policy. The memory database remains useful for tests.
+func (s *SQLiteStore) prepareSQLitePath() error {
+	if s.dbPath == ":memory:" {
+		return nil
+	}
+	if s.dbPath == "" {
+		return fmt.Errorf("database path is required")
+	}
+	if strings.HasPrefix(strings.ToLower(s.dbPath), "file:") {
+		return fmt.Errorf("SQLite URI filenames are not permitted for owner-only storage")
+	}
+
+	absPath, err := filepath.Abs(filepath.Clean(s.dbPath))
+	if err != nil {
+		return fmt.Errorf("resolve database path: %w", err)
+	}
+	dir := filepath.Dir(absPath)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("create database directory: %w", err)
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return fmt.Errorf("restrict database directory: %w", err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		return fmt.Errorf("stat database directory: %w", err)
+	}
+	if !info.IsDir() || info.Mode().Perm() != 0o700 {
+		return fmt.Errorf("database directory must be owner-only")
+	}
+
+	if info, err := os.Lstat(absPath); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("database file must not be a symbolic link")
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("database path must be a regular file")
+		}
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("inspect database path: %w", err)
+	}
+
+	s.dbPath = absPath
+	return nil
+}
+
+// secureSQLiteFiles limits the main SQLite file and its WAL/SHM sidecars to
+// the process owner because each can contain durable cognitive event data.
+func (s *SQLiteStore) secureSQLiteFiles() error {
+	if s.dbPath == ":memory:" {
+		return nil
+	}
+	for _, path := range []string{s.dbPath, s.dbPath + "-wal", s.dbPath + "-shm"} {
+		info, err := os.Lstat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("inspect SQLite file %q: %w", path, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return fmt.Errorf("SQLite file %q must be a regular non-symlink file", path)
+		}
+		if err := os.Chmod(path, 0o600); err != nil {
+			return fmt.Errorf("restrict SQLite file %q: %w", path, err)
+		}
+		info, err = os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("verify SQLite file %q: %w", path, err)
+		}
+		if info.Mode().Perm() != 0o600 {
+			return fmt.Errorf("SQLite file %q must be owner-only", path)
+		}
+	}
+	return nil
+}
+
+func configureSQLiteConnection(db *sql.DB) error {
+	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
+		return fmt.Errorf("enable SQLite WAL: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA foreign_keys=ON"); err != nil {
+		return fmt.Errorf("enable SQLite foreign keys: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA synchronous=FULL"); err != nil {
+		return fmt.Errorf("set SQLite synchronous=FULL: %w", err)
+	}
+	if _, err := db.Exec(fmt.Sprintf("PRAGMA busy_timeout=%d", sqliteBusyTimeoutMilliseconds)); err != nil {
+		return fmt.Errorf("set SQLite busy timeout: %w", err)
+	}
+
+	var journalMode string
+	if err := db.QueryRow("PRAGMA journal_mode").Scan(&journalMode); err != nil {
+		return fmt.Errorf("verify SQLite journal mode: %w", err)
+	}
+	if strings.ToLower(journalMode) != "wal" {
+		return fmt.Errorf("SQLite WAL is required, got %q", journalMode)
+	}
+	var foreignKeys, synchronous, busyTimeout int
+	if err := db.QueryRow("PRAGMA foreign_keys").Scan(&foreignKeys); err != nil {
+		return fmt.Errorf("verify SQLite foreign keys: %w", err)
+	}
+	if err := db.QueryRow("PRAGMA synchronous").Scan(&synchronous); err != nil {
+		return fmt.Errorf("verify SQLite synchronous mode: %w", err)
+	}
+	if err := db.QueryRow("PRAGMA busy_timeout").Scan(&busyTimeout); err != nil {
+		return fmt.Errorf("verify SQLite busy timeout: %w", err)
+	}
+	if foreignKeys != 1 || synchronous != 2 || busyTimeout < sqliteBusyTimeoutMilliseconds {
+		return fmt.Errorf("SQLite hardening verification failed (foreign_keys=%d synchronous=%d busy_timeout=%d)", foreignKeys, synchronous, busyTimeout)
+	}
 	return nil
 }
 
@@ -109,11 +249,11 @@ func (s *SQLiteStore) Open() error {
 func (s *SQLiteStore) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen || s.db == nil {
 		return nil
 	}
-	
+
 	err := s.db.Close()
 	s.isOpen = false
 	return err
@@ -168,7 +308,7 @@ func (s *SQLiteStore) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status);
 	CREATE INDEX IF NOT EXISTS idx_goals_priority ON goals(priority DESC);
 	`
-	
+
 	_, err := s.db.Exec(schema)
 	return err
 }
@@ -177,16 +317,16 @@ func (s *SQLiteStore) initSchema() error {
 func (s *SQLiteStore) SaveThought(thought *ThoughtRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		INSERT INTO thoughts (content, type, timestamp, context, interests, importance)
 		VALUES (?, ?, ?, ?, ?, ?)
 	`
-	
+
 	result, err := s.db.Exec(query,
 		thought.Content,
 		thought.Type,
@@ -195,16 +335,16 @@ func (s *SQLiteStore) SaveThought(thought *ThoughtRecord) error {
 		thought.Interests,
 		thought.Importance,
 	)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to save thought: %w", err)
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err == nil {
 		thought.ID = id
 	}
-	
+
 	return nil
 }
 
@@ -212,24 +352,24 @@ func (s *SQLiteStore) SaveThought(thought *ThoughtRecord) error {
 func (s *SQLiteStore) GetRecentThoughts(limit int) ([]*ThoughtRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.isOpen {
 		return nil, fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		SELECT id, content, type, timestamp, context, interests, importance
 		FROM thoughts
 		ORDER BY timestamp DESC
 		LIMIT ?
 	`
-	
+
 	rows, err := s.db.Query(query, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query thoughts: %w", err)
 	}
 	defer rows.Close()
-	
+
 	thoughts := make([]*ThoughtRecord, 0, limit)
 	for rows.Next() {
 		thought := &ThoughtRecord{}
@@ -247,7 +387,7 @@ func (s *SQLiteStore) GetRecentThoughts(limit int) ([]*ThoughtRecord, error) {
 		}
 		thoughts = append(thoughts, thought)
 	}
-	
+
 	return thoughts, nil
 }
 
@@ -255,16 +395,16 @@ func (s *SQLiteStore) GetRecentThoughts(limit int) ([]*ThoughtRecord, error) {
 func (s *SQLiteStore) SaveMemory(memory *MemoryRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		INSERT INTO memories (content, type, timestamp, strength, associations)
 		VALUES (?, ?, ?, ?, ?)
 	`
-	
+
 	result, err := s.db.Exec(query,
 		memory.Content,
 		memory.Type,
@@ -272,16 +412,16 @@ func (s *SQLiteStore) SaveMemory(memory *MemoryRecord) error {
 		memory.Strength,
 		memory.Associations,
 	)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to save memory: %w", err)
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err == nil {
 		memory.ID = id
 	}
-	
+
 	return nil
 }
 
@@ -289,11 +429,11 @@ func (s *SQLiteStore) SaveMemory(memory *MemoryRecord) error {
 func (s *SQLiteStore) GetStrongMemories(minStrength float64, limit int) ([]*MemoryRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.isOpen {
 		return nil, fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		SELECT id, content, type, timestamp, strength, associations
 		FROM memories
@@ -301,13 +441,13 @@ func (s *SQLiteStore) GetStrongMemories(minStrength float64, limit int) ([]*Memo
 		ORDER BY strength DESC, timestamp DESC
 		LIMIT ?
 	`
-	
+
 	rows, err := s.db.Query(query, minStrength, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query memories: %w", err)
 	}
 	defer rows.Close()
-	
+
 	memories := make([]*MemoryRecord, 0, limit)
 	for rows.Next() {
 		memory := &MemoryRecord{}
@@ -324,7 +464,7 @@ func (s *SQLiteStore) GetStrongMemories(minStrength float64, limit int) ([]*Memo
 		}
 		memories = append(memories, memory)
 	}
-	
+
 	return memories, nil
 }
 
@@ -332,27 +472,27 @@ func (s *SQLiteStore) GetStrongMemories(minStrength float64, limit int) ([]*Memo
 func (s *SQLiteStore) SaveState(key string, value interface{}) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	// Serialize value to JSON
 	valueJSON, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
 	}
-	
+
 	query := `
 		INSERT OR REPLACE INTO state (key, value, updated_at)
 		VALUES (?, ?, CURRENT_TIMESTAMP)
 	`
-	
+
 	_, err = s.db.Exec(query, key, string(valueJSON))
 	if err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -360,13 +500,13 @@ func (s *SQLiteStore) SaveState(key string, value interface{}) error {
 func (s *SQLiteStore) GetState(key string, target interface{}) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	query := `SELECT value FROM state WHERE key = ?`
-	
+
 	var valueJSON string
 	err := s.db.QueryRow(query, key).Scan(&valueJSON)
 	if err == sql.ErrNoRows {
@@ -375,13 +515,13 @@ func (s *SQLiteStore) GetState(key string, target interface{}) error {
 	if err != nil {
 		return fmt.Errorf("failed to query state: %w", err)
 	}
-	
+
 	// Deserialize JSON to target
 	err = json.Unmarshal([]byte(valueJSON), target)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal value: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -389,16 +529,16 @@ func (s *SQLiteStore) GetState(key string, target interface{}) error {
 func (s *SQLiteStore) SaveGoal(goal *GoalRecord) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		INSERT INTO goals (description, type, priority, status, metadata)
 		VALUES (?, ?, ?, ?, ?)
 	`
-	
+
 	result, err := s.db.Exec(query,
 		goal.Description,
 		goal.Type,
@@ -406,16 +546,16 @@ func (s *SQLiteStore) SaveGoal(goal *GoalRecord) error {
 		goal.Status,
 		goal.Metadata,
 	)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to save goal: %w", err)
 	}
-	
+
 	id, err := result.LastInsertId()
 	if err == nil {
 		goal.ID = id
 	}
-	
+
 	return nil
 }
 
@@ -423,24 +563,24 @@ func (s *SQLiteStore) SaveGoal(goal *GoalRecord) error {
 func (s *SQLiteStore) GetActiveGoals() ([]*GoalRecord, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.isOpen {
 		return nil, fmt.Errorf("database not open")
 	}
-	
+
 	query := `
 		SELECT id, description, type, priority, status, created_at, completed_at, metadata
 		FROM goals
 		WHERE status = 'active'
 		ORDER BY priority DESC, created_at ASC
 	`
-	
+
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query goals: %w", err)
 	}
 	defer rows.Close()
-	
+
 	goals := make([]*GoalRecord, 0)
 	for rows.Next() {
 		goal := &GoalRecord{}
@@ -459,7 +599,7 @@ func (s *SQLiteStore) GetActiveGoals() ([]*GoalRecord, error) {
 		}
 		goals = append(goals, goal)
 	}
-	
+
 	return goals, nil
 }
 
@@ -467,24 +607,24 @@ func (s *SQLiteStore) GetActiveGoals() ([]*GoalRecord, error) {
 func (s *SQLiteStore) UpdateGoalStatus(goalID int64, status string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if !s.isOpen {
 		return fmt.Errorf("database not open")
 	}
-	
+
 	query := `UPDATE goals SET status = ?, completed_at = ? WHERE id = ?`
-	
+
 	var completedAt *time.Time
 	if status == "completed" {
 		now := time.Now()
 		completedAt = &now
 	}
-	
+
 	_, err := s.db.Exec(query, status, completedAt, goalID)
 	if err != nil {
 		return fmt.Errorf("failed to update goal status: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -492,41 +632,41 @@ func (s *SQLiteStore) UpdateGoalStatus(goalID int64, status string) error {
 func (s *SQLiteStore) GetStats() (map[string]interface{}, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if !s.isOpen {
 		return nil, fmt.Errorf("database not open")
 	}
-	
+
 	stats := make(map[string]interface{})
-	
+
 	// Count thoughts
 	var thoughtCount int
 	err := s.db.QueryRow("SELECT COUNT(*) FROM thoughts").Scan(&thoughtCount)
 	if err == nil {
 		stats["thought_count"] = thoughtCount
 	}
-	
+
 	// Count memories
 	var memoryCount int
 	err = s.db.QueryRow("SELECT COUNT(*) FROM memories").Scan(&memoryCount)
 	if err == nil {
 		stats["memory_count"] = memoryCount
 	}
-	
+
 	// Count goals
 	var goalCount int
 	err = s.db.QueryRow("SELECT COUNT(*) FROM goals WHERE status = 'active'").Scan(&goalCount)
 	if err == nil {
 		stats["active_goal_count"] = goalCount
 	}
-	
+
 	// Database size
 	var pageCount, pageSize int64
 	s.db.QueryRow("PRAGMA page_count").Scan(&pageCount)
 	s.db.QueryRow("PRAGMA page_size").Scan(&pageSize)
 	stats["db_size_bytes"] = pageCount * pageSize
-	
+
 	stats["db_path"] = s.dbPath
-	
+
 	return stats, nil
 }

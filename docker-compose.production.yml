@@ -20,13 +20,20 @@ services:
           memory: 1G
           cpus: '0.5'
     ports:
-      - "8080:8080"      # HTTP API
-      - "11434:11434"    # Ollama-compatible API
+      - "127.0.0.1:8080:8080"      # Read-only HTTP observability
+      - "127.0.0.1:11434:11434"    # Ollama-compatible API
     environment:
       # LLM Provider Keys (set in .env or export)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      # E1 autonomy authority and private persistence
+      - ECHO_HTTP_ADDR=0.0.0.0
+      - ECHO_STATE_DIRECTORY=/app/data/echo_state
+      - ECHO_EVENT_STORE_PATH=/app/data/echo_state/cognitive_events.db
+      - ECHO_WORKSPACE_DIRECTORY=/app/data/echo_state/workspace
+      - ECHO_ENABLE_ENACTION=true
+      - ECHO_ENACTION_MODE=${ECHO_ENACTION_MODE:-observe}
       # Cognitive cycle configuration
       - ECHO_CYCLE_INTERVAL=${ECHO_CYCLE_INTERVAL:-10s}
       - ECHO_DREAM_INTERVAL=${ECHO_DREAM_INTERVAL:-30m}
@@ -50,7 +57,7 @@ services:
         max-file: "5"
     labels:
       - "autoheal=true"
-      - "com.deep-tree-echo.version=iteration-020"
+      - "com.deep-tree-echo.version=2026-09-11-replay-safe-e1-enaction"
 
   # Auto-restart unhealthy containers
   autoheal:
@@ -74,7 +81,7 @@ services:
     restart: unless-stopped
     profiles: ["monitoring"]
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -90,7 +97,7 @@ services:
     restart: unless-stopped
     profiles: ["monitoring"]
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false

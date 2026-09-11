@@ -28,6 +28,8 @@ The production autonomous process now runs the unified Echobeats, EchoDream, int
 export ANTHROPIC_API_KEY=...
 export OPENROUTER_API_KEY=...
 export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
+# Safe default: proposals are ledgered but no tool effect is permitted.
+export ECHO_ENACTION_MODE=observe
 
 go run ./cmd/autonomous
 ```
@@ -41,6 +43,16 @@ curl http://127.0.0.1:8080/metrics
 ```
 
 Set `ECHO_HTTP_ADDR=0.0.0.0` only when an explicitly secured container or remote deployment must expose those endpoints.
+
+The first bounded action capability can create and verify private Markdown briefs. It is disabled by authority mode until explicitly enabled:
+
+```shell
+export ECHO_ENACTION_MODE=local-sandbox
+export ECHO_WORKSPACE_DIRECTORY="$HOME/.echo9llama/state/workspace"
+CGO_ENABLED=1 go run ./cmd/autonomous
+```
+
+The model proposes content, but deterministic policy authorizes the effect and a read-back evaluator controls all goal and skill progress. See the [replay-safe E1 iteration report](docs/iterations/EVOLUTION_ITERATION_2026-09-11_REPLAY_SAFE_ENACTION.md) and the [autonomy threat model](SECURITY.md).
 
 For native local cognition, use a CGO-enabled build and configure one or more GGUF files or directories. The router verifies model format, canonical roots, context capacity, host/cgroup memory, and current concurrency before selecting the model:
 
@@ -56,13 +68,17 @@ CGO_ENABLED=1 go run ./cmd/autonomous
 
 Use `ECHO_PROVIDER_MODE=offline` to prohibit remote providers, `remote_first` to retain local GGUF only as recovery, or `balanced` for capability-scored hybrid routing. See the [native LocalGGUF and capability-routing report](docs/iterations/EVOLUTION_ITERATION_2026-08-12_NATIVE_LOCALGGUF_CAPABILITY_ROUTING.md) and the [detailed architecture plan](docs/architecture/NATIVE_LOCALGGUF_AND_CAPABILITY_SCHEDULING.md).
 
-### Docker (Coming Soon)
+### Docker
 
-Docker support with Deep Tree Echo integration is in development.
+The autonomous image is CGO-enabled for its SQLite event ledger. Compose persists state and defaults to observe-only authority:
+
+```shell
+docker compose -f docker-compose.autonomous.yml up --build
+```
 
 ### Prerequisites
 
-- Go 1.25 or later with automatic toolchain selection enabled; `go.mod` pins the security-patched Go 1.25.12 toolchain
+- Go 1.25 or later with automatic toolchain selection enabled; `go.mod` pins the security-patched Go 1.25.13 toolchain
 - Optional: `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, or `OPENAI_API_KEY` for model-backed autonomous cognition
 - Optional: A CGO-capable C/C++ toolchain and one or more GGUF models for native, capability-aware `./cmd/autonomous` inference
 
@@ -168,8 +184,9 @@ See [SELF_ASSESSMENT_README.md](SELF_ASSESSMENT_README.md) for complete document
 **Current Status**: Active Development
 
 - `./cmd/autonomous` ships the unified production autonomy loop with canonical EchoDream, Echobeats goals, persistent interests, provider failover, and truthful health/status/metrics
+- Echobeats now owns one replay-safe E1 affordance path: strict routed plan, deterministic policy, private create-only tool, observed evaluation, immutable event history, evidence-bound progress, and source-linked dream feedback
 - The base EchOllama API endpoints and web dashboard remain available as a separate server surface
-- `CGO_ENABLED=0 go build ./...`, core/command tests, race tests, vet, `govulncheck ./...`, the no-new-production-issues lint gate, and the real-process E2E contract pass under the pinned toolchain
+- `CGO_ENABLED=0 go build ./...`, the focused production test surface, race tests, vet, module verification, and a live non-degraded provider enaction smoke test pass under the pinned toolchain
 - The comprehensive CI workflow uses current Go/actions, the official Dgraph standalone service, and accurate health/status/metrics E2E checks; the final comprehensive CI and six-language CodeQL runs are green
 - Stale merge-era test surfaces remain in `examples`, `sample`, and `server`; full repository test compilation is a dedicated follow-up
 
@@ -937,7 +954,7 @@ These features work together to create a system that is more autonomous, reflect
 
 ## Iteration 13: Unified Production Autonomy Loop (2026-08-11)
 
-This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.12 security hardening, full-repository dependency remediation, a no-new-production-issues lint gate, corrected Dgraph/E2E/Docker/SARIF infrastructure, deterministic lifecycle/race regressions, and a provider-backed live simulation. The final comprehensive CI and CodeQL runs pass.
+This iteration closes the gap between repository claims and the shipped binary. The normal production command now runs the unified orchestrator, starts every constructed cognitive subsystem, uses one wake/rest authority and canonical EchoDream, forms de-duplicated goals from interests, consolidates bounded waking experiences, and reintegrates non-inflating dream wisdom. It also adds provider-outage continuity, private atomic state storage, loopback-default observability, Go 1.25.13 security hardening, full-repository dependency remediation, a no-new-production-issues lint gate, corrected Dgraph/E2E/Docker/SARIF infrastructure, deterministic lifecycle/race regressions, and a provider-backed live simulation. The final comprehensive CI and CodeQL runs pass.
 
 The [complete iteration report](docs/iterations/EVOLUTION_ITERATION_2026-08-11_UNIFIED_AUTONOMY_LOOP.md) records exact evidence and explicit remaining gaps, including local GGUF autonomy, durable dream/event memory, externally connected discussions, and resource governance.
 

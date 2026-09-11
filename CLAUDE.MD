@@ -4,7 +4,7 @@
 
 **Deep Tree Echo (echo9llama)** is an autonomous wisdom-cultivating AGI system built in Go. The project implements a sophisticated cognitive architecture featuring:
 
-- **12-step concurrent cognitive loops** (Echobeats)
+- **12-step phase-locked logical cognitive loops** on a sequential runtime cadence (Echobeats)
 - **Stream-of-consciousness awareness** with autonomous thought generation
 - **Dream-based knowledge consolidation** (EchoDream)
 - **Seven-dimensional wisdom cultivation**
@@ -12,15 +12,15 @@
 - **Multi-provider LLM integration** (Anthropic, OpenRouter, OpenAI)
 - **Live2D Avatar integration** for emotional/cognitive state visualization
 
-## Current Iteration: 020
+## Current Iteration: E1 (11 September 2026)
 
-**Status**: Foundational Repair & Avatar Enhancement Phase
+**Status**: Replay-safe, outcome-grounded bounded enaction
 
 **Key Focus Areas**:
-- Complete core compilation fixes
-- Integrate Live2D Cubism SDK for avatar animations
-- Enhance autonomous consciousness capabilities
-- Strengthen Echobeats integration
+- Maintain the append-only cognitive event protocol
+- Preserve observe-only authority unless local-sandbox mode is explicitly selected
+- Advance goals and skills only from observed evaluator evidence
+- Feed successes, denials, and failures into EchoDream with source provenance
 
 ## Quick Start
 
@@ -161,7 +161,7 @@ The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cere
 
 ## 12-Step Cognitive Loop (Echobeats)
 
-The cognitive loop runs 3 concurrent inference engines phased 120° apart:
+The cognitive loop models 3 logical inference engines phased 120° apart. The current runtime advances them on one sequential cadence; true concurrent execution is a future change that requires deterministic joins and cancellation tests.
 
 ```
 Engine 1 (Perception-Action):     Steps {1, 4, 7, 10}
@@ -343,7 +343,7 @@ go test ./core/live2d/...
 
 ## State Persistence
 
-State is persisted to JSON files in `data/state/`:
+Aggregate compatibility state is persisted to owner-only JSON snapshots. E1 action history is authoritative in the append-only SQLite cognitive-event ledger beneath `ECHO_STATE_DIRECTORY`.
 
 | File | Contents |
 |------|----------|
@@ -351,25 +351,24 @@ State is persisted to JSON files in `data/state/`:
 | `deep_tree_echo_state_v5.json` | Complete system state |
 | `echo_reflections.json` | Stored reflections |
 | `memory.json` | Memory snapshots |
+| `cognitive_events.db` | Immutable E1 context, plan, policy, action, observation, evaluation, goal, skill, error, and dream evidence |
 
-## Known Issues & Repairs Needed (Iteration 020)
+The production enaction mode defaults to `observe`. `local-sandbox` must be selected explicitly and authorizes only a confined create-only `briefs/*.md` tool. Model output and moral review are advisory; deterministic policy and observed evaluator evidence remain authoritative.
+
+## Known Issues and Next Repairs
 
 ### Critical Fixes Required
 
-1. **Core/Autonomous Package**
-   - `SetThoughtCallback` method missing from `EchoBeatsThreePhase`
-   - `CognitiveEventBus` constructor needs context parameter
-   - Event creation functions need proper implementation
+1. **Legacy full-suite compilation**
+   - `sample/samplers_test.go` contains a syntax error.
+   - `examples` contains duplicate `main` declarations and stale imports.
+   - `server` tests refer to removed or renamed symbols.
+   - `orchestration.TestEvolutionTimelineProgression` has a stage-expectation mismatch.
 
-2. **Runner/OllamaRunner Issues**
-   - `sampler.Sample` API changes
-   - Options type mismatches
-   - Grammar field missing from `llm.CompletionRequest`
-
-3. **Server Integration Issues**
-   - `ggml` function calls need updating
-   - Format field type mismatches
-   - `discover.GetGPUInfo` undefined
+2. **E2 retrieval and factual evaluation**
+   - Add one read-only source retrieval capability with provenance and network policy.
+   - Add citation capture and deterministic claim-to-source evaluation.
+   - Preserve the E1 no-send and append-only authority boundaries.
 
 ### Architecture Enhancements Planned
 
@@ -384,9 +383,9 @@ State is persisted to JSON files in `data/state/`:
    - Add self-directed exploration of topics
 
 3. **Echobeats Integration**
-   - Implement proper 3-stream synchronization with 120° phase offset
-   - Connect to global telemetry shell for unified perception
-   - Add goal-directed scheduling capabilities
+	- Implement proper 3-stream synchronization with 120° phase offset
+	- Connect to global telemetry shell for unified perception
+	- Preserve the verified affordance callback and quiescent rest contract
 
 ## Ultimate Vision
 

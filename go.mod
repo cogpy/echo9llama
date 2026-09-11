@@ -3,7 +3,7 @@ module github.com/cogpy/echo9llama
 // Deep Tree Echo - Go 1.25 language baseline; secure toolchain pinned below
 go 1.25.0
 
-toolchain go1.25.12
+toolchain go1.25.13
 
 require (
 	github.com/containerd/console v1.0.3
@@ -14,7 +14,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.11.1
 	github.com/x448/float16 v0.8.4
-	golang.org/x/sync v0.21.0
+	golang.org/x/sync v0.22.0
 )
 
 require (
@@ -29,8 +29,8 @@ require (
 	// github.com/pdevine/tensor v0.0.0-20240510204454-f88f4562727c
 	github.com/supabase-community/postgrest-go v0.0.11
 	github.com/supabase-community/supabase-go v0.0.4
-	golang.org/x/image v0.43.0
-	golang.org/x/tools v0.45.0
+	golang.org/x/image v0.45.0
+	golang.org/x/tools v0.48.0
 	gonum.org/v1/gonum v0.17.0
 )
 
@@ -95,12 +95,12 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/crypto v0.52.0
+	golang.org/x/crypto v0.54.0
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/net v0.54.0 // indirect
-	golang.org/x/sys v0.45.0
-	golang.org/x/term v0.43.0
-	golang.org/x/text v0.38.0
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sys v0.47.0
+	golang.org/x/term v0.45.0
+	golang.org/x/text v0.41.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

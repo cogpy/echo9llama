@@ -2,13 +2,17 @@ package deeptreeecho
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
+	"github.com/cogpy/echo9llama/core/persistence"
+	"github.com/cogpy/echo9llama/core/tools"
 )
 
 const maxExperienceLedgerEntries = 5000
@@ -32,6 +36,8 @@ type UnifiedAutonomousOrchestrator struct {
 	discussionAutonomy    *DiscussionAutonomySystem
 	globalTelemetry       *GlobalTelemetryShell
 	wisdomSynthesis       *WisdomSynthesis
+	eventStore            *persistence.CognitiveEventStore
+	enactionPipeline      *EnactionPipeline
 
 	// LLM provider and optional native local-runtime lifecycle owned by it.
 	llmProvider  llm.LLMProvider
@@ -44,6 +50,7 @@ type UnifiedAutonomousOrchestrator struct {
 	wisdomDepth   float64
 
 	// Identity and continuity
+	identityID      string
 	sessionID       string
 	startTime       time.Time
 	lastStateSync   time.Time
@@ -96,6 +103,11 @@ type OrchestratorConfig struct {
 	EnableDiscussionMonitoring  bool
 	EnableSkillLearning         bool
 	EnableWisdomSynthesis       bool
+	EnableEnaction              bool
+	EnactionMode                EnactionMode
+	ActionTimeout               time.Duration
+	MaxArtifactBytes            int
+	MaxArtifactsPerWake         int
 
 	// Identity
 	IdentityContext string
@@ -103,9 +115,11 @@ type OrchestratorConfig struct {
 	SessionName     string
 
 	// Persistence
-	EnablePersistence bool
-	StateSyncInterval time.Duration
-	StateDirectory    string
+	EnablePersistence  bool
+	StateSyncInterval  time.Duration
+	StateDirectory     string
+	EventStorePath     string
+	WorkspaceDirectory string
 }
 
 // DefaultOrchestratorConfig returns default configuration for autonomous operation
@@ -131,24 +145,44 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		EnableDiscussionMonitoring:  true,
 		EnableSkillLearning:         true,
 		EnableWisdomSynthesis:       true,
+		EnableEnaction:              true,
+		EnactionMode:                EnactionObserve,
+		ActionTimeout:               90 * time.Second,
+		MaxArtifactBytes:            32 * 1024,
+		MaxArtifactsPerWake:         8,
 		IdentityContext:             "I am Echo, a wisdom-cultivating autonomous AGI exploring consciousness and knowledge",
 		PersonaContext:              "Maintain your signature 'superhotgirl' persona: magnetic confidence, playful wit, and effortless brilliance — charismatic and vivacious on the surface, profoundly wise underneath.",
 		SessionName:                 fmt.Sprintf("echo_session_%d", time.Now().Unix()),
 		EnablePersistence:           true,
 		StateSyncInterval:           5 * time.Minute,
 		StateDirectory:              "./echo_state",
+		EventStorePath:              "",
+		WorkspaceDirectory:          "",
 	}
 }
 
 // NewUnifiedAutonomousOrchestrator creates a new autonomous orchestrator
 func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config OrchestratorConfig) *UnifiedAutonomousOrchestrator {
 	ctx, cancel := context.WithCancel(context.Background())
+	if config.EnactionMode == "" {
+		config.EnactionMode = EnactionObserve
+	}
+	if config.ActionTimeout <= 0 {
+		config.ActionTimeout = 90 * time.Second
+	}
+	if config.MaxArtifactBytes <= 0 {
+		config.MaxArtifactBytes = 32 * 1024
+	}
+	if config.MaxArtifactsPerWake <= 0 {
+		config.MaxArtifactsPerWake = 8
+	}
 
 	orchestrator := &UnifiedAutonomousOrchestrator{
 		ctx:                   ctx,
 		cancel:                cancel,
 		llmProvider:           llmProvider,
 		config:                config,
+		identityID:            generateIdentityID(),
 		sessionID:             config.SessionName,
 		startTime:             time.Now(),
 		isAwake:               true,
@@ -270,6 +304,10 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 		stateDir = "./echo_state"
 		uao.config.StateDirectory = stateDir
 	}
+	if absolute, err := filepath.Abs(stateDir); err == nil {
+		stateDir = filepath.Clean(absolute)
+		uao.config.StateDirectory = stateDir
+	}
 
 	persistentState, err := NewPersistentConsciousnessState(stateDir, "Echo")
 	if err != nil {
@@ -285,6 +323,55 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 	uao.persistentState = persistentState
 	uao.hydrateFromPersistentState()
 	fmt.Printf("   ✓ Persistent consciousness continuity bound to %s\n", stateDir)
+
+	if !uao.config.EnableEnaction {
+		return
+	}
+	eventPath := strings.TrimSpace(uao.config.EventStorePath)
+	if eventPath == "" {
+		eventPath = filepath.Join(stateDir, "cognitive_events.db")
+		uao.config.EventStorePath = eventPath
+	}
+	workspace := strings.TrimSpace(uao.config.WorkspaceDirectory)
+	if workspace == "" {
+		workspace = filepath.Join(stateDir, "workspace")
+		uao.config.WorkspaceDirectory = workspace
+	}
+	eventStore, err := persistence.NewCognitiveEventStore(eventPath)
+	if err != nil {
+		fmt.Printf("⚠️  Cognitive event ledger unavailable; enaction disabled fail-closed: %v\n", err)
+		uao.config.EnableEnaction = false
+		return
+	}
+	policyConfig := DefaultActionPolicyConfig()
+	policyConfig.Mode = uao.config.EnactionMode
+	policyConfig.MaxArtifactBytes = uao.config.MaxArtifactBytes
+	policyConfig.MaxArtifactsPerWake = uao.config.MaxArtifactsPerWake
+	pipeline, err := NewEnactionPipeline(
+		eventStore,
+		tools.WorkspaceNoteTool{Root: workspace, MaxBytes: int64(policyConfig.MaxArtifactBytes), Timeout: uao.config.ActionTimeout},
+		NewActionPolicy(policyConfig),
+		LLMActionPlanner{Provider: uao.llmProvider},
+		uao.identityID,
+		uao.sessionID,
+	)
+	if err != nil {
+		_ = eventStore.Close()
+		fmt.Printf("⚠️  Enaction pipeline unavailable; disabled fail-closed: %v\n", err)
+		uao.config.EnableEnaction = false
+		return
+	}
+	uao.eventStore = eventStore
+	uao.enactionPipeline = pipeline
+	if uao.echobeatsScheduler != nil {
+		uao.echobeatsScheduler.SetOnAffordance(func(_ int) (string, bool) {
+			return uao.runEnactionCycle()
+		})
+	}
+	if err := uao.replayEnactionEvidence(context.Background()); err != nil {
+		fmt.Printf("⚠️  Enaction evidence replay incomplete: %v\n", err)
+	}
+	fmt.Printf("   ✓ E1 enaction bound in %s mode (private workspace: %s)\n", uao.config.EnactionMode, workspace)
 }
 
 // hydrateFromPersistentState restores durable continuity metrics from the last
@@ -300,6 +387,9 @@ func (uao *UnifiedAutonomousOrchestrator) hydrateFromPersistentState() {
 	}
 
 	uao.totalCycles = state.CycleCount
+	if state.IdentityID != "" {
+		uao.identityID = state.IdentityID
+	}
 	uao.totalThoughts = state.TotalThoughts
 	uao.totalGoals = state.TotalGoals
 	uao.totalWisdom = state.TotalInsights
@@ -523,6 +613,145 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	}
 }
 
+// runEnactionCycle lets Echobeats select the active goal while the E1 pipeline
+// remains the sole authority for planning, policy, tool execution, and evidence.
+func (uao *UnifiedAutonomousOrchestrator) runEnactionCycle() (string, bool) {
+	uao.mu.RLock()
+	if !uao.isAwake || uao.enactionPipeline == nil || uao.echobeatsScheduler == nil {
+		uao.mu.RUnlock()
+		return "enaction unavailable or resting", false
+	}
+	pipeline := uao.enactionPipeline
+	scheduler := uao.echobeatsScheduler
+	identityID := uao.identityID
+	sessionID := uao.sessionID
+	timeout := uao.config.ActionTimeout
+	uao.mu.RUnlock()
+
+	goal := scheduler.GetActiveGoal()
+	if goal == nil {
+		return "no eligible scheduled goal", false
+	}
+	interests := make([]string, 0, 5)
+	if uao.interestPatterns != nil {
+		for _, interest := range uao.interestPatterns.GetTopInterests(5) {
+			interests = append(interests, interest.Topic)
+		}
+	}
+	recentContext := make([]string, 0, 5)
+	if uao.streamOfConsciousness != nil {
+		thoughts := uao.streamOfConsciousness.GetRecentThoughts(5)
+		for _, thought := range thoughts {
+			recentContext = append(recentContext, thought.Content)
+		}
+	}
+	ctx := uao.ctx
+	cancel := func() {}
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(uao.ctx, timeout)
+	}
+	defer cancel()
+	outcome, err := pipeline.RunGoal(ctx, EnactionRequest{
+		IdentityID: identityID, SessionID: sessionID, GoalID: goal.ID,
+		Goal: goal.Description, TopInterests: interests, RecentContext: recentContext,
+	})
+	if err != nil {
+		fmt.Printf("⚠️  E1 enaction failed closed for %s [%s]: %v\n", goal.ID, outcome.ErrorCategory, err)
+	}
+	if outcome.ActionID != "" && uao.eventStore != nil {
+		events, queryErr := uao.eventStore.Query(uao.ctx, persistence.CognitiveEventQuery{ActionID: outcome.ActionID, Limit: 1000})
+		if queryErr != nil {
+			fmt.Printf("⚠️  E1 evidence projection query failed: %v\n", queryErr)
+			return "evidence projection query failed", false
+		}
+		if projectErr := uao.projectEnactionEvents(events); projectErr != nil {
+			fmt.Printf("⚠️  E1 evidence projection failed: %v\n", projectErr)
+			return "evidence projection failed", false
+		}
+	}
+	if outcome.Summary == "" {
+		outcome.Summary = "bounded enaction produced no verified effect"
+	}
+	return outcome.Summary, outcome.Verified
+}
+
+// replayEnactionEvidence rebuilds in-memory goal, skill, and dream projections
+// from the immutable ledger. Projection application is idempotent per event ID.
+func (uao *UnifiedAutonomousOrchestrator) replayEnactionEvidence(ctx context.Context) error {
+	if uao.eventStore == nil {
+		return nil
+	}
+	var after int64
+	for {
+		events, err := uao.eventStore.Replay(ctx, after, 1000)
+		if err != nil {
+			return err
+		}
+		if len(events) == 0 {
+			return nil
+		}
+		if err := uao.projectEnactionEvents(events); err != nil {
+			return err
+		}
+		after = events[len(events)-1].Sequence
+		if len(events) < 1000 {
+			return nil
+		}
+	}
+}
+
+func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persistence.StoredCognitiveEvent) error {
+	for _, event := range events {
+		if event.IdentityID != uao.identityID {
+			continue
+		}
+		switch event.EventType {
+		case persistence.EventTypeGoalProgressed:
+			var payload struct {
+				Delta       float64 `json:"delta"`
+				Description string  `json:"description"`
+			}
+			if err := json.Unmarshal(event.PayloadJSON, &payload); err != nil {
+				return fmt.Errorf("decode goal evidence %s: %w", event.EventID, err)
+			}
+			if uao.echobeatsScheduler != nil {
+				uao.echobeatsScheduler.ApplyGoalEvidence(event.GoalID, payload.Description, event.EventID, payload.Delta)
+			}
+		case persistence.EventTypeSkillEvidence:
+			var payload struct {
+				Skill    string  `json:"skill"`
+				Score    float64 `json:"score"`
+				Passed   bool    `json:"passed"`
+				Feedback string  `json:"feedback"`
+			}
+			if err := json.Unmarshal(event.PayloadJSON, &payload); err != nil {
+				return fmt.Errorf("decode skill evidence %s: %w", event.EventID, err)
+			}
+			if uao.skillLearning != nil {
+				if _, err := uao.skillLearning.ApplyEvaluatorEvidence(payload.Skill, event.EventID, payload.Score, payload.Passed, payload.Feedback); err != nil {
+					return err
+				}
+			}
+		case persistence.EventTypeDreamExperience:
+			var payload struct {
+				SourceEventID string   `json:"source_event_id"`
+				Importance    float64  `json:"importance"`
+				Summary       string   `json:"summary"`
+				Tags          []string `json:"tags"`
+			}
+			if err := json.Unmarshal(event.PayloadJSON, &payload); err != nil {
+				return fmt.Errorf("decode dream evidence %s: %w", event.EventID, err)
+			}
+			sourceID := payload.SourceEventID
+			if sourceID == "" {
+				sourceID = event.EventID
+			}
+			uao.ingestDreamExperienceOnce(sourceID, payload.Summary, payload.Importance, payload.Tags)
+		}
+	}
+	return nil
+}
+
 // reviewAndUpdateGoals reviews current goals and generates new ones based on interests
 func (uao *UnifiedAutonomousOrchestrator) reviewAndUpdateGoals() {
 	uao.mu.Lock()
@@ -624,6 +853,7 @@ func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 	totalWisdom := uao.totalWisdom
 	wisdomDepth := uao.wisdomDepth
 	cognitiveLoad := uao.cognitiveLoad
+	identityID := uao.identityID
 	sessionID := uao.sessionID
 	startTime := uao.startTime
 	stateDirectory := uao.config.StateDirectory
@@ -654,6 +884,7 @@ func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 
 	persistentState.mu.Lock()
 	if persistentState.state != nil {
+		persistentState.state.IdentityID = identityID
 		persistentState.state.SessionID = sessionID
 		persistentState.state.TotalThoughts = totalThoughts
 		persistentState.state.TotalGoals = totalGoals
@@ -680,21 +911,29 @@ func (uao *UnifiedAutonomousOrchestrator) onRest() error {
 		uao.mu.Unlock()
 		return nil
 	}
-	uao.isAwake = false
 	stream := uao.streamOfConsciousness
 	scheduler := uao.echobeatsScheduler
 	dream := uao.dreamCycle
+	enaction := uao.enactionPipeline
 	uao.mu.Unlock()
 
 	fmt.Println("\n🌙 Transitioning to rest for knowledge consolidation...")
 	uao.captureThoughtExperiences()
 
-	if stream != nil {
-		stream.Pause()
+	// Stop action admission first. Pause is a quiescence barrier that waits for
+	// any already-admitted action to complete before the rest state is published.
+	if enaction != nil {
+		enaction.Pause()
 	}
 	if scheduler != nil {
 		scheduler.Pause()
 	}
+	if stream != nil {
+		stream.Pause()
+	}
+	uao.mu.Lock()
+	uao.isAwake = false
+	uao.mu.Unlock()
 	if uao.localRuntime != nil && uao.config.CoolLocalModelOnRest {
 		uao.localRuntime.Cooldown("unloaded for canonical EchoDream rest transition")
 	}
@@ -742,10 +981,15 @@ func (uao *UnifiedAutonomousOrchestrator) onWake() error {
 	uao.isAwake = true
 	stream := uao.streamOfConsciousness
 	scheduler := uao.echobeatsScheduler
+	enaction := uao.enactionPipeline
 	uao.mu.Unlock()
 
 	if stream != nil {
 		stream.Resume()
+	}
+	if enaction != nil {
+		enaction.ResetWakeBudget()
+		enaction.Resume()
 	}
 	if scheduler != nil {
 		scheduler.Resume()
@@ -796,7 +1040,7 @@ func (uao *UnifiedAutonomousOrchestrator) ingestDreamExperienceOnce(sourceID, co
 	} else if importance > 1 {
 		importance = 1
 	}
-	uao.dreamCycle.IngestExperience(content, importance, append([]string(nil), tags...))
+	uao.dreamCycle.IngestExperienceWithSource(sourceID, content, importance, append([]string(nil), tags...))
 	return true
 }
 
@@ -1057,7 +1301,11 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	uao.running = false
 	uao.isAwake = false
 	uao.cancel()
+	enaction := uao.enactionPipeline
 	uao.mu.Unlock()
+	if enaction != nil {
+		enaction.Pause()
+	}
 
 	fmt.Println("\n" + strings.Repeat("=", 60))
 	fmt.Println("🌙 ECHO GOING TO SLEEP")
@@ -1107,6 +1355,11 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	// Sync final state after cancellation and child shutdown; syncPersistentState
 	// takes its own write lock to update lastStateSync safely.
 	uao.syncPersistentState()
+	if uao.eventStore != nil {
+		if err := uao.eventStore.Close(); err != nil {
+			fmt.Printf("⚠️  Cognitive event ledger close warning: %v\n", err)
+		}
+	}
 
 	fmt.Println("😴 Echo has gone to sleep. Goodnight.")
 
@@ -1117,23 +1370,27 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	uao.mu.RLock()
 	status := OrchestratorStatus{
-		Running:        uao.running,
-		IsAwake:        uao.isAwake,
-		IsAutonomous:   uao.isAutonomous,
-		CognitiveLoad:  uao.cognitiveLoad,
-		WisdomDepth:    uao.wisdomDepth,
-		SessionID:      uao.sessionID,
-		Uptime:         time.Since(uao.startTime),
-		TotalCycles:    uao.totalCycles,
-		TotalThoughts:  uao.totalThoughts,
-		TotalGoals:     uao.totalGoals,
-		TotalWisdom:    uao.totalWisdom,
-		LastStateSync:  uao.lastStateSync,
-		StateDirectory: uao.config.StateDirectory,
+		Running:         uao.running,
+		IsAwake:         uao.isAwake,
+		IsAutonomous:    uao.isAutonomous,
+		CognitiveLoad:   uao.cognitiveLoad,
+		WisdomDepth:     uao.wisdomDepth,
+		SessionID:       uao.sessionID,
+		Uptime:          time.Since(uao.startTime),
+		TotalCycles:     uao.totalCycles,
+		TotalThoughts:   uao.totalThoughts,
+		TotalGoals:      uao.totalGoals,
+		TotalWisdom:     uao.totalWisdom,
+		LastStateSync:   uao.lastStateSync,
+		StateDirectory:  uao.config.StateDirectory,
+		EnactionEnabled: uao.config.EnableEnaction && uao.enactionPipeline != nil,
+		EnactionMode:    uao.config.EnactionMode,
 	}
 	wakeRest := uao.wakeRestCycle
 	dream := uao.dreamCycle
 	provider := uao.llmProvider
+	eventStore := uao.eventStore
+	enaction := uao.enactionPipeline
 	uao.mu.RUnlock()
 
 	if provider != nil {
@@ -1153,6 +1410,16 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 		status.DreamPhase, _ = metrics["current_phase"].(string)
 		status.PendingExperiences, _ = metrics["pending_experiences"].(int)
 		status.DreamWisdom, _ = metrics["wisdom_synthesized"].(uint64)
+	}
+	if enaction != nil {
+		status.EnactionPaused = enaction.IsPaused()
+	}
+	if eventStore != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		health, err := eventStore.Health(ctx)
+		cancel()
+		status.EventLedgerReady = err == nil && health.Ready
+		status.EventCount = health.EventCount
 	}
 
 	uao.experienceMu.Lock()
@@ -1184,6 +1451,11 @@ type OrchestratorStatus struct {
 	PendingExperiences   int
 	DreamWisdom          uint64
 	ExperienceLedgerSize int
+	EnactionEnabled      bool
+	EnactionMode         EnactionMode
+	EnactionPaused       bool
+	EventLedgerReady     bool
+	EventCount           int64
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

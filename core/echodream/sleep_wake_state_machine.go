@@ -61,6 +61,7 @@ type DreamProcessor struct {
 // DreamExperience is a waking experience queued for dream consolidation
 type DreamExperience struct {
 	ID         string
+	SourceID   string
 	Content    string
 	Importance float64
 	Tags       []string
@@ -170,14 +171,21 @@ func NewDreamProcessor(_ context.Context) *DreamProcessor {
 // next sleep cycle. This is the entry point through which the orchestrator
 // (or any waking subsystem) hands raw experience to the dream system.
 func (dp *DreamProcessor) IngestExperience(content string, importance float64, tags []string) string {
+	return dp.IngestExperienceWithSource("", content, importance, tags)
+}
+
+// IngestExperienceWithSource preserves the immutable source-event ID so dream
+// output can be traced back to observed action, evaluation, and error evidence.
+func (dp *DreamProcessor) IngestExperienceWithSource(sourceID, content string, importance float64, tags []string) string {
 	dp.mu.Lock()
 	defer dp.mu.Unlock()
 
 	exp := DreamExperience{
 		ID:         fmt.Sprintf("exp_%d", time.Now().UnixNano()),
+		SourceID:   strings.TrimSpace(sourceID),
 		Content:    content,
 		Importance: importance,
-		Tags:       tags,
+		Tags:       append([]string(nil), tags...),
 		RecordedAt: time.Now(),
 	}
 	dp.pendingExperiences = append(dp.pendingExperiences, exp)
@@ -192,6 +200,11 @@ func (dp *DreamProcessor) IngestExperience(content string, importance float64, t
 // IngestExperienceForProcessor exposes ingestion at the state machine level
 func (sm *SleepWakeStateMachine) IngestExperience(content string, importance float64, tags []string) string {
 	return sm.dreamProcessor.IngestExperience(content, importance, tags)
+}
+
+// IngestExperienceWithSource records durable provenance at the state-machine boundary.
+func (sm *SleepWakeStateMachine) IngestExperienceWithSource(sourceID, content string, importance float64, tags []string) string {
+	return sm.dreamProcessor.IngestExperienceWithSource(sourceID, content, importance, tags)
 }
 
 // EnterSleep transitions to sleep state
@@ -339,7 +352,11 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 		exemplars := make([]string, 0, 3)
 		for i, exp := range exps {
 			totalImportance += exp.Importance
-			sources = append(sources, exp.ID)
+			sourceID := exp.SourceID
+			if sourceID == "" {
+				sourceID = exp.ID
+			}
+			sources = append(sources, sourceID)
 			if i < 3 {
 				exemplars = append(exemplars, summarizeContent(exp.Content, 100))
 			}
