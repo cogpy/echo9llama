@@ -133,6 +133,7 @@ The final focused surface contains **135 tests** across persistence, tools, Echo
 | `go vet ./core/... ./cmd/...` | Passed. |
 | `go mod tidy` followed by `go mod verify` | Passed with no module-file drift. |
 | `govulncheck ./...` | The initial scan found eight reachable issues; the iteration repinned Go to `1.25.13` and upgraded the affected `x/image` and `x/net` module line. The final scan reported **zero reachable vulnerabilities**. |
+| `golangci-lint v2.12.2 --new-from-rev=HEAD~1 ./core/... ./cmd/...` | Passed with zero issues after applying `gofumpt`, staticcheck, integer-range, and wasted-assignment corrections. |
 | `git diff --check` | Passed. |
 | Live provider smoke test using configured production credentials | Passed through Anthropic on the first non-degraded route: one allowed, executed, verified action; evaluator score `1`; eleven durable events; temporary artifact and harness removed. |
 | Observe-mode test | Passed: proposal and denial recorded, zero tool effect, one dream lesson, zero goal/skill awards. |
@@ -141,6 +142,8 @@ The final focused surface contains **135 tests** across persistence, tools, Echo
 | Orchestrator integration test | Passed: actual Echobeats callback, verified artifact, projected goal/skill evidence, same-wake idempotency, stream/scheduler/enaction quiescence, and rest publication only after every barrier returns. |
 
 The Docker/Compose definitions were parsed successfully and all default host port mappings were restricted to loopback. The Go production binary was built, but an image build was not executed because Docker is unavailable in the current sandbox.
+
+The first pushed comprehensive workflow exposed a stale CI Go `1.25.12` pin, an incompatible `govulncheck@latest` installer, and twelve new lint findings. The follow-up repair aligns all repository workflows on Go `1.25.13`, pins `govulncheck` to Go-1.25-compatible `v1.7.0`, enables CGO for pull-request race tests, and reproduces both failed jobs locally with the exact CI tool versions.
 
 ## Inherited repository failures
 

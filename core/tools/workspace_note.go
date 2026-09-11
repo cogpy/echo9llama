@@ -141,7 +141,6 @@ func (t WorkspaceNoteTool) Create(ctx context.Context, request WorkspaceNoteRequ
 	if err != nil {
 		return WorkspaceNoteObservation{}, err
 	}
-	published := false
 	defer func() {
 		// The temporary name is in the already-open private parent directory. It
 		// is safe to remove after either link success or a failed operation.
@@ -165,7 +164,6 @@ func (t WorkspaceNoteTool) Create(ctx context.Context, request WorkspaceNoteRequ
 		}
 		return WorkspaceNoteObservation{}, fmt.Errorf("link temporary workspace note: %w", err)
 	}
-	published = true
 	if err := unix.Fsync(parentFD); err != nil {
 		return WorkspaceNoteObservation{}, fmt.Errorf("fsync workspace note parent: %w", err)
 	}
@@ -182,10 +180,6 @@ func (t WorkspaceNoteTool) Create(ctx context.Context, request WorkspaceNoteRequ
 		return WorkspaceNoteObservation{}, err
 	}
 	if !bytes.Equal(readBack, payload.content) || readHash != payload.sha256 {
-		return WorkspaceNoteObservation{}, ErrReadBackMismatch
-	}
-	if !published {
-		// Kept as a defensive assertion beside the no-overwrite publication path.
 		return WorkspaceNoteObservation{}, ErrReadBackMismatch
 	}
 	return observation(payload, WorkspaceNoteCreated, true, false, false, readBack, readHash), nil
@@ -396,7 +390,7 @@ func (t WorkspaceNoteTool) openParent(ctx context.Context, rootFD int, parts []s
 }
 
 func openPrivateChildDirectory(ctx context.Context, parentFD int, name string, create bool) (int, error) {
-	for attempts := 0; attempts < 4; attempts++ {
+	for range 4 {
 		var stat unix.Stat_t
 		err := unix.Fstatat(parentFD, name, &stat, unix.AT_SYMLINK_NOFOLLOW)
 		if err != nil {
@@ -484,7 +478,7 @@ func inspectTarget(parentFD int, name string) (bool, error) {
 }
 
 func writeTemporary(ctx context.Context, parentFD int, content []byte) (string, error) {
-	for attempts := 0; attempts < 16; attempts++ {
+	for range 16 {
 		if err := checkContext(ctx); err != nil {
 			return "", err
 		}

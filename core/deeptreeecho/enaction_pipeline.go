@@ -234,7 +234,7 @@ func (pipeline *EnactionPipeline) RunGoal(ctx context.Context, request EnactionR
 	}
 
 	var observation ActionObservation
-	recovered := false
+	var recovered bool
 	if stored, completed := indexed[persistence.EventTypeActionCompleted]; completed {
 		if err := json.Unmarshal(stored.PayloadJSON, &observation); err != nil {
 			pipeline.policy.RecordOutcome(false, "persisted completion evidence could not be decoded")

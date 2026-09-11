@@ -702,7 +702,7 @@ func scanStoredCognitiveEvent(row rowScanner) (StoredCognitiveEvent, error) {
 	stored.OccurredAt = occurred
 	stored.PayloadJSON = []byte(payload)
 	stored.Degraded = degraded != 0
-	if err := stored.CognitiveEvent.Validate(); err != nil {
+	if err := stored.Validate(); err != nil {
 		return StoredCognitiveEvent{}, fmt.Errorf("stored cognitive event validation failed: %w", err)
 	}
 	return stored, nil

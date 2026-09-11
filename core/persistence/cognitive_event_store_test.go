@@ -240,7 +240,7 @@ func TestCognitiveEventStoreConcurrentAppend(t *testing.T) {
 	const writers = 24
 	var group sync.WaitGroup
 	errs := make(chan error, writers)
-	for i := 0; i < writers; i++ {
+	for i := range writers {
 		group.Add(1)
 		go func(i int) {
 			defer group.Done()

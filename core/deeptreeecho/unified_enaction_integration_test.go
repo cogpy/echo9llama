@@ -22,6 +22,7 @@ func (provider *routedEnactionProvider) Generate(_ context.Context, _ string, _ 
 	provider.calls++
 	return provider.response, nil
 }
+
 func (provider *routedEnactionProvider) StreamGenerate(context.Context, string, llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
 	stream := make(chan llm.StreamChunk)
 	close(stream)

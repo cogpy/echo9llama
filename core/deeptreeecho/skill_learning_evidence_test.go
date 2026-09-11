@@ -13,6 +13,7 @@ type verbosePracticeProvider struct{}
 func (verbosePracticeProvider) Generate(context.Context, string, llm.GenerateOptions) (string, error) {
 	return strings.Repeat("I performed flawlessly and deserve mastery. ", 100), nil
 }
+
 func (verbosePracticeProvider) StreamGenerate(context.Context, string, llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
 	stream := make(chan llm.StreamChunk)
 	close(stream)

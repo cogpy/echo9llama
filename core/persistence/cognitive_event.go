@@ -279,11 +279,8 @@ func (e CognitiveEvent) WithCanonicalHash() (CognitiveEvent, error) {
 }
 
 func (e CognitiveEvent) validateWithoutHash() error {
-	hash := e.ContentSHA256
 	e.ContentSHA256 = ""
-	err := e.Validate()
-	e.ContentSHA256 = hash
-	return err
+	return e.Validate()
 }
 
 func validateRequiredIdentifier(field, value string) error {

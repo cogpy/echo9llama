@@ -335,7 +335,6 @@ func (s *SQLiteStore) SaveThought(thought *ThoughtRecord) error {
 		thought.Interests,
 		thought.Importance,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to save thought: %w", err)
 	}
@@ -412,7 +411,6 @@ func (s *SQLiteStore) SaveMemory(memory *MemoryRecord) error {
 		memory.Strength,
 		memory.Associations,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to save memory: %w", err)
 	}
@@ -546,7 +544,6 @@ func (s *SQLiteStore) SaveGoal(goal *GoalRecord) error {
 		goal.Status,
 		goal.Metadata,
 	)
-
 	if err != nil {
 		return fmt.Errorf("failed to save goal: %w", err)
 	}

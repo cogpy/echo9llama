@@ -1,9 +1,12 @@
 package echodream
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
 
 func TestDreamExperiencePreservesSourceEvent(t *testing.T) {
-	processor := NewDreamProcessor(nil)
+	processor := NewDreamProcessor(context.Background())
 	processor.IngestExperienceWithSource(
 		"evaluation.recorded:event-42",
 		"A verified local artifact matched its declared hash.",

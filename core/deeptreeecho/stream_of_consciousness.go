@@ -585,11 +585,11 @@ func (soc *StreamOfConsciousness) GetMetrics() map[string]interface{} {
 // Pause is a quiescence barrier: when it returns, no thought generation or
 // provider call remains in flight and no new generation can be admitted.
 func (soc *StreamOfConsciousness) Pause() {
+	soc.generationMu.Lock()
+	defer soc.generationMu.Unlock()
 	soc.mu.Lock()
 	soc.awake = false
 	soc.mu.Unlock()
-	soc.generationMu.Lock()
-	soc.generationMu.Unlock()
 }
 
 // Resume resumes thought generation
