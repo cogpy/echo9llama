@@ -3,12 +3,14 @@ package deeptreeecho
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/cognitivecore"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/cogpy/echo9llama/core/persistence"
@@ -16,6 +18,8 @@ import (
 )
 
 const maxExperienceLedgerEntries = 5000
+
+var ErrOrchestratorTerminated = errors.New("orchestrator completed final shutdown; construct a new instance")
 
 // UnifiedAutonomousOrchestrator is the top-level autonomous agent that
 // self-initiates and coordinates all cognitive subsystems for fully autonomous operation.
@@ -36,6 +40,8 @@ type UnifiedAutonomousOrchestrator struct {
 	discussionAutonomy    *DiscussionAutonomySystem
 	globalTelemetry       *GlobalTelemetryShell
 	wisdomSynthesis       *WisdomSynthesis
+	cognitiveCore         *cognitivecore.Bridge
+	cognitiveCoreInitErr  error
 	eventStore            *persistence.CognitiveEventStore
 	enactionPipeline      *EnactionPipeline
 
@@ -44,10 +50,11 @@ type UnifiedAutonomousOrchestrator struct {
 	localRuntime llm.LocalRuntimeController
 
 	// Autonomous state
-	isAwake       bool
-	isAutonomous  bool
-	cognitiveLoad float64
-	wisdomDepth   float64
+	isAwake                      bool
+	isAutonomous                 bool
+	cognitiveLoad                float64
+	wisdomDepth                  float64
+	lastCognitiveCoreObservation time.Time
 
 	// Identity and continuity
 	identityID      string
@@ -59,9 +66,12 @@ type UnifiedAutonomousOrchestrator struct {
 	// Bounded idempotency ledger for experiences handed to EchoDream. A
 	// dedicated mutex avoids lock inversion when asynchronous skill outcomes
 	// arrive while the orchestration loop holds uao.mu.
-	experienceMu          sync.Mutex
-	ingestedExperienceIDs map[string]struct{}
-	experienceOrder       []string
+	experienceMu              sync.Mutex
+	ingestedExperienceIDs     map[string]struct{}
+	experienceOrder           []string
+	replayMu                  sync.Mutex
+	cognitiveEvidenceReplayed bool
+	cognitiveReplaySequence   int64
 
 	// Metrics
 	totalCycles   uint64
@@ -74,6 +84,7 @@ type UnifiedAutonomousOrchestrator struct {
 
 	// Running state
 	running           bool
+	terminated        bool
 	orchestrationLoop chan struct{}
 }
 
@@ -84,6 +95,7 @@ type OrchestratorConfig struct {
 	ThoughtInterval         time.Duration
 	GoalReviewInterval      time.Duration
 	WisdomSynthesisInterval time.Duration
+	CognitiveCoreInterval   time.Duration
 
 	// Wake/rest configuration
 	WakeDuration            time.Duration
@@ -103,6 +115,7 @@ type OrchestratorConfig struct {
 	EnableDiscussionMonitoring  bool
 	EnableSkillLearning         bool
 	EnableWisdomSynthesis       bool
+	EnableCognitiveCore         bool
 	EnableEnaction              bool
 	EnactionMode                EnactionMode
 	ActionTimeout               time.Duration
@@ -129,6 +142,7 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		ThoughtInterval:         10 * time.Second,
 		GoalReviewInterval:      1 * time.Minute,
 		WisdomSynthesisInterval: 10 * time.Minute,
+		CognitiveCoreInterval:   1 * time.Minute,
 		WakeDuration:            4 * time.Hour,
 		RestDuration:            30 * time.Minute,
 		DreamLightDuration:      2 * time.Minute,
@@ -145,6 +159,7 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		EnableDiscussionMonitoring:  true,
 		EnableSkillLearning:         true,
 		EnableWisdomSynthesis:       true,
+		EnableCognitiveCore:         true,
 		EnableEnaction:              true,
 		EnactionMode:                EnactionObserve,
 		ActionTimeout:               90 * time.Second,
@@ -176,6 +191,9 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 	if config.MaxArtifactsPerWake <= 0 {
 		config.MaxArtifactsPerWake = 8
 	}
+	if config.CognitiveCoreInterval <= 0 {
+		config.CognitiveCoreInterval = time.Minute
+	}
 
 	orchestrator := &UnifiedAutonomousOrchestrator{
 		ctx:                   ctx,
@@ -201,6 +219,7 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 
 	// Initialize cognitive subsystems
 	orchestrator.initializeSubsystems()
+	orchestrator.initializeCognitiveCore()
 	orchestrator.initializePersistence()
 
 	return orchestrator
@@ -324,9 +343,6 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 	uao.hydrateFromPersistentState()
 	fmt.Printf("   ✓ Persistent consciousness continuity bound to %s\n", stateDir)
 
-	if !uao.config.EnableEnaction {
-		return
-	}
 	eventPath := strings.TrimSpace(uao.config.EventStorePath)
 	if eventPath == "" {
 		eventPath = filepath.Join(stateDir, "cognitive_events.db")
@@ -339,8 +355,16 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 	}
 	eventStore, err := persistence.NewCognitiveEventStore(eventPath)
 	if err != nil {
-		fmt.Printf("⚠️  Cognitive event ledger unavailable; enaction disabled fail-closed: %v\n", err)
+		fmt.Printf("⚠️  Cognitive event ledger unavailable; durable cognitive evidence and enaction disabled fail-closed: %v\n", err)
 		uao.config.EnableEnaction = false
+		return
+	}
+	uao.eventStore = eventStore
+	if err := uao.replayCognitiveEvidence(context.Background()); err != nil {
+		fmt.Printf("⚠️  Cognitive evidence replay incomplete: %v\n", err)
+	}
+	if !uao.config.EnableEnaction {
+		fmt.Printf("   ✓ Cognitive event ledger ready at %s (enaction disabled)\n", eventPath)
 		return
 	}
 	policyConfig := DefaultActionPolicyConfig()
@@ -356,20 +380,15 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 		uao.sessionID,
 	)
 	if err != nil {
-		_ = eventStore.Close()
 		fmt.Printf("⚠️  Enaction pipeline unavailable; disabled fail-closed: %v\n", err)
 		uao.config.EnableEnaction = false
 		return
 	}
-	uao.eventStore = eventStore
 	uao.enactionPipeline = pipeline
 	if uao.echobeatsScheduler != nil {
 		uao.echobeatsScheduler.SetOnAffordance(func(_ int) (string, bool) {
 			return uao.runEnactionCycle()
 		})
-	}
-	if err := uao.replayEnactionEvidence(context.Background()); err != nil {
-		fmt.Printf("⚠️  Enaction evidence replay incomplete: %v\n", err)
 	}
 	fmt.Printf("   ✓ E1 enaction bound in %s mode (private workspace: %s)\n", uao.config.EnactionMode, workspace)
 }
@@ -431,6 +450,10 @@ func (uao *UnifiedAutonomousOrchestrator) maintainLocalRuntime() {
 // Awaken starts the autonomous orchestrator and all subsystems
 func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	uao.mu.Lock()
+	if uao.terminated {
+		uao.mu.Unlock()
+		return ErrOrchestratorTerminated
+	}
 	if uao.running {
 		uao.mu.Unlock()
 		return fmt.Errorf("already running")
@@ -446,6 +469,13 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	fmt.Printf("Time: %s\n", time.Now().Format(time.RFC3339))
 	fmt.Printf("Identity: %s\n", uao.config.IdentityContext)
 	fmt.Println(strings.Repeat("=", 60) + "\n")
+	if uao.config.EnableCognitiveCore && uao.cognitiveCoreInitErr != nil {
+		uao.mu.Lock()
+		uao.running = false
+		uao.isAwake = false
+		uao.mu.Unlock()
+		return fmt.Errorf("configured ecco9 cognitive core is unavailable: %w", uao.cognitiveCoreInitErr)
+	}
 
 	if err := uao.warmLocalModel("wake warmup"); err != nil {
 		fmt.Printf("⚠️  Native model warmup unavailable; continuing through routed providers: %v\n", err)
@@ -454,7 +484,7 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	// Start every constructed subsystem in dependency order. If any component
 	// fails, unwind already-started components so the production process cannot
 	// report a half-awake autonomous state.
-	cleanups := make([]func(), 0, 8)
+	cleanups := make([]func(), 0, 9)
 	startSubsystem := func(name string, start func() error, stop func() error) error {
 		if err := start(); err != nil {
 			for i := len(cleanups) - 1; i >= 0; i-- {
@@ -470,6 +500,24 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 		return nil
 	}
 
+	if uao.cognitiveCore != nil {
+		if err := startSubsystem(
+			"ecco9 cognitive core",
+			func() error {
+				if err := uao.cognitiveCore.Start(uao.ctx); err != nil {
+					return err
+				}
+				if err := uao.rehydrateCognitiveCore(uao.ctx); err != nil {
+					_ = uao.cognitiveCore.Stop(context.Background())
+					return err
+				}
+				return nil
+			},
+			func() error { return uao.cognitiveCore.Stop(context.Background()) },
+		); err != nil {
+			return err
+		}
+	}
 	if uao.interestPatterns != nil {
 		if err := startSubsystem("interest patterns", uao.interestPatterns.Start, uao.interestPatterns.Stop); err != nil {
 			return err
@@ -577,6 +625,7 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	}
 
 	uao.totalCycles++
+	cycle := uao.totalCycles
 
 	if uao.streamOfConsciousness != nil {
 		if metrics := uao.streamOfConsciousness.GetMetrics(); metrics != nil {
@@ -597,6 +646,7 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	// New prompt-independent thoughts become bounded EchoDream experiences while
 	// Echo is awake instead of being bulk-replayed on every rest cycle.
 	uao.captureThoughtExperiences()
+	uao.observeCognitiveCore(cycle)
 	uao.maintainLocalRuntime()
 
 	// Cognitive load is the fatigue signal used by the sole wake/rest authority.
@@ -675,26 +725,37 @@ func (uao *UnifiedAutonomousOrchestrator) runEnactionCycle() (string, bool) {
 	return outcome.Summary, outcome.Verified
 }
 
-// replayEnactionEvidence rebuilds in-memory goal, skill, and dream projections
+// replayCognitiveEvidence rebuilds in-memory goal, skill, core-observation, and dream projections
 // from the immutable ledger. Projection application is idempotent per event ID.
-func (uao *UnifiedAutonomousOrchestrator) replayEnactionEvidence(ctx context.Context) error {
-	if uao.eventStore == nil {
+func (uao *UnifiedAutonomousOrchestrator) replayCognitiveEvidence(ctx context.Context) error {
+	uao.replayMu.Lock()
+	defer uao.replayMu.Unlock()
+	if uao.cognitiveEvidenceReplayed {
 		return nil
 	}
-	var after int64
+	if uao.eventStore == nil {
+		uao.cognitiveEvidenceReplayed = true
+		return nil
+	}
+	after := uao.cognitiveReplaySequence
 	for {
 		events, err := uao.eventStore.Replay(ctx, after, 1000)
 		if err != nil {
 			return err
 		}
 		if len(events) == 0 {
+			uao.cognitiveEvidenceReplayed = true
 			return nil
 		}
-		if err := uao.projectEnactionEvents(events); err != nil {
-			return err
+		for _, event := range events {
+			if err := uao.projectEnactionEvents([]persistence.StoredCognitiveEvent{event}); err != nil {
+				return err
+			}
+			uao.cognitiveReplaySequence = event.Sequence
+			after = event.Sequence
 		}
-		after = events[len(events)-1].Sequence
 		if len(events) < 1000 {
+			uao.cognitiveEvidenceReplayed = true
 			return nil
 		}
 	}
@@ -747,6 +808,17 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 				sourceID = event.EventID
 			}
 			uao.ingestDreamExperienceOnce(sourceID, payload.Summary, payload.Importance, payload.Tags)
+		case persistence.EventTypeCoreObserved:
+			evidence, err := decodeCognitiveCoreEvidence(event.PayloadJSON)
+			if err != nil {
+				return fmt.Errorf("decode cognitive core observation %s: %w", event.EventID, err)
+			}
+			uao.ingestDreamExperienceOnce(
+				event.EventID,
+				cognitiveCoreSummary(evidence.Observation),
+				cognitiveCoreImportance(evidence.Observation),
+				[]string{"cognitive_core", "adapted_observed", "replay"},
+			)
 		}
 	}
 	return nil
@@ -915,6 +987,7 @@ func (uao *UnifiedAutonomousOrchestrator) onRest() error {
 	scheduler := uao.echobeatsScheduler
 	dream := uao.dreamCycle
 	enaction := uao.enactionPipeline
+	cognitiveCore := uao.cognitiveCore
 	uao.mu.Unlock()
 
 	fmt.Println("\n🌙 Transitioning to rest for knowledge consolidation...")
@@ -930,6 +1003,11 @@ func (uao *UnifiedAutonomousOrchestrator) onRest() error {
 	}
 	if stream != nil {
 		stream.Pause()
+	}
+	if cognitiveCore != nil && cognitiveCore.GetStatus().Started {
+		if err := cognitiveCore.SetAwake(false); err != nil {
+			return fmt.Errorf("rest ecco9 cognitive core: %w", err)
+		}
 	}
 	uao.mu.Lock()
 	uao.isAwake = false
@@ -978,12 +1056,21 @@ func (uao *UnifiedAutonomousOrchestrator) onWake() error {
 	}
 
 	uao.mu.Lock()
-	uao.isAwake = true
 	stream := uao.streamOfConsciousness
 	scheduler := uao.echobeatsScheduler
 	enaction := uao.enactionPipeline
+	cognitiveCore := uao.cognitiveCore
 	uao.mu.Unlock()
 
+	if cognitiveCore != nil && cognitiveCore.GetStatus().Started {
+		if err := cognitiveCore.SetAwake(true); err != nil {
+			return fmt.Errorf("wake ecco9 cognitive core: %w", err)
+		}
+	}
+	uao.mu.Lock()
+	uao.isAwake = true
+	uao.lastCognitiveCoreObservation = time.Time{}
+	uao.mu.Unlock()
 	if stream != nil {
 		stream.Resume()
 	}
@@ -1300,11 +1387,16 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	wisdomDepth := uao.wisdomDepth
 	uao.running = false
 	uao.isAwake = false
+	uao.terminated = true
 	uao.cancel()
 	enaction := uao.enactionPipeline
+	cognitiveCore := uao.cognitiveCore
 	uao.mu.Unlock()
 	if enaction != nil {
 		enaction.Pause()
+	}
+	if cognitiveCore != nil && cognitiveCore.GetStatus().Started {
+		_ = cognitiveCore.SetAwake(false)
 	}
 
 	fmt.Println("\n" + strings.Repeat("=", 60))
@@ -1345,6 +1437,11 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	if uao.interestPatterns != nil {
 		_ = uao.interestPatterns.Stop()
 	}
+	if cognitiveCore != nil && cognitiveCore.GetStatus().Started {
+		if err := cognitiveCore.Stop(context.Background()); err != nil {
+			fmt.Printf("⚠️  ecco9 cognitive core shutdown warning: %v\n", err)
+		}
+	}
 	if uao.localRuntime != nil {
 		_ = uao.localRuntime.Close()
 	}
@@ -1370,27 +1467,29 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	uao.mu.RLock()
 	status := OrchestratorStatus{
-		Running:         uao.running,
-		IsAwake:         uao.isAwake,
-		IsAutonomous:    uao.isAutonomous,
-		CognitiveLoad:   uao.cognitiveLoad,
-		WisdomDepth:     uao.wisdomDepth,
-		SessionID:       uao.sessionID,
-		Uptime:          time.Since(uao.startTime),
-		TotalCycles:     uao.totalCycles,
-		TotalThoughts:   uao.totalThoughts,
-		TotalGoals:      uao.totalGoals,
-		TotalWisdom:     uao.totalWisdom,
-		LastStateSync:   uao.lastStateSync,
-		StateDirectory:  uao.config.StateDirectory,
-		EnactionEnabled: uao.config.EnableEnaction && uao.enactionPipeline != nil,
-		EnactionMode:    uao.config.EnactionMode,
+		Running:              uao.running,
+		IsAwake:              uao.isAwake,
+		IsAutonomous:         uao.isAutonomous,
+		CognitiveLoad:        uao.cognitiveLoad,
+		WisdomDepth:          uao.wisdomDepth,
+		SessionID:            uao.sessionID,
+		Uptime:               time.Since(uao.startTime),
+		TotalCycles:          uao.totalCycles,
+		TotalThoughts:        uao.totalThoughts,
+		TotalGoals:           uao.totalGoals,
+		TotalWisdom:          uao.totalWisdom,
+		LastStateSync:        uao.lastStateSync,
+		StateDirectory:       uao.config.StateDirectory,
+		EnactionEnabled:      uao.config.EnableEnaction && uao.enactionPipeline != nil,
+		EnactionMode:         uao.config.EnactionMode,
+		CognitiveCoreEnabled: uao.config.EnableCognitiveCore,
 	}
 	wakeRest := uao.wakeRestCycle
 	dream := uao.dreamCycle
 	provider := uao.llmProvider
 	eventStore := uao.eventStore
 	enaction := uao.enactionPipeline
+	cognitiveCore := uao.cognitiveCore
 	uao.mu.RUnlock()
 
 	if provider != nil {
@@ -1420,6 +1519,9 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 		cancel()
 		status.EventLedgerReady = err == nil && health.Ready
 		status.EventCount = health.EventCount
+	}
+	if cognitiveCore != nil {
+		status.CognitiveCore = cognitiveCore.GetStatus()
 	}
 
 	uao.experienceMu.Lock()
@@ -1456,6 +1558,8 @@ type OrchestratorStatus struct {
 	EnactionPaused       bool
 	EventLedgerReady     bool
 	EventCount           int64
+	CognitiveCoreEnabled bool
+	CognitiveCore        cognitivecore.Status
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

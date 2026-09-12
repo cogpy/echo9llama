@@ -106,9 +106,12 @@ require (
 )
 
 require (
+	github.com/EchoCog/echollama v0.0.0
 	github.com/dgraph-io/dgo/v230 v230.0.1
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pdevine/tensor v0.0.0-20250402003834-09d804610a08
 	google.golang.org/grpc v1.82.1
 )
+
+replace github.com/EchoCog/echollama => ./cognitive-core/ecco9

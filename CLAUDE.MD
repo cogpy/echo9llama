@@ -12,15 +12,16 @@
 - **Multi-provider LLM integration** (Anthropic, OpenRouter, OpenAI)
 - **Live2D Avatar integration** for emotional/cognitive state visualization
 
-## Current Iteration: E1 (11 September 2026)
+## Current Iteration: E2 (12 September 2026)
 
-**Status**: Replay-safe, outcome-grounded bounded enaction
+**Status**: Provenance-preserving ecco9 cognitive-core integration
 
 **Key Focus Areas**:
-- Maintain the append-only cognitive event protocol
-- Preserve observe-only authority unless local-sandbox mode is explicitly selected
-- Advance goals and skills only from observed evaluator evidence
-- Feed successes, denials, and failures into EchoDream with source provenance
+- Preserve all 553 tracked `o9nn/ecco9` Go files behind the nested module boundary
+- Activate source capabilities only through the explicit `core/cognitivecore` allowlist
+- Keep canonical Echobeats, EchoDream, provider routing, persistence, and action policy authoritative
+- Label source-device output `adapted_observed`; never treat heuristic telemetry as verified wisdom
+- Rehydrate bounded source-device state from validated append-only cognitive events
 
 ## Quick Start
 
@@ -133,6 +134,7 @@ The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cere
 |---------|-------------|---------|
 | `autonomous` | `core/autonomous` | Agent orchestration and execution loops |
 | `consciousness` | `core/consciousness` | Awareness systems and thought generation |
+| `cognitivecore` | `core/cognitivecore` | Typed, provenance-bound adapter for reviewed ecco9 source devices |
 | `deeptreeecho` | `core/deeptreeecho` | Main cognitive implementation |
 | `echobeats` | `core/echobeats` | 12-step cognitive loop |
 | `echodream` | `core/echodream` | Dream cycles and knowledge consolidation |
@@ -140,6 +142,8 @@ The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cere
 | `memory` | `core/memory` | Hypergraph, episodic, semantic memory |
 | `wisdom` | `core/wisdom` | Seven-dimensional wisdom framework |
 | `skills` | `core/skills` | Skill learning and autonomous practice |
+
+The immutable source snapshot lives under `cognitive-core/ecco9` as a nested Go module. Do not copy its divergent files over canonical packages. Promote a source capability only by updating the per-file integration catalogue, adding a typed adapter, defining its trust grade and authority, and adding lifecycle, replay, race, and failure tests.
 
 ### Support Packages
 

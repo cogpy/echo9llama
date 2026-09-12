@@ -63,6 +63,12 @@ func TestProductionEnactionDefaultsToObserve(t *testing.T) {
 	if config.EnactionMode != deeptreeecho.EnactionObserve {
 		t.Fatalf("unsafe default enaction mode: %q", config.EnactionMode)
 	}
+	if !config.EnableCognitiveCore {
+		t.Fatal("reviewed cognitive core should be enabled by default")
+	}
+	if config.CognitiveCoreInterval != time.Minute {
+		t.Fatalf("unexpected cognitive-core cadence: %s", config.CognitiveCoreInterval)
+	}
 }
 
 func TestProductionEnvironmentConfiguration(t *testing.T) {
@@ -77,10 +83,12 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_DREAM_LIGHT_DURATION", "10ms")
 	t.Setenv("ECHO_DREAM_DEEP_DURATION", "20ms")
 	t.Setenv("ECHO_DREAM_REM_DURATION", "30ms")
+	t.Setenv("ECHO_COGNITIVE_CORE_INTERVAL", "375ms")
 	t.Setenv("ECHO_STATE_SYNC_INTERVAL", "invalid")
 	t.Setenv("ECHO_LOCAL_WARMUP_TIMEOUT", "7s")
 	t.Setenv("ECHO_LOCAL_WARM_ON_WAKE", "true")
 	t.Setenv("ECHO_LOCAL_COOL_ON_REST", "false")
+	t.Setenv("ECHO_ENABLE_COGNITIVE_CORE", "false")
 	t.Setenv("ECHO_ENACTION_MODE", "local-sandbox")
 	t.Setenv("ECHO_ACTION_TIMEOUT", "11s")
 	t.Setenv("ECHO_MAX_ARTIFACT_BYTES", "4096")
@@ -102,11 +110,17 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	if config.DreamLightDuration != 10*time.Millisecond || config.DreamDeepDuration != 20*time.Millisecond || config.DreamREMDuration != 30*time.Millisecond {
 		t.Fatalf("dream durations were not applied: %#v", config)
 	}
+	if config.CognitiveCoreInterval != 375*time.Millisecond {
+		t.Fatalf("cognitive-core interval was not applied: %s", config.CognitiveCoreInterval)
+	}
 	if config.StateSyncInterval <= 0 {
 		t.Fatal("invalid duration should leave a positive default state-sync interval")
 	}
 	if config.LocalModelWarmupTimeout != 7*time.Second || !config.WarmLocalModelOnWake || config.CoolLocalModelOnRest {
 		t.Fatalf("native lifecycle configuration was not applied: %#v", config)
+	}
+	if config.EnableCognitiveCore {
+		t.Fatal("cognitive core environment flag was not applied")
 	}
 	if config.EnactionMode != deeptreeecho.EnactionLocalSandbox || config.ActionTimeout != 11*time.Second || config.MaxArtifactBytes != 4096 || config.MaxArtifactsPerWake != 3 {
 		t.Fatalf("enaction configuration was not applied: %#v", config)
@@ -167,6 +181,9 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	if healthPayload["running"] != true || healthPayload["awake"] != true {
 		t.Fatalf("health payload did not reflect lifecycle: %#v", healthPayload)
 	}
+	if healthPayload["cognitive_core_ready"] != true {
+		t.Fatalf("health payload did not report cognitive-core readiness: %#v", healthPayload)
+	}
 
 	statusResponse := httptest.NewRecorder()
 	handler.ServeHTTP(statusResponse, httptest.NewRequest(http.MethodGet, "/status", nil))
@@ -183,6 +200,14 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	if statusPayload["iteration"] != productionIteration {
 		t.Fatalf("status endpoint reported wrong iteration: %#v", statusPayload)
 	}
+	coreStatus, ok := statusPayload["cognitive_core"].(map[string]interface{})
+	if !ok || coreStatus["started"] != true {
+		t.Fatalf("status endpoint omitted active cognitive core: %#v", statusPayload)
+	}
+	provenance, ok := coreStatus["provenance"].(map[string]interface{})
+	if !ok || provenance["trust_grade"] != "adapted_observed" {
+		t.Fatalf("status endpoint omitted cognitive-core provenance: %#v", coreStatus)
+	}
 	if _, exposed := statusPayload["state_directory"]; exposed {
 		t.Fatalf("status endpoint exposed private state path: %#v", statusPayload)
 	}
@@ -197,7 +222,8 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		Degraded:         true,
 		FallbackCount:    3,
 		Decision: backendcap.Decision{
-			Selected: backendcap.Capability{ModelID: "opaque-echo", ModelPath: secretPath},
+			Selected:     backendcap.Capability{ModelID: "opaque-echo", ModelPath: secretPath},
+			Alternatives: []backendcap.Capability{{ModelID: "private-alternative", ModelPath: secretPath + ".alternative"}},
 		},
 		LocalModel: llm.LocalModelRegistryState{
 			SelectedModel:    backendcap.Capability{ModelID: "opaque-echo", ModelPath: secretPath},
@@ -235,6 +261,7 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		"echo_local_model_loaded 1",
 		"echo_local_model_memory_safe 1",
 		"echo_local_model_in_flight 2",
+		"echo_cognitive_core_ready 0",
 	} {
 		if !strings.Contains(metrics, expected) {
 			t.Fatalf("metrics missing %q:\n%s", expected, metrics)

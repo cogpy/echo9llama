@@ -16,6 +16,8 @@ services:
       - ECHO_STATE_DIRECTORY=/app/data/echo_state
       - ECHO_EVENT_STORE_PATH=/app/data/echo_state/cognitive_events.db
       - ECHO_WORKSPACE_DIRECTORY=/app/data/echo_state/workspace
+      - ECHO_ENABLE_COGNITIVE_CORE=${ECHO_ENABLE_COGNITIVE_CORE:-true}
+      - ECHO_COGNITIVE_CORE_INTERVAL=${ECHO_COGNITIVE_CORE_INTERVAL:-1m}
       - ECHO_ENABLE_ENACTION=true
       - ECHO_ENACTION_MODE=${ECHO_ENACTION_MODE:-observe}
       - ECHO_ACTION_TIMEOUT=${ECHO_ACTION_TIMEOUT:-90s}

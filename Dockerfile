@@ -80,7 +80,9 @@ RUN --mount=type=cache,target=/root/.ccache \
 FROM base AS build
 WORKDIR /go/src/github.com/ollama/ollama
 COPY go.mod go.sum .
-RUN curl -fsSL https://golang.org/dl/go$(awk '/^go/ { print $2 }' go.mod).linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
+COPY cognitive-core/ecco9/go.mod ./cognitive-core/ecco9/go.mod
+RUN GOVERSION="$(awk '/^toolchain go/ { sub(/^toolchain go/, ""); print; found=1; exit } /^go / { fallback=$2 } END { if (!found) print fallback }' go.mod)" \
+    && curl -fsSL https://golang.org/dl/go${GOVERSION}.linux-$(case $(uname -m) in x86_64) echo amd64 ;; aarch64) echo arm64 ;; esac).tar.gz | tar xz -C /usr/local
 ENV PATH=/usr/local/go/bin:$PATH
 RUN go mod download
 COPY . .

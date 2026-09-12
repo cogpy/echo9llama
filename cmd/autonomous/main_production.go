@@ -21,7 +21,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-09-11-replay-safe-e1-enaction"
+const productionIteration = "2026-09-12-ecco9-cognitive-core"
 
 func main() {
 	fmt.Println()
@@ -109,6 +109,7 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyDurationEnv("ECHO_THOUGHT_INTERVAL", &config.ThoughtInterval)
 	applyDurationEnv("ECHO_GOAL_REVIEW_INTERVAL", &config.GoalReviewInterval)
 	applyDurationEnv("ECHO_WISDOM_INTERVAL", &config.WisdomSynthesisInterval)
+	applyDurationEnv("ECHO_COGNITIVE_CORE_INTERVAL", &config.CognitiveCoreInterval)
 	applyDurationEnv("ECHO_STATE_SYNC_INTERVAL", &config.StateSyncInterval)
 	applyDurationEnv("ECHO_WAKE_DURATION", &config.WakeDuration)
 	applyDurationEnv("ECHO_REST_DURATION", &config.RestDuration)
@@ -119,6 +120,7 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyDurationEnv("ECHO_ACTION_TIMEOUT", &config.ActionTimeout)
 	applyBoolEnv("ECHO_LOCAL_WARM_ON_WAKE", &config.WarmLocalModelOnWake)
 	applyBoolEnv("ECHO_LOCAL_COOL_ON_REST", &config.CoolLocalModelOnRest)
+	applyBoolEnv("ECHO_ENABLE_COGNITIVE_CORE", &config.EnableCognitiveCore)
 	applyBoolEnv("ECHO_ENABLE_ENACTION", &config.EnableEnaction)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACT_BYTES", &config.MaxArtifactBytes)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACTS_PER_WAKE", &config.MaxArtifactsPerWake)
@@ -200,22 +202,24 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		status := orchestrator.GetStatus()
 		code := http.StatusOK
 		health := "healthy"
-		if !status.Running {
+		cognitiveCoreReady := !status.CognitiveCoreEnabled || status.CognitiveCore.Started
+		if !status.Running || !cognitiveCoreReady {
 			code = http.StatusServiceUnavailable
 			health = "resting"
 		}
 		writeJSON(w, code, map[string]interface{}{
-			"status":             health,
-			"identity":           "Deep Tree Echo",
-			"iteration":          productionIteration,
-			"running":            status.Running,
-			"awake":              status.IsAwake,
-			"wake_rest_state":    status.WakeRestState,
-			"provider_available": status.ProviderAvailable,
-			"enaction_enabled":   status.EnactionEnabled,
-			"enaction_mode":      status.EnactionMode,
-			"event_ledger_ready": status.EventLedgerReady,
-			"timestamp":          time.Now().UTC().Format(time.RFC3339),
+			"status":               health,
+			"identity":             "Deep Tree Echo",
+			"iteration":            productionIteration,
+			"running":              status.Running,
+			"awake":                status.IsAwake,
+			"wake_rest_state":      status.WakeRestState,
+			"provider_available":   status.ProviderAvailable,
+			"enaction_enabled":     status.EnactionEnabled,
+			"enaction_mode":        status.EnactionMode,
+			"event_ledger_ready":   status.EventLedgerReady,
+			"cognitive_core_ready": cognitiveCoreReady,
+			"timestamp":            time.Now().UTC().Format(time.RFC3339),
 		})
 	})
 
@@ -250,6 +254,8 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"enaction_paused":        status.EnactionPaused,
 			"event_ledger_ready":     status.EventLedgerReady,
 			"cognitive_events":       status.EventCount,
+			"cognitive_core_enabled": status.CognitiveCoreEnabled,
+			"cognitive_core":         status.CognitiveCore,
 		})
 	})
 
@@ -273,6 +279,8 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_enaction_paused gauge\necho_enaction_paused %d\n", boolMetric(status.EnactionPaused))
 		fmt.Fprintf(w, "# TYPE echo_event_ledger_ready gauge\necho_event_ledger_ready %d\n", boolMetric(status.EventLedgerReady))
 		fmt.Fprintf(w, "# TYPE echo_cognitive_events_total counter\necho_cognitive_events_total %d\n", status.EventCount)
+		fmt.Fprintf(w, "# TYPE echo_cognitive_core_ready gauge\necho_cognitive_core_ready %d\n", boolMetric(status.CognitiveCore.Started))
+		fmt.Fprintf(w, "# TYPE echo_cognitive_core_observations_total counter\necho_cognitive_core_observations_total %d\n", status.CognitiveCore.ObservationCount)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -292,6 +300,9 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 
 func publicBackendState(state llm.BackendRoutingState) llm.BackendRoutingState {
 	state.Decision.Selected.ModelPath = ""
+	for index := range state.Decision.Alternatives {
+		state.Decision.Alternatives[index].ModelPath = ""
+	}
 	state.LocalModel.SelectedModel.ModelPath = ""
 	for index := range state.LocalModel.DiscoveredModels {
 		state.LocalModel.DiscoveredModels[index].ModelPath = ""

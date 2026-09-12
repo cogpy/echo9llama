@@ -1,4 +1,4 @@
-# Security Policy and E1 Autonomy Threat Model
+# Security Policy and Autonomous Cognition Threat Model
 
 ## Security position
 
@@ -29,6 +29,12 @@ The runtime records the following causal chain: context retrieval, provider rout
 
 If a process stops after `action.started`, restart logic reconciles the expected filesystem effect before any retry. A matching existing artifact becomes a recovered success without rewrite. An absent artifact permits one create-only retry. A mismatched artifact becomes a blocking hash conflict. A completed action is not executed again.
 
+### ecco9 cognitive-core boundary
+
+The repository preserves all tracked Go files from the pinned `o9nn/ecco9` lineage in a nested module, but preservation does not grant runtime authority. `LINEAGE_MANIFEST.json` hashes every imported file and `INTEGRATION_CATALOGUE.json` records one disposition for every Go file. Only six reviewed platform and driver files are imported through `core/cognitivecore`; all other source loops, providers, persistence clients, autonomous agents, and update mechanisms remain compile-isolated.[6] [7] [8]
+
+The active adapter receives only bounded public cognitive state. It owns source-driver lifecycle, serializes execution, follows the canonical wake/rest barrier, and cannot call tools, providers, the network, or external persistence. Its output is labeled `adapted_observed`, never as factual truth or verified wisdom. Cognitive-core events contain source, manifest, and activation-catalogue provenance and are classified `sensitive` because bounded interest and stream-thought text may be included. Observations are cadence-limited to one per minute by default. Startup verifies and replays at most the latest 4,096 valid input envelopes into source devices; invalid provenance or input digests fail closed.
+
 ## Threat model
 
 | Threat | Control | Residual risk |
@@ -43,12 +49,21 @@ If a process stops after `action.started`, restart logic reconciles the expected
 | Moral heuristic expands capabilities. | `MoralAgency` is recorded as advisory rationale; deterministic policy is authoritative. | The moral model is not a formal proof of ethical safety. |
 | Rest continues waking work. | Scheduler and enaction pause methods are quiescence barriers; tests assert zero paused provider/tool calls. | An already-running call completes before the barrier returns. |
 | Private action records leak into training. | E1 provides no automatic training exporter. Restricted payloads are excluded by policy unless a future explicit, sanitizing export is added. | Operators with direct filesystem access can read their own ledger and artifacts. |
+| Imported lineage silently replaces canonical cognition. | Nested-module isolation, per-file disposition catalogue, explicit six-file allowlist, pinned commit, and pinned manifest hash. | A future maintainer could deliberately expand the adapter; review and tests must accompany any promotion. |
+| Simulated source output is mistaken for inference or wisdom. | Source LLM, NPU, and wisdom paths remain inactive; active device output is marked `adapted_observed` and receives sub-high-confidence dream weight. | The four active source drivers are still heuristic and must not be treated as empirical truth. |
+| Imported memory retains sensitive full inputs or grows without bound. | The adapter writes only input digests and ordinals to the source memory driver and caps it at 4,096 nodes per process. | The canonical sensitive event ledger remains the persistence authority and still requires an operator retention policy. |
+| Source driver lifecycle leaks into sleep. | The canonical bridge owns context cancellation and shutdown; wake/rest admission is serialized; race tests cover the active path. | Quarantined source lifecycle code still contains known defects and must not be activated directly. |
+| Cognitive replay grows without bound. | Observation cadence defaults to one minute; replay retains only the latest 4,096 validated input envelopes in memory before device hydration. | The append-only ledger itself still needs an explicit retention and export policy for long-lived deployments. |
 
 ## Secrets and privacy
 
 API keys must enter through environment variables or an external secret manager. They must not be written to the event ledger, workspace notes, logs, status endpoints, or training artifacts. Public status reports only provider identifiers, model identifiers, bounded route evidence, counters, and readiness. It does not return raw prompts, note bodies, credentials, or configured absolute workspace paths.[1] [3]
 
+Cognitive-core event payloads may include bounded public stream-thought excerpts and current interest strengths. They therefore remain in the private owner-only event database, are not returned by HTTP status endpoints, and must not enter training data without a future explicit redaction and consent pipeline.
+
 The default HTTP listener is loopback-only. Containers bind internally to `0.0.0.0`, while both supplied Compose definitions publish HTTP, model, Prometheus, and Grafana ports on host loopback only. Any broader exposure requires an explicit deployment override plus authentication and network controls. The production HTTP surface remains read-only and exposes no actuation endpoint.[4]
+
+Autonomous rest and waking use the internal `onRest`/`onWake` lifecycle and preserve a live process. Public `Sleep` is final process shutdown: it cancels contexts and closes persistence, and the same instance rejects a later `Awaken`. Restart continuity requires constructing a fresh orchestrator, which reopens the ledger and rehydrates validated cognitive-core inputs.
 
 ## Deployment controls
 
@@ -74,6 +89,8 @@ E1 does not authorize network fetches, messaging, social posting, payments, acco
 
 E1 also does not claim that generated notes are factually verified. The evaluator proves a narrow operational claim: the authorized private artifact was created exactly once and read back with matching bytes. A later retrieval iteration must add source acquisition and citation verification before factual quality can become an evaluated outcome.
 
+The imported ecco9 lineage does not authorize its preserved provider, NPU, Supabase, self-update, organization, discussion, or autonomous-agent implementations. Those paths include stale contracts, simulated behavior, or unresolved concurrency and persistence risks and remain quarantined until separately repaired and promoted.
+
 ## Vulnerability reporting
 
 Report security issues through a private GitHub security advisory for the [`cogpy/echo9llama`](https://github.com/cogpy/echo9llama) repository. Include the affected version or commit, reproduction steps, expected and observed behavior, impact, and any suggested mitigation. Do not include live secrets or private workspace content in a public issue.
@@ -85,3 +102,6 @@ Report security issues through a private GitHub security advisory for the [`cogp
 [3]: ./core/persistence/cognitive_event_store.go "Append-only cognitive event store"
 [4]: ./cmd/autonomous/main_production.go "Production autonomous runtime entry point"
 [5]: ./Dockerfile.autonomous "CGO-enabled autonomous production image"
+[6]: ./core/cognitivecore/bridge.go "Typed ecco9 cognitive-core adapter"
+[7]: ./cognitive-core/ecco9/LINEAGE_MANIFEST.json "Pinned source lineage manifest"
+[8]: ./cognitive-core/ecco9/INTEGRATION_CATALOGUE.json "Per-file integration dispositions"

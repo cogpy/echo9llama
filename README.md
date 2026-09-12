@@ -13,8 +13,8 @@ Get up and running with large language models.
 ### Quick Start with Go
 
 ```shell
-git clone https://github.com/EchoCog/echollama.git
-cd echollama
+git clone https://github.com/cogpy/echo9llama.git
+cd echo9llama
 go run server/simple/embodied_server_enhanced.go
 ```
 
@@ -22,12 +22,14 @@ The EchOllama server will start on `http://localhost:5000` with Deep Tree Echo c
 
 ### Autonomous Deep Tree Echo Runtime
 
-The production autonomous process now runs the unified Echobeats, EchoDream, interest, goal, skill, discussion, telemetry, wisdom, and persistence composition:
+The production autonomous process now runs the unified Echobeats, EchoDream, interest, goal, skill, discussion, telemetry, wisdom, persistence, and provenance-bound ecco9 cognitive-core composition:
 
 ```shell
 export ANTHROPIC_API_KEY=...
 export OPENROUTER_API_KEY=...
 export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
+export ECHO_ENABLE_COGNITIVE_CORE=true
+export ECHO_COGNITIVE_CORE_INTERVAL=1m
 # Safe default: proposals are ledgered but no tool effect is permitted.
 export ECHO_ENACTION_MODE=observe
 
@@ -52,7 +54,7 @@ export ECHO_WORKSPACE_DIRECTORY="$HOME/.echo9llama/state/workspace"
 CGO_ENABLED=1 go run ./cmd/autonomous
 ```
 
-The model proposes content, but deterministic policy authorizes the effect and a read-back evaluator controls all goal and skill progress. See the [replay-safe E1 iteration report](docs/iterations/EVOLUTION_ITERATION_2026-09-11_REPLAY_SAFE_ENACTION.md) and the [autonomy threat model](SECURITY.md).
+The model proposes content, but deterministic policy authorizes the effect and a read-back evaluator controls all goal and skill progress. Every tracked Go file from `o9nn/ecco9@1b22401` is preserved under [`cognitive-core/ecco9`](cognitive-core/ecco9/README.md); a six-file reviewed adapter activates only reservoir, hypergraph-memory, affect, and layered-consciousness devices. Their cadence-bounded observations are provenance-marked, appended to the cognitive event ledger, supplied to EchoDream, and replayed on restart. See the [ecco9 cognitive-core iteration report](docs/iterations/EVOLUTION_ITERATION_2026-09-12_ECCO9_COGNITIVE_CORE.md), the [replay-safe E1 report](docs/iterations/EVOLUTION_ITERATION_2026-09-11_REPLAY_SAFE_ENACTION.md), and the [autonomy threat model](SECURITY.md).
 
 For native local cognition, use a CGO-enabled build and configure one or more GGUF files or directories. The router verifies model format, canonical roots, context capacity, host/cgroup memory, and current concurrency before selecting the model:
 
@@ -125,6 +127,7 @@ EchOllama integrates Deep Tree Echo, an advanced cognitive architecture that bri
 ### Core Components
 
 - **🌊 Embodied Cognition Engine**: Real-time cognitive processing with spatial and emotional awareness
+- **🔗 Provenance-Bound ecco9 Core**: All 553 source Go files are preserved; reviewed reservoir, memory, affect, and layered-consciousness drivers execute behind a typed canonical adapter
 - **🧬 Identity System**: Persistent identity with continuous learning and memory formation
 - **🕸️ Hypergraph Memory**: Multi-relational knowledge representation and storage
 - **⚡ Reservoir Networks**: Temporal pattern recognition and echo state processing
@@ -184,6 +187,7 @@ See [SELF_ASSESSMENT_README.md](SELF_ASSESSMENT_README.md) for complete document
 **Current Status**: Active Development
 
 - `./cmd/autonomous` ships the unified production autonomy loop with canonical EchoDream, Echobeats goals, persistent interests, provider failover, and truthful health/status/metrics
+- The ecco9 lineage is preserved as an immutable nested module with per-file hashes and dispositions; active device observations enter the append-only ledger and rehydrate across sessions
 - Echobeats now owns one replay-safe E1 affordance path: strict routed plan, deterministic policy, private create-only tool, observed evaluation, immutable event history, evidence-bound progress, and source-linked dream feedback
 - The base EchOllama API endpoints and web dashboard remain available as a separate server surface
 - `CGO_ENABLED=0 go build ./...`, the focused production test surface, race tests, vet, module verification, and a live non-degraded provider enaction smoke test pass under the pinned toolchain
@@ -379,8 +383,8 @@ ollama stop llama3.2
 ### Development Setup
 
 ```shell
-git clone https://github.com/EchoCog/echollama.git
-cd echollama
+git clone https://github.com/cogpy/echo9llama.git
+cd echo9llama
 go mod tidy
 ```
 
@@ -924,8 +928,8 @@ response = echo.generate_with_cognition(
 EchOllama welcomes contributions to the Deep Tree Echo cognitive architecture:
 
 ```shell
-git clone https://github.com/EchoCog/echollama.git
-cd echollama
+git clone https://github.com/cogpy/echo9llama.git
+cd echo9llama
 go mod tidy
 # Make your enhancements to the cognitive architecture
 # Submit a PR with cognitive improvements

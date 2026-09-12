@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Verified public GPU library-name constants and GGML tensor-name fixtures in the immutable ecco9 lineage"
+paths = [
+  '''^(cognitive-core/ecco9/)?discover/gpu_windows\.go$''',
+  '''^(cognitive-core/ecco9/)?fs/ggml/ggml_test\.go$''',
+]
