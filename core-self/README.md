@@ -8,6 +8,8 @@ The accepted identity ledger contains the fixed bootstrap event and supports lat
 
 The production orchestrator opens and verifies the ledger at startup. Its HTTP surface reports only readiness, event/proposal counts, and content digests. It exposes neither ledger contents nor private paths and offers no mutation endpoint. During initial `Open`, the verified ledger is authoritative: a missing head cache or a canonical head matching an exact earlier ledger state is rebuilt atomically. An already-open kernel never rebinds its head descriptor; any live head-inode replacement fails closed. Corruption, invalid signatures, forged or malformed heads, forks, configured-root replacement, stale writers, insecure permissions, non-canonical material, and unvalidated quarantine-marker collisions fail closed through the anchored directory.
 
+Persistence paths reject user-controlled symbolic-link components. On Darwin only, the operating system's standard `/var` and `/tmp` aliases are accepted only when they resolve to pinned `/private/var` and `/private/tmp` targets before those checks, so macOS temporary directories remain usable without widening the symlink trust boundary.
+
 `VerifyCapsule` accepts only the trust-anchor-free bootstrap fixture. A capsule containing accepted post-genesis events must be checked with `VerifyCapsuleWithReviewerKey` or `Kernel.VerifyCapsule`, both of which require the expected reviewer key from outside the capsule.
 
 ## Evidence layout

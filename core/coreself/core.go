@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -357,6 +358,10 @@ func Open(directory string, config BootstrapConfig) (*Kernel, error) {
 		return nil, invalid("directory is required")
 	}
 	absolute, err := filepath.Abs(directory)
+	if err != nil {
+		return nil, err
+	}
+	absolute, err = canonicalPersistencePath(absolute)
 	if err != nil {
 		return nil, err
 	}
@@ -1713,6 +1718,44 @@ func ensurePrivateDir(path string) error {
 		return fmt.Errorf("%w: directory %s is not private", ErrUnauthorized, path)
 	}
 	return nil
+}
+
+// canonicalPersistencePath resolves only Darwin's platform-owned /var and
+// /tmp aliases. Arbitrary user-controlled symlink components, including the
+// configured CoreSelf root, remain prohibited by ensurePrivateDir.
+func canonicalPersistencePath(path string) (string, error) {
+	clean := filepath.Clean(path)
+	if runtime.GOOS != "darwin" {
+		return clean, nil
+	}
+	aliases := []struct {
+		path   string
+		target string
+	}{
+		{path: "/var", target: "/private/var"},
+		{path: "/tmp", target: "/private/tmp"},
+	}
+	for _, alias := range aliases {
+		if clean != alias.path && !strings.HasPrefix(clean, alias.path+string(os.PathSeparator)) {
+			continue
+		}
+		info, err := os.Lstat(alias.path)
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink == 0 {
+			return clean, nil
+		}
+		resolved, err := filepath.EvalSymlinks(alias.path)
+		if err != nil {
+			return "", err
+		}
+		if filepath.Clean(resolved) != alias.target {
+			return "", fmt.Errorf("%w: Darwin system alias %s resolved to unexpected target %s", ErrUnauthorized, alias.path, resolved)
+		}
+		return filepath.Join(resolved, strings.TrimPrefix(clean, alias.path)), nil
+	}
+	return clean, nil
 }
 
 func ensurePrivateRootDir(root *os.Root, name string) error {

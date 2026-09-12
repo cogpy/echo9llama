@@ -44,6 +44,7 @@ jobs:
       - name: Run unit tests
         run: |
           go test -v -race -coverprofile=coverage.out -covermode=atomic \
+            ./core/coreself/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/persistence/... \

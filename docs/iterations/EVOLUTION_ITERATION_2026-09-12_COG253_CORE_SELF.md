@@ -94,11 +94,13 @@ The Arc Angel profile is a proposed renderer contract only. It permits body pose
 | Evidence-first KSM cycle | Property coherence `0.476190`, loss `0.523810`; not converged; weakest core-tier centre `process`; no direct mutation |
 | Unconventional binding analysis | Seven registry dispositions and two pattern-binding classes; 4/13 core-tier native patterns verified; no new external adapter active |
 | E3 scoped secret scan | No findings across all changed and new E3 files |
-| Static, portability, and build gates | `go vet ./core/... ./cmd/...`, CGO and non-CGO `go build ./...`, Windows core-self cross-compile, and E3-scoped golangci-lint passed with zero new issues |
+| Static, portability, and build gates | `go vet ./core/... ./cmd/...`, CGO and non-CGO `go build ./...`, Darwin and Windows core-self cross-compiles, and E3-scoped golangci-lint passed with zero new issues |
 | Vulnerability gate | `govulncheck ./...` found zero called vulnerabilities |
 | Deterministic generation | Fresh repository-local generation matched all checked-in generated maps, definitions, manifests, registry, summary, and brief byte-for-byte |
 | Repository-wide `go test ./...` | Still fails only at inherited `sample`, `examples`, `server`, and `orchestration` defects already present in E2; all E3 production packages pass |
 | Independent adversarial review | Final read-only review returned `safe_to_proceed: true`; no critical/high findings remain. The documented low residual is that moved proposal/quarantine subroots stay bound to their originally opened inode rather than detecting displacement. |
+| Implementation commit | `0526da955ad143f51088064b45beee229b858dab` pushed to `origin/main` |
+| Initial E3 remote checks | CodeQL run `34678353970` passed. Comprehensive run `34678354530` exposed one Darwin-only portability defect: the system-owned `/var -> /private/var` alias was rejected before CoreSelf bootstrap. The repair canonicalizes only Darwin's `/var` and `/tmp` aliases to their pinned `/private/var` and `/private/tmp` targets before applying unchanged private-boundary checks, adds a Darwin-only regression, runs CoreSelf tests directly on Linux and macOS CI, and preserves rejection of arbitrary user-controlled symlinks. |
 | E2 remote workflows | Three of three successful |
 | Architecture render | Mermaid source rendered to 3120×1076 PNG and visually inspected |
 
