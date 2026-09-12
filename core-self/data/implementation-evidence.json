@@ -1,0 +1,268 @@
+{
+  "cog001": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Independent domains\" must cite source pattern 12610010, explain how Echo preserves its control principle (\"Major paradigms, networks of concepts or schools of thought will not come to functional balance until each one is sufficiently well-defined and autonomous to be an independent sphere of insight.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Kernel",
+      "core/coreself/core_test.go::TestParentNamespaceLockCannotSplitAfterRootReplacement"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog003": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Interpretation of complementary modes of organization\" must cite source pattern 12610030, explain how Echo preserves its process principle (\"The proliferation of totally organized bodies of knowledge and conceptual methods ignores the existence and emergence of underdefined concepts and forms of integration with the consequence that conceptual development is severely inhibited. But the degree of integration of such established bodies of knowledge is also valuable and potent. A compromise can be achieved by ensuring the interpenetration of formal and informal modes of conceptual organization.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Preflight",
+      "core/coreself/core_test.go::TestImmutableCoreAndReviewerGate"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog005": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Network of inter-relationships\" must cite source pattern 12610050, explain how Echo preserves its structure principle (\"There is advantage in major conceptual frameworks as well as in minimally organized conceptual processes. In order to reconcile these mutually incompatible forms of conceptual organization a loose network of relationships is necessary which links both the limited number of centrally organized frameworks to the minimally organized conceptual processes and ensures that the latter provide protection against progressive formalization.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::State",
+      "core/coreself/core_test.go::TestIdentityHypergraphRelationsRemainEvidenceOnly"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog008": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Variety of forms and processes\" must cite source pattern 12610080, explain how Echo preserves its process principle (\"The homogeneous and undifferentiated character of major schools of thought or ideological frameworks inhibits the emergence of alternative conceptual styles deviating from the norm, thus arresting conceptual development. By fragmenting such frameworks into a vast mosaic of sub-cultures, each with its own specialized domain and sharply delineated values, the emergence of distinct intellectual styles may be encouraged and protected, provided that each is stimulated and consoli\u2026\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Mutation",
+      "core/coreself/core_test.go::TestExternalAndExperimentalRemainProposalOnly"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog014": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Identifiable context\" must cite source pattern 12610140, explain how Echo preserves its control principle (\"People need an identifiable belief system or school of thought to belong to (a sector of conceptual space), distinct from other parts of the conceptual environment. Within existing conceptual frameworks, encourage groups to define the areas of special interest with which they are identified. Give them some degree of autonomy and protect them from being overridden by patterns of general relationships.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::PolicyContext",
+      "core/coreself/core_test.go::TestStrictContractsRejectSecretsAndUnknownFields"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog015": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Context boundary\" must cite source pattern 12610150, explain how Echo preserves its control principle (\"The strength of the boundary is essential to the maintenance of the identifiable character of a conceptual system. The definition may be articulated by establishing distinctions from the pattern of general relationships within which the system is embedded.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::verifyRootEntry",
+      "core/coreself/core_test.go::TestCoreSelfRejectsPostOpenRootPathReplacement"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog017": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Encirclement\" must cite source pattern 12610170, explain how Echo preserves its structure principle (\"A clearly defined pattern of concepts is required around a conceptual domain in order to channel away concepts irrelevant to that domain and disruptive of its preoccupations.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::openPrivateSubroot",
+      "core/coreself/core_test.go::TestAnchoredProposalStoreRejectsPostOpenInRootRedirection"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog020": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"User-determined specialized communications\" must cite source pattern 12610200, explain how Echo preserves its process principle (\"Relationships within a knowledge- representative system should be such as to permit the relevance of any concept to any other concept to be established, particularly when such a system is computer-enhanced.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Status",
+      "core/coreself/public_api_test.go::TestKernelExportedMethodAllowlist"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog024": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Positions enabling transcendence\" must cite source pattern 12610240, explain how Echo preserves its structure principle (\"In any conceptual domain there are key, focal, or self-reflective concepts which serve an integrative function whereby the domain may both itself be integrated as well as being related as a whole to more fundamental or meta-frameworks transcending the boundary of the domain. Unless such focal concepts are protected, it becomes difficult to maintain both the cohesion of the domain and its relevance within any larger conceptual framework.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Preflight",
+      "core/coreself/core_test.go::TestImmutableCoreAndReviewerGate"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog028": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Coherent pattern of relationship densities\" must cite source pattern 12610280, explain how Echo preserves its structure principle (\"Within any conceptual framework or body of knowledge, randomness in the density of relationships between specialized concepts fails to reinforce any recognizable pattern on the basis of which the conceptual framework as a whole may be identified, comprehended and effectively used. A systematic variation in the pattern of specialized relationships can provide the necessary coherence.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::replay",
+      "core/coreself/core_test.go::TestOpenRecoversValidStaleHeadAfterDurableLedgerAppend"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog031": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Cycle of relationship reinforcement\" must cite source pattern 12610310, explain how Echo preserves its process principle (\"In any conceptual domain or school of thought, linking together the key foci of conceptual activity in a cycle of conceptual processes provides an environment through which ideas are encouraged to move constantly in order to be challenged by new or alternative insights and the associated conceptual relationships. Such a cycle reinforces existing relationships and the integrity of that body of knowledge as a whole.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::replay",
+      "core/coreself/core_test.go::TestOpenRecoversValidStaleHeadAfterDurableLedgerAppend"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog032": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Selective interchange axis\" must cite source pattern 12610320, explain how Echo preserves its structure principle (\"The viability of environments for the cross-fertilization of ideas between different frames of reference or schools of thought (such as in knowledge representation systems) depends on an appropriate compromise between their accessibility through structured high speed information systems and the extended time period required to reflect on new ideas. This can be achieved by connecting local (or personal) information systems enhancing cross-fertilization to different data netwo\u2026\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::submitProposal",
+      "core/coreself/core_test.go::TestProposalCountReportsOnlyPendingValidatedProposals"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog037": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Cluster of frameworks\" must cite source pattern 12610370, explain how Echo preserves its control principle (\"The fundamental unit of local organization in any identifiable conceptual span is the (proximity) cluster of conceptual frameworks with related foci. The limit on the number of frameworks per cluster varies from 8 to 12 depending on the balance between the network of implicit, associative relationships and the degree of explicit, structural organization. The relationships between the frameworks should preferably be such as to define a common focus.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/deeptreeecho/unified_autonomous_orchestrator.go::UnifiedAutonomousOrchestrator",
+      "core/deeptreeecho/core_self_integration_test.go::TestCoreSelfBootstrapAndStatusIntegration"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog043": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Presentation of new dimensions\" must cite source pattern 12610430, explain how Echo preserves its structure principle (\"The development of a conceptual domain or a body of knowledge may be facilitated by providing a range of interlinked opportunities for the confrontation of different concepts, whether deriving from different levels of education, from different sources of information, or from different ideology or belief systems.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::ExportCapsule",
+      "core/coreself/core_test.go::TestExportCapsuleReturnsDeepCopiedLedger"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog113": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Harmoniously structured entry point for external communication media\" must cite source pattern 12611130, explain how Echo preserves its process principle (\"Connection to the car port.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "cmd/autonomous/main_production.go::newProductionHandler",
+      "cmd/autonomous/main_production_test.go::TestCoreSelfStatusDoesNotExposePrivatePaths"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog122": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Direct relationship between structures and communication pathways\" must cite source pattern 12611220, explain how Echo preserves its structure principle (\"Building fronts adapted to the shape of the street.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::validateProjectedRelation",
+      "core/coreself/core_test.go::TestIdentityHypergraphRelationsRemainEvidenceOnly"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog208": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Progressive framework definition\" must cite source pattern 12612080, explain how Echo preserves its process principle (\"Buildings should be uniquely adapted to individual needs and sites. The plans should therefore be rather loose and fluid in order to accommodate those subtleties as the need for them emerges. The building should not be thought of as assembled from components but rather as being woven from a structure which starts out globally complete, but flimsy. It is gradually made stiffer, whilst still somewhat flimsy, until it is made completely stiff and strong in the final constructio\u2026\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "scripts/generate_echo_core_self_artifacts.py::build_patterns",
+      "core/coreself/model_contract_test.go::TestCog253SemanticSourceContract"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog212": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Primary inter-level connections at transitions in boundary orientation\" must cite source pattern 12612120, explain how Echo preserves its process principle (\"The common practice of specifying complex building plans in perfect detail cripples the buildings that are generated in this way. The necessities of the drawing itself change the plan, make it more rigid, and limit it to the kind of plan which can be drawn and measured. The rich range of possibilities can only be preserved if the builder is able to generate a living building, with all its slightly uneven lines and imperfect angles. In order to achieve this aim, the building\u2026\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/deeptreeecho/unified_autonomous_orchestrator.go::initializeCoreSelf",
+      "core/deeptreeecho/core_self_integration_test.go::TestRequestedCoreSelfWithoutPersistenceFailsClosed"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  },
+  "cog249": {
+    "acceptance_result": {
+      "artifact_digest": "f67b91354f9708ac77c8899bb4333108626441f7aacfa810972e441f732df99f",
+      "command": "go test ./core/coreself ./core/deeptreeecho ./cmd/autonomous",
+      "criterion": "Evidence for applying \"Symbols of integration\" must cite source pattern 12612490, explain how Echo preserves its structure principle (\"Use of symbols whose structure or profound significance is congruent with the organization of the conceptual space and therefore serves to bind together the different aspects or dimensions of it.\"), and include one named violation that a conformance test rejects.",
+      "observed": "passed"
+    },
+    "evidence": [
+      "core/coreself/core.go::Capsule",
+      "core/coreself/core_test.go::TestCapsuleVerificationAndTamperDetection"
+    ],
+    "evidence_kind": "source-and-test",
+    "status": "verified"
+  }
+}

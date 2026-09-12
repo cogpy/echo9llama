@@ -1,0 +1,24 @@
+{
+  "accepted_parent": {
+    "commit": "2143b1ebcab4b36b6050f1f33e260d4feb3de9f1",
+    "iteration": "E2",
+    "remote_workflows_green": 3
+  },
+  "authority_delta": {
+    "external_action_authority": "none",
+    "identity_mutation_api": "none",
+    "network_authority": "none",
+    "renderer_authority": "none"
+  },
+  "id": "release:e2-e3-boundary",
+  "iteration": "E3",
+  "reversible": true,
+  "schema_version": "1.0.0",
+  "scope": [
+    "deterministic-core-self-kernel",
+    "source-semantic-cog253-map",
+    "61-definition-ksm-model",
+    "read-only-runtime-status",
+    "non-authoritative-persona-expression-and-source-manifests"
+  ]
+}

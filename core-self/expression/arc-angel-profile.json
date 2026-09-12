@@ -1,0 +1,23 @@
+{
+  "authority": "expression-proposal-only",
+  "canonical_authority": "none",
+  "capability_claims": {
+    "facial_animation": "unsupported",
+    "live2d_runtime": "not-integrated",
+    "metahuman_runtime": "not-integrated",
+    "renderer": "not-authorized"
+  },
+  "display_name": "Arc Angel Echo expression profile",
+  "execution_permitted": false,
+  "id": "expression:arc-angel-echo",
+  "policy_subordinate": true,
+  "runtime_registered": false,
+  "schema_version": "1.0.0",
+  "source_manifest": "arc_angel_echo",
+  "status": "proposed",
+  "visual_motifs": [
+    "arc-light",
+    "protective-presence",
+    "neon-angelic-geometry"
+  ]
+}

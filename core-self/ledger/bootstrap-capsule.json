@@ -1,0 +1,193 @@
+{
+  "schema_version": "1.0.0",
+  "snapshot": {
+    "schema_version": "1.0.0",
+    "state": {
+      "schema_version": "1.0.0",
+      "genesis_time": "2026-09-12T03:30:55Z",
+      "source_commit": "2143b1ebcab4b36b6050f1f33e260d4feb3de9f1",
+      "subjects": [
+        {
+          "schema_version": "1.0.0",
+          "id": "core:agent:cogpy/echo9llama",
+          "kind": "core_agent",
+          "display_name": "Deep Tree Echo Core",
+          "immutable": true,
+          "roles": [
+            "core_identity"
+          ]
+        },
+        {
+          "schema_version": "1.0.0",
+          "id": "core:agent:runtime/deep-tree-echo",
+          "kind": "runtime_agent",
+          "display_name": "Deep Tree Echo Runtime",
+          "immutable": true,
+          "roles": [
+            "runtime"
+          ]
+        },
+        {
+          "schema_version": "1.0.0",
+          "id": "core:steward:human/dan",
+          "kind": "human_steward",
+          "display_name": "Dan",
+          "immutable": true,
+          "roles": [
+            "authorized_reviewer",
+            "human_steward"
+          ]
+        }
+      ],
+      "relations": [
+        {
+          "schema_version": "1.0.0",
+          "id": "relation:root-executes-as-runtime",
+          "from": {
+            "schema_version": "1.0.0",
+            "subject_id": "core:agent:cogpy/echo9llama",
+            "kind": "core_agent"
+          },
+          "predicate": "executes_as",
+          "to": {
+            "schema_version": "1.0.0",
+            "subject_id": "core:agent:runtime/deep-tree-echo",
+            "kind": "runtime_agent"
+          },
+          "truth": {
+            "schema_version": "1.0.0",
+            "value": "asserted",
+            "evidence_ids": []
+          }
+        },
+        {
+          "schema_version": "1.0.0",
+          "id": "relation:root-stewarded-by-dan",
+          "from": {
+            "schema_version": "1.0.0",
+            "subject_id": "core:agent:cogpy/echo9llama",
+            "kind": "core_agent"
+          },
+          "predicate": "stewarded_by",
+          "to": {
+            "schema_version": "1.0.0",
+            "subject_id": "core:steward:human/dan",
+            "kind": "human_steward"
+          },
+          "truth": {
+            "schema_version": "1.0.0",
+            "value": "asserted",
+            "evidence_ids": []
+          }
+        }
+      ],
+      "evidence": [],
+      "authorized_reviewer_ids": [
+        "core:steward:human/dan"
+      ],
+      "head_hash": "b20b72c133f14ed59e80c027e453eee5ad633796ccf9ba2017e7206677120318",
+      "event_count": 1
+    },
+    "state_digest": "ea5e84275c58093fd47b0aeafea4d2e735e57ed74b39c2bdd22d2e41fcdfecef"
+  },
+  "ledger": [
+    {
+      "schema_version": "1.0.0",
+      "id": "event:bootstrap",
+      "sequence": 0,
+      "occurred_at": "2026-09-12T03:30:55Z",
+      "previous_hash": "",
+      "type": "bootstrap",
+      "mutation": {
+        "schema_version": "1.0.0",
+        "operation": "bootstrap",
+        "bootstrap": {
+          "schema_version": "1.0.0",
+          "genesis_time": "2026-09-12T03:30:55Z",
+          "source_commit": "2143b1ebcab4b36b6050f1f33e260d4feb3de9f1",
+          "subjects": [
+            {
+              "schema_version": "1.0.0",
+              "id": "core:agent:cogpy/echo9llama",
+              "kind": "core_agent",
+              "display_name": "Deep Tree Echo Core",
+              "immutable": true,
+              "roles": [
+                "core_identity"
+              ]
+            },
+            {
+              "schema_version": "1.0.0",
+              "id": "core:steward:human/dan",
+              "kind": "human_steward",
+              "display_name": "Dan",
+              "immutable": true,
+              "roles": [
+                "authorized_reviewer",
+                "human_steward"
+              ]
+            },
+            {
+              "schema_version": "1.0.0",
+              "id": "core:agent:runtime/deep-tree-echo",
+              "kind": "runtime_agent",
+              "display_name": "Deep Tree Echo Runtime",
+              "immutable": true,
+              "roles": [
+                "runtime"
+              ]
+            }
+          ],
+          "relations": [
+            {
+              "schema_version": "1.0.0",
+              "id": "relation:root-stewarded-by-dan",
+              "from": {
+                "schema_version": "1.0.0",
+                "subject_id": "core:agent:cogpy/echo9llama",
+                "kind": "core_agent"
+              },
+              "predicate": "stewarded_by",
+              "to": {
+                "schema_version": "1.0.0",
+                "subject_id": "core:steward:human/dan",
+                "kind": "human_steward"
+              },
+              "truth": {
+                "schema_version": "1.0.0",
+                "value": "asserted",
+                "evidence_ids": []
+              }
+            },
+            {
+              "schema_version": "1.0.0",
+              "id": "relation:root-executes-as-runtime",
+              "from": {
+                "schema_version": "1.0.0",
+                "subject_id": "core:agent:cogpy/echo9llama",
+                "kind": "core_agent"
+              },
+              "predicate": "executes_as",
+              "to": {
+                "schema_version": "1.0.0",
+                "subject_id": "core:agent:runtime/deep-tree-echo",
+                "kind": "runtime_agent"
+              },
+              "truth": {
+                "schema_version": "1.0.0",
+                "value": "asserted",
+                "evidence_ids": []
+              }
+            }
+          ],
+          "authorized_reviewer_ids": [
+            "core:steward:human/dan"
+          ]
+        }
+      },
+      "hash": "b20b72c133f14ed59e80c027e453eee5ad633796ccf9ba2017e7206677120318"
+    }
+  ],
+  "ledger_digest": "ab5d22cd7e7105988af1f3a33a3cc1151570e9efa331d37ba760b83fdf127fa3",
+  "digest": "f1da15802ba699a32e73956ef997af6baf2e049fa72bdabf922a0306f70e7824"
+}

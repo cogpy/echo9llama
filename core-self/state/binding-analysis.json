@@ -1,0 +1,101 @@
+{
+  "binding_count": 2,
+  "binding_field": "x86eli_binding",
+  "bindings": [
+    {
+      "adapter_surface": "core/coreself",
+      "binding": "native_core_self",
+      "core_coverage": 0.307692,
+      "core_total": 13,
+      "core_verified": 4,
+      "execution": "deterministic-local-only",
+      "highest_priority_unverified": [
+        {
+          "acceptance_criterion": "Evidence for applying \"Compensating relationships in parallel\" must cite source pattern 12610230, explain how Echo preserves its structure principle (\"Even when a clearly defined contextual pattern of general concepts is used to filter out irrelevant concepts (which may destroy the integrity of a conceptual domain) confusion may result locally from the proliferation of unordered networks of conceptual relationships thus inhibiting the further development of that domain. This may be avoided by developing alternative systems of assymetric or complementary relationships in parallel as a means of linking locally elaborated con\u2026\"), and include one named violation that a conformance test rejects.",
+          "id": "cog023",
+          "name": "Echo \u2014 Compensating relationships in parallel",
+          "relevance_score": 0.6
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Interfacing vehicles of communication and networks of unmediated relationships\" must cite source pattern 12610520, explain how Echo preserves its process principle (\"Automobiles are dangerous to pedestrians and yet social life is enlivened at the points where they meet. A protected network of pedestrian paths may be developed, distinct from the road system, and orthogonal to it.\"), and include one named violation that a conformance test rejects.",
+          "id": "cog052",
+          "name": "Echo \u2014 Interfacing vehicles of communication and networks of unmediated relationships",
+          "relevance_score": 0.6
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Access to intensity\" must cite source pattern 12610100, explain how Echo preserves its process principle (\"Major schools of thought, conceptual frameworks or ideologies are a powerful attractant because of the intensity and complexity of intellectual activity associated with them. But the proliferation of derivative conceptual developments associated with them progressively deprives most people of genuine participation at those points of excellence where creative development is actually taking place. This problem can only be solved by decentralization around a multitude of smalle\u2026\"), and include one named violation that a conformance test rejects.",
+          "id": "cog010",
+          "name": "Echo \u2014 Access to intensity",
+          "relevance_score": 0.52
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Local interrelationship domains\" must cite source pattern 12610110, explain how Echo preserves its structure principle (\"General conceptual relationships, when employed in specialized areas, inhibit the articulation of specialized conceptual domains and destroy their integrity. The domain as a whole should be broken down into domains within which particular local relationships prevail, but appropriately related to a pattern of general relationships.\"), and include one named violation that a conformance test rejects.",
+          "id": "cog011",
+          "name": "Echo \u2014 Local interrelationship domains",
+          "relevance_score": 0.52
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Network of redefinitions\" must cite source pattern 12610180, explain how Echo preserves its process principle (\"In a conceptual framework which emphasizes the perpetuation of a particular conceptual order or method, the emergence of new viewpoints, challenging and redefining that order, is discouraged. It is through such processes and the emergence of alternative viewpoints that a conceptual pattern is renewed and its development ensured.\"), and include one named violation that a conformance test rejects.",
+          "id": "cog018",
+          "name": "Echo \u2014 Network of redefinitions",
+          "relevance_score": 0.52
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Stable density gradient of local relationships\" must cite source pattern 12610290, explain how Echo preserves its structure principle (\"In a specialized conceptual domain specialists experience a need to be close to the intellectual centre of gravity where the latest challenging ideas are being presented and debated. But they must balance this against their need for peaceful, reflective conditions in which their own insights can emerge and be developed. The varying ways in which this balance is struck by individuals within a school of thought or invisible college defines density rings of conceptual relations\u2026\"), and include one named violation that a conformance test rejects.",
+          "id": "cog029",
+          "name": "Echo \u2014 Stable density gradient of local relationships",
+          "relevance_score": 0.52
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Special modes of relationship\" must cite source pattern 12610560, explain how Echo preserves its process principle (\"Bicycles are endangered by other vehicles on roads and are themselves a danger to pedestrians on pathways, despite being a healthy mode of transport with little negative impact on the environment. This calls for the establishment of a system of appropriately adapted bicycle paths with bike racks located close to common destinations.\"), and include one named violation that a conformance test rejects.",
+          "id": "cog056",
+          "name": "Echo \u2014 Special modes of relationship",
+          "relevance_score": 0.52
+        },
+        {
+          "acceptance_criterion": "Evidence for applying \"Congruence between spaces defined by the framework and spaces defined by the processes within it\" must cite source pattern 12612050, explain how Echo preserves its process principle (\"No building ever feels right to the people in it unless the physical spaces (defined by columns, walls and ceilings) are congruent with the social spaces (defined by activities and human groups). The social spaces should never be modified to conform to the engineering structure.\"), and include one named violation that a conformance test rejects.",
+          "id": "cog205",
+          "name": "Echo \u2014 Congruence between spaces defined by the framework and spaces defined by the processes within it",
+          "relevance_score": 0.52
+        }
+      ],
+      "pattern_total": 80,
+      "status": "adapted",
+      "tiers": {
+        "adapter": 67,
+        "core": 13
+      }
+    },
+    {
+      "adapter_surface": null,
+      "binding": "none",
+      "core_coverage": null,
+      "core_total": 0,
+      "core_verified": 0,
+      "execution": "not-applicable",
+      "highest_priority_unverified": [],
+      "pattern_total": 173,
+      "status": "excluded",
+      "tiers": {
+        "exclude": 94,
+        "future": 79
+      }
+    }
+  ],
+  "integration_gaps": [
+    "Conceptual bindings require a dedicated manifest adapter or schema-version handshake before runtime claims.",
+    "Adapters must enforce surface-specific schemas rather than accepting arbitrary JSON objects.",
+    "Experimental systems without telemetry adapters must remain non-executable declarations.",
+    "Cog253 conceptual bindings are independent of runtime adapter availability and must not be conflated.",
+    "Source references should use stable repository URIs rather than workstation-specific absolute paths."
+  ],
+  "mapping_pattern_count": 253,
+  "schema_version": "1.0.0",
+  "trust_invariants": [
+    "unconventional artifacts are observations and proposals, never canonical state by location alone",
+    "only source-visible, schema-valid manifests cross the initial adapter boundary",
+    "no unconventional binary or module is executed by the identity kernel merely because it is present",
+    "all promoted capability claims carry source references and content digests",
+    "experimental cognition may propose events but cannot authorize canonical mutation"
+  ]
+}

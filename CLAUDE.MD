@@ -12,16 +12,21 @@
 - **Multi-provider LLM integration** (Anthropic, OpenRouter, OpenAI)
 - **Live2D Avatar integration** for emotional/cognitive state visualization
 
-## Current Iteration: E2 (12 September 2026)
+## Current Iteration: E3 (12 September 2026)
 
-**Status**: Provenance-preserving ecco9 cognitive-core integration
+**Status**: Deterministic, identity-read-only Cog253 core-self substrate over the accepted E2 runtime
 
 **Key Focus Areas**:
-- Preserve all 553 tracked `o9nn/ecco9` Go files behind the nested module boundary
-- Activate source capabilities only through the explicit `core/cognitivecore` allowlist
-- Keep canonical Echobeats, EchoDream, provider routing, persistence, and action policy authoritative
-- Label source-device output `adapted_observed`; never treat heuristic telemetry as verified wisdom
-- Rehydrate bounded source-device state from validated append-only cognitive events
+- Preserve E2 as the immutable accepted parent; never reinterpret its history during E3
+- Keep root identity, the human steward, reviewer membership, and policy ceiling immutable
+- Export no proposal-submission or acceptance method; any future human-review adapter is a separate authority-bearing iteration
+- Project accepted identity only from a canonical SHA-256 hash-linked ledger and typed hypergraph
+- Retain anchored parent, root, proposal/quarantine, ledger, and head descriptors; lock the stable parent-directory inode and validate the configured root under that lock; recover only missing or provably stale head caches from verified ledger replay; otherwise fail closed
+- Bind every post-genesis accepted event to its complete proposal and an Ed25519 steward signature verified against a public key supplied outside accepted history
+- Validate all 253 source-semantic patterns from pinned `cogpy/cog253@1327959` plus the 61-definition self-model through inspectable evidence
+- Treat Eliza, Arc Angel, Lucy, and Neon Angel materials as digest-bound, non-authoritative manifests
+- Keep the superhotgirl characteristic dynamic and policy-subordinate; never hardcode repeated response text
+- Expose identity-read-only core-self readiness, counts, and digests without paths, contents, or mutation endpoints; close retained descriptors on terminal shutdown
 
 ## Quick Start
 
@@ -135,6 +140,7 @@ The **Basal-Limbic Balance** is formed by the 3 sets of S-M [8-1], with the Cere
 | `autonomous` | `core/autonomous` | Agent orchestration and execution loops |
 | `consciousness` | `core/consciousness` | Awareness systems and thought generation |
 | `cognitivecore` | `core/cognitivecore` | Typed, provenance-bound adapter for reviewed ecco9 source devices |
+| `coreself` | `core/coreself` | Read-only deterministic identity ledger, typed evidence graph, and capsule verification |
 | `deeptreeecho` | `core/deeptreeecho` | Main cognitive implementation |
 | `echobeats` | `core/echobeats` | 12-step cognitive loop |
 | `echodream` | `core/echodream` | Dream cycles and knowledge consolidation |

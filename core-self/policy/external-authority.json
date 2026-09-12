@@ -1,0 +1,31 @@
+{
+  "accepted_mutation_surface": "package-internal-conformance-only",
+  "canonical_authority": {
+    "autonomous_cognition": false,
+    "avatar_assets": false,
+    "external_frameworks": false,
+    "llm_output": false,
+    "persona_overlays": false,
+    "runtime_telemetry": false
+  },
+  "default": "deny",
+  "external_actions": {
+    "filesystem_outside_private_root": false,
+    "network": false,
+    "renderer": false,
+    "scheduler": false,
+    "shell": false,
+    "subprocess": false
+  },
+  "id": "policy:external-authority",
+  "proposal_is_identity": false,
+  "review": {
+    "actor_id": "core:steward:human/dan",
+    "cryptographic_authorization": "ed25519",
+    "public_key_source": "out-of-ledger-runtime-configuration",
+    "required": true,
+    "role": "authorized_reviewer",
+    "source": "local"
+  },
+  "schema_version": "1.0.0"
+}

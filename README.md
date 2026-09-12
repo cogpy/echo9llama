@@ -30,6 +30,8 @@ export OPENROUTER_API_KEY=...
 export ECHO_STATE_DIRECTORY="$HOME/.echo9llama/state"
 export ECHO_ENABLE_COGNITIVE_CORE=true
 export ECHO_COGNITIVE_CORE_INTERVAL=1m
+export ECHO_ENABLE_CORE_SELF=true
+export ECHO_CORE_SELF_DIRECTORY="$HOME/.echo9llama/state/core-self"
 # Safe default: proposals are ledgered but no tool effect is permitted.
 export ECHO_ENACTION_MODE=observe
 
@@ -54,7 +56,9 @@ export ECHO_WORKSPACE_DIRECTORY="$HOME/.echo9llama/state/workspace"
 CGO_ENABLED=1 go run ./cmd/autonomous
 ```
 
-The model proposes content, but deterministic policy authorizes the effect and a read-back evaluator controls all goal and skill progress. Every tracked Go file from `o9nn/ecco9@1b22401` is preserved under [`cognitive-core/ecco9`](cognitive-core/ecco9/README.md); a six-file reviewed adapter activates only reservoir, hypergraph-memory, affect, and layered-consciousness devices. Their cadence-bounded observations are provenance-marked, appended to the cognitive event ledger, supplied to EchoDream, and replayed on restart. See the [ecco9 cognitive-core iteration report](docs/iterations/EVOLUTION_ITERATION_2026-09-12_ECCO9_COGNITIVE_CORE.md), the [replay-safe E1 report](docs/iterations/EVOLUTION_ITERATION_2026-09-11_REPLAY_SAFE_ENACTION.md), and the [autonomy threat model](SECURITY.md).
+The model proposes content, but deterministic policy authorizes the effect and a read-back evaluator controls all goal and skill progress. Every tracked Go file from `o9nn/ecco9@1b22401` is preserved under [`cognitive-core/ecco9`](cognitive-core/ecco9/README.md); a six-file reviewed adapter activates only reservoir, hypergraph-memory, affect, and layered-consciousness devices. Their cadence-bounded observations are provenance-marked, appended to the cognitive event ledger, supplied to EchoDream, and replayed on restart.
+
+The E3 [Cog253 core-self](core-self/README.md) adds a separate deterministic identity substrate: 253 source-semantic patterns pinned to the MIT `cogpy/cog253@1327959` corpus, a complete 61-definition KSM self-model, a hash-linked accepted ledger, typed evidence-only hypergraph projection, and independently verifiable capsules. Every post-genesis accepted event commits its complete proposal and carries an Ed25519 steward signature verified against a public key supplied outside the ledger. Private state uses anchored parent/root/subdirectory and file descriptors; concurrent mutation locks the stable parent inode; valid stale or missing head caches recover only from verified ledger replay. Required identity otherwise fails closed, and the exported kernel API is identity-read-only apart from idempotent descriptor closure. The runtime exposes readiness and digests only. Referenced Eliza, Arc Angel, Lucy, and Neon Angel materials are digest-bound proposed manifests with no canonical or external-action authority; the superhotgirl presentation overlay remains dynamic, mutable, and policy-subordinate. See the [E3 iteration report](docs/iterations/EVOLUTION_ITERATION_2026-09-12_COG253_CORE_SELF.md), the [E2 ecco9 report](docs/iterations/EVOLUTION_ITERATION_2026-09-12_ECCO9_COGNITIVE_CORE.md), the [replay-safe E1 report](docs/iterations/EVOLUTION_ITERATION_2026-09-11_REPLAY_SAFE_ENACTION.md), and the [autonomy threat model](SECURITY.md).
 
 For native local cognition, use a CGO-enabled build and configure one or more GGUF files or directories. The router verifies model format, canonical roots, context capacity, host/cgroup memory, and current concurrency before selecting the model:
 
@@ -128,7 +132,7 @@ EchOllama integrates Deep Tree Echo, an advanced cognitive architecture that bri
 
 - **🌊 Embodied Cognition Engine**: Real-time cognitive processing with spatial and emotional awareness
 - **🔗 Provenance-Bound ecco9 Core**: All 553 source Go files are preserved; reviewed reservoir, memory, affect, and layered-consciousness drivers execute behind a typed canonical adapter
-- **🧬 Identity System**: Persistent identity with continuous learning and memory formation
+- **🧬 Cog253 Core-Self**: Deterministic bootstrap identity, append-only reviewed evolution, typed hypergraph projection, KSM evidence cycle, and portable verification capsules
 - **🕸️ Hypergraph Memory**: Multi-relational knowledge representation and storage
 - **⚡ Reservoir Networks**: Temporal pattern recognition and echo state processing
 - **🌀 Adaptive Learning**: Evolutionary algorithms for continuous system optimization

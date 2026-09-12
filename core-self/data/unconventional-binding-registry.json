@@ -1,0 +1,37 @@
+{
+  "arc_angel_echo": {
+    "adapter_surface": "future:expression-manifest",
+    "execution": "never",
+    "status": "manifest"
+  },
+  "ecco9_cognitive_core": {
+    "adapter_surface": "core/cognitivecore",
+    "execution": "isolated-observation-only",
+    "status": "vendored"
+  },
+  "eliza_autonomy": {
+    "adapter_surface": null,
+    "execution": "not-integrated",
+    "status": "inspired"
+  },
+  "lucy_persona": {
+    "adapter_surface": "future:persona-manifest",
+    "execution": "never",
+    "status": "manifest"
+  },
+  "native_core_self": {
+    "adapter_surface": "core/coreself",
+    "execution": "deterministic-local-only",
+    "status": "adapted"
+  },
+  "neon_angel_mesh": {
+    "adapter_surface": "future:avatar-asset-manifest",
+    "execution": "never",
+    "status": "manifest"
+  },
+  "none": {
+    "adapter_surface": null,
+    "execution": "not-applicable",
+    "status": "excluded"
+  }
+}

@@ -66,6 +66,9 @@ func TestProductionEnactionDefaultsToObserve(t *testing.T) {
 	if !config.EnableCognitiveCore {
 		t.Fatal("reviewed cognitive core should be enabled by default")
 	}
+	if !config.EnableCoreSelf {
+		t.Fatal("deterministic core-self should be enabled by default")
+	}
 	if config.CognitiveCoreInterval != time.Minute {
 		t.Fatalf("unexpected cognitive-core cadence: %s", config.CognitiveCoreInterval)
 	}
@@ -76,6 +79,9 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_IDENTITY", "A persistent test identity")
 	t.Setenv("ECHO_PERSONA", "magnetic confidence, playful wit, scientific brilliance, bounded by wisdom")
 	t.Setenv("ECHO_STATE_DIRECTORY", t.TempDir())
+	coreSelfDirectory := t.TempDir()
+	t.Setenv("ECHO_CORE_SELF_DIRECTORY", coreSelfDirectory)
+	t.Setenv("ECHO_CORE_SELF_REVIEWER_PUBLIC_KEY", strings.Repeat("a", 64))
 	t.Setenv("ECHO_MAIN_LOOP_INTERVAL", "125ms")
 	t.Setenv("ECHO_THOUGHT_INTERVAL", "250ms")
 	t.Setenv("ECHO_WAKE_DURATION", "2s")
@@ -89,6 +95,7 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	t.Setenv("ECHO_LOCAL_WARM_ON_WAKE", "true")
 	t.Setenv("ECHO_LOCAL_COOL_ON_REST", "false")
 	t.Setenv("ECHO_ENABLE_COGNITIVE_CORE", "false")
+	t.Setenv("ECHO_ENABLE_CORE_SELF", "false")
 	t.Setenv("ECHO_ENACTION_MODE", "local-sandbox")
 	t.Setenv("ECHO_ACTION_TIMEOUT", "11s")
 	t.Setenv("ECHO_MAX_ARTIFACT_BYTES", "4096")
@@ -122,6 +129,9 @@ func TestProductionEnvironmentConfiguration(t *testing.T) {
 	if config.EnableCognitiveCore {
 		t.Fatal("cognitive core environment flag was not applied")
 	}
+	if config.EnableCoreSelf || config.CoreSelfDirectory != coreSelfDirectory || config.CoreSelfReviewerPublicKey != strings.Repeat("a", 64) {
+		t.Fatalf("core-self environment configuration was not applied: %#v", config)
+	}
 	if config.EnactionMode != deeptreeecho.EnactionLocalSandbox || config.ActionTimeout != 11*time.Second || config.MaxArtifactBytes != 4096 || config.MaxArtifactsPerWake != 3 {
 		t.Fatalf("enaction configuration was not applied: %#v", config)
 	}
@@ -142,7 +152,8 @@ func TestProductionHTTPServerDefaultsToLoopback(t *testing.T) {
 
 func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	config := deeptreeecho.DefaultOrchestratorConfig()
-	config.EnablePersistence = false
+	config.StateDirectory = t.TempDir()
+	config.EnableEnaction = false
 	config.EnableSkillLearning = false
 	config.EnableDiscussionMonitoring = false
 	config.MainLoopInterval = time.Hour
@@ -184,6 +195,9 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	if healthPayload["cognitive_core_ready"] != true {
 		t.Fatalf("health payload did not report cognitive-core readiness: %#v", healthPayload)
 	}
+	if healthPayload["core_self_ready"] != true {
+		t.Fatalf("health payload did not report core-self readiness: %#v", healthPayload)
+	}
 
 	statusResponse := httptest.NewRecorder()
 	handler.ServeHTTP(statusResponse, httptest.NewRequest(http.MethodGet, "/status", nil))
@@ -211,6 +225,10 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	if _, exposed := statusPayload["state_directory"]; exposed {
 		t.Fatalf("status endpoint exposed private state path: %#v", statusPayload)
 	}
+	coreSelfStatus, ok := statusPayload["core_self"].(map[string]interface{})
+	if !ok || coreSelfStatus["event_count"] != float64(1) || coreSelfStatus["state_digest"] == "" {
+		t.Fatalf("status endpoint omitted bounded core-self status: %#v", statusPayload)
+	}
 }
 
 func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
@@ -234,7 +252,8 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		},
 	}}
 	config := deeptreeecho.DefaultOrchestratorConfig()
-	config.EnablePersistence = false
+	config.StateDirectory = t.TempDir()
+	config.EnableEnaction = false
 	config.AutoWakeRest = false
 	orchestrator := deeptreeecho.NewUnifiedAutonomousOrchestrator(provider, config)
 	handler := newProductionHandler(orchestrator)
@@ -262,6 +281,8 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		"echo_local_model_memory_safe 1",
 		"echo_local_model_in_flight 2",
 		"echo_cognitive_core_ready 0",
+		"echo_core_self_ready 1",
+		"echo_core_self_events_total 1",
 	} {
 		if !strings.Contains(metrics, expected) {
 			t.Fatalf("metrics missing %q:\n%s", expected, metrics)

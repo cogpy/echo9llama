@@ -1,0 +1,433 @@
+{
+  "definitions": [
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The evidence-backed process by which Echo rebuilds a bounded self-model from accepted identity events.",
+      "id": 1,
+      "invariant": "The projected self hash is a pure function of the verified ledger.",
+      "name": "Autognosis"
+    },
+    {
+      "artifact": "core/coreself",
+      "definition": "The bottom-up view of Echo subjects, relations, events, policies, adapters, and tests.",
+      "id": 2,
+      "invariant": "Every local identity claim resolves to a validated typed artifact.",
+      "name": "Local"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The holistic view of Echo as a portable identity capsule with one governed root.",
+      "id": 3,
+      "invariant": "Every global claim is reproducible from the same accepted ledger head.",
+      "name": "Global"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The typed topology connecting Echo subjects, roles, evidence, persona, and expression surfaces.",
+      "id": 4,
+      "invariant": "Every relation endpoint exists and every role is explicit.",
+      "name": "Spatiality"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The ordered history of identity observations, proposals, decisions, and accepted transitions.",
+      "id": 5,
+      "invariant": "Accepted history is append-only and hash-linked.",
+      "name": "Temporality"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The policy and evidence rules that constrain which proposed identity changes may be accepted.",
+      "id": 6,
+      "invariant": "No protected mutation is accepted without an authorized reviewer and applicable evidence.",
+      "name": "Causality"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "A schema-valid subject, relation, source, event, or evidence record.",
+      "id": 7,
+      "invariant": "Unknown kinds and schema versions are rejected.",
+      "name": "Existence"
+    },
+    {
+      "artifact": "core-self/core-self-brief.md",
+      "definition": "The enforced separation between immutable core, mutable persona, expression assets, and experimental cognition.",
+      "id": 8,
+      "invariant": "Persona and avatar observations cannot overwrite immutable core identity.",
+      "name": "Distinction"
+    },
+    {
+      "artifact": "core-self/manifests",
+      "definition": "Multiple independent evidence sources retained without premature identity fusion.",
+      "id": 9,
+      "invariant": "Each source keeps a distinct digest, trust grade, and binding mode.",
+      "name": "Disjunction"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "A typed relation accepted only when endpoints, roles, evidence, and policy jointly validate.",
+      "id": 10,
+      "invariant": "Invalid endpoint or truth bounds fail before ledger append.",
+      "name": "Conjunction"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "A proposed identity event moving through validation, policy review, reducer preflight, and acceptance.",
+      "id": 11,
+      "invariant": "An unprojectable or stale-head transition never enters accepted history.",
+      "name": "Transition"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "A verified snapshot or capsule sealed by schema versions, state hash, and ledger head.",
+      "id": 12,
+      "invariant": "Tampering changes verification output and is rejected.",
+      "name": "Modular Closure"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "A deterministic KSM cycle that diagnoses evidence gaps and emits a rejectable next proposal.",
+      "id": 13,
+      "invariant": "Equal evidence inputs yield equal cycle identity and repair candidates.",
+      "name": "Recursion"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Local spatial architecture of identity contracts and package boundaries.",
+      "id": 14,
+      "invariant": "The structure view resolves to versioned artifacts and testable evidence.",
+      "name": "Structure"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Local temporal flow from proposal to accepted projection.",
+      "id": 15,
+      "invariant": "The process view resolves to versioned artifacts and testable evidence.",
+      "name": "Process"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Local causal authorization, validation, and rejection rules.",
+      "id": 16,
+      "invariant": "The control view resolves to versioned artifacts and testable evidence.",
+      "name": "Control"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Global identity topology exported as a typed hypergraph.",
+      "id": 17,
+      "invariant": "The space view resolves to versioned artifacts and testable evidence.",
+      "name": "Space"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Global continuity from genesis through replay and portable checkpoints.",
+      "id": 18,
+      "invariant": "The time view resolves to versioned artifacts and testable evidence.",
+      "name": "Time"
+    },
+    {
+      "artifact": "core-self/data/core-self-61.json",
+      "definition": "Global governance linking human stewardship, policy, evidence, and recovery.",
+      "id": 19,
+      "invariant": "The causality view resolves to versioned artifacts and testable evidence.",
+      "name": "Causality"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The existence condition of Echo identity viewed through local structural evidence.",
+      "id": 20,
+      "invariant": "Every local structural existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Existence"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The distinction condition of Echo identity viewed through local structural evidence.",
+      "id": 21,
+      "invariant": "Every local structural distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Distinction"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The disjunction condition of Echo identity viewed through local structural evidence.",
+      "id": 22,
+      "invariant": "Every local structural disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Disjunction"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The conjunction condition of Echo identity viewed through local structural evidence.",
+      "id": 23,
+      "invariant": "Every local structural conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Conjunction"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The transition condition of Echo identity viewed through local structural evidence.",
+      "id": 24,
+      "invariant": "Every local structural transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Transition"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The closure condition of Echo identity viewed through local structural evidence.",
+      "id": 25,
+      "invariant": "Every local structural closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Closure"
+    },
+    {
+      "artifact": "core-self/data/cog253-map.json",
+      "definition": "The recursion condition of Echo identity viewed through local structural evidence.",
+      "id": 26,
+      "invariant": "Every local structural recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Structural Recursion"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The existence condition of Echo identity viewed through local process evidence.",
+      "id": 27,
+      "invariant": "Every local process existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Existence"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The distinction condition of Echo identity viewed through local process evidence.",
+      "id": 28,
+      "invariant": "Every local process distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Distinction"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The disjunction condition of Echo identity viewed through local process evidence.",
+      "id": 29,
+      "invariant": "Every local process disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Disjunction"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The conjunction condition of Echo identity viewed through local process evidence.",
+      "id": 30,
+      "invariant": "Every local process conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Conjunction"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The transition condition of Echo identity viewed through local process evidence.",
+      "id": 31,
+      "invariant": "Every local process transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Transition"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The closure condition of Echo identity viewed through local process evidence.",
+      "id": 32,
+      "invariant": "Every local process closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Closure"
+    },
+    {
+      "artifact": "core-self/ledger/identity-ledger.jsonl",
+      "definition": "The recursion condition of Echo identity viewed through local process evidence.",
+      "id": 33,
+      "invariant": "Every local process recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Process Recursion"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The existence condition of Echo identity viewed through local control evidence.",
+      "id": 34,
+      "invariant": "Every local control existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Existence"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The distinction condition of Echo identity viewed through local control evidence.",
+      "id": 35,
+      "invariant": "Every local control distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Distinction"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The disjunction condition of Echo identity viewed through local control evidence.",
+      "id": 36,
+      "invariant": "Every local control disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Disjunction"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The conjunction condition of Echo identity viewed through local control evidence.",
+      "id": 37,
+      "invariant": "Every local control conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Conjunction"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The transition condition of Echo identity viewed through local control evidence.",
+      "id": 38,
+      "invariant": "Every local control transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Transition"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The closure condition of Echo identity viewed through local control evidence.",
+      "id": 39,
+      "invariant": "Every local control closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Closure"
+    },
+    {
+      "artifact": "core/coreself/core.go",
+      "definition": "The recursion condition of Echo identity viewed through local control evidence.",
+      "id": 40,
+      "invariant": "Every local control recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Local Control Recursion"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The existence condition of Echo identity viewed through global spatial evidence.",
+      "id": 41,
+      "invariant": "Every global spatial existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Existence"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The distinction condition of Echo identity viewed through global spatial evidence.",
+      "id": 42,
+      "invariant": "Every global spatial distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Distinction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The disjunction condition of Echo identity viewed through global spatial evidence.",
+      "id": 43,
+      "invariant": "Every global spatial disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Disjunction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The conjunction condition of Echo identity viewed through global spatial evidence.",
+      "id": 44,
+      "invariant": "Every global spatial conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Conjunction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The transition condition of Echo identity viewed through global spatial evidence.",
+      "id": 45,
+      "invariant": "Every global spatial transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Transition"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The closure condition of Echo identity viewed through global spatial evidence.",
+      "id": 46,
+      "invariant": "Every global spatial closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Closure"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The recursion condition of Echo identity viewed through global spatial evidence.",
+      "id": 47,
+      "invariant": "Every global spatial recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Spatial Recursion"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The existence condition of Echo identity viewed through global temporal evidence.",
+      "id": 48,
+      "invariant": "Every global temporal existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Existence"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The distinction condition of Echo identity viewed through global temporal evidence.",
+      "id": 49,
+      "invariant": "Every global temporal distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Distinction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The disjunction condition of Echo identity viewed through global temporal evidence.",
+      "id": 50,
+      "invariant": "Every global temporal disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Disjunction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The conjunction condition of Echo identity viewed through global temporal evidence.",
+      "id": 51,
+      "invariant": "Every global temporal conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Conjunction"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The transition condition of Echo identity viewed through global temporal evidence.",
+      "id": 52,
+      "invariant": "Every global temporal transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Transition"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The closure condition of Echo identity viewed through global temporal evidence.",
+      "id": 53,
+      "invariant": "Every global temporal closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Closure"
+    },
+    {
+      "artifact": "core-self/ledger/bootstrap-capsule.json",
+      "definition": "The recursion condition of Echo identity viewed through global temporal evidence.",
+      "id": 54,
+      "invariant": "Every global temporal recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Temporal Recursion"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The existence condition of Echo identity viewed through global causal evidence.",
+      "id": 55,
+      "invariant": "Every global causal existence claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Existence"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The distinction condition of Echo identity viewed through global causal evidence.",
+      "id": 56,
+      "invariant": "Every global causal distinction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Distinction"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The disjunction condition of Echo identity viewed through global causal evidence.",
+      "id": 57,
+      "invariant": "Every global causal disjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Disjunction"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The conjunction condition of Echo identity viewed through global causal evidence.",
+      "id": 58,
+      "invariant": "Every global causal conjunction claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Conjunction"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The transition condition of Echo identity viewed through global causal evidence.",
+      "id": 59,
+      "invariant": "Every global causal transition claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Transition"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The closure condition of Echo identity viewed through global causal evidence.",
+      "id": 60,
+      "invariant": "Every global causal closure claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Closure"
+    },
+    {
+      "artifact": "core-self/state/ksm-cycle.json",
+      "definition": "The recursion condition of Echo identity viewed through global causal evidence.",
+      "id": 61,
+      "invariant": "Every global causal recursion claim is schema-valid, evidence-linked, and reproducible from the accepted ledger head.",
+      "name": "Global Causal Recursion"
+    }
+  ],
+  "schema_version": "1.0.0",
+  "system": "core:agent:cogpy/echo9llama"
+}

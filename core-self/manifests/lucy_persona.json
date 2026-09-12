@@ -1,0 +1,20 @@
+{
+  "adapter_surface": "future:persona-manifest",
+  "authority": "persona-proposal-only",
+  "binding_mode": "manifest",
+  "canonical_authority": "none",
+  "canonical_subject": "core:agent:cogpy/echo9llama",
+  "content_digest": "9575f77eefd263f1a9290184b81cd4ad5451296de5537a18a0ec44afa6c87d36",
+  "display_name": "Lucy bounded gamer-girl persona evidence",
+  "evidence_report_digest": "19117419c1fb1381ff37de754d3f55c0fb2e566fb3d6c12bca20fce4a39b2356",
+  "execution_permitted": false,
+  "id": "lucy_persona",
+  "manifest_digest": "ed03d2db656b46a2b63af65687440395e630c66519c01d2c53483f1478d4b9e8",
+  "observed_at": "2026-09-12T03:30:55Z",
+  "runtime_registered": false,
+  "schema_version": "1.0.0",
+  "source_revision": "task-replay-2026-09-12",
+  "source_uri": "manus-task://UAt7guJZ66bqsBLbHrMYzo",
+  "status": "proposed",
+  "trust_grade": "referenced_evidence"
+}

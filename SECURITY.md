@@ -35,6 +35,14 @@ The repository preserves all tracked Go files from the pinned `o9nn/ecco9` linea
 
 The active adapter receives only bounded public cognitive state. It owns source-driver lifecycle, serializes execution, follows the canonical wake/rest barrier, and cannot call tools, providers, the network, or external persistence. Its output is labeled `adapted_observed`, never as factual truth or verified wisdom. Cognitive-core events contain source, manifest, and activation-catalogue provenance and are classified `sensitive` because bounded interest and stream-thought text may be included. Observations are cadence-limited to one per minute by default. Startup verifies and replays at most the latest 4,096 valid input envelopes into source devices; invalid provenance or input digests fail closed.
 
+### Cog253 core-self boundary
+
+E3 adds a separate standard-library-only identity kernel under `core/coreself`. Its canonical state is a pure projection of a private, canonical JSON, SHA-256 hash-linked ledger. The bootstrap subjects, source commit, reviewer set, and root relations are fixed. Identity changes must first enter a physically separate proposal store and pass deterministic preflight; only the pinned local human steward can append an accepted event. Proposal identifiers are digest-addressed on disk, so accepted identifier syntax cannot become a filesystem path.[9]
+
+The production runtime opens and replays the core-self ledger at startup and fails closed on a fork, altered digest, non-canonical encoding, insecure permissions, or head mismatch. Its public surface is read-only and returns readiness, counts, and digests only. E3 exports no acceptance API and has no HTTP mutation endpoint or path from Echobeats, EchoDream, an LLM, persona state, renderer telemetry, or KSM advice to the package-internal review gate.
+
+The Eliza autonomy, Arc Angel Echo, Lucy persona, and Neon Angel materials are digest-bound source manifests only. They are not vendored or executed by E3. The attached Neon Angel binary archive is neither copied nor parsed and remains blocked on rights and provenance. The superhotgirl persona and Arc Angel expression profiles are replaceable presentation proposals; they cannot raise policy ceilings, mutate identity, mint capabilities, or self-certify consent, maturity, or evidence.[10] [11]
+
 ## Threat model
 
 | Threat | Control | Residual risk |
@@ -54,12 +62,23 @@ The active adapter receives only bounded public cognitive state. It owns source-
 | Imported memory retains sensitive full inputs or grows without bound. | The adapter writes only input digests and ordinals to the source memory driver and caps it at 4,096 nodes per process. | The canonical sensitive event ledger remains the persistence authority and still requires an operator retention policy. |
 | Source driver lifecycle leaks into sleep. | The canonical bridge owns context cancellation and shutdown; wake/rest admission is serialized; race tests cover the active path. | Quarantined source lifecycle code still contains known defects and must not be activated directly. |
 | Cognitive replay grows without bound. | Observation cadence defaults to one minute; replay retains only the latest 4,096 validated input envelopes in memory before device hydration. | The append-only ledger itself still needs an explicit retention and export policy for long-lived deployments. |
+| Autonomous cognition or edited ledger bytes rewrite identity. | The external core-self API is identity-read-only; neither proposal submission nor acceptance is exported, and `Close` can only release descriptors. Package-internal conformance machinery requires the fixed local human steward, an unchanged verified head, a complete embedded proposal, and an Ed25519 signature checked against a public key supplied outside the ledger. | A future human-review adapter and private-key custody mechanism would be authority-bearing and require a separate security review. |
+| Proposal ID escapes the private directory. | Proposal filenames are SHA-256 digests of validated IDs; tests use traversal-shaped valid identifiers. | The host owner can still alter files and trigger fail-closed quarantine. |
+| Identity path replacement redirects private state. | A lifetime parent-directory handle, top-level `os.Root`, anchored proposal/quarantine subroots, stable ledger/head handles, and authoritative-name inode checks prevent post-open symlink/rename substitution from redirecting writes. A displaced proposal/quarantine subroot remains bound to its originally opened inode rather than an attacker-selected replacement; configured-root, ledger, and live-head name replacement is rejected. Adversarial tests cover top-level root, proposal, quarantine, ledger, regular/symlink head, and legacy lock-name replacement. | The host owner can still deny service, move an anchored non-authoritative child directory, alter files, or replace the parent namespace itself; E3 prevents redirection or fails closed but does not provide a trusted host. |
+| Identity writer lock is split or orphaned. | Writers lock the stable parent-directory inode, not a replaceable root or lock filename, and validate the configured root while holding it. Same-process and Unix subprocess tests cover top-level replacement, decoy `.identity.lock`, contention, and release after forcible process death. | Platforms without supported crash-safe locks fail closed; operating-system descriptor and lock semantics remain trusted. |
+| Identity ledger fork is mistaken for an ordinary crash window. | Canonical hash-linked replay is authoritative. Only a missing head cache or a canonical head that exactly matches a verified earlier ledger state is rebuilt atomically with directory synchronization. Malformed, future, forged, and non-ancestor heads quarantine. | A storage layer that violates successful `fsync` durability can still lose acknowledged bytes; E3 has no replicated or hardware-backed journal. |
+| Evidence relation mints authority around immutable subjects. | Accepted non-bootstrap relations use a closed evidence predicate vocabulary; protected root, steward, and runtime subjects admit only evidence-backed root-to-runtime verification. | Future ontology expansion is authority-sensitive and requires conformance tests and review. |
+| Required identity silently disables itself. | The orchestrator retains the requested core-self requirement independently of mutable runtime configuration and refuses awakening if private persistence or verification is unavailable. | Operators must explicitly disable core-self if they knowingly choose an identity-less test runtime. |
+| Imported avatar or persona gains operational authority. | Source manifests set `canonical_authority=none`; proposed bindings are not runtime-registered and the E3 external-authority policy denies renderer, asset-parser, DCC, network, and subprocess access. | Future activation requires a separate reviewed iteration and target-runtime tests. |
+| Presentation text becomes repetitive or hardcoded. | The superhotgirl overlay requires dynamic contextual generation and contains no canned responses. | Provider quality can still vary; generation errors must remain visible rather than replaced by fake success text. |
 
 ## Secrets and privacy
 
 API keys must enter through environment variables or an external secret manager. They must not be written to the event ledger, workspace notes, logs, status endpoints, or training artifacts. Public status reports only provider identifiers, model identifiers, bounded route evidence, counters, and readiness. It does not return raw prompts, note bodies, credentials, or configured absolute workspace paths.[1] [3]
 
 Cognitive-core event payloads may include bounded public stream-thought excerpts and current interest strengths. They therefore remain in the private owner-only event database, are not returned by HTTP status endpoints, and must not enter training data without a future explicit redaction and consent pipeline.
+
+The core-self ledger stores bounded typed identity metadata and digest references, not referenced task bodies, avatar binaries, raw prompts, credentials, or hidden reasoning. Internal proposal fixtures remain private and are not accepted evidence until review. Portable capsules contain the accepted typed state and ledger and should be treated as identity records when exported. Post-genesis capsules are trusted only when `VerifyCapsuleWithReviewerKey` or a configured kernel supplies the expected reviewer key outside the capsule; a capsule cannot self-select that trust anchor. The Cog253 source directory contains only a pinned public JSON semantic corpus and its MIT license; it is non-executable and digest-verified by generator and conformance tests.
 
 The default HTTP listener is loopback-only. Containers bind internally to `0.0.0.0`, while both supplied Compose definitions publish HTTP, model, Prometheus, and Grafana ports on host loopback only. Any broader exposure requires an explicit deployment override plus authentication and network controls. The production HTTP surface remains read-only and exposes no actuation endpoint.[4]
 
@@ -91,6 +110,8 @@ E1 also does not claim that generated notes are factually verified. The evaluato
 
 The imported ecco9 lineage does not authorize its preserved provider, NPU, Supabase, self-update, organization, discussion, or autonomous-agent implementations. Those paths include stale contracts, simulated behavior, or unresolved concurrency and persistence risks and remain quarantined until separately repaired and promoted.
 
+E3 additionally does not authorize automated identity acceptance, reviewer expansion, root-subject amendment, renderer activation, asset conversion, DCC execution, persona-driven action, avatar-telemetry identity mutation, or direct KSM repair application. Its KSM output is an inspectable advisory proposal only.
+
 ## Vulnerability reporting
 
 Report security issues through a private GitHub security advisory for the [`cogpy/echo9llama`](https://github.com/cogpy/echo9llama) repository. Include the affected version or commit, reproduction steps, expected and observed behavior, impact, and any suggested mitigation. Do not include live secrets or private workspace content in a public issue.
@@ -105,3 +126,6 @@ Report security issues through a private GitHub security advisory for the [`cogp
 [6]: ./core/cognitivecore/bridge.go "Typed ecco9 cognitive-core adapter"
 [7]: ./cognitive-core/ecco9/LINEAGE_MANIFEST.json "Pinned source lineage manifest"
 [8]: ./cognitive-core/ecco9/INTEGRATION_CATALOGUE.json "Per-file integration dispositions"
+[9]: ./core/coreself/core.go "Deterministic proposal-gated core-self kernel"
+[10]: ./core-self/data/unconventional-binding-registry.json "Unconventional binding registry"
+[11]: ./core-self/policy/external-authority.json "E3 deny-by-default external authority policy"

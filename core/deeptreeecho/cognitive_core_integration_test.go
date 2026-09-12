@@ -129,6 +129,7 @@ func TestCognitiveCoreObservationIsDurableAndDreamProjectedOnce(t *testing.T) {
 func TestCognitiveCoreFollowsCanonicalWakeRestAuthority(t *testing.T) {
 	config := DefaultOrchestratorConfig()
 	config.EnablePersistence = false
+	config.EnableCoreSelf = false
 	config.EnableEnaction = false
 	config.EnableSkillLearning = false
 	config.EnableDiscussionMonitoring = false

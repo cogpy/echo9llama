@@ -1,0 +1,20 @@
+{
+  "adapter_surface": null,
+  "authority": "none",
+  "binding_mode": "inspired",
+  "canonical_authority": "none",
+  "canonical_subject": "core:agent:cogpy/echo9llama",
+  "content_digest": "c10c9ea3d3300532bd7699730e3f870314c6d217653b980263ad2c1e48a1c795",
+  "display_name": "ElizaOS C++ autonomy repair evidence",
+  "evidence_report_digest": "7ff834b344b2807a49a1e2149611243aace51c37f040c9b26f489c3e71a27f76",
+  "execution_permitted": false,
+  "id": "eliza_autonomy",
+  "manifest_digest": "2972252bf26aff3a1181c15ba9cceddb968f85d5ff1ad33f1cf9870dfca48835",
+  "observed_at": "2026-09-12T03:30:55Z",
+  "runtime_registered": false,
+  "schema_version": "1.0.0",
+  "source_revision": "task-replay-2026-09-12",
+  "source_uri": "manus-task://HX6yQ6JoeTcaYJRgNcbZcL",
+  "status": "proposed",
+  "trust_grade": "referenced_evidence"
+}

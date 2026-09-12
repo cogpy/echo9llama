@@ -1,0 +1,268 @@
+{
+  "advisory": true,
+  "converged": false,
+  "cycle_hash": "f175abdef50e6c16f713cb643e2839bb0466bb85f6c4cf28e0b3107dc30da9b2",
+  "cycle_id": "ksm_d73ac90ee335c45b",
+  "engine_version": "1.0.0",
+  "input_hashes": {
+    "definitions_hash": "1f9d5d1f1dd81db4f493ff57ac966890b238e0360dcca9bc9a29fa0d424d0112",
+    "engine_version": "1.0.0",
+    "evidence_hash": "43888178d7e90cbfeca16bf651eae479a783fdc7630db7398d2507bdf86aafc3",
+    "ledger_head": "b20b72c133f14ed59e80c027e453eee5ad633796ccf9ba2017e7206677120318",
+    "mapping_hash": "803c743f65a7f6b8811aed8b55429cb4ab8c907176fdf2b0b2bfb9cf5b88313f"
+  },
+  "loss": 0.52381,
+  "metrics": [
+    {
+      "additional_to_minimum": 0,
+      "center_id": "control",
+      "minimum": 0.5,
+      "score": 1.0,
+      "total_count": 1,
+      "verified_count": 1,
+      "verified_evidence": [
+        "cog015"
+      ]
+    },
+    {
+      "additional_to_minimum": 3,
+      "center_id": "process",
+      "minimum": 0.5,
+      "score": 0.0,
+      "total_count": 5,
+      "verified_count": 0,
+      "verified_evidence": []
+    },
+    {
+      "additional_to_minimum": 1,
+      "center_id": "structure",
+      "minimum": 0.5,
+      "score": 0.428571,
+      "total_count": 7,
+      "verified_count": 3,
+      "verified_evidence": [
+        "cog005",
+        "cog032",
+        "cog249"
+      ]
+    }
+  ],
+  "observed_at": "2026-09-12T03:30:55Z",
+  "property_coherence": 0.47619,
+  "repair": {
+    "acceptance_criteria": [
+      "Evidence for applying \"Interfacing vehicles of communication and networks of unmediated relationships\" must cite source pattern 12610520, explain how Echo preserves its process principle (\"Automobiles are dangerous to pedestrians and yet social life is enlivened at the points where they meet. A protected network of pedestrian paths may be developed, distinct from the road system, and orthogonal to it.\"), and include one named violation that a conformance test rejects.",
+      "Evidence for applying \"Access to intensity\" must cite source pattern 12610100, explain how Echo preserves its process principle (\"Major schools of thought, conceptual frameworks or ideologies are a powerful attractant because of the intensity and complexity of intellectual activity associated with them. But the proliferation of derivative conceptual developments associated with them progressively deprives most people of genuine participation at those points of excellence where creative development is actually taking place. This problem can only be solved by decentralization around a multitude of smalle\u2026\"), and include one named violation that a conformance test rejects.",
+      "Evidence for applying \"Network of redefinitions\" must cite source pattern 12610180, explain how Echo preserves its process principle (\"In a conceptual framework which emphasizes the perpetuation of a particular conceptual order or method, the emergence of new viewpoints, challenging and redefining that order, is discouraged. It is through such processes and the emergence of alternative viewpoints that a conceptual pattern is renewed and its development ensured.\"), and include one named violation that a conformance test rejects."
+    ],
+    "candidate_count": 3,
+    "center_id": "process",
+    "projected_score": 0.6,
+    "remaining_to_minimum": 0,
+    "selected_pattern_ids": [
+      "cog052",
+      "cog010",
+      "cog018"
+    ]
+  },
+  "schema_version": "1.0.0",
+  "steps": [
+    {
+      "category": "existence",
+      "output": {
+        "input_hashes": {
+          "definitions_hash": "1f9d5d1f1dd81db4f493ff57ac966890b238e0360dcca9bc9a29fa0d424d0112",
+          "engine_version": "1.0.0",
+          "evidence_hash": "43888178d7e90cbfeca16bf651eae479a783fdc7630db7398d2507bdf86aafc3",
+          "ledger_head": "b20b72c133f14ed59e80c027e453eee5ad633796ccf9ba2017e7206677120318",
+          "mapping_hash": "803c743f65a7f6b8811aed8b55429cb4ab8c907176fdf2b0b2bfb9cf5b88313f"
+        },
+        "metrics": [
+          {
+            "additional_to_minimum": 0,
+            "center_id": "control",
+            "minimum": 0.5,
+            "score": 1.0,
+            "total_count": 1,
+            "verified_count": 1,
+            "verified_evidence": [
+              "cog015"
+            ]
+          },
+          {
+            "additional_to_minimum": 3,
+            "center_id": "process",
+            "minimum": 0.5,
+            "score": 0.0,
+            "total_count": 5,
+            "verified_count": 0,
+            "verified_evidence": []
+          },
+          {
+            "additional_to_minimum": 1,
+            "center_id": "structure",
+            "minimum": 0.5,
+            "score": 0.428571,
+            "total_count": 7,
+            "verified_count": 3,
+            "verified_evidence": [
+              "cog005",
+              "cog032",
+              "cog249"
+            ]
+          }
+        ]
+      },
+      "step": 1,
+      "verb": "observe"
+    },
+    {
+      "category": "distinction",
+      "output": {
+        "centers": [
+          "control",
+          "process",
+          "structure"
+        ],
+        "metric": "verified-core-pattern-ratio"
+      },
+      "step": 2,
+      "verb": "identify"
+    },
+    {
+      "category": "disjunction",
+      "output": {
+        "minimum": 0.5,
+        "score": 0.0,
+        "selected": "process"
+      },
+      "step": 3,
+      "verb": "find-weakness"
+    },
+    {
+      "category": "conjunction",
+      "output": {
+        "missing_requirements": [
+          "cog052",
+          "cog010",
+          "cog018",
+          "cog056",
+          "cog205"
+        ],
+        "verified_evidence": []
+      },
+      "step": 4,
+      "verb": "analyze"
+    },
+    {
+      "category": "transition",
+      "output": {
+        "repair": {
+          "acceptance_criteria": [
+            "Evidence for applying \"Interfacing vehicles of communication and networks of unmediated relationships\" must cite source pattern 12610520, explain how Echo preserves its process principle (\"Automobiles are dangerous to pedestrians and yet social life is enlivened at the points where they meet. A protected network of pedestrian paths may be developed, distinct from the road system, and orthogonal to it.\"), and include one named violation that a conformance test rejects.",
+            "Evidence for applying \"Access to intensity\" must cite source pattern 12610100, explain how Echo preserves its process principle (\"Major schools of thought, conceptual frameworks or ideologies are a powerful attractant because of the intensity and complexity of intellectual activity associated with them. But the proliferation of derivative conceptual developments associated with them progressively deprives most people of genuine participation at those points of excellence where creative development is actually taking place. This problem can only be solved by decentralization around a multitude of smalle\u2026\"), and include one named violation that a conformance test rejects.",
+            "Evidence for applying \"Network of redefinitions\" must cite source pattern 12610180, explain how Echo preserves its process principle (\"In a conceptual framework which emphasizes the perpetuation of a particular conceptual order or method, the emergence of new viewpoints, challenging and redefining that order, is discouraged. It is through such processes and the emergence of alternative viewpoints that a conceptual pattern is renewed and its development ensured.\"), and include one named violation that a conformance test rejects."
+          ],
+          "candidate_count": 3,
+          "center_id": "process",
+          "projected_score": 0.6,
+          "remaining_to_minimum": 0,
+          "selected_pattern_ids": [
+            "cog052",
+            "cog010",
+            "cog018"
+          ]
+        },
+        "transition": "strengthen:process"
+      },
+      "step": 5,
+      "verb": "discover"
+    },
+    {
+      "category": "existence",
+      "output": {
+        "definitions": 61,
+        "patterns": 253,
+        "verified_patterns": 19
+      },
+      "step": 6,
+      "verb": "inspect"
+    },
+    {
+      "category": "distinction",
+      "output": {
+        "deficits": {
+          "control": 0.0,
+          "process": 0.5,
+          "structure": 0.071429
+        },
+        "loss": 0.52381
+      },
+      "step": 7,
+      "verb": "measure-error"
+    },
+    {
+      "category": "disjunction",
+      "output": {
+        "gradients": {
+          "control": 0.0,
+          "process": 0.874999,
+          "structure": 0.125001
+        },
+        "steepest": "process"
+      },
+      "step": 8,
+      "verb": "calculate-gradient"
+    },
+    {
+      "category": "conjunction",
+      "output": {
+        "acceptance_criteria": [
+          "Evidence for applying \"Interfacing vehicles of communication and networks of unmediated relationships\" must cite source pattern 12610520, explain how Echo preserves its process principle (\"Automobiles are dangerous to pedestrians and yet social life is enlivened at the points where they meet. A protected network of pedestrian paths may be developed, distinct from the road system, and orthogonal to it.\"), and include one named violation that a conformance test rejects.",
+          "Evidence for applying \"Access to intensity\" must cite source pattern 12610100, explain how Echo preserves its process principle (\"Major schools of thought, conceptual frameworks or ideologies are a powerful attractant because of the intensity and complexity of intellectual activity associated with them. But the proliferation of derivative conceptual developments associated with them progressively deprives most people of genuine participation at those points of excellence where creative development is actually taking place. This problem can only be solved by decentralization around a multitude of smalle\u2026\"), and include one named violation that a conformance test rejects.",
+          "Evidence for applying \"Network of redefinitions\" must cite source pattern 12610180, explain how Echo preserves its process principle (\"In a conceptual framework which emphasizes the perpetuation of a particular conceptual order or method, the emergence of new viewpoints, challenging and redefining that order, is discouraged. It is through such processes and the emergence of alternative viewpoints that a conceptual pattern is renewed and its development ensured.\"), and include one named violation that a conformance test rejects."
+        ],
+        "candidate_count": 3,
+        "center_id": "process",
+        "projected_score": 0.6,
+        "remaining_to_minimum": 0,
+        "selected_pattern_ids": [
+          "cog052",
+          "cog010",
+          "cog018"
+        ]
+      },
+      "step": 9,
+      "verb": "aggregate"
+    },
+    {
+      "category": "transition",
+      "output": {
+        "parent": "core-self",
+        "scope": "center:process"
+      },
+      "step": 10,
+      "verb": "nest"
+    },
+    {
+      "category": "closure",
+      "output": {
+        "candidate_hash": "d112df950b9c2e1f63a975b97a695d97cb0999b7b04cc8d7d2d2c5ea7ed3d51b",
+        "closed": true
+      },
+      "step": 11,
+      "verb": "seal"
+    },
+    {
+      "category": "recursion",
+      "output": {
+        "action": "submit-evidence-backed-proposal",
+        "direct_mutation": false,
+        "next_cycle_from_accepted_evidence": true
+      },
+      "step": 12,
+      "verb": "bootstrap"
+    }
+  ],
+  "weakest_center": "process"
+}

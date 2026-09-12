@@ -1,0 +1,20 @@
+{
+  "adapter_surface": "future:expression-manifest",
+  "authority": "expression-proposal-only",
+  "binding_mode": "manifest",
+  "canonical_authority": "none",
+  "canonical_subject": "core:agent:cogpy/echo9llama",
+  "content_digest": "1dac8dcdc1894cf4b00f05a7ee60fc282ef73a3dfaf68ce1fee09455e2349565",
+  "display_name": "Arc Angel Echo avatar implementation evidence",
+  "evidence_report_digest": "01b3aeb41e0968453f4bb4d19733ba6082df81cf3d07fb5f72e9c4ff25ce2530",
+  "execution_permitted": false,
+  "id": "arc_angel_echo",
+  "manifest_digest": "623b9a2a4318aec1a635fa90f8d7d0b660340d58f71904e0b0853ae65d8a67c7",
+  "observed_at": "2026-09-12T03:30:55Z",
+  "runtime_registered": false,
+  "schema_version": "1.0.0",
+  "source_revision": "task-replay-2026-09-12",
+  "source_uri": "manus-task://yREgKqM1tkzepzPgeDhd92",
+  "status": "proposed",
+  "trust_grade": "referenced_evidence"
+}

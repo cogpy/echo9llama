@@ -1,0 +1,64 @@
+flowchart LR
+  subgraph Sources[Untrusted and Referenced Sources]
+    EL[Eliza autonomy evidence]
+    AA[Arc Angel Echo evidence]
+    LU[Lucy persona evidence]
+    NA[Neon Angel archive metadata only]
+  end
+
+  subgraph E2[E2 Accepted Runtime]
+    EB[Echobeats scheduler]
+    ED[EchoDream integration]
+    SC[Persistent stream of consciousness]
+    CC[ecco9 adapted cognitive core]
+  end
+
+  subgraph E3[E3 Deterministic Core-Self]
+    MF[Digest-bound manifests]
+    PS[Physically separate proposal store]
+    HG[Typed identity hypergraph]
+    HR{Human steward review and signature}
+    IL[(Hash-linked identity ledger)]
+    AR[Anchored parent/root/children and parent-inode lock]
+    HC[(Atomic head cache)]
+    CP[Replay projection and capsule]
+    KSM[253-pattern and 61-definition evidence cycle]
+  end
+
+  subgraph Presentation[Replaceable Presentation Layer]
+    SH[Superhotgirl persona overlay]
+    EX[Arc Angel expression profile]
+    AV[Neon Angel asset manifest]
+  end
+
+  PK[Externally configured Ed25519 steward public key]
+
+  EL --> MF
+  AA --> MF
+  LU --> MF
+  NA --> MF
+  MF --> PS
+  PS --> HR
+  AR --> PS
+  AR --> IL
+  PK -->|trust anchor not chosen by ledger| IL
+  HR -->|complete signed proposal only| IL
+  HR -->|denied or pending| PS
+  IL --> HG
+  IL -->|initial Open only: verified replay repairs missing or valid stale cache| HC
+  HC --> CP
+  IL --> CP
+  CP --> KSM
+  KSM -. advisory proposal .-> PS
+
+  EB --> SC
+  EB --> ED
+  CC -->|observations only| ED
+  CP -->|read-only status| E2
+  CP -->|derived state only| SH
+  CP -->|derived state only| EX
+  AV -. no runtime registration .-> EX
+
+  SH -. cannot alter .-> IL
+  EX -. cannot alter .-> IL
+  Sources -. no direct authority .-> E2

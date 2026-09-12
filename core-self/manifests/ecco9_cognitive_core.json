@@ -1,0 +1,19 @@
+{
+  "adapter_surface": "core/cognitivecore",
+  "authority": "observation-only",
+  "binding_mode": "vendored",
+  "canonical_authority": "none",
+  "canonical_subject": "core:agent:cogpy/echo9llama",
+  "content_digest": "b382e99916a2364eb3945770835d3f907d42bbf2f548a7879a2e57c32590a5b7",
+  "display_name": "o9nn/ecco9 reviewed cognitive core",
+  "execution_permitted": true,
+  "id": "ecco9_cognitive_core",
+  "manifest_digest": "6bce7fc0021de6c56432e2502cc4c53cb840c1ac7bd9a3da0d87148c6d9786d7",
+  "observed_at": "2026-09-12T03:30:55Z",
+  "runtime_registered": true,
+  "schema_version": "1.0.0",
+  "source_revision": "1b22401ee8842fd1aa2769b688d588cd9f1f9ce9",
+  "source_uri": "https://github.com/o9nn/ecco9",
+  "status": "active_reviewed",
+  "trust_grade": "adapted_observed"
+}

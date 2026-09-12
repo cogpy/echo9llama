@@ -125,6 +125,7 @@ func localRuntimeTestConfig() OrchestratorConfig {
 	config.EnableSkillLearning = false
 	config.EnableWisdomSynthesis = false
 	config.EnablePersistence = false
+	config.EnableCoreSelf = false
 	config.AutoWakeRest = false
 	config.WarmLocalModelOnWake = true
 	config.CoolLocalModelOnRest = true

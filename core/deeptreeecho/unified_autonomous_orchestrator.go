@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/cogpy/echo9llama/core/cognitivecore"
+	"github.com/cogpy/echo9llama/core/coreself"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/cogpy/echo9llama/core/persistence"
@@ -42,6 +43,9 @@ type UnifiedAutonomousOrchestrator struct {
 	wisdomSynthesis       *WisdomSynthesis
 	cognitiveCore         *cognitivecore.Bridge
 	cognitiveCoreInitErr  error
+	coreSelf              *coreself.Kernel
+	coreSelfInitErr       error
+	coreSelfRequired      bool
 	eventStore            *persistence.CognitiveEventStore
 	enactionPipeline      *EnactionPipeline
 
@@ -116,6 +120,7 @@ type OrchestratorConfig struct {
 	EnableSkillLearning         bool
 	EnableWisdomSynthesis       bool
 	EnableCognitiveCore         bool
+	EnableCoreSelf              bool
 	EnableEnaction              bool
 	EnactionMode                EnactionMode
 	ActionTimeout               time.Duration
@@ -128,11 +133,13 @@ type OrchestratorConfig struct {
 	SessionName     string
 
 	// Persistence
-	EnablePersistence  bool
-	StateSyncInterval  time.Duration
-	StateDirectory     string
-	EventStorePath     string
-	WorkspaceDirectory string
+	EnablePersistence         bool
+	StateSyncInterval         time.Duration
+	StateDirectory            string
+	EventStorePath            string
+	WorkspaceDirectory        string
+	CoreSelfDirectory         string
+	CoreSelfReviewerPublicKey string
 }
 
 // DefaultOrchestratorConfig returns default configuration for autonomous operation
@@ -160,6 +167,7 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		EnableSkillLearning:         true,
 		EnableWisdomSynthesis:       true,
 		EnableCognitiveCore:         true,
+		EnableCoreSelf:              true,
 		EnableEnaction:              true,
 		EnactionMode:                EnactionObserve,
 		ActionTimeout:               90 * time.Second,
@@ -173,6 +181,8 @@ func DefaultOrchestratorConfig() OrchestratorConfig {
 		StateDirectory:              "./echo_state",
 		EventStorePath:              "",
 		WorkspaceDirectory:          "",
+		CoreSelfDirectory:           "",
+		CoreSelfReviewerPublicKey:   "",
 	}
 }
 
@@ -208,6 +218,7 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 		cognitiveLoad:         0.5,
 		wisdomDepth:           0.0,
 		orchestrationLoop:     make(chan struct{}, 1),
+		coreSelfRequired:      config.EnableCoreSelf,
 		ingestedExperienceIDs: make(map[string]struct{}),
 		experienceOrder:       make([]string, 0, 1024),
 	}
@@ -221,6 +232,7 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 	orchestrator.initializeSubsystems()
 	orchestrator.initializeCognitiveCore()
 	orchestrator.initializePersistence()
+	orchestrator.initializeCoreSelf()
 
 	return orchestrator
 }
@@ -475,6 +487,17 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 		uao.isAwake = false
 		uao.mu.Unlock()
 		return fmt.Errorf("configured ecco9 cognitive core is unavailable: %w", uao.cognitiveCoreInitErr)
+	}
+	if uao.coreSelfRequired && (uao.coreSelfInitErr != nil || uao.coreSelf == nil) {
+		initErr := uao.coreSelfInitErr
+		if initErr == nil {
+			initErr = errors.New("core-self kernel was not constructed")
+		}
+		uao.mu.Lock()
+		uao.running = false
+		uao.isAwake = false
+		uao.mu.Unlock()
+		return fmt.Errorf("configured deterministic core-self is unavailable: %w", initErr)
 	}
 
 	if err := uao.warmLocalModel("wake warmup"); err != nil {
@@ -1391,6 +1414,7 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 	uao.cancel()
 	enaction := uao.enactionPipeline
 	cognitiveCore := uao.cognitiveCore
+	coreSelf := uao.coreSelf
 	uao.mu.Unlock()
 	if enaction != nil {
 		enaction.Pause()
@@ -1457,6 +1481,11 @@ func (uao *UnifiedAutonomousOrchestrator) Sleep() error {
 			fmt.Printf("⚠️  Cognitive event ledger close warning: %v\n", err)
 		}
 	}
+	if coreSelf != nil {
+		if err := coreSelf.Close(); err != nil {
+			fmt.Printf("⚠️  Core-self descriptor close warning: %v\n", err)
+		}
+	}
 
 	fmt.Println("😴 Echo has gone to sleep. Goodnight.")
 
@@ -1483,6 +1512,7 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 		EnactionEnabled:      uao.config.EnableEnaction && uao.enactionPipeline != nil,
 		EnactionMode:         uao.config.EnactionMode,
 		CognitiveCoreEnabled: uao.config.EnableCognitiveCore,
+		CoreSelfEnabled:      uao.coreSelfRequired,
 	}
 	wakeRest := uao.wakeRestCycle
 	dream := uao.dreamCycle
@@ -1490,6 +1520,7 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	eventStore := uao.eventStore
 	enaction := uao.enactionPipeline
 	cognitiveCore := uao.cognitiveCore
+	coreSelf := uao.coreSelf
 	uao.mu.RUnlock()
 
 	if provider != nil {
@@ -1522,6 +1553,10 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	}
 	if cognitiveCore != nil {
 		status.CognitiveCore = cognitiveCore.GetStatus()
+	}
+	if coreSelf != nil {
+		status.CoreSelfReady = true
+		status.CoreSelf = coreSelf.Status()
 	}
 
 	uao.experienceMu.Lock()
@@ -1560,6 +1595,9 @@ type OrchestratorStatus struct {
 	EventCount           int64
 	CognitiveCoreEnabled bool
 	CognitiveCore        cognitivecore.Status
+	CoreSelfEnabled      bool
+	CoreSelfReady        bool
+	CoreSelf             coreself.Status
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

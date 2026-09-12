@@ -34,6 +34,9 @@ services:
       - ECHO_WORKSPACE_DIRECTORY=/app/data/echo_state/workspace
       - ECHO_ENABLE_COGNITIVE_CORE=${ECHO_ENABLE_COGNITIVE_CORE:-true}
       - ECHO_COGNITIVE_CORE_INTERVAL=${ECHO_COGNITIVE_CORE_INTERVAL:-1m}
+      - ECHO_ENABLE_CORE_SELF=${ECHO_ENABLE_CORE_SELF:-true}
+      - ECHO_CORE_SELF_DIRECTORY=/app/data/echo_state/core-self
+      - ECHO_CORE_SELF_REVIEWER_PUBLIC_KEY=${ECHO_CORE_SELF_REVIEWER_PUBLIC_KEY:-}
       - ECHO_ENABLE_ENACTION=true
       - ECHO_ENACTION_MODE=${ECHO_ENACTION_MODE:-observe}
       # Cognitive cycle configuration
@@ -63,7 +66,7 @@ services:
         max-file: "5"
     labels:
       - "autoheal=true"
-      - "com.deep-tree-echo.version=2026-09-12-ecco9-cognitive-core"
+      - "com.deep-tree-echo.version=2026-09-12-cog253-core-self"
 
   # Auto-restart unhealthy containers
   autoheal:

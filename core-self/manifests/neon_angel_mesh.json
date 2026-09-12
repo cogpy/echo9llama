@@ -1,0 +1,27 @@
+{
+  "adapter_surface": "future:avatar-asset-manifest",
+  "authority": "appearance-proposal-only",
+  "binding_mode": "manifest",
+  "canonical_authority": "none",
+  "canonical_subject": "core:agent:cogpy/echo9llama",
+  "constraints": [
+    "large binary is not vendored in the identity trust root",
+    "single mesh and material require human separation before Cubism authoring",
+    "no cmo3 or moc3 artifact is claimed",
+    "license and redistribution authority require steward verification"
+  ],
+  "content_bytes": 257506022,
+  "content_digest": "656ac8d426370996adc3d8a4aa68b85167bdd8cb84b1d88713963038f9fe146b",
+  "display_name": "Meshy Neon Angel Awe head package",
+  "evidence_report_digest": "51cfe2c149be65df4f06cb1bb9c4024be2c6c2068efdbd2179c6c5fbfcc99413",
+  "execution_permitted": false,
+  "id": "neon_angel_mesh",
+  "manifest_digest": "219b33c753c7d080af10bc766111366eaa5ae09c2646247f91bfeca36c63727b",
+  "observed_at": "2026-09-12T03:30:55Z",
+  "runtime_registered": false,
+  "schema_version": "1.0.0",
+  "source_revision": "sha256",
+  "source_uri": "attachment://Meshy_AI_Neon_Angel_Awe_Head_texture_fbx.zip",
+  "status": "proposed",
+  "trust_grade": "unverified_license"
+}

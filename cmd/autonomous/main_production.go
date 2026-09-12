@@ -21,7 +21,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-09-12-ecco9-cognitive-core"
+const productionIteration = "2026-09-12-cog253-core-self"
 
 func main() {
 	fmt.Println()
@@ -101,6 +101,8 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyStringEnv("ECHO_STATE_DIRECTORY", &config.StateDirectory)
 	applyStringEnv("ECHO_EVENT_STORE_PATH", &config.EventStorePath)
 	applyStringEnv("ECHO_WORKSPACE_DIRECTORY", &config.WorkspaceDirectory)
+	applyStringEnv("ECHO_CORE_SELF_DIRECTORY", &config.CoreSelfDirectory)
+	applyStringEnv("ECHO_CORE_SELF_REVIEWER_PUBLIC_KEY", &config.CoreSelfReviewerPublicKey)
 	mode := string(config.EnactionMode)
 	applyStringEnv("ECHO_ENACTION_MODE", &mode)
 	config.EnactionMode = deeptreeecho.ParseEnactionMode(mode)
@@ -121,6 +123,7 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyBoolEnv("ECHO_LOCAL_WARM_ON_WAKE", &config.WarmLocalModelOnWake)
 	applyBoolEnv("ECHO_LOCAL_COOL_ON_REST", &config.CoolLocalModelOnRest)
 	applyBoolEnv("ECHO_ENABLE_COGNITIVE_CORE", &config.EnableCognitiveCore)
+	applyBoolEnv("ECHO_ENABLE_CORE_SELF", &config.EnableCoreSelf)
 	applyBoolEnv("ECHO_ENABLE_ENACTION", &config.EnableEnaction)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACT_BYTES", &config.MaxArtifactBytes)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACTS_PER_WAKE", &config.MaxArtifactsPerWake)
@@ -203,7 +206,8 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		code := http.StatusOK
 		health := "healthy"
 		cognitiveCoreReady := !status.CognitiveCoreEnabled || status.CognitiveCore.Started
-		if !status.Running || !cognitiveCoreReady {
+		coreSelfReady := !status.CoreSelfEnabled || status.CoreSelfReady
+		if !status.Running || !cognitiveCoreReady || !coreSelfReady {
 			code = http.StatusServiceUnavailable
 			health = "resting"
 		}
@@ -219,6 +223,7 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"enaction_mode":        status.EnactionMode,
 			"event_ledger_ready":   status.EventLedgerReady,
 			"cognitive_core_ready": cognitiveCoreReady,
+			"core_self_ready":      coreSelfReady,
 			"timestamp":            time.Now().UTC().Format(time.RFC3339),
 		})
 	})
@@ -256,6 +261,9 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"cognitive_events":       status.EventCount,
 			"cognitive_core_enabled": status.CognitiveCoreEnabled,
 			"cognitive_core":         status.CognitiveCore,
+			"core_self_enabled":      status.CoreSelfEnabled,
+			"core_self_ready":        status.CoreSelfReady,
+			"core_self":              status.CoreSelf,
 		})
 	})
 
@@ -281,6 +289,9 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_cognitive_events_total counter\necho_cognitive_events_total %d\n", status.EventCount)
 		fmt.Fprintf(w, "# TYPE echo_cognitive_core_ready gauge\necho_cognitive_core_ready %d\n", boolMetric(status.CognitiveCore.Started))
 		fmt.Fprintf(w, "# TYPE echo_cognitive_core_observations_total counter\necho_cognitive_core_observations_total %d\n", status.CognitiveCore.ObservationCount)
+		fmt.Fprintf(w, "# TYPE echo_core_self_ready gauge\necho_core_self_ready %d\n", boolMetric(status.CoreSelfReady))
+		fmt.Fprintf(w, "# TYPE echo_core_self_events_total counter\necho_core_self_events_total %d\n", status.CoreSelf.EventCount)
+		fmt.Fprintf(w, "# TYPE echo_core_self_pending_proposals gauge\necho_core_self_pending_proposals %d\n", status.CoreSelf.ProposalCount)
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
