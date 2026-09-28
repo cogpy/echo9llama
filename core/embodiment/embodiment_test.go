@@ -42,7 +42,7 @@ func TestEchoConvergesToAttractorAndGoesQuiet(t *testing.T) {
 	f := fixture(t)
 	f.Valence, f.Arousal, f.Flow = Attractor[0], Attractor[1], Attractor[2]
 	var r Reflection
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		f.Frame = int64(i)
 		var err error
 		if r, err = h.Ingest(f); err != nil {
