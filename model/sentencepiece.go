@@ -31,7 +31,7 @@ func NewSentencePieceModel(vocab *Vocabulary) SentencePieceModel {
 	var maxTokenLen int
 	for cnt := range vocab.Types {
 		switch vocab.Types[cnt] {
-		case TOKEN_TYPE_NORMAL, TOKEN_TYPE_USER_DEFINED, TOKEN_TYPE_UNUSED:
+		case TokenTypeNormal, TokenTypeUserDefined, TokenTypeUnused:
 			maxTokenLen = max(maxTokenLen, len(vocab.Values[cnt]))
 			fallthrough
 		default:
@@ -39,8 +39,8 @@ func NewSentencePieceModel(vocab *Vocabulary) SentencePieceModel {
 		}
 	}
 
-	slog.Log(context.TODO(), logutil.LevelTrace, "Token counts", "normal", counter[TOKEN_TYPE_NORMAL], "unknown", counter[TOKEN_TYPE_UNKNOWN], "control", counter[TOKEN_TYPE_CONTROL],
-		"user defined", counter[TOKEN_TYPE_USER_DEFINED], "unused", counter[TOKEN_TYPE_UNUSED], "byte", counter[TOKEN_TYPE_BYTE],
+	slog.Log(context.TODO(), logutil.LevelTrace, "Token counts", "normal", counter[TokenTypeNormal], "unknown", counter[TokenTypeUnknown], "control", counter[TokenTypeControl],
+		"user defined", counter[TokenTypeUserDefined], "unused", counter[TokenTypeUnused], "byte", counter[TokenTypeByte],
 		"max token len", maxTokenLen)
 
 	return SentencePieceModel{

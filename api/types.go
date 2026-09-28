@@ -874,7 +874,7 @@ func (d *Duration) UnmarshalJSON(b []byte) (err error) {
 			d.Duration = time.Duration(math.MaxInt64)
 		}
 	default:
-		return fmt.Errorf("Unsupported type: '%s'", reflect.TypeOf(v))
+		return fmt.Errorf("unsupported type: '%s'", reflect.TypeOf(v))
 	}
 
 	return nil

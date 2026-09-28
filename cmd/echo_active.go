@@ -221,7 +221,7 @@ func echoRequest(ctx context.Context, method string, path string, body any, out 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Deep Tree Echo server not responding; start it with 'ollama serve': %w", err)
+		return fmt.Errorf("the Deep Tree Echo server is not responding; start it with 'ollama serve': %w", err)
 	}
 	defer resp.Body.Close()
 

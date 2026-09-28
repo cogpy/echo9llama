@@ -88,13 +88,13 @@ func TestFindCacheSlot(t *testing.T) {
 			name: "Empty",
 			cache: InputCache{slots: []InputCacheSlot{
 				{
-					Id:       0,
+					ID:       0,
 					Inputs:   []input.Input{},
 					InUse:    false,
 					lastUsed: time.Time{},
 				},
 				{
-					Id:       1,
+					ID:       1,
 					Inputs:   []input.Input{},
 					InUse:    false,
 					lastUsed: time.Time{},
@@ -108,13 +108,13 @@ func TestFindCacheSlot(t *testing.T) {
 			name: "Extend",
 			cache: InputCache{slots: []InputCacheSlot{
 				{
-					Id:       0,
+					ID:       0,
 					Inputs:   []input.Input{{Token: 1}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-time.Second),
 				},
 				{
-					Id:       1,
+					ID:       1,
 					Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-2 * time.Second),
@@ -128,13 +128,13 @@ func TestFindCacheSlot(t *testing.T) {
 			name: "New",
 			cache: InputCache{slots: []InputCacheSlot{
 				{
-					Id:       0,
+					ID:       0,
 					Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-time.Second),
 				},
 				{
-					Id:       1,
+					ID:       1,
 					Inputs:   []input.Input{},
 					InUse:    false,
 					lastUsed: time.Time{},
@@ -149,13 +149,13 @@ func TestFindCacheSlot(t *testing.T) {
 			cache: InputCache{
 				slots: []InputCacheSlot{
 					{
-						Id:       0,
+						ID:       0,
 						Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 						InUse:    false,
 						lastUsed: time.Now().Add(-time.Second),
 					},
 					{
-						Id:       1,
+						ID:       1,
 						Inputs:   []input.Input{},
 						InUse:    false,
 						lastUsed: time.Time{},
@@ -170,13 +170,13 @@ func TestFindCacheSlot(t *testing.T) {
 			name: "Evict",
 			cache: InputCache{slots: []InputCacheSlot{
 				{
-					Id:       0,
+					ID:       0,
 					Inputs:   []input.Input{{Token: 1}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-time.Second),
 				},
 				{
-					Id:       1,
+					ID:       1,
 					Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-2 * time.Second),
@@ -190,13 +190,13 @@ func TestFindCacheSlot(t *testing.T) {
 			name: "In use",
 			cache: InputCache{slots: []InputCacheSlot{
 				{
-					Id:       0,
+					ID:       0,
 					Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 					InUse:    true,
 					lastUsed: time.Now().Add(-time.Second),
 				},
 				{
-					Id:       1,
+					ID:       1,
 					Inputs:   []input.Input{{Token: 1}},
 					InUse:    false,
 					lastUsed: time.Now().Add(-2 * time.Second),
@@ -213,9 +213,9 @@ func TestFindCacheSlot(t *testing.T) {
 			result, resultLen, err := tt.cache.findLongestCacheSlot(tt.prompt)
 			if err != nil {
 				t.Errorf("findLongestCacheSlot: err %v", err)
-			} else if result.Id != tt.longest.result || resultLen != tt.longest.len {
+			} else if result.ID != tt.longest.result || resultLen != tt.longest.len {
 				t.Errorf("findLongestCacheSlot: slot have %v, want %v len have %v, want %v",
-					result.Id, tt.longest.result, resultLen, tt.longest.len)
+					result.ID, tt.longest.result, resultLen, tt.longest.len)
 			}
 		})
 	}
@@ -225,9 +225,9 @@ func TestFindCacheSlot(t *testing.T) {
 			result, resultLen, err := tt.cache.findBestCacheSlot(tt.prompt)
 			if err != nil {
 				t.Errorf("findBestCacheSlot: err %v", err)
-			} else if result.Id != tt.best.result || resultLen != tt.best.len {
+			} else if result.ID != tt.best.result || resultLen != tt.best.len {
 				t.Errorf("findBestCacheSlot: slot have %v, want %v len have %v, want %v",
-					result.Id, tt.best.result, resultLen, tt.best.len)
+					result.ID, tt.best.result, resultLen, tt.best.len)
 			}
 		})
 	}
@@ -302,7 +302,7 @@ func TestLoadCacheSlot(t *testing.T) {
 		cache          InputCache
 		prompt         []input.Input
 		wantErr        bool
-		expectedSlotId int
+		expectedSlotID int
 		expectedPrompt int // expected length of remaining prompt
 	}{
 		{
@@ -311,13 +311,13 @@ func TestLoadCacheSlot(t *testing.T) {
 				multiUserCache: false,
 				slots: []InputCacheSlot{
 					{
-						Id:       0,
+						ID:       0,
 						Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 						InUse:    false,
 						lastUsed: time.Now().Add(-time.Second),
 					},
 					{
-						Id:       1,
+						ID:       1,
 						Inputs:   []input.Input{},
 						InUse:    false,
 						lastUsed: time.Now().Add(-2 * time.Second),
@@ -326,7 +326,7 @@ func TestLoadCacheSlot(t *testing.T) {
 			},
 			prompt:         []input.Input{{Token: 1}, {Token: 2}, {Token: 3}},
 			wantErr:        false,
-			expectedSlotId: 0,
+			expectedSlotID: 0,
 			expectedPrompt: 1, // Only token 3 remains
 		},
 		{
@@ -335,13 +335,13 @@ func TestLoadCacheSlot(t *testing.T) {
 				multiUserCache: true,
 				slots: []InputCacheSlot{
 					{
-						Id:       0,
+						ID:       0,
 						Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 						InUse:    false,
 						lastUsed: time.Now().Add(-time.Second),
 					},
 					{
-						Id:       1,
+						ID:       1,
 						Inputs:   []input.Input{},
 						InUse:    false,
 						lastUsed: time.Now().Add(-2 * time.Second),
@@ -350,7 +350,7 @@ func TestLoadCacheSlot(t *testing.T) {
 			},
 			prompt:         []input.Input{{Token: 1}, {Token: 2}, {Token: 3}},
 			wantErr:        false,
-			expectedSlotId: 0,
+			expectedSlotID: 0,
 			expectedPrompt: 1, // Only token 3 remains
 		},
 		{
@@ -359,7 +359,7 @@ func TestLoadCacheSlot(t *testing.T) {
 				multiUserCache: false,
 				slots: []InputCacheSlot{
 					{
-						Id:       0,
+						ID:       0,
 						Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 						InUse:    false,
 						lastUsed: time.Now().Add(-time.Second),
@@ -368,7 +368,7 @@ func TestLoadCacheSlot(t *testing.T) {
 			},
 			prompt:         []input.Input{{Token: 1}, {Token: 2}},
 			wantErr:        false,
-			expectedSlotId: 0,
+			expectedSlotID: 0,
 			expectedPrompt: 1, // Should leave 1 token for sampling
 		},
 		{
@@ -377,7 +377,7 @@ func TestLoadCacheSlot(t *testing.T) {
 				multiUserCache: false,
 				slots: []InputCacheSlot{
 					{
-						Id:       0,
+						ID:       0,
 						Inputs:   []input.Input{{Token: 1}, {Token: 2}},
 						InUse:    true,
 						lastUsed: time.Now().Add(-time.Second),
@@ -386,7 +386,7 @@ func TestLoadCacheSlot(t *testing.T) {
 			},
 			prompt:         []input.Input{{Token: 1}, {Token: 2}, {Token: 3}},
 			wantErr:        true,
-			expectedSlotId: -1,
+			expectedSlotID: -1,
 			expectedPrompt: -1,
 		},
 	}
@@ -406,8 +406,8 @@ func TestLoadCacheSlot(t *testing.T) {
 			}
 
 			// Verify slot ID
-			if slot.Id != tt.expectedSlotId {
-				t.Errorf("LoadCacheSlot() slot ID = %v, expected %v", slot.Id, tt.expectedSlotId)
+			if slot.ID != tt.expectedSlotID {
+				t.Errorf("LoadCacheSlot() slot ID = %v, expected %v", slot.ID, tt.expectedSlotID)
 			}
 
 			// Verify slot is now marked in use
@@ -486,7 +486,7 @@ func TestShiftCacheSlot(t *testing.T) {
 				cache:  mock,
 			}
 			slot := &InputCacheSlot{
-				Id:     123,
+				ID:     123,
 				Inputs: make([]input.Input, len(tt.inputs)),
 			}
 			copy(slot.Inputs, tt.inputs)

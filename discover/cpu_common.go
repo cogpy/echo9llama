@@ -14,8 +14,8 @@ func IsNUMA() bool {
 	}
 	ids := map[string]any{}
 	packageIds, _ := filepath.Glob("/sys/devices/system/cpu/cpu*/topology/physical_package_id")
-	for _, packageId := range packageIds {
-		id, err := os.ReadFile(packageId)
+	for _, packageID := range packageIds {
+		id, err := os.ReadFile(packageID)
 		if err == nil {
 			ids[strings.TrimSpace(string(id))] = struct{}{}
 		}

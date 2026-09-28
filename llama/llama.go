@@ -65,20 +65,20 @@ func GetModelArch(modelPath string) (string, error) {
 	mp := C.CString(modelPath)
 	defer C.free(unsafe.Pointer(mp))
 
-	gguf_ctx := C.gguf_init_from_file(mp, C.struct_gguf_init_params{no_alloc: true, ctx: (**C.struct_ggml_context)(C.NULL)})
-	if gguf_ctx == nil {
+	ggufCtx := C.gguf_init_from_file(mp, C.struct_gguf_init_params{no_alloc: true, ctx: (**C.struct_ggml_context)(C.NULL)})
+	if ggufCtx == nil {
 		return "", errors.New("unable to load model file")
 	}
-	defer C.gguf_free(gguf_ctx)
+	defer C.gguf_free(ggufCtx)
 
 	key := C.CString("general.architecture")
 	defer C.free(unsafe.Pointer(key))
-	arch_index := C.gguf_find_key(gguf_ctx, key)
-	if int(arch_index) < 0 {
+	archIndex := C.gguf_find_key(ggufCtx, key)
+	if int(archIndex) < 0 {
 		return "", errors.New("unknown model architecture")
 	}
 
-	arch := C.gguf_get_val_str(gguf_ctx, arch_index)
+	arch := C.gguf_get_val_str(ggufCtx, archIndex)
 
 	return C.GoString(arch), nil
 }
@@ -156,16 +156,16 @@ func (c *Context) Model() *Model {
 	return &Model{c: C.llama_get_model(c.c)}
 }
 
-func (c *Context) KvCacheSeqAdd(seqId int, p0 int, p1 int, delta int) {
-	C.llama_kv_self_seq_add(c.c, C.int(seqId), C.int(p0), C.int(p1), C.int(delta))
+func (c *Context) KvCacheSeqAdd(seqID int, p0 int, p1 int, delta int) {
+	C.llama_kv_self_seq_add(c.c, C.int(seqID), C.int(p0), C.int(p1), C.int(delta))
 }
 
-func (c *Context) KvCacheSeqRm(seqId int, p0 int, p1 int) bool {
-	return bool(C.llama_kv_self_seq_rm(c.c, C.int(seqId), C.int(p0), C.int(p1)))
+func (c *Context) KvCacheSeqRm(seqID int, p0 int, p1 int) bool {
+	return bool(C.llama_kv_self_seq_rm(c.c, C.int(seqID), C.int(p0), C.int(p1)))
 }
 
-func (c *Context) KvCacheSeqCp(srcSeqId int, dstSeqId int, p0 int, p1 int) {
-	C.llama_kv_self_seq_cp(c.c, C.int(srcSeqId), C.int(dstSeqId), C.int(p0), C.int(p1))
+func (c *Context) KvCacheSeqCp(srcSeqID int, dstSeqID int, p0 int, p1 int) {
+	C.llama_kv_self_seq_cp(c.c, C.int(srcSeqID), C.int(dstSeqID), C.int(p0), C.int(p1))
 }
 
 func (c *Context) KvCacheClear() {
@@ -181,8 +181,8 @@ func (c *Context) KvCacheCanShift() bool {
 }
 
 // Get the embeddings for a sequence id
-func (c *Context) GetEmbeddingsSeq(seqId int) []float32 {
-	e := unsafe.Pointer(C.llama_get_embeddings_seq(c.c, C.int(seqId)))
+func (c *Context) GetEmbeddingsSeq(seqID int) []float32 {
+	e := unsafe.Pointer(C.llama_get_embeddings_seq(c.c, C.int(seqID)))
 	if e == nil {
 		return nil
 	}

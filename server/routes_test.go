@@ -323,7 +323,7 @@ func TestRoutes(t *testing.T) {
 					t.Fatalf("failed to unmarshal response body: %v", err)
 				}
 
-				if len(modelList.Data) != 1 || modelList.Data[0].Id != "test-model:latest" || modelList.Data[0].OwnedBy != "library" {
+				if len(modelList.Data) != 1 || modelList.Data[0].ID != "test-model:latest" || modelList.Data[0].OwnedBy != "library" {
 					t.Errorf("expected model 'test-model:latest' owned by 'library', got %v", modelList.Data)
 				}
 			},
@@ -472,7 +472,7 @@ func TestRoutes(t *testing.T) {
 					t.Fatalf("failed to unmarshal response body: %v", err)
 				}
 
-				if m.Id != "show-model" || m.OwnedBy != "library" {
+				if m.ID != "show-model" || m.OwnedBy != "library" {
 					t.Errorf("expected model 'show-model' owned by 'library', got %v", m)
 				}
 			},

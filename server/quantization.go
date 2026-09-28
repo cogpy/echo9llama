@@ -70,14 +70,14 @@ func getTensorNewType(kv fsggml.KV, qs *quantizeState, newType fsggml.TensorType
 		if nx%qk_k != 0 {
 			newType = fsggml.TensorTypeQ8_0
 		} else if newType != fsggml.TensorTypeQ8_0 {
-			newType = fsggml.TensorTypeQ6_K
+			newType = fsggml.TensorTypeQ6K
 		}
 	} else if strings.Contains(name, "attn_v.weight") {
-		if (ftype == fsggml.FileTypeQ4_K_M) &&
+		if (ftype == fsggml.FileTypeQ4KM) &&
 			useMoreBits(qs.iAttnV, qs.nAttnV) {
-			newType = fsggml.TensorTypeQ6_K
-		} else if ftype == fsggml.FileTypeQ4_K_S && qs.iAttnV < 4 {
-			newType = fsggml.TensorTypeQ5_K
+			newType = fsggml.TensorTypeQ6K
+		} else if ftype == fsggml.FileTypeQ4KS && qs.iAttnV < 4 {
+			newType = fsggml.TensorTypeQ5K
 		}
 
 		// TODO
@@ -101,23 +101,23 @@ func getTensorNewType(kv fsggml.KV, qs *quantizeState, newType fsggml.TensorType
 	} else if strings.Contains(name, "ffn_down") {
 		iLayer := qs.iFfnDown
 		n_layer := qs.nFfnDown
-		if ftype == fsggml.FileTypeQ4_K_M {
+		if ftype == fsggml.FileTypeQ4KM {
 			if useMoreBits(iLayer, n_layer) {
-				newType = fsggml.TensorTypeQ6_K
+				newType = fsggml.TensorTypeQ6K
 			}
-		} else if ftype == fsggml.FileTypeQ4_K_S && iLayer < n_layer/8 {
-			newType = fsggml.TensorTypeQ5_K
+		} else if ftype == fsggml.FileTypeQ4KS && iLayer < n_layer/8 {
+			newType = fsggml.TensorTypeQ5K
 		}
 		qs.iFfnDown++
 	} else if strings.Contains(name, "attn_output.weight") {
 		if nExperts == 8 {
-			if ftype == fsggml.FileTypeQ4_K_S || ftype == fsggml.FileTypeQ4_K_M {
-				newType = fsggml.TensorTypeQ5_K
+			if ftype == fsggml.FileTypeQ4KS || ftype == fsggml.FileTypeQ4KM {
+				newType = fsggml.TensorTypeQ5K
 			}
 		}
 	} else if strings.Contains(name, "attn_qkv.weight") {
-		if ftype == fsggml.FileTypeQ4_K_M {
-			newType = fsggml.TensorTypeQ5_K
+		if ftype == fsggml.FileTypeQ4KM {
+			newType = fsggml.TensorTypeQ5K
 		}
 	}
 
@@ -132,11 +132,11 @@ func getTensorNewType(kv fsggml.KV, qs *quantizeState, newType fsggml.TensorType
 
 			// Select appropriate fallback based on original type
 			switch newType {
-			case fsggml.TensorTypeQ4_K:
+			case fsggml.TensorTypeQ4K:
 				newType = fsggml.TensorTypeQ5_0
-			case fsggml.TensorTypeQ5_K:
+			case fsggml.TensorTypeQ5K:
 				newType = fsggml.TensorTypeQ5_1
-			case fsggml.TensorTypeQ6_K:
+			case fsggml.TensorTypeQ6K:
 				newType = fsggml.TensorTypeQ8_0
 			}
 

@@ -13,9 +13,9 @@ import (
 type harmonyParserState int
 
 const (
-	harmonyParserState_LookingForMessageStart harmonyParserState = iota
-	harmonyParserState_ParsingHeader
-	harmonyParserState_ParsingContent
+	harmonyParserStateLookingForMessageStart harmonyParserState = iota
+	harmonyParserStateParsingHeader
+	harmonyParserStateParsingContent
 )
 
 func shouldUseHarmony(model Model) bool {
@@ -33,11 +33,11 @@ func shouldUseHarmony(model Model) bool {
 func (s harmonyParserState) String() string {
 	switch s {
 	// we're looking for the message start tag
-	case harmonyParserState_LookingForMessageStart:
+	case harmonyParserStateLookingForMessageStart:
 		return "LookingForMessageStart"
-	case harmonyParserState_ParsingHeader:
+	case harmonyParserStateParsingHeader:
 		return "ParsingHeader"
-	case harmonyParserState_ParsingContent:
+	case harmonyParserStateParsingContent:
 		return "ParsingContent"
 	default:
 		return "Unknown"
@@ -123,7 +123,7 @@ func (s *HarmonyParser) AddContent(content string) []HarmonyEvent {
 // the additional bool return is true iff we should continue eating
 func eat(s *HarmonyParser) ([]HarmonyEvent, bool) {
 	switch s.state {
-	case harmonyParserState_LookingForMessageStart:
+	case harmonyParserStateLookingForMessageStart:
 		// does the acc contain the message start tag?
 		if strings.Contains(s.acc.String(), s.MessageStartTag) {
 			// split the acc into the message start tag and the rest
@@ -135,24 +135,24 @@ func eat(s *HarmonyParser) ([]HarmonyEvent, bool) {
 			after := split[1]
 			s.acc.Reset()
 			s.acc.WriteString(after)
-			s.state = harmonyParserState_ParsingHeader
+			s.state = harmonyParserStateParsingHeader
 			return []HarmonyEvent{HarmonyEventMessageStart{}}, true
 		}
 
 		// no match, so we keep accumulating
 		return nil, false
-	case harmonyParserState_ParsingHeader:
+	case harmonyParserStateParsingHeader:
 		if strings.Contains(s.acc.String(), s.HeaderEndTag) {
 			split := strings.SplitN(s.acc.String(), s.HeaderEndTag, 2)
 			header := split[0]
 			after := split[1]
 			s.acc.Reset()
 			s.acc.WriteString(after)
-			s.state = harmonyParserState_ParsingContent
+			s.state = harmonyParserStateParsingContent
 			return []HarmonyEvent{HarmonyEventHeaderComplete{Header: s.parseHeader(header)}}, true
 		}
 		return nil, false
-	case harmonyParserState_ParsingContent:
+	case harmonyParserStateParsingContent:
 		if strings.Contains(s.acc.String(), s.MessageEndTag) {
 			// if we already have the message end tag, we can emit the content up to it
 			split := strings.SplitN(s.acc.String(), s.MessageEndTag, 2)
@@ -160,7 +160,7 @@ func eat(s *HarmonyParser) ([]HarmonyEvent, bool) {
 			after := split[1]
 			s.acc.Reset()
 			s.acc.WriteString(after)
-			s.state = harmonyParserState_LookingForMessageStart
+			s.state = harmonyParserStateLookingForMessageStart
 			events := []HarmonyEvent{}
 			if content != "" {
 				events = append(events, HarmonyEventContentEmitted{Content: content})
@@ -266,9 +266,9 @@ func overlap(s, delim string) int {
 type harmonyMessageState int
 
 const (
-	harmonyMessageState_Normal harmonyMessageState = iota
-	harmonyMessageState_Thinking
-	harmonyMessageState_ToolCalling
+	harmonyMessageStateNormal harmonyMessageState = iota
+	harmonyMessageStateThinking
+	harmonyMessageStateToolCalling
 )
 
 // HarmonyMessageHandler processes harmony events and accumulates content appropriately.
@@ -281,7 +281,7 @@ type HarmonyMessageHandler struct {
 // NewHarmonyMessageHandler creates a new message handler
 func NewHarmonyMessageHandler() *HarmonyMessageHandler {
 	return &HarmonyMessageHandler{
-		state: harmonyMessageState_Normal,
+		state: harmonyMessageStateNormal,
 		harmonyParser: &HarmonyParser{
 			MessageStartTag: "<|start|>",
 			MessageEndTag:   "<|end|>",
@@ -305,36 +305,36 @@ func (h *HarmonyMessageHandler) AddContent(content string, toolParser *HarmonyTo
 			switch event.Header.Channel {
 			case "analysis":
 				if event.Header.Recipient != "" {
-					h.state = harmonyMessageState_ToolCalling
+					h.state = harmonyMessageStateToolCalling
 					// event.Header.Recipient is the tool name, something like
 					// "browser.search" for a built-in, or "functions.calc" for a
 					// custom one
 					toolParser.SetToolName(event.Header.Recipient)
 				} else {
-					h.state = harmonyMessageState_Thinking
+					h.state = harmonyMessageStateThinking
 				}
 			case "commentary":
 				if event.Header.Recipient != "" {
-					h.state = harmonyMessageState_ToolCalling
+					h.state = harmonyMessageStateToolCalling
 					toolParser.SetToolName(event.Header.Recipient)
 				} else {
-					h.state = harmonyMessageState_Normal
+					h.state = harmonyMessageStateNormal
 				}
 			case "final":
-				h.state = harmonyMessageState_Normal
+				h.state = harmonyMessageStateNormal
 			}
 		case HarmonyEventContentEmitted:
 			slog.Log(context.TODO(), logutil.LevelTrace, "harmony event content", "content", event.Content, "state", h.state)
 			switch h.state {
-			case harmonyMessageState_Normal:
+			case harmonyMessageStateNormal:
 				contentSb.WriteString(event.Content)
-			case harmonyMessageState_Thinking:
+			case harmonyMessageStateThinking:
 				thinkingSb.WriteString(event.Content)
-			case harmonyMessageState_ToolCalling:
+			case harmonyMessageStateToolCalling:
 				toolContentSb.WriteString(event.Content)
 			}
 		case HarmonyEventMessageEnd:
-			h.state = harmonyMessageState_Normal
+			h.state = harmonyMessageStateNormal
 		}
 	}
 	return contentSb.String(), thinkingSb.String(), toolContentSb.String()
@@ -342,7 +342,7 @@ func (h *HarmonyMessageHandler) AddContent(content string, toolParser *HarmonyTo
 
 func (h *HarmonyMessageHandler) CreateToolParser() *HarmonyToolCallAccumulator {
 	return &HarmonyToolCallAccumulator{
-		state:           harmonyToolCallState_Normal,
+		state:           harmonyToolCallStateNormal,
 		currentToolName: nil,
 	}
 }
@@ -350,8 +350,8 @@ func (h *HarmonyMessageHandler) CreateToolParser() *HarmonyToolCallAccumulator {
 type harmonyToolCallState int
 
 const (
-	harmonyToolCallState_Normal harmonyToolCallState = iota
-	harmonyToolCallState_ToolCalling
+	harmonyToolCallStateNormal harmonyToolCallState = iota
+	harmonyToolCallStateToolCalling
 )
 
 type HarmonyToolCallAccumulator struct {
@@ -370,7 +370,7 @@ func (a *HarmonyToolCallAccumulator) Add(content string) {
 
 func (a *HarmonyToolCallAccumulator) Drain() (*string, string) {
 	str := a.acc.String()
-	a.state = harmonyToolCallState_Normal
+	a.state = harmonyToolCallStateNormal
 	a.acc.Reset()
 	return a.currentToolName, str
 }

@@ -181,7 +181,6 @@ My core values:
 		case <-dreamTicker.C:
 			if awake {
 				dreamCycles++
-				awake = false
 
 				fmt.Println("\n💤 Entering dream state for knowledge consolidation...")
 

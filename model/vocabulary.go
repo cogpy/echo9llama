@@ -87,7 +87,7 @@ func (v *Vocabulary) Decode(id int32) string {
 func (v *Vocabulary) SpecialVocabulary() []string {
 	v.specialOnce.Do(func() {
 		for i := range v.Values {
-			if v.Types[i] == TOKEN_TYPE_CONTROL || v.Types[i] == TOKEN_TYPE_USER_DEFINED {
+			if v.Types[i] == TokenTypeControl || v.Types[i] == TokenTypeUserDefined {
 				v.special = append(v.special, v.Values[i])
 			}
 		}

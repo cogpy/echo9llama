@@ -40,7 +40,7 @@ type OpenRouterProvider struct {
 // NewAnthropicProvider creates a new Anthropic provider
 func NewAnthropicProvider(apiKey string) (*AnthropicProvider, error) {
 	if apiKey == "" {
-		return nil, fmt.Errorf("Anthropic API key is required")
+		return nil, fmt.Errorf("API key is required for Anthropic")
 	}
 
 	return &AnthropicProvider{

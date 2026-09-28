@@ -63,15 +63,15 @@ func Quantize(newType fsggml.TensorType, f32s []float32, shape []uint64) []byte 
 	if len(shape) > 2 {
 		shape2 = C.int64_t(shape[2])
 	}
-	nelements_matrix := nPerRow * nrows
+	nelementsMatrix := nPerRow * nrows
 	newSize := C.size_t(0)
 	for i03 := C.int64_t(0); i03 < shape2; i03++ {
-		f32s_03 := i03 * nelements_matrix
-		buf_03 := C.int64_t(C.ggml_row_size(uint32(newType), nPerRow)) * i03 * nrows
+		f32s03 := i03 * nelementsMatrix
+		buf03 := C.int64_t(C.ggml_row_size(uint32(newType), nPerRow)) * i03 * nrows
 		newSize += C.ggml_quantize_chunk(
 			uint32(newType),
-			(*C.float)(&f32s[f32s_03]),
-			unsafe.Pointer((uintptr)(unsafe.Pointer(&buf[0]))+uintptr(buf_03)),
+			(*C.float)(&f32s[f32s03]),
+			unsafe.Pointer((uintptr)(unsafe.Pointer(&buf[0]))+uintptr(buf03)),
 			0,
 			nrows,
 			nPerRow,

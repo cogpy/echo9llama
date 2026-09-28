@@ -214,13 +214,13 @@ type Tensors struct {
 	Offset uint64
 }
 
-func (s Tensors) Items(prefix ...string) []*Tensor {
+func (ts Tensors) Items(prefix ...string) []*Tensor {
 	if len(prefix) == 0 {
-		return s.items
+		return ts.items
 	}
 
 	var items []*Tensor
-	for _, t := range s.items {
+	for _, t := range ts.items {
 		if strings.HasPrefix(t.Name, prefix[0]) {
 			items = append(items, t)
 		}
@@ -338,33 +338,33 @@ func (t TensorType) TypeSize() uint64 {
 		return 2 + blockSize
 	case TensorTypeQ8_1:
 		return 2 + 2 + blockSize
-	case TensorTypeQ2_K:
+	case TensorTypeQ2K:
 		return blockSize/16 + blockSize/4 + 2 + 2
-	case TensorTypeQ3_K:
+	case TensorTypeQ3K:
 		return blockSize/8 + blockSize/4 + 12 + 2
-	case TensorTypeQ4_K:
+	case TensorTypeQ4K:
 		return 2 + 2 + 12 + blockSize/2
-	case TensorTypeQ5_K:
+	case TensorTypeQ5K:
 		return 2 + 2 + 12 + blockSize/8 + blockSize/2
-	case TensorTypeQ6_K:
+	case TensorTypeQ6K:
 		return blockSize/2 + blockSize/4 + blockSize/16 + 2
-	case TensorTypeQ8_K:
+	case TensorTypeQ8K:
 		return 4 + blockSize + 2*blockSize/16
-	case tensorTypeIQ2_XXS:
+	case tensorTypeIQ2XXS:
 		return 2 + 2*blockSize/8
-	case tensorTypeIQ2_XS:
+	case tensorTypeIQ2XS:
 		return 2 + 2*blockSize/8 + blockSize/32
-	case tensorTypeIQ3_XXS:
+	case tensorTypeIQ3XXS:
 		return 2 + blockSize/4 + blockSize/8
-	case tensorTypeIQ1_S:
+	case tensorTypeIQ1S:
 		return 2 + blockSize/8 + blockSize/16
-	case tensorTypeIQ4_NL:
+	case tensorTypeIQ4NL:
 		return 2 + blockSize/2
-	case tensorTypeIQ3_S:
+	case tensorTypeIQ3S:
 		return 2 + blockSize/4 + blockSize/8 + blockSize/32 + 4
-	case tensorTypeIQ2_S:
+	case tensorTypeIQ2S:
 		return 2 + blockSize/4 + blockSize/16
-	case tensorTypeIQ4_XS:
+	case tensorTypeIQ4XS:
 		return 2 + 2 + blockSize/2 + blockSize/64
 	case TensorTypeI8:
 		return 1
@@ -376,7 +376,7 @@ func (t TensorType) TypeSize() uint64 {
 		return 8
 	case TensorTypeF64:
 		return 8
-	case tensorTypeIQ1_M:
+	case tensorTypeIQ1M:
 		return blockSize/8 + blockSize/16 + blockSize/32
 	case TensorTypeBF16:
 		return 2
@@ -408,31 +408,31 @@ type container interface {
 
 const (
 	// Magic constant for `ggml` files (unversioned).
-	FILE_MAGIC_GGML = 0x67676d6c
+	FileMagicGGML = 0x67676d6c
 	// Magic constant for `ggml` files (versioned, ggmf).
-	FILE_MAGIC_GGMF = 0x67676d66
+	FileMagicGGMF = 0x67676d66
 	// Magic constant for `ggml` files (versioned, ggjt).
-	FILE_MAGIC_GGJT = 0x67676a74
+	FileMagicGGJT = 0x67676a74
 	// Magic constant for `ggla` files (LoRA adapter).
-	FILE_MAGIC_GGLA = 0x67676C61
+	FileMagicGGLA = 0x67676C61
 	// Magic constant for `gguf` files (versioned, gguf)
-	FILE_MAGIC_GGUF_LE = 0x46554747
-	FILE_MAGIC_GGUF_BE = 0x47475546
+	FileMagicGGUFLE = 0x46554747
+	FileMagicGGUFBE = 0x47475546
 )
 
 var ErrUnsupportedFormat = errors.New("unsupported model format")
 
 func DetectContentType(b []byte) string {
 	switch binary.LittleEndian.Uint32(b[:4]) {
-	case FILE_MAGIC_GGML:
+	case FileMagicGGML:
 		return "ggml"
-	case FILE_MAGIC_GGMF:
+	case FileMagicGGMF:
 		return "ggmf"
-	case FILE_MAGIC_GGJT:
+	case FileMagicGGJT:
 		return "ggjt"
-	case FILE_MAGIC_GGLA:
+	case FileMagicGGLA:
 		return "ggla"
-	case FILE_MAGIC_GGUF_LE, FILE_MAGIC_GGUF_BE:
+	case FileMagicGGUFLE, FileMagicGGUFBE:
 		return "gguf"
 	default:
 		return ""
@@ -453,9 +453,9 @@ func Decode(rs io.ReadSeeker, maxArraySize int) (*GGML, error) {
 
 	var c container
 	switch magic {
-	case FILE_MAGIC_GGUF_LE:
+	case FileMagicGGUFLE:
 		c = &containerGGUF{ByteOrder: binary.LittleEndian, maxArraySize: maxArraySize}
-	case FILE_MAGIC_GGUF_BE:
+	case FileMagicGGUFBE:
 		c = &containerGGUF{ByteOrder: binary.BigEndian, maxArraySize: maxArraySize}
 	default:
 		return nil, errors.New("invalid file magic")
@@ -682,12 +682,12 @@ func (f GGML) GraphSize(context, batch uint64, numParallel int, kvCacheType stri
 	return
 }
 
-func (llm GGML) VisionGraphSize() (weights, graphSize uint64) {
-	if llm.KV().Uint("vision.block_count") == 0 {
+func (f GGML) VisionGraphSize() (weights, graphSize uint64) {
+	if f.KV().Uint("vision.block_count") == 0 {
 		return
 	}
 
-	for name, layer := range llm.Tensors().GroupLayers() {
+	for name, layer := range f.Tensors().GroupLayers() {
 		if name == "v" || strings.HasPrefix(name, "v.") {
 			for _, tensor := range layer {
 				weights += tensor.Size()
@@ -695,28 +695,28 @@ func (llm GGML) VisionGraphSize() (weights, graphSize uint64) {
 		}
 	}
 
-	imageSize := uint64(llm.KV().Uint("vision.image_size"))
-	patchSize := uint64(llm.KV().Uint("vision.patch_size"))
+	imageSize := uint64(f.KV().Uint("vision.image_size"))
+	patchSize := uint64(f.KV().Uint("vision.patch_size"))
 	if patchSize == 0 {
 		slog.Warn("unknown patch size for vision model")
 		return
 	}
 
-	numChannels := uint64(llm.KV().Uint("vision.num_channels"))
+	numChannels := uint64(f.KV().Uint("vision.num_channels"))
 
 	numPatches := (imageSize / patchSize) * (imageSize / patchSize)
-	if _, ok := llm.Tensors().GroupLayers()["v"]["class_embd"]; ok {
+	if _, ok := f.Tensors().GroupLayers()["v"]["class_embd"]; ok {
 		numPatches++
 	}
 
-	headCount := uint64(llm.KV().Uint("vision.attention.head_count"))
-	embeddingLength := uint64(llm.KV().Uint("vision.embedding_length"))
+	headCount := uint64(f.KV().Uint("vision.attention.head_count"))
+	embeddingLength := uint64(f.KV().Uint("vision.embedding_length"))
 
-	switch llm.KV().Architecture() {
+	switch f.KV().Architecture() {
 	case "mllama":
 		numPaddedPatches := numPatches + 8 - (numPatches%8)%8
 
-		maxNumTiles := uint64(llm.KV().Uint("vision.max_num_tiles"))
+		maxNumTiles := uint64(f.KV().Uint("vision.max_num_tiles"))
 
 		graphSize = 4 * (8 +
 			imageSize*imageSize*numChannels*maxNumTiles +
@@ -728,7 +728,7 @@ func (llm GGML) VisionGraphSize() (weights, graphSize uint64) {
 			embeddingLength*patchSize +
 			numPatches*numPatches*headCount)
 	case "qwen25vl":
-		maxPixels := uint64(llm.KV().Uint("vision.max_pixels", 28*28*1280))
+		maxPixels := uint64(f.KV().Uint("vision.max_pixels", 28*28*1280))
 
 		numPatches := maxPixels / (patchSize * patchSize)
 
