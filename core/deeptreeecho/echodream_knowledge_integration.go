@@ -12,7 +12,7 @@ import (
 // EchoDreamKnowledgeIntegration handles knowledge consolidation during dream state
 type EchoDreamKnowledgeIntegration struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for knowledge processing
@@ -50,9 +50,6 @@ type EchoDreamKnowledgeIntegration struct {
 	totalWisdomGenerated   uint64
 	semanticNodesCreated   uint64
 	emergenceEvents        uint64
-
-	// Running state
-	running bool
 }
 
 // EpisodicMemory represents a memory of an experience

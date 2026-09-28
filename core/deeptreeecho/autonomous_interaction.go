@@ -46,9 +46,6 @@ type AutonomousInteractionSystem struct {
 	// Conversation initiation state
 	initiationCooldown time.Duration
 	lastInitiation     time.Time
-
-	// Running state
-	running bool
 }
 
 // InteractionRelationship tracks Echo's relationship with an entity

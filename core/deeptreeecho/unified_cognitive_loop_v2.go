@@ -14,7 +14,7 @@ import (
 // skill-goal integration, and wisdom synthesis systems
 type UnifiedCognitiveLoopV2 struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core cognitive subsystems (from v1)

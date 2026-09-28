@@ -116,7 +116,7 @@ type EventHandler func(event CognitiveEvent)
 // CognitiveEventBus manages event distribution across cognitive subsystems
 type CognitiveEventBus struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Event channels

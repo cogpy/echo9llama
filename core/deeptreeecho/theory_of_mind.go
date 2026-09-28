@@ -12,9 +12,6 @@ type TheoryOfMindModule struct {
 	// Agent models
 	agentModels map[string]*AgentModel
 
-	// Self-model (for comparison and recursive reasoning)
-	selfModel *AgentModel
-
 	// Recursive reasoning depth
 	maxRecursionDepth int
 

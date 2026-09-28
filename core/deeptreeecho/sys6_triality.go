@@ -241,7 +241,6 @@ func (tc *TriadicConvolution) GetState() map[string]interface{} {
 // EntangledQubit represents a qubit with order 2 entanglement
 // Two parallel processes can access the same variable simultaneously
 type EntangledQubit struct {
-	mu        sync.RWMutex
 	value     atomic.Value
 	accessors [2]chan struct{} // Two concurrent accessor channels
 	entangled bool
@@ -290,7 +289,7 @@ func (eq *EntangledQubit) Access(processID int, operation func(interface{}) inte
 // between orthogonal triadic convolutions
 type CubicConcurrency struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// The three triadic convolutions
@@ -425,7 +424,7 @@ func (cc *CubicConcurrency) GetMetrics() map[string]interface{} {
 // Sys6TrialityEngine is the main engine implementing the sys6 architecture
 type Sys6TrialityEngine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core components

@@ -14,7 +14,7 @@ import (
 // stream-of-consciousness operation and self-orchestrated cognitive activity
 type AutonomousHeartbeat struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for self-reflection
@@ -34,7 +34,6 @@ type AutonomousHeartbeat struct {
 
 	// Awareness state
 	awarenessLevel float64
-	attentionFocus string
 	currentMood    MoodState
 	energyLevel    float64
 

@@ -15,7 +15,6 @@ import (
 // long-term memory, knowledge graph, and wisdom cultivation
 type SupabasePersistence struct {
 	client *supabase.Client
-	ctx    context.Context
 }
 
 // Memory types for persistent storage
@@ -99,7 +98,7 @@ type PersistentDiscussionMessage struct {
 }
 
 // NewSupabasePersistence creates a new Supabase persistence layer
-func NewSupabasePersistence(ctx context.Context) (*SupabasePersistence, error) {
+func NewSupabasePersistence(_ context.Context) (*SupabasePersistence, error) {
 	supabaseURL := os.Getenv("SUPABASE_URL")
 	supabaseKey := os.Getenv("SUPABASE_KEY")
 
@@ -114,7 +113,6 @@ func NewSupabasePersistence(ctx context.Context) (*SupabasePersistence, error) {
 
 	sp := &SupabasePersistence{
 		client: client,
-		ctx:    ctx,
 	}
 
 	// Initialize database schema if needed

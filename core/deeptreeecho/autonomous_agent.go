@@ -15,7 +15,7 @@ import (
 // wisdom-cultivating AGI with persistent consciousness
 type AutonomousAgent struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core cognitive subsystems

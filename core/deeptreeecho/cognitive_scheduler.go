@@ -13,7 +13,7 @@ import (
 // This is inspired by gocron's architecture for flexible job scheduling
 type CognitiveScheduler struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Scheduled jobs
@@ -60,7 +60,7 @@ type CognitiveJob struct {
 	RetryDelay time.Duration
 
 	// Context
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 }
 

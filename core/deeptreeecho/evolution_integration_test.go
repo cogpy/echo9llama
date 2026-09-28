@@ -27,26 +27,11 @@ func TestDefaultEvolutionSystemConfig(t *testing.T) {
 
 func TestEvolutionSystemWithoutProviders(t *testing.T) {
 	// Save and clear environment variables
-	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
-	openrouterKey := os.Getenv("OPENROUTER_API_KEY")
-	openaiKey := os.Getenv("OPENAI_API_KEY")
-
-	os.Unsetenv("ANTHROPIC_API_KEY")
-	os.Unsetenv("OPENROUTER_API_KEY")
-	os.Unsetenv("OPENAI_API_KEY")
-
-	// Restore at end
-	defer func() {
-		if anthropicKey != "" {
-			os.Setenv("ANTHROPIC_API_KEY", anthropicKey)
-		}
-		if openrouterKey != "" {
-			os.Setenv("OPENROUTER_API_KEY", openrouterKey)
-		}
-		if openaiKey != "" {
-			os.Setenv("OPENAI_API_KEY", openaiKey)
-		}
-	}()
+	// t.Setenv restores the original values when the test ends.
+	for _, key := range []string{"ANTHROPIC_API_KEY", "OPENROUTER_API_KEY", "OPENAI_API_KEY"} {
+		t.Setenv(key, "")
+		os.Unsetenv(key)
+	}
 
 	config := DefaultEvolutionSystemConfig()
 	_, err := NewEvolutionSystem(config)

@@ -75,7 +75,7 @@ type CognitiveMoment struct {
 // Sys6CognitiveIntegration integrates sys6 triality with cognitive systems
 type Sys6CognitiveIntegration struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Reference to sys6 triality engine
@@ -88,11 +88,6 @@ type Sys6CognitiveIntegration struct {
 	// Current cognitive moment
 	currentMoment *CognitiveMoment
 	momentHistory []*CognitiveMoment
-
-	// Cognitive systems (interfaces to avoid circular dependencies)
-	perceptionSystem interface{} // *perception.System
-	cognitionSystem  interface{} // *cognition.System
-	actionSystem     interface{} // *action.System
 
 	// Temporal reasoning
 	temporalContext *TemporalContext

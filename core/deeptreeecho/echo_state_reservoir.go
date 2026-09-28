@@ -177,7 +177,7 @@ func (esr *EchoStateReservoir) Update(input []float64) []float64 {
 	for i := range esr.size {
 		// Input contribution
 		inputSum := 0.0
-		for j := range len(input) {
+		for j := range input {
 			if j < len(esr.inputWeights[i]) {
 				inputSum += esr.inputWeights[i][j] * input[j]
 			}

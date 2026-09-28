@@ -25,7 +25,7 @@ import (
 // - Phase 3 (Steps 9-12): Reflection and Anticipation
 type ThreeStreamCognitiveLoop struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Three concurrent consciousness streams
@@ -58,8 +58,7 @@ type ThreeStreamCognitiveLoop struct {
 	triad4 []int // {4,8,12}
 
 	// Metrics
-	totalSteps  uint64
-	totalCycles uint64
+	totalSteps uint64
 
 	// Running state
 	running   bool
@@ -139,8 +138,6 @@ type SimulationState struct {
 // NestedShellsStructure implements the OEIS A000081 nested shells
 // 1 nest → 1 term, 2 nests → 2 terms, 3 nests → 4 terms, 4 nests → 9 terms
 type NestedShellsStructure struct {
-	mu sync.RWMutex
-
 	// Four nesting levels
 	nest1 *NestLevel // 1 term
 	nest2 *NestLevel // 2 terms

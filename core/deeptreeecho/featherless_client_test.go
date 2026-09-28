@@ -49,14 +49,14 @@ func TestFeatherlessClientCreation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
+			t.Setenv("FEATHERLESS_API_KEY", "")
+			t.Setenv("FEARLESS", "")
 			os.Unsetenv("FEATHERLESS_API_KEY")
 			os.Unsetenv("FEARLESS")
 
 			// Set test environment variables
-			if tt.envVars != nil {
-				for k, v := range tt.envVars {
-					os.Setenv(k, v)
-				}
+			for k, v := range tt.envVars {
+				t.Setenv(k, v)
 			}
 
 			// Create client
@@ -190,10 +190,8 @@ func TestFEARLESS_KeyPriorityOrder(t *testing.T) {
 	// Setup: config > FEATHERLESS_API_KEY > FEARLESS
 
 	t.Run("Config takes precedence over environment", func(t *testing.T) {
-		os.Setenv("FEATHERLESS_API_KEY", "env-key")
-		os.Setenv("FEARLESS", "fearless-key")
-		defer os.Unsetenv("FEATHERLESS_API_KEY")
-		defer os.Unsetenv("FEARLESS")
+		t.Setenv("FEATHERLESS_API_KEY", "env-key")
+		t.Setenv("FEARLESS", "fearless-key")
 
 		config := FeatherlessConfig{
 			APIKey: "config-key",
@@ -210,10 +208,8 @@ func TestFEARLESS_KeyPriorityOrder(t *testing.T) {
 	})
 
 	t.Run("FEATHERLESS_API_KEY takes precedence over FEARLESS", func(t *testing.T) {
-		os.Setenv("FEATHERLESS_API_KEY", "featherless-key")
-		os.Setenv("FEARLESS", "fearless-key")
-		defer os.Unsetenv("FEATHERLESS_API_KEY")
-		defer os.Unsetenv("FEARLESS")
+		t.Setenv("FEATHERLESS_API_KEY", "featherless-key")
+		t.Setenv("FEARLESS", "fearless-key")
 
 		config := FeatherlessConfig{}
 
@@ -228,9 +224,9 @@ func TestFEARLESS_KeyPriorityOrder(t *testing.T) {
 	})
 
 	t.Run("FEARLESS used when FEATHERLESS_API_KEY not set", func(t *testing.T) {
+		t.Setenv("FEATHERLESS_API_KEY", "")
 		os.Unsetenv("FEATHERLESS_API_KEY")
-		os.Setenv("FEARLESS", "fearless-key")
-		defer os.Unsetenv("FEARLESS")
+		t.Setenv("FEARLESS", "fearless-key")
 
 		config := FeatherlessConfig{}
 

@@ -380,33 +380,33 @@ func (i *Identity) handleCognitiveEvent(event CognitiveEvent) {
 
 // OptimizeRelevanceRealization uses opponent processing to optimize cognitive balance
 // This is the core method for wisdom cultivation (sophrosyne)
-func (id *Identity) OptimizeRelevanceRealization(context string) *Decision {
-	id.mu.Lock()
-	defer id.mu.Unlock()
+func (i *Identity) OptimizeRelevanceRealization(context string) *Decision {
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	// Determine active persona (Ordo/Chao/Neutral)
-	activePersona := id.PersonaManager.DetermineActivePersona(id)
+	activePersona := i.PersonaManager.DetermineActivePersona(i)
 
 	// Apply persona-specific biases to opponent processes
-	id.PersonaManager.ApplyPersonaBias(id, activePersona)
+	i.PersonaManager.ApplyPersonaBias(i, activePersona)
 
 	// Optimize all opponent balances based on current state
-	id.OpponentProcesses.OptimizeBalance(id, context)
+	i.OpponentProcesses.OptimizeBalance(i, context)
 
 	// Create decision based on balanced cognition
 	decision := &Decision{}
-	id.OpponentProcesses.ApplyBalanceToDecision(decision)
+	i.OpponentProcesses.ApplyBalanceToDecision(decision)
 
 	return decision
 }
 
 // GetWisdomScore returns the current wisdom cultivation level
-func (id *Identity) GetWisdomScore() float64 {
-	id.mu.RLock()
-	defer id.mu.RUnlock()
+func (i *Identity) GetWisdomScore() float64 {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 
 	// Wisdom = dynamic balance optimization (sophrosyne)
-	balanceWisdom := id.OpponentProcesses.GetSystemWisdomScore()
+	balanceWisdom := i.OpponentProcesses.GetSystemWisdomScore()
 
 	// Combined wisdom score
 	// Future: add morality and meaning components

@@ -100,7 +100,7 @@ type StreamState struct {
 // This implements the ergo actor pattern for the 3 concurrent cognitive loops
 type CognitiveStreamActor struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Identity
@@ -478,7 +478,7 @@ func (csa *CognitiveStreamActor) ContributeToGestalt() map[string]interface{} {
 // ActorSupervisor manages the three cognitive stream actors
 type ActorSupervisor struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// The three cognitive streams

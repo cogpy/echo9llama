@@ -14,7 +14,7 @@ import (
 // This is inspired by chromem-go's architecture for embedded vector databases
 type SemanticMemory struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for generating embeddings

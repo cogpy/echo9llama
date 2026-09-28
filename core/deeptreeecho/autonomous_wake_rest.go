@@ -508,11 +508,7 @@ func (m *AutonomousWakeRestManager) ShouldSleep() bool {
 
 	// Check if we've been awake for too long
 	awakeDuration := time.Since(m.stateStartTime)
-	if awakeDuration >= m.maxWakeDuration {
-		return true
-	}
-
-	return false
+	return awakeDuration >= m.maxWakeDuration
 }
 
 // ShouldWake returns true if the agent should transition to wake
@@ -532,9 +528,5 @@ func (m *AutonomousWakeRestManager) ShouldWake() bool {
 
 	// Check if we've rested for minimum duration
 	restDuration := time.Since(m.stateStartTime)
-	if restDuration >= m.minRestDuration {
-		return true
-	}
-
-	return false
+	return restDuration >= m.minRestDuration
 }

@@ -158,7 +158,7 @@ func TestEchobeatsSchedulerGoals(t *testing.T) {
 	// Test active goal retrieval
 	activeGoal := scheduler.GetActiveGoal()
 	if activeGoal == nil {
-		t.Error("Expected non-nil active goal")
+		t.Fatal("Expected non-nil active goal")
 	}
 
 	if activeGoal.Priority != 0.9 {

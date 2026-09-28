@@ -306,14 +306,9 @@ func (es *EvolutionSystem) RunDiagnostics(ctx context.Context) (*EvolutionDiagno
 	// Test scheduler
 	schedTest := DiagnosticTestResult{Name: "Echobeats Scheduler"}
 	if es.optimizer != nil && es.optimizer.scheduler != nil {
-		triads := es.optimizer.scheduler.GetTriadStates()
-		if len(triads) == 4 {
-			schedTest.Status = "pass"
-			schedTest.Message = "Scheduler with 4 triads operational"
-		} else {
-			schedTest.Status = "warn"
-			schedTest.Message = fmt.Sprintf("Scheduler has %d triads (expected 4)", len(triads))
-		}
+		// GetTriadStates returns a fixed-size [4]TriadState array.
+		schedTest.Status = "pass"
+		schedTest.Message = fmt.Sprintf("Scheduler with %d triads operational", len(es.optimizer.scheduler.GetTriadStates()))
 	} else {
 		schedTest.Status = "fail"
 		schedTest.Message = "Scheduler subsystem not available"

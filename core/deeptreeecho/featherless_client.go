@@ -91,7 +91,7 @@ func NewFeatherlessClient(config FeatherlessConfig) (*FeatherlessClient, error) 
 			apiKey = os.Getenv("FEARLESS")
 		}
 		if apiKey == "" {
-			return nil, fmt.Errorf("Featherless API key not provided and not found in environment")
+			return nil, fmt.Errorf("featherless API key not provided and not found in environment")
 		}
 	}
 

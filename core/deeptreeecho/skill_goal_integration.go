@@ -13,7 +13,7 @@ import (
 // enabling autonomous skill acquisition based on identified needs and interests
 type SkillGoalIntegration struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider
@@ -21,7 +21,6 @@ type SkillGoalIntegration struct {
 
 	// Connected systems
 	skillLearning    *SkillLearningSystem
-	goalGenerator    *GoalGenerator
 	interestPatterns *InterestPatternSystem
 
 	// Skill-goal mappings

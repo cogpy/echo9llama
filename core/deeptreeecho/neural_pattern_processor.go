@@ -14,7 +14,7 @@ import (
 // This is inspired by GoMLX's tensor and graph computation approach
 type NeuralPatternProcessor struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Pattern storage

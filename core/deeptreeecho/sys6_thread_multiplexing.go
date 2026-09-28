@@ -175,7 +175,7 @@ func (es *Sys6EntangledState) GetAccessLog() []Sys6EntangledAccess {
 // of the four particular sets with entangled concurrency
 type Sys6ThreadMultiplexer struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Permutation cycles
@@ -461,7 +461,7 @@ func (tm *Sys6ThreadMultiplexer) SetParticularState(setID int, value interface{}
 // Sys6MultiplexedEngine combines the triality engine with thread multiplexing
 type Sys6MultiplexedEngine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core engines

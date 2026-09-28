@@ -11,7 +11,7 @@ import (
 // This is the central nervous system that ties together all components
 type UnifiedOrchestrator struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core subsystem references

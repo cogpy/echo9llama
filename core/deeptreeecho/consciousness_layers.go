@@ -11,7 +11,7 @@ import (
 // Implements bottom-up and top-down processing for emergent awareness
 type ConsciousnessLayerCommunication struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Three consciousness layers
@@ -94,8 +94,7 @@ type BasicConsciousnessLayer struct {
 	immediateActions []string
 
 	// Metrics
-	inputCount  uint64
-	actionCount uint64
+	inputCount uint64
 }
 
 // SensoryInput represents basic sensory data
@@ -118,8 +117,7 @@ type ReflectiveConsciousnessLayer struct {
 	recentMemories []string
 
 	// Metrics
-	thoughtCount   uint64
-	reasoningCount uint64
+	thoughtCount uint64
 }
 
 // LayerThought represents a reflective thought
@@ -152,10 +150,6 @@ type MetaCognitiveLayer struct {
 
 	// Goal management
 	topLevelGoals []string
-
-	// Metrics
-	strategyCount uint64
-	insightCount  uint64
 }
 
 // SelfModel represents the system's model of itself

@@ -13,7 +13,7 @@ import (
 // with 4 concurrent inference engines in tetrahedral geometry
 type EchobeatsTetrahedralScheduler struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Four concurrent inference engines (tetrahedral vertices)
@@ -646,17 +646,6 @@ func (sched *EchobeatsTetrahedralScheduler) AddGoal(goal *CognitiveGoal) {
 		Priority:  float64(goal.Priority),
 		Timestamp: time.Now(),
 	}
-}
-
-// addGoal internal method to add goal to queue
-func (sched *EchobeatsTetrahedralScheduler) addGoal(goal *CognitiveGoal) {
-	sched.mu.Lock()
-	defer sched.mu.Unlock()
-
-	sched.goalQueue = append(sched.goalQueue, goal)
-	sched.activeGoals[goal.ID] = goal
-
-	fmt.Printf("🎯 New goal added: %s (priority: %.2f)\n", goal.Description, goal.Priority)
 }
 
 // EmitEvent sends an event to the cognitive event loop

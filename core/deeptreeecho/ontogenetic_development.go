@@ -288,13 +288,13 @@ func (ot *OntogeneticTracker) mutateGenome(genome *PrimitiveGenome) *PrimitiveGe
 
 	// Mutate coefficient genes
 	for i, coeff := range genome.CoefficientGenes {
-		mutation := (0.5 - 0.5) * 0.2 // ±10% mutation (simplified random)
+		mutation := 0.0 // placeholder for ±10% random mutation (currently deterministic)
 		newGenome.CoefficientGenes[i] = coeff + mutation
 	}
 
 	// Mutate operator genes
 	for key, value := range genome.OperatorGenes {
-		mutation := (0.5 - 0.5) * 0.2
+		mutation := 0.0 // placeholder for random mutation (currently deterministic)
 		newGenome.OperatorGenes[key] = value + mutation
 	}
 

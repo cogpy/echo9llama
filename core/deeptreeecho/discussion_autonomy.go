@@ -12,7 +12,7 @@ import (
 // DiscussionAutonomySystem enables echoself to start, end, and respond to discussions
 type DiscussionAutonomySystem struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider

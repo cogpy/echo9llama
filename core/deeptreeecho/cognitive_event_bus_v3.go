@@ -12,7 +12,7 @@ import (
 // All subsystems publish and subscribe to cognitive events through this bus.
 type CognitiveEventBusV3 struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Subscribers keyed by event category

@@ -40,9 +40,6 @@ type EchodreamKnowledgeIntegrator struct {
 	// DreamGen API configuration (optional)
 	DgenAPIKey  string
 	DgenEnabled bool
-
-	// Running state
-	running bool
 }
 
 // EpisodicMemoryV2 represents a specific experience/interaction (v2 with consolidation tracking)

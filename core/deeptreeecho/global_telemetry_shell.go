@@ -11,7 +11,7 @@ import (
 // for all local computations (the "void" or "unmarked state")
 type GlobalTelemetryShell struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Gestalt perception - the unified whole
@@ -30,8 +30,7 @@ type GlobalTelemetryShell struct {
 	eventStream chan TelemetryEvent
 
 	// Metrics
-	totalEvents       uint64
-	totalComputations uint64
+	totalEvents uint64
 
 	// Running state
 	running   bool

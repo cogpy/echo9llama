@@ -14,7 +14,7 @@ import (
 // This is inspired by Badger's architecture for high-performance persistent storage
 type PersistentStateStore struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// In-memory storage (memtable)

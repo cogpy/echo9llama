@@ -14,7 +14,7 @@ import (
 // GoalGenerator creates autonomous goals based on interests, knowledge gaps, and values
 type GoalGenerator struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for goal generation
@@ -87,7 +87,6 @@ type KnowledgeGap struct {
 
 // ValueHierarchy represents the system's value priorities
 type ValueHierarchy struct {
-	mu         sync.RWMutex
 	values     map[string]float64
 	coreValues []string
 }

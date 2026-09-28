@@ -14,7 +14,7 @@ import (
 // This is inspired by watermill's architecture for event-driven applications
 type EventBusV2 struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Topic subscriptions
@@ -51,9 +51,6 @@ type EventMessage struct {
 	nack     chan struct{}
 	ackOnce  sync.Once
 	nackOnce sync.Once
-
-	// Context
-	ctx context.Context
 }
 
 // Subscription represents a topic subscription
@@ -238,7 +235,6 @@ func NewEventMessage(topic string, payload interface{}) (*EventMessage, error) {
 		Priority:  0.5,
 		ack:       make(chan struct{}),
 		nack:      make(chan struct{}),
-		ctx:       context.Background(),
 	}, nil
 }
 
@@ -277,7 +273,6 @@ func (m *EventMessage) Copy() *EventMessage {
 		Priority:  m.Priority,
 		ack:       make(chan struct{}),
 		nack:      make(chan struct{}),
-		ctx:       m.ctx,
 	}
 	copy(newMsg.Payload, m.Payload)
 	for k, v := range m.Metadata {
