@@ -18,18 +18,6 @@ const (
 	harmonyParserStateParsingContent
 )
 
-func shouldUseHarmony(model Model) bool {
-	if model.Config.ModelFamily == "gptoss" {
-		// heuristic to check whether the template expects to be parsed via harmony:
-		// search for harmony tags that are nearly always used
-		if model.Template.Contains("<|start|>") && model.Template.Contains("<|end|>") {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (s harmonyParserState) String() string {
 	switch s {
 	// we're looking for the message start tag

@@ -2094,3 +2094,15 @@ func (s *Server) WorkflowHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, apiResponse)
 }
+
+func shouldUseHarmony(model Model) bool {
+	if model.Config.ModelFamily == "gptoss" {
+		// heuristic to check whether the template expects to be parsed via harmony:
+		// search for harmony tags that are nearly always used
+		if model.Template.Contains("<|start|>") && model.Template.Contains("<|end|>") {
+			return true
+		}
+	}
+
+	return false
+}
