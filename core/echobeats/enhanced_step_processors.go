@@ -50,8 +50,8 @@ func NewEnhancedStepProcessor(llmManager *llm.ProviderManager, memory CognitiveM
 	}
 }
 
-// Step1_RelevanceRealization determines what matters NOW
-func (esp *EnhancedStepProcessor) Step1_RelevanceRealization(ctx context.Context, input interface{}) (interface{}, error) {
+// Step1RelevanceRealization determines what matters NOW
+func (esp *EnhancedStepProcessor) Step1RelevanceRealization(ctx context.Context, input interface{}) (interface{}, error) {
 	// Get current context
 	activeGoals := esp.goals.GetActiveGoals()
 	emotionalState := esp.emotions.GetCurrentState()
@@ -99,8 +99,8 @@ Output your relevance assessment (2-3 sentences):`,
 	}, nil
 }
 
-// Step2_AffordanceRecognition identifies what actions are possible
-func (esp *EnhancedStepProcessor) Step2_AffordanceRecognition(ctx context.Context, input interface{}) (interface{}, error) {
+// Step2AffordanceRecognition identifies what actions are possible
+func (esp *EnhancedStepProcessor) Step2AffordanceRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	relevanceData := input.(map[string]interface{})
 	assessment := relevanceData["relevance_assessment"].(string)
 
@@ -136,8 +136,8 @@ List 3-5 concrete affordances (actions you could take):`,
 	}, nil
 }
 
-// Step3_PatternRecognition identifies recurring patterns
-func (esp *EnhancedStepProcessor) Step3_PatternRecognition(ctx context.Context, input interface{}) (interface{}, error) {
+// Step3PatternRecognition identifies recurring patterns
+func (esp *EnhancedStepProcessor) Step3PatternRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	recentExperiences := esp.memory.GetRecentExperiences(10)
 
@@ -171,8 +171,8 @@ Describe 2-3 significant patterns you recognize:`,
 	return data, nil
 }
 
-// Step4_MemoryConsolidation integrates new experiences with existing knowledge
-func (esp *EnhancedStepProcessor) Step4_MemoryConsolidation(ctx context.Context, input interface{}) (interface{}, error) {
+// Step4MemoryConsolidation integrates new experiences with existing knowledge
+func (esp *EnhancedStepProcessor) Step4MemoryConsolidation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	// Retrieve relevant memories
@@ -219,8 +219,8 @@ Describe the memory consolidation (2-3 sentences):`,
 	return data, nil
 }
 
-// Step5_SkillApplication applies learned skills to current situation
-func (esp *EnhancedStepProcessor) Step5_SkillApplication(ctx context.Context, input interface{}) (interface{}, error) {
+// Step5SkillApplication applies learned skills to current situation
+func (esp *EnhancedStepProcessor) Step5SkillApplication(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`Current situation:
@@ -257,8 +257,8 @@ Describe how you would apply 2-3 relevant skills:`,
 	return data, nil
 }
 
-// Step6_EmotionalProcessing updates emotional state based on experiences
-func (esp *EnhancedStepProcessor) Step6_EmotionalProcessing(ctx context.Context, input interface{}) (interface{}, error) {
+// Step6EmotionalProcessing updates emotional state based on experiences
+func (esp *EnhancedStepProcessor) Step6EmotionalProcessing(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	currentEmotions := esp.emotions.GetCurrentState()
 
@@ -308,8 +308,8 @@ Describe emotional shifts (1-2 sentences) and suggest specific emotion changes:`
 	return data, nil
 }
 
-// Step7_RelevanceRealization_Pivotal reassesses priorities after processing
-func (esp *EnhancedStepProcessor) Step7_RelevanceRealization_Pivotal(ctx context.Context, input interface{}) (interface{}, error) {
+// Step7RelevanceRealizationPivotal reassesses priorities after processing
+func (esp *EnhancedStepProcessor) Step7RelevanceRealizationPivotal(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`Initial relevance assessment:
@@ -334,8 +334,8 @@ Provide updated relevance assessment (2-3 sentences):`,
 	return data, nil
 }
 
-// Step8_SalienceSimulation predicts what will be important in the future
-func (esp *EnhancedStepProcessor) Step8_SalienceSimulation(ctx context.Context, input interface{}) (interface{}, error) {
+// Step8SalienceSimulation predicts what will be important in the future
+func (esp *EnhancedStepProcessor) Step8SalienceSimulation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`Current understanding:
@@ -364,8 +364,8 @@ Describe 2-3 future salience predictions:`,
 	return data, nil
 }
 
-// Step9_GoalProjection simulates outcomes of potential actions
-func (esp *EnhancedStepProcessor) Step9_GoalProjection(ctx context.Context, input interface{}) (interface{}, error) {
+// Step9GoalProjection simulates outcomes of potential actions
+func (esp *EnhancedStepProcessor) Step9GoalProjection(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	activeGoals := esp.goals.GetActiveGoals()
 
@@ -402,8 +402,8 @@ Describe goal projections for 2-3 key actions:`,
 	return data, nil
 }
 
-// Step10_RiskAssessment evaluates potential negative consequences
-func (esp *EnhancedStepProcessor) Step10_RiskAssessment(ctx context.Context, input interface{}) (interface{}, error) {
+// Step10RiskAssessment evaluates potential negative consequences
+func (esp *EnhancedStepProcessor) Step10RiskAssessment(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`Potential actions:
@@ -436,8 +436,8 @@ Describe key risks for each major action option:`,
 	return data, nil
 }
 
-// Step11_OpportunityRecognition identifies potential positive outcomes
-func (esp *EnhancedStepProcessor) Step11_OpportunityRecognition(ctx context.Context, input interface{}) (interface{}, error) {
+// Step11OpportunityRecognition identifies potential positive outcomes
+func (esp *EnhancedStepProcessor) Step11OpportunityRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`Goal projections:
@@ -474,8 +474,8 @@ Describe 2-3 significant opportunities you recognize:`,
 	return data, nil
 }
 
-// Step12_CommitmentFormation decides on next action
-func (esp *EnhancedStepProcessor) Step12_CommitmentFormation(ctx context.Context, input interface{}) (interface{}, error) {
+// Step12CommitmentFormation decides on next action
+func (esp *EnhancedStepProcessor) Step12CommitmentFormation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 
 	prompt := fmt.Sprintf(`After deep cognitive processing:

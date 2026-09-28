@@ -72,9 +72,9 @@ type TetrahedralState struct {
 
 // StreamState represents the state of a tetrahedral stream.
 type StreamState struct {
-	ID       int
-	State    int
-	Thought  *consciousness.Thought
+	ID      int
+	State   int
+	Thought *consciousness.Thought
 }
 
 // UniversalState represents the state of a universal rotator.

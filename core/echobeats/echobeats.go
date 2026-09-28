@@ -38,7 +38,6 @@ type EchobeatsCycle struct {
 	CurrentStep int
 	Status      string
 	Results     map[string]interface{}
-	mu          sync.RWMutex
 }
 
 // Echobeats is the core autonomous cognitive event loop orchestrator

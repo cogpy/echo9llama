@@ -12,7 +12,7 @@ import (
 // 7 expressive mode steps + 5 reflective mode steps
 type CognitiveLoop struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Loop state
@@ -37,8 +37,7 @@ type CognitiveLoop struct {
 	onCycleComplete func(cycle uint64)
 
 	// Metrics
-	totalSteps  uint64
-	avgStepTime time.Duration
+	totalSteps uint64
 
 	// Control
 	running bool

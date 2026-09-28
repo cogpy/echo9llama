@@ -11,7 +11,7 @@ import (
 // as specified in the Deep Tree Echo architecture
 type ConcurrentInferenceSystem struct {
 	mu      sync.RWMutex
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // lifecycle context created with cancel in NewConcurrentInferenceSystem; Stop cancels engine goroutines
 	cancel  context.CancelFunc
 	running bool
 
@@ -25,7 +25,6 @@ type ConcurrentInferenceSystem struct {
 	sharedState  *SharedCognitiveState
 
 	// Metrics
-	cycleCount    uint64
 	lastCycleTime time.Time
 }
 
@@ -64,14 +63,12 @@ type PhaseSynchronizer struct {
 // Steps 0-5: Conditioning from past performance
 type AffordanceEngine struct {
 	mu           sync.RWMutex
-	ctx          context.Context
 	currentStep  int
 	stepDuration time.Duration
 
 	// Affordance processing
 	pastExperiences []interface{}
 	affordances     []Affordance
-	selectedAction  *Affordance
 
 	// Handlers
 	stepHandlers map[int]StepHandler
@@ -85,7 +82,6 @@ type AffordanceEngine struct {
 // Steps 0 and 6: Orienting to present commitment
 type RelevanceEngine struct {
 	mu          sync.RWMutex
-	ctx         context.Context
 	currentStep int
 
 	// Relevance realization
@@ -105,14 +101,12 @@ type RelevanceEngine struct {
 // Steps 6-11: Anticipating future potential
 type SalienceEngine struct {
 	mu           sync.RWMutex
-	ctx          context.Context
 	currentStep  int
 	stepDuration time.Duration
 
 	// Salience simulation
 	futureScenarios []Scenario
 	salienceScores  map[string]float64 // Map scenario ID to score
-	selectedPath    *Scenario
 
 	// Handlers
 	stepHandlers map[int]StepHandler
@@ -175,9 +169,9 @@ func NewConcurrentInferenceSystem(stepDuration time.Duration) *ConcurrentInferen
 	}
 
 	// Create three engines
-	cis.affordanceEngine = NewAffordanceEngine(ctx, stepDuration, sharedState)
-	cis.relevanceEngine = NewRelevanceEngine(ctx, sharedState)
-	cis.salienceEngine = NewSalienceEngine(ctx, stepDuration, sharedState)
+	cis.affordanceEngine = NewAffordanceEngine(stepDuration, sharedState)
+	cis.relevanceEngine = NewRelevanceEngine(sharedState)
+	cis.salienceEngine = NewSalienceEngine(stepDuration, sharedState)
 
 	return cis
 }
@@ -196,9 +190,9 @@ func (cis *ConcurrentInferenceSystem) Start() error {
 	fmt.Println("🔷 Starting 3 Concurrent Inference Engines...")
 
 	// Start all three engines concurrently
-	go cis.affordanceEngine.Run(cis.synchronizer)
-	go cis.relevanceEngine.Run(cis.synchronizer)
-	go cis.salienceEngine.Run(cis.synchronizer)
+	go cis.affordanceEngine.Run(cis.ctx, cis.synchronizer)
+	go cis.relevanceEngine.Run(cis.ctx, cis.synchronizer)
+	go cis.salienceEngine.Run(cis.ctx, cis.synchronizer)
 
 	// Start integration loop
 	go cis.integrationLoop()
@@ -294,9 +288,8 @@ func (cis *ConcurrentInferenceSystem) GetSharedState() map[string]interface{} {
 }
 
 // NewAffordanceEngine creates a new affordance processing engine
-func NewAffordanceEngine(ctx context.Context, stepDuration time.Duration, sharedState *SharedCognitiveState) *AffordanceEngine {
+func NewAffordanceEngine(stepDuration time.Duration, sharedState *SharedCognitiveState) *AffordanceEngine {
 	return &AffordanceEngine{
-		ctx:             ctx,
 		currentStep:     0,
 		stepDuration:    stepDuration,
 		pastExperiences: make([]interface{}, 0),
@@ -308,13 +301,13 @@ func NewAffordanceEngine(ctx context.Context, stepDuration time.Duration, shared
 }
 
 // Run executes the affordance engine loop
-func (ae *AffordanceEngine) Run(sync *PhaseSynchronizer) {
+func (ae *AffordanceEngine) Run(ctx context.Context, sync *PhaseSynchronizer) {
 	ticker := time.NewTicker(ae.stepDuration)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ae.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			ae.processStep(sync)
@@ -391,9 +384,8 @@ func (ae *AffordanceEngine) getMode(step int) CognitiveMode {
 }
 
 // NewRelevanceEngine creates a new relevance realization engine
-func NewRelevanceEngine(ctx context.Context, sharedState *SharedCognitiveState) *RelevanceEngine {
+func NewRelevanceEngine(sharedState *SharedCognitiveState) *RelevanceEngine {
 	return &RelevanceEngine{
-		ctx:               ctx,
 		currentStep:       0,
 		relevanceScores:   make(map[interface{}]float64),
 		orientationVector: make([]float64, 10),
@@ -404,14 +396,14 @@ func NewRelevanceEngine(ctx context.Context, sharedState *SharedCognitiveState) 
 }
 
 // Run executes the relevance engine loop
-func (re *RelevanceEngine) Run(sync *PhaseSynchronizer) {
+func (re *RelevanceEngine) Run(ctx context.Context, sync *PhaseSynchronizer) {
 	// Relevance engine operates at pivotal steps 0 and 6
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-re.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			re.checkPivotalStep(sync)
@@ -479,9 +471,8 @@ func (re *RelevanceEngine) updateSharedState() {
 }
 
 // NewSalienceEngine creates a new salience simulation engine
-func NewSalienceEngine(ctx context.Context, stepDuration time.Duration, sharedState *SharedCognitiveState) *SalienceEngine {
+func NewSalienceEngine(stepDuration time.Duration, sharedState *SharedCognitiveState) *SalienceEngine {
 	return &SalienceEngine{
-		ctx:             ctx,
 		currentStep:     6,
 		stepDuration:    stepDuration,
 		futureScenarios: make([]Scenario, 0),
@@ -493,13 +484,13 @@ func NewSalienceEngine(ctx context.Context, stepDuration time.Duration, sharedSt
 }
 
 // Run executes the salience engine loop
-func (se *SalienceEngine) Run(sync *PhaseSynchronizer) {
+func (se *SalienceEngine) Run(ctx context.Context, sync *PhaseSynchronizer) {
 	ticker := time.NewTicker(se.stepDuration)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-se.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			se.processStep(sync)

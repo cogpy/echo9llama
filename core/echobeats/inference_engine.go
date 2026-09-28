@@ -11,7 +11,7 @@ import (
 // EchoBeats runs 3 of these in parallel
 type InferenceEngine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Identity
@@ -33,7 +33,6 @@ type InferenceEngine struct {
 	// Metrics
 	tasksProcessed  uint64
 	totalInferences uint64
-	avgProcessTime  time.Duration
 
 	// Control
 	running bool

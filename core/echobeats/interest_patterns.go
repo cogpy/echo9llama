@@ -32,7 +32,6 @@ type InterestPatternSystem struct {
 
 	// Persistence
 	persistencePath string
-	lastPersisted   time.Time
 }
 
 // Interest represents an area of interest

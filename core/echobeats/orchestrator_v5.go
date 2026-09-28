@@ -11,7 +11,7 @@ import (
 // This makes the 12-step EchoBeats scheduler truly control all cognitive flow
 type OrchestratorV5 struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// 12-step scheduler
@@ -63,7 +63,6 @@ type LearningControl struct {
 
 // ActionControl manages action generation based on cognitive step
 type ActionControl struct {
-	mu              sync.RWMutex
 	actionReadiness float64
 	planningDepth   int
 	executionMode   ExecutionMode

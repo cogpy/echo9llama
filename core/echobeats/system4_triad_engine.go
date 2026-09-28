@@ -124,7 +124,7 @@ type CrossStreamState struct {
 // NewSystem4TriadEngine creates a new triad engine based on System 4.
 func NewSystem4TriadEngine(llmManager *llm.ProviderManager, config TriadConfig) (*System4TriadEngine, error) {
 	if config.CycleLength != 12 {
-		return nil, fmt.Errorf("System 4 requires a 12-step cycle, got %d", config.CycleLength)
+		return nil, fmt.Errorf("system 4 requires a 12-step cycle, got %d", config.CycleLength)
 	}
 
 	engine := &System4TriadEngine{

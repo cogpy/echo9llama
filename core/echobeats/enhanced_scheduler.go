@@ -1,7 +1,6 @@
 package echobeats
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -9,9 +8,7 @@ import (
 
 // EnhancedScheduler extends EchoBeats with 12-step cognitive loop and 3 inference engines
 type EnhancedScheduler struct {
-	mu     sync.RWMutex
-	ctx    context.Context
-	cancel context.CancelFunc
+	mu sync.RWMutex
 
 	// Original EchoBeats scheduler
 	echoBeats *EchoBeats
@@ -38,11 +35,7 @@ type EnhancedScheduler struct {
 
 // NewEnhancedScheduler creates an enhanced scheduler
 func NewEnhancedScheduler() *EnhancedScheduler {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	es := &EnhancedScheduler{
-		ctx:       ctx,
-		cancel:    cancel,
 		echoBeats: NewEchoBeats(),
 		engines:   make([]*InferenceEngine, 0, 3),
 	}
@@ -218,7 +211,6 @@ func (es *EnhancedScheduler) Stop() error {
 
 	fmt.Println("🎵 Enhanced EchoBeats Scheduler: Stopping...")
 	es.running = false
-	es.cancel()
 
 	// Stop cognitive loop
 	if err := es.masterLoop.Stop(); err != nil {

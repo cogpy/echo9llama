@@ -11,7 +11,7 @@ import (
 // Based on OEIS A000081 nested shells structure and 12-step cognitive loop
 type TriadCognitiveSystem struct {
 	mu      sync.RWMutex
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel  context.CancelFunc
 	running bool
 

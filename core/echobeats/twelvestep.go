@@ -11,7 +11,7 @@ import (
 // with 3 concurrent inference engines as per the architectural specification
 type TwelveStepEchoBeats struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Three concurrent inference engines
@@ -132,24 +132,24 @@ func (tseb *TwelveStepEchoBeats) initializeEngines() {
 // initializeStepHandlers sets up the 12 step handlers
 func (tseb *TwelveStepEchoBeats) initializeStepHandlers() {
 	// Step 1: Relevance Realization (orienting present commitment)
-	tseb.stepHandlers[0] = tseb.step1_RelevanceRealization
+	tseb.stepHandlers[0] = tseb.step1RelevanceRealization
 
 	// Steps 2-6: Actual Affordance Interaction (conditioning past performance)
-	tseb.stepHandlers[1] = tseb.step2_AffordanceDetection
-	tseb.stepHandlers[2] = tseb.step3_AffordanceEvaluation
-	tseb.stepHandlers[3] = tseb.step4_AffordanceSelection
-	tseb.stepHandlers[4] = tseb.step5_AffordanceEngagement
-	tseb.stepHandlers[5] = tseb.step6_AffordanceConsolidation
+	tseb.stepHandlers[1] = tseb.step2AffordanceDetection
+	tseb.stepHandlers[2] = tseb.step3AffordanceEvaluation
+	tseb.stepHandlers[3] = tseb.step4AffordanceSelection
+	tseb.stepHandlers[4] = tseb.step5AffordanceEngagement
+	tseb.stepHandlers[5] = tseb.step6AffordanceConsolidation
 
 	// Step 7: Relevance Realization (orienting present commitment)
-	tseb.stepHandlers[6] = tseb.step7_RelevanceRealization
+	tseb.stepHandlers[6] = tseb.step7RelevanceRealization
 
 	// Steps 8-12: Virtual Salience Simulation (anticipating future potential)
-	tseb.stepHandlers[7] = tseb.step8_SalienceGeneration
-	tseb.stepHandlers[8] = tseb.step9_SalienceExploration
-	tseb.stepHandlers[9] = tseb.step10_SalienceEvaluation
-	tseb.stepHandlers[10] = tseb.step11_SalienceIntegration
-	tseb.stepHandlers[11] = tseb.step12_SalienceCommitment
+	tseb.stepHandlers[7] = tseb.step8SalienceGeneration
+	tseb.stepHandlers[8] = tseb.step9SalienceExploration
+	tseb.stepHandlers[9] = tseb.step10SalienceEvaluation
+	tseb.stepHandlers[10] = tseb.step11SalienceIntegration
+	tseb.stepHandlers[11] = tseb.step12SalienceCommitment
 }
 
 // Start begins the 12-step cognitive loop
@@ -271,8 +271,8 @@ func (tseb *TwelveStepEchoBeats) runEngine(engine *TwelveStepInferenceEngine) {
 
 // Step implementations
 
-// step1_RelevanceRealization: Pivotal step for orienting present commitment
-func (tseb *TwelveStepEchoBeats) step1_RelevanceRealization(ctx *StepContext) error {
+// step1RelevanceRealization: Pivotal step for orienting present commitment
+func (tseb *TwelveStepEchoBeats) step1RelevanceRealization(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.RelevanceRealizations++
 	tseb.metrics.mu.Unlock()
@@ -284,8 +284,8 @@ func (tseb *TwelveStepEchoBeats) step1_RelevanceRealization(ctx *StepContext) er
 	return nil
 }
 
-// step2_AffordanceDetection: Detect available affordances in the environment
-func (tseb *TwelveStepEchoBeats) step2_AffordanceDetection(ctx *StepContext) error {
+// step2AffordanceDetection: Detect available affordances in the environment
+func (tseb *TwelveStepEchoBeats) step2AffordanceDetection(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.AffordanceInteractions++
 	tseb.metrics.mu.Unlock()
@@ -296,8 +296,8 @@ func (tseb *TwelveStepEchoBeats) step2_AffordanceDetection(ctx *StepContext) err
 	return nil
 }
 
-// step3_AffordanceEvaluation: Evaluate detected affordances
-func (tseb *TwelveStepEchoBeats) step3_AffordanceEvaluation(ctx *StepContext) error {
+// step3AffordanceEvaluation: Evaluate detected affordances
+func (tseb *TwelveStepEchoBeats) step3AffordanceEvaluation(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.AffordanceInteractions++
 	tseb.metrics.mu.Unlock()
@@ -308,8 +308,8 @@ func (tseb *TwelveStepEchoBeats) step3_AffordanceEvaluation(ctx *StepContext) er
 	return nil
 }
 
-// step4_AffordanceSelection: Select affordance to engage with
-func (tseb *TwelveStepEchoBeats) step4_AffordanceSelection(ctx *StepContext) error {
+// step4AffordanceSelection: Select affordance to engage with
+func (tseb *TwelveStepEchoBeats) step4AffordanceSelection(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.AffordanceInteractions++
 	tseb.metrics.mu.Unlock()
@@ -320,8 +320,8 @@ func (tseb *TwelveStepEchoBeats) step4_AffordanceSelection(ctx *StepContext) err
 	return nil
 }
 
-// step5_AffordanceEngagement: Engage with selected affordance
-func (tseb *TwelveStepEchoBeats) step5_AffordanceEngagement(ctx *StepContext) error {
+// step5AffordanceEngagement: Engage with selected affordance
+func (tseb *TwelveStepEchoBeats) step5AffordanceEngagement(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.AffordanceInteractions++
 	tseb.metrics.mu.Unlock()
@@ -332,8 +332,8 @@ func (tseb *TwelveStepEchoBeats) step5_AffordanceEngagement(ctx *StepContext) er
 	return nil
 }
 
-// step6_AffordanceConsolidation: Consolidate results of affordance interaction
-func (tseb *TwelveStepEchoBeats) step6_AffordanceConsolidation(ctx *StepContext) error {
+// step6AffordanceConsolidation: Consolidate results of affordance interaction
+func (tseb *TwelveStepEchoBeats) step6AffordanceConsolidation(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.AffordanceInteractions++
 	tseb.metrics.mu.Unlock()
@@ -344,8 +344,8 @@ func (tseb *TwelveStepEchoBeats) step6_AffordanceConsolidation(ctx *StepContext)
 	return nil
 }
 
-// step7_RelevanceRealization: Second pivotal step for orienting present commitment
-func (tseb *TwelveStepEchoBeats) step7_RelevanceRealization(ctx *StepContext) error {
+// step7RelevanceRealization: Second pivotal step for orienting present commitment
+func (tseb *TwelveStepEchoBeats) step7RelevanceRealization(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.RelevanceRealizations++
 	tseb.metrics.mu.Unlock()
@@ -356,8 +356,8 @@ func (tseb *TwelveStepEchoBeats) step7_RelevanceRealization(ctx *StepContext) er
 	return nil
 }
 
-// step8_SalienceGeneration: Generate salient possibilities for exploration
-func (tseb *TwelveStepEchoBeats) step8_SalienceGeneration(ctx *StepContext) error {
+// step8SalienceGeneration: Generate salient possibilities for exploration
+func (tseb *TwelveStepEchoBeats) step8SalienceGeneration(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.SalienceSimulations++
 	tseb.metrics.mu.Unlock()
@@ -368,8 +368,8 @@ func (tseb *TwelveStepEchoBeats) step8_SalienceGeneration(ctx *StepContext) erro
 	return nil
 }
 
-// step9_SalienceExploration: Explore generated salient possibilities
-func (tseb *TwelveStepEchoBeats) step9_SalienceExploration(ctx *StepContext) error {
+// step9SalienceExploration: Explore generated salient possibilities
+func (tseb *TwelveStepEchoBeats) step9SalienceExploration(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.SalienceSimulations++
 	tseb.metrics.mu.Unlock()
@@ -380,8 +380,8 @@ func (tseb *TwelveStepEchoBeats) step9_SalienceExploration(ctx *StepContext) err
 	return nil
 }
 
-// step10_SalienceEvaluation: Evaluate explored possibilities
-func (tseb *TwelveStepEchoBeats) step10_SalienceEvaluation(ctx *StepContext) error {
+// step10SalienceEvaluation: Evaluate explored possibilities
+func (tseb *TwelveStepEchoBeats) step10SalienceEvaluation(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.SalienceSimulations++
 	tseb.metrics.mu.Unlock()
@@ -392,8 +392,8 @@ func (tseb *TwelveStepEchoBeats) step10_SalienceEvaluation(ctx *StepContext) err
 	return nil
 }
 
-// step11_SalienceIntegration: Integrate insights from exploration
-func (tseb *TwelveStepEchoBeats) step11_SalienceIntegration(ctx *StepContext) error {
+// step11SalienceIntegration: Integrate insights from exploration
+func (tseb *TwelveStepEchoBeats) step11SalienceIntegration(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.SalienceSimulations++
 	tseb.metrics.mu.Unlock()
@@ -404,8 +404,8 @@ func (tseb *TwelveStepEchoBeats) step11_SalienceIntegration(ctx *StepContext) er
 	return nil
 }
 
-// step12_SalienceCommitment: Commit to direction based on exploration
-func (tseb *TwelveStepEchoBeats) step12_SalienceCommitment(ctx *StepContext) error {
+// step12SalienceCommitment: Commit to direction based on exploration
+func (tseb *TwelveStepEchoBeats) step12SalienceCommitment(ctx *StepContext) error {
 	tseb.metrics.mu.Lock()
 	tseb.metrics.SalienceSimulations++
 	tseb.metrics.mu.Unlock()

@@ -12,7 +12,7 @@ import (
 // It orchestrates cognitive event loops, wake/rest cycles, and autonomous task execution
 type EchoBeats struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Event queue with priority
@@ -134,9 +134,6 @@ func (pq *PriorityQueue) Pop() interface{} {
 // CycleManager manages wake/rest cycles
 type CycleManager struct {
 	mu              sync.RWMutex
-	currentCycle    int
-	wakeTime        time.Time
-	restTime        time.Time
 	cycleDuration   time.Duration
 	restDuration    time.Duration
 	cognitiveLoad   float64

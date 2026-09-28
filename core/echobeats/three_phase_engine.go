@@ -11,7 +11,7 @@ import (
 // Based on Deep Tree Echo architecture with 120-degree phase offset
 type EchoBeatsThreePhase struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Three concurrent cognitive streams
@@ -39,9 +39,8 @@ type EchoBeatsThreePhase struct {
 
 // ThreePhaseStream represents one of the three concurrent streams
 type ThreePhaseStream struct {
-	mu  sync.RWMutex
-	id  int
-	ctx context.Context
+	mu sync.RWMutex
+	id int
 
 	// Current state
 	currentStep int // 1-12
@@ -137,18 +136,17 @@ func NewEchoBeatsThreePhase() *EchoBeatsThreePhase {
 	}
 
 	// Create three streams with 120-degree phase offset (4 steps apart)
-	ebtp.stream1 = ebtp.createStream(1, 0, ctx) // Starts at step 1
-	ebtp.stream2 = ebtp.createStream(2, 4, ctx) // Starts at step 5 (4 steps ahead)
-	ebtp.stream3 = ebtp.createStream(3, 8, ctx) // Starts at step 9 (8 steps ahead)
+	ebtp.stream1 = ebtp.createStream(1, 0) // Starts at step 1
+	ebtp.stream2 = ebtp.createStream(2, 4) // Starts at step 5 (4 steps ahead)
+	ebtp.stream3 = ebtp.createStream(3, 8) // Starts at step 9 (8 steps ahead)
 
 	return ebtp
 }
 
 // createStream creates a new cognitive stream with phase offset
-func (ebtp *EchoBeatsThreePhase) createStream(id int, phaseOffset int, ctx context.Context) *ThreePhaseStream {
+func (ebtp *EchoBeatsThreePhase) createStream(id int, phaseOffset int) *ThreePhaseStream {
 	stream := &ThreePhaseStream{
 		id:             id,
-		ctx:            ctx,
 		currentStep:    (phaseOffset % 12) + 1,
 		phaseOffset:    phaseOffset,
 		mode:           ModeExpressive,

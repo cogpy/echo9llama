@@ -10,7 +10,7 @@ import (
 // AutonomousDiscussionManager handles autonomous discussion initiation and engagement
 type AutonomousDiscussionManager struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in constructor; cancelled on Stop to end goroutines
 	cancel context.CancelFunc
 
 	// Interest tracking (interface to InterestPatternTracker)
