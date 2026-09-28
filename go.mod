@@ -69,7 +69,7 @@ require (
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20231121144256-b99613f794b6 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gorgonia.org/vecf32 v0.9.0 // indirect
 	gorgonia.org/vecf64 v0.9.0 // indirect
 )
@@ -111,7 +111,7 @@ require (
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/minio/selfupdate v0.6.0
 	github.com/pdevine/tensor v0.0.0-20250402003834-09d804610a08
-	google.golang.org/grpc v1.82.1
+	google.golang.org/grpc v1.83.1
 )
 
 replace github.com/EchoCog/echollama => ./cognitive-core/ecco9
