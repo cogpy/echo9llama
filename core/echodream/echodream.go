@@ -10,7 +10,7 @@ import (
 // EchoDream represents the knowledge integration and consolidation system
 type EchoDream struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Memory consolidation

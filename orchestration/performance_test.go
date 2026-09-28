@@ -78,7 +78,7 @@ func TestPerformanceOptimization(t *testing.T) {
 	// Verify performance metrics were updated
 	systemMetrics := engine.GetSystemMetrics()
 	if systemMetrics == nil {
-		t.Error("System metrics should be available")
+		t.Fatal("System metrics should be available")
 	}
 
 	if systemMetrics.TotalTasks == 0 {
@@ -169,7 +169,7 @@ func TestLearningSystemIntegration(t *testing.T) {
 	}
 
 	if optimalAgent == nil {
-		t.Error("Should predict an optimal agent")
+		t.Fatal("Should predict an optimal agent")
 	}
 
 	if confidence < 0.0 || confidence > 1.0 {

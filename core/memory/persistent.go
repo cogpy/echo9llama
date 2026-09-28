@@ -15,7 +15,6 @@ import (
 type PersistentMemory struct {
 	supabaseURL string
 	supabaseKey string
-	ctx         context.Context
 }
 
 // MemoryNode represents a node in the hypergraph memory
@@ -119,7 +118,6 @@ func NewPersistentMemory(ctx context.Context) (*PersistentMemory, error) {
 	pm := &PersistentMemory{
 		supabaseURL: supabaseURL,
 		supabaseKey: supabaseKey,
-		ctx:         ctx,
 	}
 
 	// Initialize database schema if needed

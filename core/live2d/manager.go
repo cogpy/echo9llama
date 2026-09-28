@@ -15,7 +15,7 @@ type AvatarManager struct {
 	mapper      ParameterMapper
 	updateChan  chan AvatarState
 	subscribers []chan ParameterUpdate
-	ctx         context.Context
+	ctx         context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel      context.CancelFunc
 	running     bool
 }

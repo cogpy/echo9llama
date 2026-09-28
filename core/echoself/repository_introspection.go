@@ -2,6 +2,7 @@ package echoself
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +51,9 @@ func (ri *RepositoryIntrospector) Scan() error {
 
 	err := filepath.Walk(ri.rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Skip files with errors
+			// Skip unreadable entries rather than aborting the whole scan
+			log.Printf("repository introspection: skipping %s: %v", path, err)
+			return nil
 		}
 
 		// Skip directories and hidden files

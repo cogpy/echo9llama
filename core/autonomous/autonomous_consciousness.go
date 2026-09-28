@@ -17,7 +17,7 @@ import (
 // with persistent cognitive event loops and stream-of-consciousness awareness
 type AutonomousConsciousness struct {
 	mu      sync.RWMutex
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel  context.CancelFunc
 	running bool
 
@@ -219,7 +219,7 @@ func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 			convertedThought := &consciousness.Thought{
 				ID:            thought.ID,
 				Content:       thought.Content,
-				Type:          consciousness.ThoughtType(thought.Type),
+				Type:          thought.Type,
 				Timestamp:     thought.Timestamp,
 				Relevance:     thought.Depth,
 				EmotionalTone: thought.Emotion,

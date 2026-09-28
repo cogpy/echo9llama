@@ -14,7 +14,7 @@ import (
 // This enables persistent awareness independent of external prompts
 type AutonomousStream struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core components
@@ -325,13 +325,4 @@ func (as *AutonomousStream) GetMetrics() map[string]interface{} {
 		"sys6_step":           as.sys6Step,
 		"last_thought":        time.Since(as.lastThought).Seconds(),
 	}
-}
-
-// simpleLLMAdapter adapts the new LLMProvider to the old interface
-type simpleLLMAdapter struct {
-	provider llm.LLMProvider
-}
-
-func (a *simpleLLMAdapter) Generate(ctx context.Context, prompt string) (string, error) {
-	return a.provider.Generate(ctx, prompt, llm.DefaultGenerateOptions())
 }

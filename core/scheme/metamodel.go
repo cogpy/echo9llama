@@ -159,7 +159,7 @@ func (sm *SchemeMetamodel) Start() error {
 	defer sm.mu.Unlock()
 
 	if sm.running {
-		return fmt.Errorf("Scheme metamodel already running")
+		return fmt.Errorf("scheme metamodel already running")
 	}
 
 	sm.running = true
@@ -174,7 +174,7 @@ func (sm *SchemeMetamodel) Stop() error {
 	defer sm.mu.Unlock()
 
 	if !sm.running {
-		return fmt.Errorf("Scheme metamodel not running")
+		return fmt.Errorf("scheme metamodel not running")
 	}
 
 	sm.running = false

@@ -17,7 +17,7 @@ import (
 // SkillPracticeSystem enables autonomous skill development and measurement
 type SkillPracticeSystem struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Skill registry
@@ -25,7 +25,6 @@ type SkillPracticeSystem struct {
 	skillOntology *SkillOntology
 
 	// Practice state
-	activePractice  *PracticeSession
 	practiceHistory []*PracticeSession
 
 	// Performance tracking
@@ -511,16 +510,13 @@ All numeric scores must be in [0,1].`,
 		return nil, err
 	}
 
-	result, insights, err := parsePracticeEvaluation(response, scenario)
+	// Insights are not yet retained here; the PracticeSession struct exposes an
+	// Insights field for future cross-module memory integration.
+	result, _, err := parsePracticeEvaluation(response, scenario)
 	if err != nil {
 		return nil, err
 	}
 	result.Improvement = sps.calculateImprovement(skill.ID, result.Score)
-	if len(insights) > 0 {
-		// Insights are retained in the current active session when available.
-		// The PracticeSession struct already exposes an Insights field for future
-		// cross-module memory integration.
-	}
 	return result, nil
 }
 

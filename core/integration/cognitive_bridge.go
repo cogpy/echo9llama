@@ -15,7 +15,7 @@ import (
 // autonomous agent systems and the high-level orchestration components.
 type CognitiveBridge struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core layer reference

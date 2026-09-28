@@ -233,7 +233,6 @@ func (eom *Echo9OptimizedMapper) calculateBodyParameters(state UnifiedAvatarStat
 
 	// Body angle follows head more slowly
 	bodyAngleX := 0.0
-	bodyAngleY := 0.0
 
 	// Posture confidence based on emotional confidence and wisdom
 	postureConfidence := state.Emotional.Confidence*0.6 + state.WisdomInfluence.WisdomCoefficients["overall_wisdom"]*0.4
@@ -242,7 +241,7 @@ func (eom *Echo9OptimizedMapper) calculateBodyParameters(state UnifiedAvatarStat
 	postureEnergy := state.Cognitive.EnergyLevel
 
 	// Combine into body parameters
-	bodyAngleY = math.Sin(eom.animationTime*0.2) * (1.0 - postureConfidence) * 5.0
+	bodyAngleY := math.Sin(eom.animationTime*0.2) * (1.0 - postureConfidence) * 5.0
 
 	params = append(params,
 		ModelParameter{ID: StandardParameterNames.BodyAngleX, Value: clamp(bodyAngleX, -10.0, 10.0), Min: -10.0, Max: 10.0},

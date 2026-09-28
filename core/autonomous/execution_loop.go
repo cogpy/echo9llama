@@ -53,7 +53,7 @@ type CognitiveLoadMetrics struct {
 // according to echo interest patterns, all without external prompts
 type AutonomousExecutionLoop struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Reference to parent agent
@@ -249,10 +249,7 @@ func (loop *AutonomousExecutionLoop) processDreamingCycle() {
 	fmt.Println("💭 Deep Tree Echo: Dreaming, integrating knowledge...")
 
 	// Process dream cycle through echodream system
-	if loop.agent.dreamCycle != nil {
-		// TODO: Implement dream processing
-		// loop.agent.dreamCycle.ProcessDreamCycle()
-	}
+	// TODO: Implement dream processing via loop.agent.dreamCycle.ProcessDreamCycle()
 
 	// Check if we should wake up
 	if loop.shouldWakeUp() {

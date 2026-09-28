@@ -22,7 +22,7 @@ type JSONPersistence struct {
 	closed   bool
 
 	// Auto-save control
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 }
 

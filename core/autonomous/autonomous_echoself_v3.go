@@ -17,7 +17,7 @@ import (
 // with persistence, multi-provider LLM, repository introspection, and autonomous thought generation
 type AutonomousEchoselfV3 struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core cognitive components

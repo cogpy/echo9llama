@@ -180,7 +180,6 @@ const (
 
 // HealthChecker monitors agent health
 type HealthChecker struct {
-	mu            sync.RWMutex
 	healthChecks  map[string]*HealthCheck
 	checkInterval time.Duration
 	healthHistory map[string][]*HealthRecord

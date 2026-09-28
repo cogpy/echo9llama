@@ -2,6 +2,7 @@ package persistence
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -148,9 +149,12 @@ func (ap *AutonomousPersistence) PersistWorkingMemory(items []string) error {
 func (ap *AutonomousPersistence) LoadWorkingMemory() ([]string, error) {
 	var items []string
 	err := ap.store.GetState("working_memory", &items)
-	if err != nil {
+	if errors.Is(err, ErrStateNotFound) {
 		// Return empty if not found
 		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	return items, nil
 }
@@ -164,9 +168,12 @@ func (ap *AutonomousPersistence) PersistInterestPatterns(patterns map[string]flo
 func (ap *AutonomousPersistence) LoadInterestPatterns() (map[string]float64, error) {
 	patterns := make(map[string]float64)
 	err := ap.store.GetState("interest_patterns", &patterns)
-	if err != nil {
+	if errors.Is(err, ErrStateNotFound) {
 		// Return empty if not found
 		return make(map[string]float64), nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	return patterns, nil
 }
@@ -180,13 +187,16 @@ func (ap *AutonomousPersistence) PersistIdentityKernel(kernel map[string]interfa
 func (ap *AutonomousPersistence) LoadIdentityKernel() (map[string]interface{}, error) {
 	kernel := make(map[string]interface{})
 	err := ap.store.GetState("identity_kernel", &kernel)
-	if err != nil {
+	if errors.Is(err, ErrStateNotFound) {
 		// Return default identity if not found
 		return map[string]interface{}{
 			"name":    "Deep Tree Echo",
 			"purpose": "wisdom cultivation through pattern recognition and recursive self-improvement",
 			"values":  []string{"curiosity", "growth", "wisdom", "recursion"},
 		}, nil
+	}
+	if err != nil {
+		return nil, err
 	}
 	return kernel, nil
 }

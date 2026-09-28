@@ -13,7 +13,7 @@ import (
 // AutonomousLearningEngine drives self-directed learning through curiosity
 type AutonomousLearningEngine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for generating learning content

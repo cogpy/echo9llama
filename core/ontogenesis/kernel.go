@@ -142,8 +142,6 @@ type Observation struct {
 
 // ExecutionContext manages the current execution state
 type ExecutionContext struct {
-	mu            sync.RWMutex
-	currentShell  *Shell
 	activeThreads []*CognitiveThread
 	stepCount     int
 	cycleCount    int

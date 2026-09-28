@@ -126,7 +126,6 @@ type ExecutionTask struct {
 	Function   func() (interface{}, error)
 	Priority   int
 	Deadline   time.Time
-	Context    context.Context
 	ResultChan chan *ExecutionResult
 }
 
@@ -299,7 +298,6 @@ func (ecs *EchoCogSystem) ProcessInput(ctx context.Context, input string) (strin
 		Type:     InferenceTaskType,
 		Priority: 1,
 		Deadline: time.Now().Add(5 * time.Second),
-		Context:  ctx,
 		Function: func() (interface{}, error) {
 			return ecs.processInputInternal(ctx, input)
 		},

@@ -25,7 +25,7 @@ import (
 // with all layers connected and synchronized.
 type IntegratedDeepTreeEcho struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Integration hub - central coordinator

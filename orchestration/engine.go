@@ -1118,7 +1118,7 @@ func (e *Engine) estimateTaskDifficulty(task *Task) float64 {
 	}
 
 	// Factor in parameters
-	if task.Parameters != nil && len(task.Parameters) > 3 {
+	if len(task.Parameters) > 3 {
 		difficulty += 0.1
 	}
 

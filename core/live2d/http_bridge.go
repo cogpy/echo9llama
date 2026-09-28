@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 )
 
 // HTTPBridge provides HTTP API for Unreal Engine to communicate with Live2D backend
 type HTTPBridge struct {
-	mu                 sync.RWMutex
 	avatarManager      *AvatarManager
 	environmentCoupler *CognitiveEnvironmentCoupler
 	storytellingEngine *EnvironmentalStorytellingEngine

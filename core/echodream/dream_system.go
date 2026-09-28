@@ -14,7 +14,7 @@ import (
 // It wraps EchoDream with LLM-based consolidation capabilities
 type DreamSystem struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core dream processor

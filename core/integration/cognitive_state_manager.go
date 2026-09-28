@@ -10,7 +10,7 @@ import (
 // CognitiveStateManager integrates echobeats and echodream with shared state
 type CognitiveStateManager struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Shared cognitive state

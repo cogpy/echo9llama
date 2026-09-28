@@ -11,7 +11,7 @@ import (
 // based on cognitive load, fatigue, and knowledge integration needs
 type AutonomousWakeRestController struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core components
@@ -26,8 +26,6 @@ type AutonomousWakeRestController struct {
 	// Wake/rest state
 	currentState    WakeRestState
 	lastStateChange time.Time
-	wakeDuration    time.Duration
-	restDuration    time.Duration
 
 	// Thresholds for autonomous decisions
 	fatigueThreshold       float64

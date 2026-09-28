@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -1030,7 +1031,9 @@ func (ri *RepositoryIntrospector) AnalyzeRepository(cognitiveLoad, recentActivit
 
 	err := filepath.Walk(ri.rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Continue on errors
+			// Continue past unreadable entries rather than aborting the analysis
+			log.Printf("repository analysis: skipping %s: %v", path, err)
+			return nil
 		}
 
 		if info.IsDir() {

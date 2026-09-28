@@ -60,8 +60,6 @@ type DTESN struct {
 
 // ReservoirLayer represents the core reservoir computing layer
 type ReservoirLayer struct {
-	mu sync.RWMutex
-
 	Nodes      []*ReservoirNode
 	Size       int
 	Sparsity   float64

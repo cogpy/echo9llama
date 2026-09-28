@@ -56,7 +56,7 @@ func TestRecordTaskPerformance(t *testing.T) {
 	// Check that learning model was created/updated
 	model := ls.GetLearningModel(agentID)
 	if model == nil {
-		t.Error("Learning model should be created")
+		t.Fatal("Learning model should be created")
 	}
 
 	if model.AgentID != agentID {
@@ -202,7 +202,7 @@ func TestPredictOptimalAgent(t *testing.T) {
 
 	// Test prediction for chat task
 	chatTask := &Task{ID: "test-task-2", Type: TaskTypeChat}
-	bestAgent, score, err = ls.PredictOptimalAgent(ctx, chatTask, []*Agent{agent1, agent2})
+	bestAgent, _, err = ls.PredictOptimalAgent(ctx, chatTask, []*Agent{agent1, agent2})
 	if err != nil {
 		t.Fatalf("PredictOptimalAgent failed: %v", err)
 	}

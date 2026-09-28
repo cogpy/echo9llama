@@ -1,7 +1,6 @@
 package echodream
 
 import (
-	"context"
 	"fmt"
 	"sync"
 	"time"
@@ -9,9 +8,7 @@ import (
 
 // DreamCycleIntegration manages knowledge consolidation during rest/dream states
 type DreamCycleIntegration struct {
-	mu     sync.RWMutex
-	ctx    context.Context
-	cancel context.CancelFunc
+	mu sync.RWMutex
 
 	// Consolidation engine
 	consolidator *KnowledgeConsolidator
@@ -100,7 +97,6 @@ type Wisdom struct {
 
 // KnowledgeConsolidator consolidates memories into knowledge
 type KnowledgeConsolidator struct {
-	mu                sync.RWMutex
 	consolidationRate float64
 	patternThreshold  float64
 	wisdomThreshold   float64
@@ -108,18 +104,13 @@ type KnowledgeConsolidator struct {
 
 // WisdomExtractor extracts wisdom from consolidated knowledge
 type WisdomExtractor struct {
-	mu             sync.RWMutex
 	extractionRate float64
 	minConfidence  float64
 }
 
 // NewDreamCycleIntegration creates a new dream cycle integration system
 func NewDreamCycleIntegration() *DreamCycleIntegration {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	dci := &DreamCycleIntegration{
-		ctx:             ctx,
-		cancel:          cancel,
 		consolidator:    NewKnowledgeConsolidator(),
 		wisdomExtractor: NewWisdomExtractor(),
 		dreamHistory:    make([]*Dream, 0),

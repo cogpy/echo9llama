@@ -17,7 +17,7 @@ import (
 type DgraphHypergraph struct {
 	mu           sync.RWMutex
 	client       *persistence.DgraphClient
-	ctx          context.Context
+	ctx          context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel       context.CancelFunc
 	schemaLoaded bool
 
@@ -298,7 +298,7 @@ func (hg *DgraphHypergraph) AddHyperEdge(hyperEdge *HyperEdge) error {
 	dgHyperEdge := map[string]interface{}{
 		"dgraph.type":    []string{"HyperEdge"},
 		"hyperedge_id":   hyperEdge.ID,
-		"hyperedge_type": string(hyperEdge.Type),
+		"hyperedge_type": hyperEdge.Type,
 		"weight":         0.0, // HyperEdge has no Weight field
 		"created_at":     time.Now(),
 		"metadata":       string(metadataJSON),

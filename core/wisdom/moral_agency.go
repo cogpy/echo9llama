@@ -937,8 +937,6 @@ func (wa *WisdomAccumulator) AccumulateExperience(decision MoralDecision) {
 
 // EthicalFramework represents Echo's emergent ethical understanding
 type EthicalFramework struct {
-	mu sync.RWMutex
-
 	// Core ethical commitments (emerge from experience)
 	Commitments []EthicalCommitment
 

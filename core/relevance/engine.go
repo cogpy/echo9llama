@@ -12,7 +12,7 @@ import (
 // for comprehensive relevance realization integrating epistemology, ontology, and axiology
 type Engine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Triad I: Ways of Knowing (Epistemological)

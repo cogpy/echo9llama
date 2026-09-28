@@ -104,10 +104,8 @@ func (op *OntogeneticProfile) updateStage(wisdom WisdomMetrics) {
 		}
 
 	case StageMature:
-		if op.AgeInInteractions > 10000 && wisdom.Overall > 0.8 {
-			// Remain mature - this is the stable stage
-			// Could transition to senescent in future versions
-		}
+		// Remain mature - this is the stable stage.
+		// Could transition to senescent in future versions.
 	}
 }
 

@@ -14,7 +14,7 @@ import (
 // GoalOrchestrator manages autonomous goal generation and pursuit
 type GoalOrchestrator struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Goals

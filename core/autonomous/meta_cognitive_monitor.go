@@ -12,7 +12,7 @@ import (
 // MetaCognitiveMonitor provides self-awareness and self-assessment capabilities
 type MetaCognitiveMonitor struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for self-reflection
@@ -33,7 +33,6 @@ type MetaCognitiveMonitor struct {
 	observations []MetaObservation
 
 	// Performance tracking
-	performanceMetrics PerformanceMetrics
 
 	// Configuration
 	monitoringInterval time.Duration

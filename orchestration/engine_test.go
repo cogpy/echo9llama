@@ -13,7 +13,7 @@ func TestNewEngine(t *testing.T) {
 	engine := NewEngine(client)
 
 	if engine == nil {
-		t.Error("NewEngine should return a non-nil engine")
+		t.Fatal("NewEngine should return a non-nil engine")
 	}
 
 	if engine.agents == nil {

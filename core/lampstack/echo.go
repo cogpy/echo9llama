@@ -40,7 +40,7 @@ type EchoIntegration struct {
 	startTime            time.Time
 
 	// Channels
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 }
 

@@ -156,8 +156,6 @@ type InferenceRule struct {
 
 // PLNEngine implements Probabilistic Logic Networks
 type PLNEngine struct {
-	mu sync.RWMutex
-
 	// PLN rules
 	DeductionRules []*PLNRule
 	InductionRules []*PLNRule

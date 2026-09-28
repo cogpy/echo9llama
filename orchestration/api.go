@@ -385,20 +385,6 @@ func (s *APIServer) getAvailablePlugins(c *gin.Context) {
 
 // Helper functions for common response patterns
 
-func (s *APIServer) sendError(c *gin.Context, statusCode int, message string) {
-	c.JSON(statusCode, gin.H{
-		"status": "error",
-		"error":  message,
-	})
-}
-
-func (s *APIServer) sendSuccess(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-		"data":   data,
-	})
-}
-
 // Dashboard Data Formatters
 
 // FormatDashboardMetrics formats system metrics for dashboard display

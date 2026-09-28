@@ -260,7 +260,7 @@ func (ecn *EntangledCognitionNetwork) calculateDistance(posA, posB []float64) fl
 	}
 
 	sum := 0.0
-	for i := range len(posA) {
+	for i := range posA {
 		diff := posA[i] - posB[i]
 		sum += diff * diff
 	}
