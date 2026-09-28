@@ -10,22 +10,22 @@ import (
 type SimplexDimension int
 
 const (
-	DimVoid SimplexDimension = -1 // Null set
-	DimVertex SimplexDimension = 0  // Point
-	DimEdge SimplexDimension = 1    // Line segment
-	DimFace SimplexDimension = 2    // Triangle
-	DimCell SimplexDimension = 3    // Tetrahedron
-	DimHypercell SimplexDimension = 4 // 5-cell (pentachoron)
+	DimVoid      SimplexDimension = -1 // Null set
+	DimVertex    SimplexDimension = 0  // Point
+	DimEdge      SimplexDimension = 1  // Line segment
+	DimFace      SimplexDimension = 2  // Triangle
+	DimCell      SimplexDimension = 3  // Tetrahedron
+	DimHypercell SimplexDimension = 4  // 5-cell (pentachoron)
 )
 
 // Simplex represents an n-simplex with its dimensional elements.
 type Simplex struct {
-	Dimension int                // The dimension n of the n-simplex
-	Vertices  []Vertex           // dim(0) elements
-	Edges     []Edge             // dim(1) elements
-	Faces     []Face             // dim(2) elements
-	Cells     []Cell             // dim(3) elements
-	Hypercells []Hypercell       // dim(4) elements
+	Dimension  int         // The dimension n of the n-simplex
+	Vertices   []Vertex    // dim(0) elements
+	Edges      []Edge      // dim(1) elements
+	Faces      []Face      // dim(2) elements
+	Cells      []Cell      // dim(3) elements
+	Hypercells []Hypercell // dim(4) elements
 }
 
 // Vertex represents a 0-dimensional element (point).

@@ -36,5 +36,3 @@ func (eb *EchoBeats) SetState(state SchedulerState) {
 	defer eb.mu.Unlock()
 	eb.state = state
 }
-
-

@@ -42,10 +42,10 @@ type System4TriadEngine struct {
 
 // TriadConfig holds the configuration for the System4TriadEngine.
 type TriadConfig struct {
-	CycleLength       int           `json:"cycle_length"`        // Should be 12
-	StepDuration      time.Duration `json:"step_duration"`       // Duration of each step
-	EnableConvolution bool          `json:"enable_convolution"`  // Enable System 5 convolution
-	IdentityContext   string        `json:"identity_context"`    // Identity for thought generation
+	CycleLength       int           `json:"cycle_length"`       // Should be 12
+	StepDuration      time.Duration `json:"step_duration"`      // Duration of each step
+	EnableConvolution bool          `json:"enable_convolution"` // Enable System 5 convolution
+	IdentityContext   string        `json:"identity_context"`   // Identity for thought generation
 }
 
 // DefaultTriadConfig returns the standard System 4 configuration.
@@ -62,11 +62,11 @@ func DefaultTriadConfig() TriadConfig {
 type ConsciousnessStream struct {
 	mu sync.RWMutex
 
-	id          int
-	name        string
-	function    StreamFunction
-	sequence    []StreamState
-	currentStep int
+	id           int
+	name         string
+	function     StreamFunction
+	sequence     []StreamState
+	currentStep  int
 	stateHistory []StreamState
 
 	// Thought generation
@@ -85,11 +85,11 @@ const (
 // StreamState represents the state of a stream at a given time.
 // Based on System 4 sequences (e.g., "4R", "8E", etc.)
 type StreamState struct {
-	Label      string    // e.g., "4R", "8E"
-	Number     int       // e.g., 4, 8
-	Polarity   Polarity  // E (Expansion) or R (Reduction)
-	Timestamp  time.Time
-	Thought    *consciousness.LLMThought
+	Label     string   // e.g., "4R", "8E"
+	Number    int      // e.g., 4, 8
+	Polarity  Polarity // E (Expansion) or R (Reduction)
+	Timestamp time.Time
+	Thought   *consciousness.LLMThought
 }
 
 // Polarity represents the expansion/reduction state.
@@ -114,9 +114,9 @@ type UniversalRegulator struct {
 type CrossStreamState struct {
 	mu sync.RWMutex
 
-	stream1State StreamState
-	stream2State StreamState
-	stream3State StreamState
+	stream1State    StreamState
+	stream2State    StreamState
+	stream3State    StreamState
 	universal1State StreamState
 	universal2State StreamState
 }
@@ -124,7 +124,7 @@ type CrossStreamState struct {
 // NewSystem4TriadEngine creates a new triad engine based on System 4.
 func NewSystem4TriadEngine(llmManager *llm.ProviderManager, config TriadConfig) (*System4TriadEngine, error) {
 	if config.CycleLength != 12 {
-		return nil, fmt.Errorf("System 4 requires a 12-step cycle, got %d", config.CycleLength)
+		return nil, fmt.Errorf("system 4 requires a 12-step cycle, got %d", config.CycleLength)
 	}
 
 	engine := &System4TriadEngine{
@@ -150,12 +150,12 @@ func NewSystem4TriadEngine(llmManager *llm.ProviderManager, config TriadConfig) 
 // newConsciousnessStream creates a new consciousness stream.
 func newConsciousnessStream(id int, name string, function StreamFunction, sequence []StreamState, llmManager *llm.ProviderManager, identity string) *ConsciousnessStream {
 	return &ConsciousnessStream{
-		id:           id,
-		name:         name,
-		function:     function,
-		sequence:     sequence,
-		currentStep:  0,
-		stateHistory: make([]StreamState, 0, 100),
+		id:            id,
+		name:          name,
+		function:      function,
+		sequence:      sequence,
+		currentStep:   0,
+		stateHistory:  make([]StreamState, 0, 100),
 		thoughtEngine: consciousness.NewLLMThoughtEngine(llmManager, identity),
 	}
 }
@@ -256,16 +256,16 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 	thought, err := s.thoughtEngine.GenerateAutonomousThought(ctx, thoughtType)
 	if err != nil {
 		// Log error but don't fail the transition
-			// Create fallback thought using UnifiedThought
-			thought = consciousness.FromLegacyLLMThought(&consciousness.LLMThought{
+		// Create fallback thought using UnifiedThought
+		thought = consciousness.FromLegacyLLMThought(&consciousness.LLMThought{
 			ID:        fmt.Sprintf("%s_step_%d_fallback", s.name, cycleStep),
 			Type:      thoughtType,
 			Content:   fmt.Sprintf("[%s] Processing state %s", s.function, nextState.Label),
 			Timestamp: time.Now(),
 			Emotion:   "neutral",
 			Depth:     0.5,
-				Tags:      []string{},
-			}).ToLegacyLLMThought()
+			Tags:      []string{},
+		}).ToLegacyLLMThought()
 	}
 
 	// If convolution is enabled (System 5 logic), modify the thought based on cross-stream awareness

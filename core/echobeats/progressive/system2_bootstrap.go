@@ -58,18 +58,18 @@ type BootstrapParticular struct {
 
 // UniversalState represents the universal perception state (constant 2E).
 type UniversalState struct {
-	Label     string    // "2E" - stable perception
-	Level     int       // 2
-	Polarity  string    // "E" - expansion
+	Label     string // "2E" - stable perception
+	Level     int    // 2
+	Polarity  string // "E" - expansion
 	Timestamp time.Time
 	StepIndex int
 }
 
 // ParticularState represents the particular action state (alternating 1E ↔ 1R).
 type ParticularState struct {
-	Label     string    // "1E" or "1R"
-	Level     int       // 1
-	Polarity  string    // "E" or "R"
+	Label     string // "1E" or "1R"
+	Level     int    // 1
+	Polarity  string // "E" or "R"
 	Timestamp time.Time
 	StepIndex int
 	Thought   *consciousness.Thought

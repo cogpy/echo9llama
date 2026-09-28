@@ -24,11 +24,11 @@ type System5DynamicConvolution struct {
 	config System5Config
 
 	// Global state
-	globalStep    int
-	localStep     int // 1-5
-	cycleCount    int
-	isRunning     bool
-	mu            sync.RWMutex
+	globalStep int
+	localStep  int // 1-5
+	cycleCount int
+	isRunning  bool
+	mu         sync.RWMutex
 
 	// 4 particular threads
 	threads [4]*ParticularThread
@@ -55,11 +55,11 @@ type System5Config struct {
 
 // ParticularThread represents one of the 4 concurrent threads in sys5
 type ParticularThread struct {
-	ID          int
-	LocalStep   int // 1-5
-	State       ThreadState
-	History     []ThreadState
-	mu          sync.RWMutex
+	ID        int
+	LocalStep int // 1-5
+	State     ThreadState
+	History   []ThreadState
+	mu        sync.RWMutex
 }
 
 // ThreadState holds the state of a thread at a given step
@@ -92,8 +92,8 @@ type MetaProcessor struct {
 
 // TertiaryOrchestrator integrates all inputs and performs convolution
 type TertiaryOrchestrator struct {
-	State  OrchestratorState
-	mu     sync.RWMutex
+	State OrchestratorState
+	mu    sync.RWMutex
 }
 
 // OrchestratorState holds the orchestrator's current state
@@ -222,7 +222,7 @@ func GetMP1TriadForStep(globalStep int) Triad {
 // GetMP2TriadForStep returns MP2's active triad for a given global step
 func GetMP2TriadForStep(globalStep int) Triad {
 	// MP2 is phase-shifted by 2 triads (180°)
-	triadIndex := ((globalStep*2/15)+2) % 4
+	triadIndex := ((globalStep * 2 / 15) + 2) % 4
 	triads := []Triad{
 		{Threads: [3]int{1, 2, 3}, Index: 0}, // T1
 		{Threads: [3]int{1, 2, 4}, Index: 1}, // T2

@@ -36,9 +36,9 @@ type UniversalChannel struct {
 
 // GroundState represents the constant state of the undifferentiated ground.
 type GroundState struct {
-	Label     string    // "1E" - primordial expansion
-	Level     int       // 1
-	Polarity  string    // "E" - expansion
+	Label     string // "1E" - primordial expansion
+	Level     int    // 1
+	Polarity  string // "E" - expansion
 	Timestamp time.Time
 	StepIndex int
 }
