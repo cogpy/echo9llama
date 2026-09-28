@@ -1090,12 +1090,12 @@ func chat(cmd *cobra.Command, opts runOptions) (*api.Message, error) {
 		cancel()
 	}()
 
-	var state *displayResponseState = &displayResponseState{}
+	state := &displayResponseState{}
 	var thinkingContent strings.Builder
 	var latest api.ChatResponse
 	var fullResponse strings.Builder
-	var thinkTagOpened bool = false
-	var thinkTagClosed bool = false
+	thinkTagOpened := false
+	thinkTagClosed := false
 
 	role := "assistant"
 
@@ -1223,10 +1223,10 @@ func generate(cmd *cobra.Command, opts runOptions) error {
 		cancel()
 	}()
 
-	var state *displayResponseState = &displayResponseState{}
+	state := &displayResponseState{}
 	var thinkingContent strings.Builder
-	var thinkTagOpened bool = false
-	var thinkTagClosed bool = false
+	thinkTagOpened := false
+	thinkTagClosed := false
 
 	plainText := !term.IsTerminal(int(os.Stdout.Fd()))
 
@@ -1394,7 +1394,7 @@ func checkServerHeartbeat(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 	if err := client.Heartbeat(cmd.Context()); err != nil {
-		if !(strings.Contains(err.Error(), " refused") || strings.Contains(err.Error(), "could not connect")) {
+		if !strings.Contains(err.Error(), " refused") && !strings.Contains(err.Error(), "could not connect") {
 			return err
 		}
 		if err := startApp(cmd.Context(), client); err != nil {

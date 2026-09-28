@@ -1,7 +1,6 @@
 package relevance
 
 import (
-	"math"
 	"sync"
 )
 
@@ -9,13 +8,13 @@ import (
 // that operates across all nine dimensions of the Ennead
 type RealizationProcess struct {
 	mu sync.RWMutex
-	
+
 	// Weighting factors for different contexts
 	contextWeights map[string]float64
-	
+
 	// Salience landscape - what matters most right now
 	salienceLandscape map[string]float64
-	
+
 	// Historical relevance patterns
 	relevanceHistory []float64
 	maxHistorySize   int
@@ -43,19 +42,18 @@ func (rp *RealizationProcess) CalculateRelevance(
 ) float64 {
 	rp.mu.RLock()
 	defer rp.mu.RUnlock()
-	
+
 	// Relevance is weighted combination of all three triad analyses
-	relevance := (
-		ka.OverallScore*rp.contextWeights["knowing"] +
+	relevance := (ka.OverallScore*rp.contextWeights["knowing"] +
 		ua.OverallScore*rp.contextWeights["understanding"] +
 		wa.OverallScore*rp.contextWeights["wisdom"])
-	
+
 	// Apply salience modulation
 	relevance = rp.modulateWithSalience(relevance)
-	
+
 	// Store in history
 	rp.storeRelevance(relevance)
-	
+
 	return relevance
 }
 
@@ -63,20 +61,20 @@ func (rp *RealizationProcess) CalculateRelevance(
 func (rp *RealizationProcess) modulateWithSalience(baseRelevance float64) float64 {
 	// Salience landscape amplifies or dampens relevance
 	// Based on what's currently salient in the system
-	
+
 	avgSalience := 0.0
 	count := 0
 	for _, s := range rp.salienceLandscape {
 		avgSalience += s
 		count++
 	}
-	
+
 	if count > 0 {
 		avgSalience /= float64(count)
 		// Modulate by average salience
 		return baseRelevance * (0.7 + 0.3*avgSalience)
 	}
-	
+
 	return baseRelevance
 }
 
@@ -95,15 +93,15 @@ func (rp *RealizationProcess) OptimizeWithWeights(
 ) {
 	rp.mu.Lock()
 	defer rp.mu.Unlock()
-	
+
 	// Update context weights
 	for k, v := range weights {
 		rp.contextWeights[k] = v
 	}
-	
+
 	// Update salience landscape based on state
 	rp.updateSalienceLandscape(state)
-	
+
 	// Apply sophrosyne - optimal self-regulation
 	rp.applySophrosyne(state)
 }
@@ -112,32 +110,32 @@ func (rp *RealizationProcess) OptimizeWithWeights(
 func (rp *RealizationProcess) updateSalienceLandscape(state *EnneadState) {
 	// Update salience for each dimension
 	// Higher values = more salient = more relevant to focus on
-	
+
 	state.mu.RLock()
 	defer state.mu.RUnlock()
-	
+
 	// Knowing dimensions
 	rp.salienceLandscape["propositional"] = state.PropositionalKnowledge
 	rp.salienceLandscape["procedural"] = state.ProceduralKnowledge
 	rp.salienceLandscape["perspectival"] = state.PerspectivalKnowledge
 	rp.salienceLandscape["participatory"] = state.ParticipatoryKnowledge
-	
+
 	// Understanding dimensions
 	rp.salienceLandscape["nomological"] = state.NomologicalUnderstanding
 	rp.salienceLandscape["normative"] = state.NormativeUnderstanding
 	rp.salienceLandscape["narrative"] = state.NarrativeUnderstanding
-	
+
 	// Wisdom dimensions
 	rp.salienceLandscape["morality"] = state.MoralDevelopment
 	rp.salienceLandscape["meaning"] = state.MeaningRealization
 	rp.salienceLandscape["mastery"] = state.MasteryAchievement
-	
+
 	// Add boost to dimensions that need development
 	// Lower values become MORE salient (need attention)
 	for dim, value := range rp.salienceLandscape {
 		if value < 0.4 {
 			// Boost salience of underdeveloped dimensions
-			rp.salienceLandscape[dim] = value + (0.4 - value) * 0.5
+			rp.salienceLandscape[dim] = value + (0.4-value)*0.5
 		}
 	}
 }
@@ -146,10 +144,10 @@ func (rp *RealizationProcess) updateSalienceLandscape(state *EnneadState) {
 func (rp *RealizationProcess) applySophrosyne(state *EnneadState) {
 	// Sophrosyne = finding the dynamic optimal balance
 	// Not static equilibrium but adaptive optimization
-	
+
 	state.mu.RLock()
 	defer state.mu.RUnlock()
-	
+
 	// Calculate variance across dimensions
 	values := []float64{
 		state.PropositionalKnowledge,
@@ -163,19 +161,19 @@ func (rp *RealizationProcess) applySophrosyne(state *EnneadState) {
 		state.MeaningRealization,
 		state.MasteryAchievement,
 	}
-	
+
 	mean := 0.0
 	for _, v := range values {
 		mean += v
 	}
 	mean /= float64(len(values))
-	
+
 	variance := 0.0
 	for _, v := range values {
-		variance += math.Pow(v-mean, 2)
+		variance += (v - mean) * (v - mean)
 	}
 	variance /= float64(len(values))
-	
+
 	// If variance is too high, increase weight on balanced triads
 	// If variance is too low, encourage more diversity
 	if variance > 0.1 {
@@ -192,7 +190,7 @@ func (rp *RealizationProcess) applySophrosyne(state *EnneadState) {
 			state.NarrativeUnderstanding) / 3.0
 		wisdomAvg := (state.MoralDevelopment + state.MeaningRealization +
 			state.MasteryAchievement) / 3.0
-		
+
 		if knowingAvg < understandingAvg && knowingAvg < wisdomAvg {
 			rp.contextWeights["knowing"] = 0.40
 			rp.contextWeights["understanding"] = 0.30
@@ -213,16 +211,16 @@ func (rp *RealizationProcess) applySophrosyne(state *EnneadState) {
 func (rp *RealizationProcess) GetRelevanceHistory(n int) []float64 {
 	rp.mu.RLock()
 	defer rp.mu.RUnlock()
-	
+
 	histLen := len(rp.relevanceHistory)
 	if n > histLen {
 		n = histLen
 	}
-	
+
 	if n == 0 {
 		return []float64{}
 	}
-	
+
 	history := make([]float64, n)
 	copy(history, rp.relevanceHistory[histLen-n:])
 	return history
@@ -232,7 +230,7 @@ func (rp *RealizationProcess) GetRelevanceHistory(n int) []float64 {
 func (rp *RealizationProcess) GetSalienceLandscape() map[string]float64 {
 	rp.mu.RLock()
 	defer rp.mu.RUnlock()
-	
+
 	landscape := make(map[string]float64)
 	for k, v := range rp.salienceLandscape {
 		landscape[k] = v
@@ -244,7 +242,7 @@ func (rp *RealizationProcess) GetSalienceLandscape() map[string]float64 {
 func (rp *RealizationProcess) GetContextWeights() map[string]float64 {
 	rp.mu.RLock()
 	defer rp.mu.RUnlock()
-	
+
 	weights := make(map[string]float64)
 	for k, v := range rp.contextWeights {
 		weights[k] = v

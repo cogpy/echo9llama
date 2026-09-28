@@ -45,7 +45,7 @@ func NewA4Group() *SymmetryGroup {
 				Angle:       0,
 				Permutation: []int{0, 1, 2, 3},
 			},
-			
+
 			// Face rotations (8 elements)
 			// Face 0 (vertices 0,1,2): rotations around axis through V3
 			{
@@ -62,7 +62,7 @@ func NewA4Group() *SymmetryGroup {
 				Angle:       240,
 				Permutation: []int{2, 0, 1, 3}, // V0→V2, V1→V0, V2→V1, V3→V3
 			},
-			
+
 			// Face 1 (vertices 0,1,3): rotations around axis through V2
 			{
 				ID:          3,
@@ -78,7 +78,7 @@ func NewA4Group() *SymmetryGroup {
 				Angle:       240,
 				Permutation: []int{3, 0, 2, 1}, // V0→V3, V1→V0, V2→V2, V3→V1
 			},
-			
+
 			// Face 2 (vertices 0,2,3): rotations around axis through V1
 			{
 				ID:          5,
@@ -94,7 +94,7 @@ func NewA4Group() *SymmetryGroup {
 				Angle:       240,
 				Permutation: []int{3, 1, 0, 2}, // V0→V3, V1→V1, V2→V0, V3→V2
 			},
-			
+
 			// Face 3 (vertices 1,2,3): rotations around axis through V0
 			{
 				ID:          7,
@@ -110,7 +110,7 @@ func NewA4Group() *SymmetryGroup {
 				Angle:       240,
 				Permutation: []int{0, 3, 1, 2}, // V0→V0, V1→V3, V2→V1, V3→V2
 			},
-			
+
 			// Edge rotations (3 elements)
 			// 180° rotation through midpoints of opposite edges
 			{
@@ -148,7 +148,7 @@ func ApplyPermutation(states []interface{}, permutation []int) []interface{} {
 	if len(states) != len(permutation) {
 		return states // Return unchanged if sizes don't match
 	}
-	
+
 	result := make([]interface{}, len(states))
 	for i, p := range permutation {
 		result[i] = states[p]
@@ -165,17 +165,17 @@ func (sg *SymmetryGroup) GetSymmetryClass(step int) SymmetryClass {
 // Based on the 5/7 twin prime structure: face rotations are mostly expressive.
 func (sg *SymmetryGroup) IsExpressive(step int) bool {
 	sym := sg.GetSymmetry(step)
-	
+
 	// Identity is reflective
 	if sym.Class == SymmetryIdentity {
 		return false
 	}
-	
+
 	// Edge rotations are reflective
 	if sym.Class == SymmetryEdge {
 		return false
 	}
-	
+
 	// Face rotations are mostly expressive
 	// Specific pattern for 7 expressive, 5 reflective:
 	// Steps 1,2,3,5,7,9,11 are expressive
@@ -183,7 +183,7 @@ func (sg *SymmetryGroup) IsExpressive(step int) bool {
 	expressiveSteps := map[int]bool{
 		1: true, 2: true, 3: true, 5: true, 7: true, 9: true, 11: true,
 	}
-	
+
 	return expressiveSteps[step%12]
 }
 
@@ -194,15 +194,15 @@ func GetTriadAlignment(step int) int {
 	if cycleStep == 0 {
 		cycleStep = 12
 	}
-	
-	switch {
-	case cycleStep == 1 || cycleStep == 5 || cycleStep == 9:
+
+	switch cycleStep {
+	case 1, 5, 9:
 		return 0
-	case cycleStep == 2 || cycleStep == 6 || cycleStep == 10:
+	case 2, 6, 10:
 		return 1
-	case cycleStep == 3 || cycleStep == 7 || cycleStep == 11:
+	case 3, 7, 11:
 		return 2
-	case cycleStep == 4 || cycleStep == 8 || cycleStep == 12:
+	case 4, 8, 12:
 		return 3
 	default:
 		return -1
@@ -218,13 +218,13 @@ func GetActiveStream(step int) int {
 	if cycleStep == 0 {
 		cycleStep = 12
 	}
-	
-	switch {
-	case cycleStep == 1 || cycleStep == 4 || cycleStep == 7 || cycleStep == 10:
+
+	switch cycleStep {
+	case 1, 4, 7, 10:
 		return 0 // P1
-	case cycleStep == 2 || cycleStep == 5 || cycleStep == 8 || cycleStep == 11:
+	case 2, 5, 8, 11:
 		return 1 // P2
-	case cycleStep == 3 || cycleStep == 6 || cycleStep == 9 || cycleStep == 12:
+	case 3, 6, 9, 12:
 		return 2 // P3
 	default:
 		return -1

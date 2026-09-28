@@ -167,7 +167,7 @@ func TestDeepTreeEchoHubCommand(t *testing.T) {
 		Type: "inject_thought",
 		Payload: map[string]interface{}{
 			"content": "Test thought",
-			"tags": []string{"test"},
+			"tags":    []string{"test"},
 		},
 	})
 

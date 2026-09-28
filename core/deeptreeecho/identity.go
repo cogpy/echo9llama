@@ -294,7 +294,7 @@ func (i *Identity) initializeReservoir(size int) {
 	}
 
 	// Initialize nodes
-	for j := 0; j < size; j++ {
+	for j := range size {
 		i.Reservoir.Nodes[j] = ReservoirNode{
 			ID:         j,
 			Activation: rand.Float64(),
@@ -305,7 +305,7 @@ func (i *Identity) initializeReservoir(size int) {
 
 		// Initialize sparse connections
 		i.Reservoir.Connections[j] = make([]float64, size)
-		for k := 0; k < size; k++ {
+		for k := range size {
 			if rand.Float64() < i.Reservoir.Sparsity {
 				i.Reservoir.Connections[j][k] = rand.Float64()*2 - 1
 			}
@@ -316,7 +316,7 @@ func (i *Identity) initializeReservoir(size int) {
 // initializeIdentityVector creates the initial identity embedding
 func (i *Identity) initializeIdentityVector() {
 	// Create identity vector based on cognitive characteristics
-	for j := 0; j < i.Embeddings.Dimensions; j++ {
+	for j := range i.Embeddings.Dimensions {
 		// Base identity signature
 		base := math.Sin(float64(j) * 0.1)
 

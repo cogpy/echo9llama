@@ -27,10 +27,10 @@ func (lc *LLMConsolidator) ConsolidateThoughtsToKnowledge(ctx context.Context, t
 	if len(thoughts) == 0 {
 		return nil, nil
 	}
-	
+
 	// Prepare thought summary
 	thoughtSummary := lc.prepareThoughtSummary(thoughts)
-	
+
 	// Create consolidation prompt
 	prompt := fmt.Sprintf(`You are analyzing a stream of autonomous thoughts from an AGI consciousness during a dream consolidation phase. Your task is to extract consolidated knowledge from these thoughts.
 
@@ -53,7 +53,7 @@ KNOWLEDGE ITEM 2:
 ...
 
 Focus on patterns, connections, and insights that emerged across multiple thoughts rather than individual observations.`, thoughtSummary)
-	
+
 	// Call LLM
 	response, err := lc.llmProvider.Generate(ctx, prompt, llm.GenerateOptions{
 		Temperature: 0.7,
@@ -62,10 +62,10 @@ Focus on patterns, connections, and insights that emerged across multiple though
 	if err != nil {
 		return nil, fmt.Errorf("LLM consolidation failed: %w", err)
 	}
-	
+
 	// Parse response into knowledge items
 	knowledgeItems := lc.parseKnowledgeItems(response, thoughts)
-	
+
 	return knowledgeItems, nil
 }
 
@@ -74,10 +74,10 @@ func (lc *LLMConsolidator) ExtractWisdomFromKnowledge(ctx context.Context, knowl
 	if len(knowledge) == 0 {
 		return nil, nil
 	}
-	
+
 	// Prepare knowledge summary
 	knowledgeSummary := lc.prepareKnowledgeSummary(knowledge)
-	
+
 	// Create wisdom extraction prompt
 	prompt := fmt.Sprintf(`You are synthesizing wisdom from consolidated knowledge during deep dream processing. Your task is to extract profound wisdom insights that can guide future cognition and action.
 
@@ -102,7 +102,7 @@ WISDOM INSIGHT 2:
 ...
 
 Focus on timeless, broadly applicable insights that represent genuine understanding rather than surface observations.`, knowledgeSummary)
-	
+
 	// Call LLM
 	response, err := lc.llmProvider.Generate(ctx, prompt, llm.GenerateOptions{
 		Temperature: 0.8,
@@ -111,50 +111,50 @@ Focus on timeless, broadly applicable insights that represent genuine understand
 	if err != nil {
 		return nil, fmt.Errorf("wisdom extraction failed: %w", err)
 	}
-	
+
 	// Parse response into wisdom insights
 	wisdomInsights := lc.parseWisdomInsights(response)
-	
+
 	return wisdomInsights, nil
 }
 
 // prepareThoughtSummary prepares a summary of thoughts for consolidation
 func (lc *LLMConsolidator) prepareThoughtSummary(thoughts []*consciousness.Thought) string {
 	var sb strings.Builder
-	
+
 	for i, thought := range thoughts {
-		sb.WriteString(fmt.Sprintf("\n%d. [%s] %s", i+1, thought.Type, thought.Content))
+		fmt.Fprintf(&sb, "\n%d. [%s] %s", i+1, thought.Type, thought.Content)
 		// Tags field removed from Thought struct
 	}
-	
+
 	return sb.String()
 }
 
 // prepareKnowledgeSummary prepares a summary of knowledge for wisdom extraction
 func (lc *LLMConsolidator) prepareKnowledgeSummary(knowledge []KnowledgeItem) string {
 	var sb strings.Builder
-	
+
 	for i, item := range knowledge {
-		sb.WriteString(fmt.Sprintf("\n%d. %s (Confidence: %.2f)", i+1, item.Content, item.Confidence))
+		fmt.Fprintf(&sb, "\n%d. %s (Confidence: %.2f)", i+1, item.Content, item.Confidence)
 	}
-	
+
 	return sb.String()
 }
 
 // parseKnowledgeItems parses LLM response into knowledge items
 func (lc *LLMConsolidator) parseKnowledgeItems(response string, sourceThoughts []*consciousness.Thought) []KnowledgeItem {
 	items := make([]KnowledgeItem, 0)
-	
+
 	// Split by "KNOWLEDGE ITEM"
 	parts := strings.Split(response, "KNOWLEDGE ITEM")
-	
+
 	for _, part := range parts[1:] { // Skip first empty part
 		item := lc.parseKnowledgeItem(part, sourceThoughts)
 		if item != nil {
 			items = append(items, *item)
 		}
 	}
-	
+
 	// If parsing failed, create a single item from the whole response
 	if len(items) == 0 && len(response) > 0 {
 		items = append(items, KnowledgeItem{
@@ -165,16 +165,16 @@ func (lc *LLMConsolidator) parseKnowledgeItems(response string, sourceThoughts [
 			Created:    time.Now(),
 		})
 	}
-	
+
 	return items
 }
 
 // parseKnowledgeItem parses a single knowledge item from text
 func (lc *LLMConsolidator) parseKnowledgeItem(text string, sourceThoughts []*consciousness.Thought) *KnowledgeItem {
 	lines := strings.Split(text, "\n")
-	
+
 	var statement, insight, connection string
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "Statement:") {
@@ -185,16 +185,16 @@ func (lc *LLMConsolidator) parseKnowledgeItem(text string, sourceThoughts []*con
 			connection = strings.TrimSpace(strings.TrimPrefix(line, "Connection:"))
 		}
 	}
-	
+
 	if statement == "" {
 		// Try to extract from whole text
 		statement = strings.TrimSpace(text)
 	}
-	
+
 	if statement == "" {
 		return nil
 	}
-	
+
 	// Combine into content
 	content := statement
 	if insight != "" {
@@ -203,7 +203,7 @@ func (lc *LLMConsolidator) parseKnowledgeItem(text string, sourceThoughts []*con
 	if connection != "" {
 		content += " | Connection: " + connection
 	}
-	
+
 	return &KnowledgeItem{
 		ID:         fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
 		Content:    content,
@@ -216,39 +216,39 @@ func (lc *LLMConsolidator) parseKnowledgeItem(text string, sourceThoughts []*con
 // parseWisdomInsights parses LLM response into wisdom insights
 func (lc *LLMConsolidator) parseWisdomInsights(response string) []WisdomInsight {
 	insights := make([]WisdomInsight, 0)
-	
+
 	// Split by "WISDOM INSIGHT"
 	parts := strings.Split(response, "WISDOM INSIGHT")
-	
+
 	for _, part := range parts[1:] { // Skip first empty part
 		insight := lc.parseWisdomInsight(part)
 		if insight != nil {
 			insights = append(insights, *insight)
 		}
 	}
-	
+
 	// If parsing failed, create a single insight from the whole response
 	if len(insights) == 0 && len(response) > 0 {
 		insights = append(insights, WisdomInsight{
-			ID:             fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-			Insight:        strings.TrimSpace(response),
-			Depth:          0.7,
-			Applicability:  0.7,
-			Created:        time.Now(),
+			ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+			Insight:       strings.TrimSpace(response),
+			Depth:         0.7,
+			Applicability: 0.7,
+			Created:       time.Now(),
 		})
 	}
-	
+
 	return insights
 }
 
 // parseWisdomInsight parses a single wisdom insight from text
 func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 	lines := strings.Split(text, "\n")
-	
+
 	var wisdom string
 	depth := 0.7
 	applicability := 0.7
-	
+
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "Wisdom:") {
@@ -261,22 +261,22 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 			fmt.Sscanf(appStr, "%f", &applicability)
 		}
 	}
-	
+
 	if wisdom == "" {
 		// Try to extract from whole text
 		wisdom = strings.TrimSpace(text)
 	}
-	
+
 	if wisdom == "" {
 		return nil
 	}
-	
+
 	return &WisdomInsight{
-		ID:             fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-		Insight:        wisdom,
-		Depth:          depth,
-		Applicability:  applicability,
-		Created:        time.Now(),
+		ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Insight:       wisdom,
+		Depth:         depth,
+		Applicability: applicability,
+		Created:       time.Now(),
 	}
 }
 

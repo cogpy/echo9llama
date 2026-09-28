@@ -225,7 +225,7 @@ func findArguments(buffer []byte) (map[string]any, int) {
 	}
 
 	var braces int
-	var start int = -1
+	start := -1
 
 	for i, c := range buffer {
 		if c == '{' {

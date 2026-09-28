@@ -12,60 +12,60 @@ import (
 // SkillGoalIntegration connects skill learning with goal generation
 // enabling autonomous skill acquisition based on identified needs and interests
 type SkillGoalIntegration struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Connected systems
-	skillLearning   *SkillLearningSystem
-	goalGenerator   *GoalGenerator
+	skillLearning    *SkillLearningSystem
+	goalGenerator    *GoalGenerator
 	interestPatterns *InterestPatternSystem
 
 	// Skill-goal mappings
-	skillGoalMap    map[string][]string  // skill -> goals that require it
-	goalSkillMap    map[string][]string  // goal -> skills needed
-	
+	skillGoalMap map[string][]string // skill -> goals that require it
+	goalSkillMap map[string][]string // goal -> skills needed
+
 	// Learning queue
-	learningQueue   []SkillLearningTask
-	activeLearning  *SkillLearningTask
-	
+	learningQueue  []SkillLearningTask
+	activeLearning *SkillLearningTask
+
 	// Practice scheduling
 	practiceSchedule []PracticeSession
-	lastPractice    time.Time
-	
+	lastPractice     time.Time
+
 	// Progress tracking
-	skillProgress   map[string]*SkillProgressTracker
-	
+	skillProgress map[string]*SkillProgressTracker
+
 	// Callbacks
 	onSkillGoalCreated  func(skill string, goal ScheduledGoal)
 	onPracticeScheduled func(session PracticeSession)
 	onSkillMastered     func(skill string, level float64)
-	
+
 	// Metrics
-	totalSkillsLearned  uint64
+	totalSkillsLearned    uint64
 	totalPracticeSessions uint64
-	totalGoalsFromSkills uint64
-	
+	totalGoalsFromSkills  uint64
+
 	// Running state
-	running         bool
+	running bool
 }
 
 // SkillLearningTask represents a task to learn a skill
 type SkillLearningTask struct {
-	ID              string
-	SkillName       string
-	Reason          string
-	Priority        float64
-	SourceGoal      string
-	SourceInterest  string
-	CreatedAt       time.Time
-	StartedAt       *time.Time
-	CompletedAt     *time.Time
-	Status          LearningStatus
-	Progress        float64
+	ID             string
+	SkillName      string
+	Reason         string
+	Priority       float64
+	SourceGoal     string
+	SourceInterest string
+	CreatedAt      time.Time
+	StartedAt      *time.Time
+	CompletedAt    *time.Time
+	Status         LearningStatus
+	Progress       float64
 }
 
 // LearningStatus represents the status of a learning task
@@ -85,34 +85,34 @@ func (ls LearningStatus) String() string {
 
 // PracticeSession represents a scheduled practice session
 type PracticeSession struct {
-	ID              string
-	SkillName       string
-	ScheduledAt     time.Time
-	Duration        time.Duration
-	Exercises       []PracticeExercise
-	Completed       bool
-	Performance     float64
+	ID          string
+	SkillName   string
+	ScheduledAt time.Time
+	Duration    time.Duration
+	Exercises   []PracticeExercise
+	Completed   bool
+	Performance float64
 }
 
 // PracticeExercise represents an exercise within a practice session
 type PracticeExercise struct {
-	ID              string
-	Description     string
-	Difficulty      float64
-	Completed       bool
-	Score           float64
+	ID          string
+	Description string
+	Difficulty  float64
+	Completed   bool
+	Score       float64
 }
 
 // SkillProgressTracker tracks progress for a specific skill
 type SkillProgressTracker struct {
-	SkillName       string
-	CurrentLevel    float64
-	TargetLevel     float64
-	PracticeCount   int
+	SkillName         string
+	CurrentLevel      float64
+	TargetLevel       float64
+	PracticeCount     int
 	TotalPracticeTime time.Duration
-	LastPractice    time.Time
-	LearningRate    float64
-	Milestones      []SkillMilestone
+	LastPractice      time.Time
+	LearningRate      float64
+	Milestones        []SkillMilestone
 }
 
 // SkillMilestone represents a milestone in skill development
@@ -636,13 +636,13 @@ func (sgi *SkillGoalIntegration) GetMetrics() map[string]interface{} {
 	defer sgi.mu.RUnlock()
 
 	return map[string]interface{}{
-		"skills_learned":       sgi.totalSkillsLearned,
-		"practice_sessions":    sgi.totalPracticeSessions,
-		"goals_from_skills":    sgi.totalGoalsFromSkills,
-		"queue_length":         len(sgi.learningQueue),
-		"active_learning":      sgi.activeLearning != nil,
-		"skills_in_progress":   len(sgi.skillProgress),
-		"running":              sgi.running,
+		"skills_learned":     sgi.totalSkillsLearned,
+		"practice_sessions":  sgi.totalPracticeSessions,
+		"goals_from_skills":  sgi.totalGoalsFromSkills,
+		"queue_length":       len(sgi.learningQueue),
+		"active_learning":    sgi.activeLearning != nil,
+		"skills_in_progress": len(sgi.skillProgress),
+		"running":            sgi.running,
 	}
 }
 

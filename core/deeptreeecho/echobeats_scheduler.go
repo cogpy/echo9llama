@@ -716,7 +716,7 @@ func (sched *EchobeatsScheduler) AddGoal(description string, priority float64) s
 
 // sortGoalsByPriority sorts the goal queue by priority (highest first)
 func (sched *EchobeatsScheduler) sortGoalsByPriority() {
-	for i := 0; i < len(sched.goalQueue)-1; i++ {
+	for i := range len(sched.goalQueue) - 1 {
 		for j := i + 1; j < len(sched.goalQueue); j++ {
 			if sched.goalQueue[j].Priority > sched.goalQueue[i].Priority {
 				sched.goalQueue[i], sched.goalQueue[j] = sched.goalQueue[j], sched.goalQueue[i]

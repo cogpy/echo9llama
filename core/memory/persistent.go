@@ -20,14 +20,14 @@ type PersistentMemory struct {
 
 // MemoryNode represents a node in the hypergraph memory
 type MemoryNode struct {
-	ID        string                 `json:"id"`
-	Type      NodeType               `json:"type"`
-	Content   string                 `json:"content"`
-	Embedding []float64              `json:"embedding,omitempty"`
-	Metadata  map[string]interface{} `json:"metadata"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
-	Importance float64               `json:"importance"`
+	ID         string                 `json:"id"`
+	Type       NodeType               `json:"type"`
+	Content    string                 `json:"content"`
+	Embedding  []float64              `json:"embedding,omitempty"`
+	Metadata   map[string]interface{} `json:"metadata"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
+	Importance float64                `json:"importance"`
 }
 
 // MemoryEdge represents a directed edge in the hypergraph
@@ -71,13 +71,13 @@ type IdentitySnapshot struct {
 
 // DreamJournal represents a dream session record
 type DreamJournal struct {
-	ID                  string                 `json:"id"`
-	Timestamp           time.Time              `json:"timestamp"`
-	DreamState          string                 `json:"dream_state"`
-	MemoriesConsolidated int                   `json:"memories_consolidated"`
-	PatternsSynthesized int                   `json:"patterns_synthesized"`
-	Insights            []string               `json:"insights"`
-	Metadata            map[string]interface{} `json:"metadata"`
+	ID                   string                 `json:"id"`
+	Timestamp            time.Time              `json:"timestamp"`
+	DreamState           string                 `json:"dream_state"`
+	MemoriesConsolidated int                    `json:"memories_consolidated"`
+	PatternsSynthesized  int                    `json:"patterns_synthesized"`
+	Insights             []string               `json:"insights"`
+	Metadata             map[string]interface{} `json:"metadata"`
 }
 
 // NodeType represents different types of memory nodes

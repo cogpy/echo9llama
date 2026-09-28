@@ -1,4 +1,3 @@
-
 package improvement
 
 import (
@@ -12,10 +11,10 @@ type RecursiveSelfImprover struct {
 	systemAnalyzer    SystemAnalyzer
 	enhancementEngine EnhancementEngine
 	improvementCycles []ImprovementCycle
-	metrics          SystemMetrics
-	lastImprovement  time.Time
-	recursionDepth   int
-	maxRecursion     int
+	metrics           SystemMetrics
+	lastImprovement   time.Time
+	recursionDepth    int
+	maxRecursion      int
 }
 
 // SystemAnalyzer identifies improvement opportunities
@@ -34,45 +33,45 @@ type EnhancementEngine interface {
 
 // ImprovementCycle tracks recursive improvement iteration
 type ImprovementCycle struct {
-	ID              string
-	Timestamp       time.Time
-	TriggerMetrics  SystemMetrics
-	AppliedChanges  []Improvement
-	ResultMetrics   SystemMetrics
-	EfficiencyGain  float64
-	RecursionLevel  int
+	ID             string
+	Timestamp      time.Time
+	TriggerMetrics SystemMetrics
+	AppliedChanges []Improvement
+	ResultMetrics  SystemMetrics
+	EfficiencyGain float64
+	RecursionLevel int
 }
 
 // SystemMetrics tracks system performance indicators
 type SystemMetrics struct {
-	ResponseTime     time.Duration
-	ThroughputQPS    float64
-	MemoryUsage      float64
-	CPUUtilization   float64
-	ErrorRate        float64
-	QualityScore     float64
+	ResponseTime      time.Duration
+	ThroughputQPS     float64
+	MemoryUsage       float64
+	CPUUtilization    float64
+	ErrorRate         float64
+	QualityScore      float64
 	AdaptabilityIndex float64
 }
 
 // Bottleneck represents performance constraint
 type Bottleneck struct {
-	Component   string
-	Type        string // "cpu", "memory", "io", "algorithm"
-	Severity    float64
-	Impact      string
-	Solution    []string
+	Component string
+	Type      string // "cpu", "memory", "io", "algorithm"
+	Severity  float64
+	Impact    string
+	Solution  []string
 }
 
 // Improvement represents system enhancement
 type Improvement struct {
-	ID              string
-	Type            string // "algorithm", "structure", "parameter"
-	Component       string
-	Description     string
-	ExpectedGain    float64
-	RiskLevel       float64
-	Implementation  func() error
-	Validation      func() bool
+	ID             string
+	Type           string // "algorithm", "structure", "parameter"
+	Component      string
+	Description    string
+	ExpectedGain   float64
+	RiskLevel      float64
+	Implementation func() error
+	Validation     func() bool
 }
 
 // NewRecursiveSelfImprover creates new self-improvement system
@@ -90,24 +89,24 @@ func NewRecursiveSelfImprover(analyzer SystemAnalyzer, engine EnhancementEngine)
 func (rsi *RecursiveSelfImprover) ImproveRecursively() error {
 	rsi.mu.Lock()
 	defer rsi.mu.Unlock()
-	
+
 	if rsi.recursionDepth >= rsi.maxRecursion {
 		return nil // Prevent infinite recursion
 	}
-	
+
 	rsi.recursionDepth++
 	defer func() { rsi.recursionDepth-- }()
-	
+
 	// Analyze current system state
 	currentMetrics := rsi.systemAnalyzer.AnalyzeSystemPerformance()
-	
+
 	// Identify improvement opportunities
 	improvements := rsi.systemAnalyzer.SuggestImprovements()
-	
+
 	if len(improvements) == 0 {
 		return nil // No improvements needed
 	}
-	
+
 	// Create improvement cycle
 	cycle := ImprovementCycle{
 		ID:             generateID(),
@@ -115,7 +114,7 @@ func (rsi *RecursiveSelfImprover) ImproveRecursively() error {
 		TriggerMetrics: currentMetrics,
 		RecursionLevel: rsi.recursionDepth,
 	}
-	
+
 	// Apply improvements
 	var appliedImprovements []Improvement
 	for _, improvement := range improvements {
@@ -125,24 +124,24 @@ func (rsi *RecursiveSelfImprover) ImproveRecursively() error {
 			}
 		}
 	}
-	
+
 	cycle.AppliedChanges = appliedImprovements
-	
+
 	// Measure results
 	resultMetrics := rsi.systemAnalyzer.AnalyzeSystemPerformance()
 	cycle.ResultMetrics = resultMetrics
-	
+
 	// Calculate efficiency gain
 	cycle.EfficiencyGain = rsi.calculateEfficiencyGain(currentMetrics, resultMetrics)
-	
+
 	rsi.improvementCycles = append(rsi.improvementCycles, cycle)
 	rsi.lastImprovement = time.Now()
-	
+
 	// If improvement was significant, recurse
 	if cycle.EfficiencyGain > 0.05 { // 5% improvement threshold
 		return rsi.ImproveRecursively()
 	}
-	
+
 	return nil
 }
 
@@ -152,7 +151,7 @@ func (rsi *RecursiveSelfImprover) calculateEfficiencyGain(before, after SystemMe
 	responseTimeGain := (before.ResponseTime.Seconds() - after.ResponseTime.Seconds()) / before.ResponseTime.Seconds()
 	throughputGain := (after.ThroughputQPS - before.ThroughputQPS) / before.ThroughputQPS
 	qualityGain := (after.QualityScore - before.QualityScore) / before.QualityScore
-	
+
 	// Weighted average
 	totalGain := (responseTimeGain*0.3 + throughputGain*0.3 + qualityGain*0.4)
 	return totalGain

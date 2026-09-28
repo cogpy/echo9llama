@@ -17,12 +17,12 @@ type APIServer struct {
 // NewAPIServer creates a new API server for the orchestration engine
 func NewAPIServer(engine *Engine) *APIServer {
 	router := gin.Default()
-	
+
 	server := &APIServer{
 		engine: engine,
 		router: router,
 	}
-	
+
 	server.setupRoutes()
 	return server
 }
@@ -34,7 +34,7 @@ func (s *APIServer) setupRoutes() {
 	s.router.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/dashboard.html")
 	})
-	
+
 	// Deep Tree Echo routes
 	dte := s.router.Group("/api/deep-tree-echo")
 	{
@@ -45,7 +45,7 @@ func (s *APIServer) setupRoutes() {
 		dte.POST("/refresh", s.refreshDTEStatus)
 		dte.POST("/introspection", s.performDTEIntrospection)
 	}
-	
+
 	// Agent management routes
 	agents := s.router.Group("/api/agents")
 	{
@@ -56,7 +56,7 @@ func (s *APIServer) setupRoutes() {
 		agents.DELETE("/:id", s.deleteAgent)
 		agents.POST("/:id/tasks", s.executeTask)
 	}
-	
+
 	// Orchestration routes
 	orchestration := s.router.Group("/api/orchestration")
 	{
@@ -64,7 +64,7 @@ func (s *APIServer) setupRoutes() {
 		orchestration.GET("/tools", s.getAvailableTools)
 		orchestration.GET("/plugins", s.getAvailablePlugins)
 	}
-	
+
 	// Learning System routes
 	learning := s.router.Group("/api/learning")
 	{
@@ -74,7 +74,7 @@ func (s *APIServer) setupRoutes() {
 		learning.POST("/predict-optimal-agent", s.predictOptimalAgent)
 		learning.GET("/system/metrics", s.getLearningSystemMetrics)
 	}
-	
+
 	// Performance Optimization routes
 	performance := s.router.Group("/api/performance")
 	{
@@ -118,7 +118,7 @@ func (s *APIServer) initializeDTE(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Deep Tree Echo system initialized successfully",
@@ -134,7 +134,7 @@ func (s *APIServer) runDTEDiagnostics(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   diagnostics,
@@ -150,7 +150,7 @@ func (s *APIServer) refreshDTEStatus(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Deep Tree Echo status refreshed successfully",
@@ -163,7 +163,7 @@ func (s *APIServer) performDTEIntrospection(c *gin.Context) {
 		CurrentLoad    float64 `json:"current_load"`
 		RecentActivity float64 `json:"recent_activity"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
@@ -171,7 +171,7 @@ func (s *APIServer) performDTEIntrospection(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	result, err := s.engine.PerformDeepTreeEchoIntrospection(
 		c.Request.Context(),
 		req.RepositoryRoot,
@@ -185,7 +185,7 @@ func (s *APIServer) performDTEIntrospection(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   result,
@@ -203,7 +203,7 @@ func (s *APIServer) listAgents(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   agents,
@@ -219,7 +219,7 @@ func (s *APIServer) createAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	err := s.engine.CreateAgent(c.Request.Context(), &agent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -228,7 +228,7 @@ func (s *APIServer) createAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusCreated, gin.H{
 		"status": "success",
 		"data":   agent,
@@ -237,7 +237,7 @@ func (s *APIServer) createAgent(c *gin.Context) {
 
 func (s *APIServer) getAgent(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	agent, err := s.engine.GetAgent(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -246,7 +246,7 @@ func (s *APIServer) getAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   agent,
@@ -255,7 +255,7 @@ func (s *APIServer) getAgent(c *gin.Context) {
 
 func (s *APIServer) updateAgent(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	var agent Agent
 	if err := c.ShouldBindJSON(&agent); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -264,7 +264,7 @@ func (s *APIServer) updateAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	agent.ID = id
 	err := s.engine.UpdateAgent(c.Request.Context(), &agent)
 	if err != nil {
@@ -274,7 +274,7 @@ func (s *APIServer) updateAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   agent,
@@ -283,7 +283,7 @@ func (s *APIServer) updateAgent(c *gin.Context) {
 
 func (s *APIServer) deleteAgent(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	err := s.engine.DeleteAgent(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -292,7 +292,7 @@ func (s *APIServer) deleteAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Agent deleted successfully",
@@ -301,7 +301,7 @@ func (s *APIServer) deleteAgent(c *gin.Context) {
 
 func (s *APIServer) executeTask(c *gin.Context) {
 	agentID := c.Param("id")
-	
+
 	var task Task
 	if err := c.ShouldBindJSON(&task); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -310,9 +310,9 @@ func (s *APIServer) executeTask(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	task.AgentID = agentID
-	
+
 	agent, err := s.engine.GetAgent(c.Request.Context(), agentID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -321,7 +321,7 @@ func (s *APIServer) executeTask(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	result, err := s.engine.ExecuteTask(c.Request.Context(), &task, agent)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -330,7 +330,7 @@ func (s *APIServer) executeTask(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": gin.H{
@@ -351,7 +351,7 @@ func (s *APIServer) orchestrateTasks(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	response, err := s.engine.OrchestrateTasks(c.Request.Context(), &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -360,7 +360,7 @@ func (s *APIServer) orchestrateTasks(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   response,
@@ -412,7 +412,7 @@ func FormatDashboardMetrics(dte *DeepTreeEcho) map[string]interface{} {
 			"status": dte.CoreStatus,
 			"color":  getCoreStatusColor(dte.CoreStatus),
 		},
-		"thoughtCount": dte.ThoughtCount,
+		"thoughtCount":   dte.ThoughtCount,
 		"recursiveDepth": dte.RecursiveDepth,
 	}
 }
@@ -421,8 +421,8 @@ func FormatDashboardMetrics(dte *DeepTreeEcho) map[string]interface{} {
 func FormatIdentityCoherence(coherence *IdentityCoherence) map[string]interface{} {
 	return map[string]interface{}{
 		"overallCoherence": fmt.Sprintf("%.0f%%", coherence.OverallCoherence*100),
-		"maintainingCore": "Maintaining core essence while adapting",
-		"factors": coherence.Factors,
+		"maintainingCore":  "Maintaining core essence while adapting",
+		"factors":          coherence.Factors,
 	}
 }
 
@@ -497,10 +497,10 @@ func getCoreStatusColor(status CoreStatus) string {
 
 func (s *APIServer) getLearningModel(c *gin.Context) {
 	agentID := c.Param("id")
-	
+
 	learningSystem := s.engine.GetLearningSystem()
 	model := learningSystem.GetLearningModel(agentID)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   model,
@@ -509,20 +509,20 @@ func (s *APIServer) getLearningModel(c *gin.Context) {
 
 func (s *APIServer) getAgentPerformance(c *gin.Context) {
 	agentID := c.Param("id")
-	
+
 	learningSystem := s.engine.GetLearningSystem()
 	history := learningSystem.performanceHistory[agentID]
-	
+
 	if history == nil {
 		history = make([]*TaskPerformance, 0)
 	}
-	
+
 	// Return recent performance (last 20 records)
 	recentHistory := history
 	if len(history) > 20 {
 		recentHistory = history[len(history)-20:]
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": map[string]interface{}{
@@ -535,7 +535,7 @@ func (s *APIServer) getAgentPerformance(c *gin.Context) {
 
 func (s *APIServer) adaptAgent(c *gin.Context) {
 	agentID := c.Param("id")
-	
+
 	result, err := s.engine.AdaptAgent(c.Request.Context(), agentID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -544,7 +544,7 @@ func (s *APIServer) adaptAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   result,
@@ -557,7 +557,7 @@ func (s *APIServer) predictOptimalAgent(c *gin.Context) {
 		Input      string                 `json:"input"`
 		Parameters map[string]interface{} `json:"parameters"`
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
@@ -565,13 +565,13 @@ func (s *APIServer) predictOptimalAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	task := &Task{
 		Type:       req.TaskType,
 		Input:      req.Input,
 		Parameters: req.Parameters,
 	}
-	
+
 	agent, confidence, err := s.engine.PredictOptimalAgentForTask(c.Request.Context(), task)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -580,7 +580,7 @@ func (s *APIServer) predictOptimalAgent(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": map[string]interface{}{
@@ -592,13 +592,13 @@ func (s *APIServer) predictOptimalAgent(c *gin.Context) {
 
 func (s *APIServer) getLearningSystemMetrics(c *gin.Context) {
 	learningSystem := s.engine.GetLearningSystem()
-	
+
 	// Calculate system-wide learning metrics
 	totalAgents := len(learningSystem.learningModels)
 	totalPerformanceRecords := 0
 	avgLearningRate := 0.0
 	avgCurrentPerformance := 0.0
-	
+
 	for _, model := range learningSystem.learningModels {
 		if history, exists := learningSystem.performanceHistory[model.AgentID]; exists {
 			totalPerformanceRecords += len(history)
@@ -606,15 +606,15 @@ func (s *APIServer) getLearningSystemMetrics(c *gin.Context) {
 		avgLearningRate += model.LearningRate
 		avgCurrentPerformance += model.LearningTrajectory.CurrentPerformance
 	}
-	
+
 	if totalAgents > 0 {
 		avgLearningRate /= float64(totalAgents)
 		avgCurrentPerformance /= float64(totalAgents)
 	}
-	
+
 	// Get adaptation strategies count
 	adaptationStrategiesCount := len(learningSystem.adaptationEngine.adaptationStrategies)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data": map[string]interface{}{
@@ -632,7 +632,7 @@ func (s *APIServer) getLearningSystemMetrics(c *gin.Context) {
 
 func (s *APIServer) getSystemMetrics(c *gin.Context) {
 	metrics := s.engine.GetSystemMetrics()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   metrics,
@@ -641,7 +641,7 @@ func (s *APIServer) getSystemMetrics(c *gin.Context) {
 
 func (s *APIServer) getActiveAlerts(c *gin.Context) {
 	alerts := s.engine.GetActiveAlerts()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   alerts,
@@ -650,7 +650,7 @@ func (s *APIServer) getActiveAlerts(c *gin.Context) {
 
 func (s *APIServer) getResourceUsage(c *gin.Context) {
 	usage := s.engine.GetResourceUsage()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   usage,
@@ -659,7 +659,7 @@ func (s *APIServer) getResourceUsage(c *gin.Context) {
 
 func (s *APIServer) getAgentLoads(c *gin.Context) {
 	loads := s.engine.GetAgentLoads()
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   loads,
@@ -672,10 +672,10 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 		Input      string                 `json:"input"`
 		ModelName  string                 `json:"model_name"`
 		Parameters map[string]interface{} `json:"parameters"`
-		Priority   string                 `json:"priority"`   // "low", "normal", "high", "urgent"
-		Deadline   string                 `json:"deadline"`   // ISO 8601 timestamp
+		Priority   string                 `json:"priority"` // "low", "normal", "high", "urgent"
+		Deadline   string                 `json:"deadline"` // ISO 8601 timestamp
 	}
-	
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"status": "error",
@@ -683,7 +683,7 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Parse priority
 	var priority TaskPriority
 	switch req.Priority {
@@ -698,7 +698,7 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 	default:
 		priority = TaskPriorityNormal
 	}
-	
+
 	// Parse deadline
 	deadline := time.Now().Add(30 * time.Minute) // Default deadline
 	if req.Deadline != "" {
@@ -706,7 +706,7 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 			deadline = parsedDeadline
 		}
 	}
-	
+
 	// Create task
 	task := &Task{
 		ID:         fmt.Sprintf("opt-task-%d", time.Now().Unix()),
@@ -717,7 +717,7 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 		Status:     TaskStatusPending,
 		CreatedAt:  time.Now(),
 	}
-	
+
 	// Execute task with optimization
 	result, err := s.engine.ExecuteTaskOptimized(c.Request.Context(), task, priority, deadline)
 	if err != nil {
@@ -727,7 +727,7 @@ func (s *APIServer) executeTaskOptimized(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
 		"data":   result,

@@ -722,7 +722,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 		}
 
 		w.ResponseWriter.Header().Set("Content-Type", "text/event-stream")
-		_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+		_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 		if err != nil {
 			return 0, err
 		}
@@ -736,7 +736,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+				_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 				if err != nil {
 					return 0, err
 				}
@@ -761,7 +761,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *ChatWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -788,7 +788,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 		}
 
 		w.ResponseWriter.Header().Set("Content-Type", "text/event-stream")
-		_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+		_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 		if err != nil {
 			return 0, err
 		}
@@ -802,7 +802,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+				_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 				if err != nil {
 					return 0, err
 				}
@@ -827,7 +827,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *CompleteWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -852,7 +852,7 @@ func (w *ListWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *ListWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -878,7 +878,7 @@ func (w *RetrieveWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *RetrieveWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -903,7 +903,7 @@ func (w *EmbedWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *EmbedWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}

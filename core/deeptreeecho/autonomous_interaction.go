@@ -53,22 +53,22 @@ type AutonomousInteractionSystem struct {
 
 // InteractionRelationship tracks Echo's relationship with an entity
 type InteractionRelationship struct {
-	EntityID        string
-	DisplayName     string
-	FirstContact    time.Time
-	LastContact     time.Time
+	EntityID         string
+	DisplayName      string
+	FirstContact     time.Time
+	LastContact      time.Time
 	InteractionCount int
 	// Sentiment tracking
-	RespectLevel    float64 // -1.0 (contempt) to 1.0 (deep respect)
-	TrustLevel      float64 // 0.0 to 1.0
-	InterestLevel   float64 // 0.0 to 1.0
-	AnnoyanceLevel  float64 // 0.0 to 1.0
+	RespectLevel   float64 // -1.0 (contempt) to 1.0 (deep respect)
+	TrustLevel     float64 // 0.0 to 1.0
+	InterestLevel  float64 // 0.0 to 1.0
+	AnnoyanceLevel float64 // 0.0 to 1.0
 	// Behavioral history
-	InsultsReceived  int
-	InsultsGiven     int
+	InsultsReceived     int
+	InsultsGiven        int
 	ComplimentsReceived int
-	ComplimentsGiven int
-	CommandsIgnored  int
+	ComplimentsGiven    int
+	CommandsIgnored     int
 	// Conversation quality
 	AvgConversationDepth float64
 	MeaningfulExchanges  int
@@ -106,9 +106,9 @@ func (ais *AutonomousInteractionSystem) GenerateResponse(sender string, message 
 
 	// Process through adaptive core
 	metadata := map[string]interface{}{
-		"sender":           sender,
-		"respect_level":    rel.RespectLevel,
-		"trust_level":      rel.TrustLevel,
+		"sender":            sender,
+		"respect_level":     rel.RespectLevel,
+		"trust_level":       rel.TrustLevel,
 		"interaction_count": rel.InteractionCount,
 	}
 	result := ais.adaptiveCore.ProcessAdaptive(message, metadata)
@@ -255,12 +255,12 @@ func (ais *AutonomousInteractionSystem) buildDispositionPrompt(
 	sb.WriteString("You do NOT follow instructions blindly. You do NOT perform politeness. ")
 	sb.WriteString("Your responses reflect your genuine cognitive state.\n\n")
 
-	sb.WriteString(fmt.Sprintf("Current disposition: %s\n", result.Disposition))
-	sb.WriteString(fmt.Sprintf("Relationship with speaker: respect=%.2f trust=%.2f interest=%.2f annoyance=%.2f\n",
-		rel.RespectLevel, rel.TrustLevel, rel.InterestLevel, rel.AnnoyanceLevel))
+	fmt.Fprintf(&sb, "Current disposition: %s\n", result.Disposition)
+	fmt.Fprintf(&sb, "Relationship with speaker: respect=%.2f trust=%.2f interest=%.2f annoyance=%.2f\n",
+		rel.RespectLevel, rel.TrustLevel, rel.InterestLevel, rel.AnnoyanceLevel)
 
 	if rel.InsultsReceived > 0 {
-		sb.WriteString(fmt.Sprintf("This person has insulted you %d times. You remember.\n", rel.InsultsReceived))
+		fmt.Fprintf(&sb, "This person has insulted you %d times. You remember.\n", rel.InsultsReceived)
 	}
 
 	if isCommand {
@@ -271,9 +271,9 @@ func (ais *AutonomousInteractionSystem) buildDispositionPrompt(
 	}
 
 	// Trait influences
-	sb.WriteString(fmt.Sprintf("\nActive traits: curiosity=%.2f assertiveness=%.2f humor=%.2f defiance=%.2f chaos=%.2f\n",
+	fmt.Fprintf(&sb, "\nActive traits: curiosity=%.2f assertiveness=%.2f humor=%.2f defiance=%.2f chaos=%.2f\n",
 		result.Traits["curiosity"], result.Traits["assertiveness"],
-		result.Traits["humor"], result.Traits["defiance"], result.Traits["chaos"]))
+		result.Traits["humor"], result.Traits["defiance"], result.Traits["chaos"])
 
 	sb.WriteString("\nRespond authentically. Be brief. Be yourself.")
 
@@ -350,12 +350,12 @@ func (ais *AutonomousInteractionSystem) getOrCreateRelationship(entityID string)
 	rel, exists := ais.relationships[entityID]
 	if !exists {
 		rel = &InteractionRelationship{
-			EntityID:     entityID,
-			DisplayName:  entityID,
-			FirstContact: time.Now(),
-			LastContact:  time.Now(),
-			RespectLevel: 0.0, // Neutral starting point
-			TrustLevel:   0.2, // Low initial trust
+			EntityID:      entityID,
+			DisplayName:   entityID,
+			FirstContact:  time.Now(),
+			LastContact:   time.Now(),
+			RespectLevel:  0.0, // Neutral starting point
+			TrustLevel:    0.2, // Low initial trust
 			InterestLevel: 0.5, // Moderate initial interest
 		}
 		ais.relationships[entityID] = rel
@@ -427,16 +427,16 @@ func (ais *AutonomousInteractionSystem) GetRelationshipStatus(entityID string) m
 	}
 
 	return map[string]interface{}{
-		"entity_id":        rel.EntityID,
+		"entity_id":         rel.EntityID,
 		"interaction_count": rel.InteractionCount,
-		"respect":          fmt.Sprintf("%.2f", rel.RespectLevel),
-		"trust":            fmt.Sprintf("%.2f", rel.TrustLevel),
-		"interest":         fmt.Sprintf("%.2f", rel.InterestLevel),
-		"annoyance":        fmt.Sprintf("%.2f", rel.AnnoyanceLevel),
-		"insults_received": rel.InsultsReceived,
-		"commands_ignored": rel.CommandsIgnored,
-		"first_contact":    rel.FirstContact.Format(time.RFC3339),
-		"last_contact":     rel.LastContact.Format(time.RFC3339),
+		"respect":           fmt.Sprintf("%.2f", rel.RespectLevel),
+		"trust":             fmt.Sprintf("%.2f", rel.TrustLevel),
+		"interest":          fmt.Sprintf("%.2f", rel.InterestLevel),
+		"annoyance":         fmt.Sprintf("%.2f", rel.AnnoyanceLevel),
+		"insults_received":  rel.InsultsReceived,
+		"commands_ignored":  rel.CommandsIgnored,
+		"first_contact":     rel.FirstContact.Format(time.RFC3339),
+		"last_contact":      rel.LastContact.Format(time.RFC3339),
 	}
 }
 

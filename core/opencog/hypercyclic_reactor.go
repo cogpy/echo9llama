@@ -12,37 +12,37 @@ import (
 // with autocatalytic inference engine accelerator dynamics
 type HypercyclicReactor struct {
 	mu sync.RWMutex
-	
+
 	// Core reactor components
-	ID                string
-	AtomSpace         *AtomSpace
-	ReactionCycles    map[string]*ReactionCycle
-	CatalystPool      map[string]*Catalyst
-	
+	ID             string
+	AtomSpace      *AtomSpace
+	ReactionCycles map[string]*ReactionCycle
+	CatalystPool   map[string]*Catalyst
+
 	// Autocatalytic dynamics
 	AutocatalyticRate float64
 	FusionEnergy      float64
 	ReactionThreshold float64
-	
+
 	// Inference engine
-	InferenceEngine   *InferenceEngine
-	InferenceQueue    chan *InferenceTask
-	
+	InferenceEngine *InferenceEngine
+	InferenceQueue  chan *InferenceTask
+
 	// Temporal compression
 	TemporalCompressor *TemporalCompressor
 	CompressionRatio   float64
-	
+
 	// Parallel execution
-	WorkerPool        *WorkerPool
-	MaxConcurrency    int
-	
+	WorkerPool     *WorkerPool
+	MaxConcurrency int
+
 	// Performance metrics
-	Metrics           *ReactorMetrics
-	
+	Metrics *ReactorMetrics
+
 	// Lifecycle
-	Running           bool
-	Created           time.Time
-	LastReaction      time.Time
+	Running      bool
+	Created      time.Time
+	LastReaction time.Time
 }
 
 // ReactionCycle represents a hypercyclic reaction cycle
@@ -61,22 +61,22 @@ type ReactionCycle struct {
 
 // Catalyst represents an autocatalytic agent
 type Catalyst struct {
-	ID           string
-	Type         CatalystType
-	Efficiency   float64
-	Specificity  map[string]float64 // Reaction ID -> specificity
-	State        CatalystState
-	Created      time.Time
-	LastActive   time.Time
+	ID          string
+	Type        CatalystType
+	Efficiency  float64
+	Specificity map[string]float64 // Reaction ID -> specificity
+	State       CatalystState
+	Created     time.Time
+	LastActive  time.Time
 }
 
 // CatalystType defines catalyst types
 type CatalystType string
 
 const (
-	MetabolicCatalyst    CatalystType = "Metabolic"
-	ReplicativeCatalyst  CatalystType = "Replicative"
-	RegulatatoryCatalyst CatalystType = "Regulatory"
+	MetabolicCatalyst     CatalystType = "Metabolic"
+	ReplicativeCatalyst   CatalystType = "Replicative"
+	RegulatatoryCatalyst  CatalystType = "Regulatory"
 	InformationalCatalyst CatalystType = "Informational"
 )
 
@@ -84,26 +84,26 @@ const (
 type CatalystState string
 
 const (
-	ActiveState   CatalystState = "Active"
-	InactiveState CatalystState = "Inactive"
+	ActiveState    CatalystState = "Active"
+	InactiveState  CatalystState = "Inactive"
 	SaturatedState CatalystState = "Saturated"
 )
 
 // InferenceEngine performs massively parallel distributed inference
 type InferenceEngine struct {
 	mu sync.RWMutex
-	
+
 	// Inference rules
-	Rules         map[string]*InferenceRule
-	RuleChains    map[string][]*InferenceRule
-	
+	Rules      map[string]*InferenceRule
+	RuleChains map[string][]*InferenceRule
+
 	// PLN (Probabilistic Logic Networks)
-	PLNEngine     *PLNEngine
-	
+	PLNEngine *PLNEngine
+
 	// Forward/Backward chaining
 	ForwardChain  *ChainEngine
 	BackwardChain *ChainEngine
-	
+
 	// Performance
 	InferenceCount int64
 	LastInference  time.Time
@@ -125,8 +125,8 @@ type InferenceTask struct {
 type InferenceType string
 
 const (
-	ForwardInference  InferenceType = "Forward"
-	BackwardInference InferenceType = "Backward"
+	ForwardInference   InferenceType = "Forward"
+	BackwardInference  InferenceType = "Backward"
 	AbductiveInference InferenceType = "Abductive"
 	InductiveInference InferenceType = "Inductive"
 	DeductiveInference InferenceType = "Deductive"
@@ -145,28 +145,28 @@ type InferenceResult struct {
 
 // InferenceRule represents a logical inference rule
 type InferenceRule struct {
-	ID         string
-	Name       string
-	Premises   []string // Pattern strings
-	Conclusion string   // Pattern string
+	ID                string
+	Name              string
+	Premises          []string // Pattern strings
+	Conclusion        string   // Pattern string
 	TruthValueFormula func([]*TruthValue) *TruthValue
-	Cost       float64
-	Priority   int
+	Cost              float64
+	Priority          int
 }
 
 // PLNEngine implements Probabilistic Logic Networks
 type PLNEngine struct {
 	mu sync.RWMutex
-	
+
 	// PLN rules
-	DeductionRules    []*PLNRule
-	InductionRules    []*PLNRule
-	AbductionRules    []*PLNRule
-	
+	DeductionRules []*PLNRule
+	InductionRules []*PLNRule
+	AbductionRules []*PLNRule
+
 	// Strength/confidence parameters
 	DefaultStrength   float64
 	DefaultConfidence float64
-	
+
 	// Evidence accumulation
 	EvidenceThreshold float64
 }
@@ -182,7 +182,7 @@ type PLNRule struct {
 // ChainEngine performs forward/backward chaining
 type ChainEngine struct {
 	mu sync.RWMutex
-	
+
 	Mode         ChainMode
 	MaxDepth     int
 	MaxBranching int
@@ -200,41 +200,41 @@ const (
 // TemporalCompressor performs temporal compression for accelerated inference
 type TemporalCompressor struct {
 	mu sync.RWMutex
-	
+
 	// Compression parameters
-	CompressionRatio  float64
-	BufferSize        int
-	Buffer            []*CompressedEvent
-	
+	CompressionRatio float64
+	BufferSize       int
+	Buffer           []*CompressedEvent
+
 	// Parallelization strategy
-	ParallelStreams   int
-	StreamBuffers     map[int][]*CompressedEvent
-	
+	ParallelStreams int
+	StreamBuffers   map[int][]*CompressedEvent
+
 	// Performance
-	EventsProcessed   int64
-	CompressionGain   float64
+	EventsProcessed int64
+	CompressionGain float64
 }
 
 // CompressedEvent represents a temporally compressed event
 type CompressedEvent struct {
-	OriginalTime   time.Time
-	CompressedTime time.Time
-	Event          interface{}
+	OriginalTime      time.Time
+	CompressedTime    time.Time
+	Event             interface{}
 	CompressionFactor float64
 }
 
 // WorkerPool manages parallel inference workers
 type WorkerPool struct {
 	mu sync.RWMutex
-	
+
 	Workers       []*InferenceWorker
 	TaskQueue     chan *InferenceTask
 	ResultQueue   chan *InferenceResult
 	MaxWorkers    int
 	ActiveWorkers int
-	
+
 	// Load balancing
-	LoadBalancer  *LoadBalancer
+	LoadBalancer *LoadBalancer
 }
 
 // InferenceWorker performs inference in parallel
@@ -247,8 +247,8 @@ type InferenceWorker struct {
 
 // LoadBalancer distributes tasks across workers
 type LoadBalancer struct {
-	Strategy  LoadBalancingStrategy
-	WorkLoad  map[int]int64
+	Strategy LoadBalancingStrategy
+	WorkLoad map[int]int64
 }
 
 // LoadBalancingStrategy defines load balancing strategies
@@ -263,50 +263,50 @@ const (
 // ReactorMetrics tracks reactor performance
 type ReactorMetrics struct {
 	mu sync.RWMutex
-	
+
 	TotalReactions     int64
 	ReactionsPerSecond float64
 	AverageEnergy      float64
 	CompressionGain    float64
 	ParallelEfficiency float64
 	ThroughputGain     float64
-	
-	StartTime          time.Time
-	LastUpdate         time.Time
+
+	StartTime  time.Time
+	LastUpdate time.Time
 }
 
 // NewHypercyclicReactor creates a new hypercyclic cognitive fusion reactor
 func NewHypercyclicReactor(atomSpace *AtomSpace, maxConcurrency int) *HypercyclicReactor {
 	reactor := &HypercyclicReactor{
-		ID:                 fmt.Sprintf("reactor_%d", time.Now().UnixNano()),
-		AtomSpace:          atomSpace,
-		ReactionCycles:     make(map[string]*ReactionCycle),
-		CatalystPool:       make(map[string]*Catalyst),
-		AutocatalyticRate:  1.5,
-		FusionEnergy:       1.0,
-		ReactionThreshold:  0.5,
-		InferenceQueue:     make(chan *InferenceTask, 10000),
-		MaxConcurrency:     maxConcurrency,
-		CompressionRatio:   1000.0, // 1000x acceleration
-		Created:            time.Now(),
-		Running:            false,
+		ID:                fmt.Sprintf("reactor_%d", time.Now().UnixNano()),
+		AtomSpace:         atomSpace,
+		ReactionCycles:    make(map[string]*ReactionCycle),
+		CatalystPool:      make(map[string]*Catalyst),
+		AutocatalyticRate: 1.5,
+		FusionEnergy:      1.0,
+		ReactionThreshold: 0.5,
+		InferenceQueue:    make(chan *InferenceTask, 10000),
+		MaxConcurrency:    maxConcurrency,
+		CompressionRatio:  1000.0, // 1000x acceleration
+		Created:           time.Now(),
+		Running:           false,
 	}
-	
+
 	// Initialize inference engine
 	reactor.InferenceEngine = NewInferenceEngine()
-	
+
 	// Initialize temporal compressor
 	reactor.TemporalCompressor = NewTemporalCompressor(1000.0, 1000)
-	
+
 	// Initialize worker pool
 	reactor.WorkerPool = NewWorkerPool(maxConcurrency)
-	
+
 	// Initialize metrics
 	reactor.Metrics = &ReactorMetrics{
 		StartTime:  time.Now(),
 		LastUpdate: time.Now(),
 	}
-	
+
 	return reactor
 }
 
@@ -341,10 +341,10 @@ func NewPLNEngine() *PLNEngine {
 		DefaultConfidence: 0.5,
 		EvidenceThreshold: 0.3,
 	}
-	
+
 	// Add standard PLN rules
 	pln.initializeStandardRules()
-	
+
 	return pln
 }
 
@@ -368,7 +368,7 @@ func (pln *PLNEngine) initializeStandardRules() {
 			}
 		},
 	})
-	
+
 	// Induction: Multiple instances of A→B increase confidence
 	pln.InductionRules = append(pln.InductionRules, &PLNRule{
 		Name:           "Induction",
@@ -394,7 +394,7 @@ func (pln *PLNEngine) initializeStandardRules() {
 			}
 		},
 	})
-	
+
 	// Abduction: (A→B, B) ⊢ A (with lower confidence)
 	// Note: Simplified - using EvaluationLink instead of raw concept
 	pln.AbductionRules = append(pln.AbductionRules, &PLNRule{
@@ -431,25 +431,25 @@ func NewTemporalCompressor(ratio float64, bufferSize int) *TemporalCompressor {
 // NewWorkerPool creates a new worker pool
 func NewWorkerPool(maxWorkers int) *WorkerPool {
 	pool := &WorkerPool{
-		Workers:      make([]*InferenceWorker, maxWorkers),
-		TaskQueue:    make(chan *InferenceTask, maxWorkers*10),
-		ResultQueue:  make(chan *InferenceResult, maxWorkers*10),
-		MaxWorkers:   maxWorkers,
+		Workers:     make([]*InferenceWorker, maxWorkers),
+		TaskQueue:   make(chan *InferenceTask, maxWorkers*10),
+		ResultQueue: make(chan *InferenceResult, maxWorkers*10),
+		MaxWorkers:  maxWorkers,
 		LoadBalancer: &LoadBalancer{
 			Strategy: LeastLoaded,
 			WorkLoad: make(map[int]int64),
 		},
 	}
-	
+
 	// Initialize workers
-	for i := 0; i < maxWorkers; i++ {
+	for i := range maxWorkers {
 		pool.Workers[i] = &InferenceWorker{
 			ID:   i,
 			Busy: false,
 		}
 		pool.LoadBalancer.WorkLoad[i] = 0
 	}
-	
+
 	return pool
 }
 
@@ -462,22 +462,22 @@ func (hr *HypercyclicReactor) Start(ctx context.Context) error {
 	}
 	hr.Running = true
 	hr.mu.Unlock()
-	
+
 	// Start worker pool
 	hr.WorkerPool.Start(ctx, hr)
-	
+
 	// Start reaction cycles
 	go hr.runReactionCycles(ctx)
-	
+
 	// Start inference engine
 	go hr.runInferenceEngine(ctx)
-	
+
 	// Start temporal compression
 	go hr.runTemporalCompression(ctx)
-	
+
 	// Start metrics collection
 	go hr.collectMetrics(ctx)
-	
+
 	return nil
 }
 
@@ -485,7 +485,7 @@ func (hr *HypercyclicReactor) Start(ctx context.Context) error {
 func (hr *HypercyclicReactor) Stop() {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
-	
+
 	hr.Running = false
 }
 
@@ -493,7 +493,7 @@ func (hr *HypercyclicReactor) Stop() {
 func (hr *HypercyclicReactor) AddReactionCycle(reactants, products, catalysts []string, rate float64) (*ReactionCycle, error) {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
-	
+
 	id := fmt.Sprintf("cycle_%d", time.Now().UnixNano())
 	cycle := &ReactionCycle{
 		ID:            id,
@@ -506,7 +506,7 @@ func (hr *HypercyclicReactor) AddReactionCycle(reactants, products, catalysts []
 		LastExecution: time.Time{},
 		Active:        true,
 	}
-	
+
 	hr.ReactionCycles[id] = cycle
 	return cycle, nil
 }
@@ -515,7 +515,7 @@ func (hr *HypercyclicReactor) AddReactionCycle(reactants, products, catalysts []
 func (hr *HypercyclicReactor) AddCatalyst(catalystType CatalystType, efficiency float64) (*Catalyst, error) {
 	hr.mu.Lock()
 	defer hr.mu.Unlock()
-	
+
 	id := fmt.Sprintf("catalyst_%d", time.Now().UnixNano())
 	catalyst := &Catalyst{
 		ID:          id,
@@ -526,7 +526,7 @@ func (hr *HypercyclicReactor) AddCatalyst(catalystType CatalystType, efficiency 
 		Created:     time.Now(),
 		LastActive:  time.Now(),
 	}
-	
+
 	hr.CatalystPool[id] = catalyst
 	return catalyst, nil
 }
@@ -536,7 +536,7 @@ func (hr *HypercyclicReactor) SubmitInference(task *InferenceTask) error {
 	if !hr.Running {
 		return fmt.Errorf("reactor not running")
 	}
-	
+
 	select {
 	case hr.InferenceQueue <- task:
 		return nil
@@ -549,7 +549,7 @@ func (hr *HypercyclicReactor) SubmitInference(task *InferenceTask) error {
 func (hr *HypercyclicReactor) runReactionCycles(ctx context.Context) {
 	ticker := time.NewTicker(10 * time.Millisecond) // High frequency for temporal compression
 	defer ticker.Stop()
-	
+
 	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
@@ -570,7 +570,7 @@ func (hr *HypercyclicReactor) executeReactionCycles() {
 		}
 	}
 	hr.mu.RUnlock()
-	
+
 	// Execute cycles in parallel
 	var wg sync.WaitGroup
 	for _, cycle := range cycles {
@@ -581,7 +581,7 @@ func (hr *HypercyclicReactor) executeReactionCycles() {
 		}(cycle)
 	}
 	wg.Wait()
-	
+
 	hr.mu.Lock()
 	hr.LastReaction = time.Now()
 	hr.mu.Unlock()
@@ -598,9 +598,9 @@ func (hr *HypercyclicReactor) executeReactionCycle(cycle *ReactionCycle) {
 			}
 		}
 	}
-	
+
 	effectiveRate := cycle.Rate * catalystBoost * hr.AutocatalyticRate
-	
+
 	// Check if reaction should fire
 	if effectiveRate > hr.ReactionThreshold {
 		// Perform reaction: transform reactants to products in AtomSpace
@@ -617,16 +617,16 @@ func (hr *HypercyclicReactor) executeReactionCycle(cycle *ReactionCycle) {
 				}
 			}
 		}
-		
+
 		cycle.mu.Lock()
 		cycle.Iterations++
 		cycle.LastExecution = time.Now()
-		
+
 		// Energy accumulation
 		cycle.Energy *= 0.99
 		cycle.Energy += effectiveRate * 0.01
 		cycle.mu.Unlock()
-		
+
 		hr.mu.Lock()
 		hr.FusionEnergy += effectiveRate * 0.001
 		hr.mu.Unlock()
@@ -650,7 +650,7 @@ func (hr *HypercyclicReactor) runInferenceEngine(ctx context.Context) {
 func (hr *HypercyclicReactor) runTemporalCompression(ctx context.Context) {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
@@ -665,9 +665,9 @@ func (hr *HypercyclicReactor) runTemporalCompression(ctx context.Context) {
 func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	
+
 	lastReactions := int64(0)
-	
+
 	for hr.isRunning() {
 		select {
 		case <-ctx.Done():
@@ -675,7 +675,7 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 		case <-ticker.C:
 			hr.mu.RLock()
 			hr.Metrics.mu.Lock()
-			
+
 			// Count total reactions
 			totalReactions := int64(0)
 			for _, cycle := range hr.ReactionCycles {
@@ -684,20 +684,20 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 				cycle.mu.RUnlock()
 			}
 			hr.Metrics.TotalReactions = totalReactions
-			
+
 			// Calculate reactions per second
 			reactionsDelta := totalReactions - lastReactions
 			hr.Metrics.ReactionsPerSecond = float64(reactionsDelta)
 			lastReactions = totalReactions
-			
+
 			// Average energy
 			hr.Metrics.AverageEnergy = hr.FusionEnergy / math.Max(float64(len(hr.ReactionCycles)), 1.0)
-			
+
 			// Compression gain
 			hr.TemporalCompressor.mu.RLock()
 			hr.Metrics.CompressionGain = hr.TemporalCompressor.CompressionGain
 			hr.TemporalCompressor.mu.RUnlock()
-			
+
 			// Parallel efficiency
 			hr.WorkerPool.mu.RLock()
 			activeWorkers := hr.WorkerPool.ActiveWorkers
@@ -705,10 +705,10 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 			if hr.MaxConcurrency > 0 {
 				hr.Metrics.ParallelEfficiency = float64(activeWorkers) / float64(hr.MaxConcurrency)
 			}
-			
+
 			// Throughput gain (reactions * compression * parallelism)
 			hr.Metrics.ThroughputGain = hr.Metrics.ReactionsPerSecond * hr.CompressionRatio * hr.Metrics.ParallelEfficiency
-			
+
 			hr.Metrics.LastUpdate = time.Now()
 			hr.Metrics.mu.Unlock()
 			hr.mu.RUnlock()
@@ -718,7 +718,7 @@ func (hr *HypercyclicReactor) collectMetrics(ctx context.Context) {
 
 // Start starts the worker pool
 func (wp *WorkerPool) Start(ctx context.Context, reactor *HypercyclicReactor) {
-	for i := 0; i < wp.MaxWorkers; i++ {
+	for i := range wp.MaxWorkers {
 		go wp.runWorker(ctx, i, reactor)
 	}
 }
@@ -734,10 +734,10 @@ func (wp *WorkerPool) runWorker(ctx context.Context, workerID int, reactor *Hype
 			wp.Workers[workerID].Busy = true
 			wp.ActiveWorkers++
 			wp.mu.Unlock()
-			
+
 			// Execute inference task
 			result := wp.executeInferenceTask(task, reactor)
-			
+
 			wp.mu.Lock()
 			wp.Workers[workerID].Busy = false
 			wp.Workers[workerID].TaskCount++
@@ -745,7 +745,7 @@ func (wp *WorkerPool) runWorker(ctx context.Context, workerID int, reactor *Hype
 			wp.ActiveWorkers--
 			wp.LoadBalancer.WorkLoad[workerID]++
 			wp.mu.Unlock()
-			
+
 			// Send result
 			if task.ResultChan != nil {
 				select {
@@ -769,7 +769,7 @@ func (wp *WorkerPool) SubmitTask(task *InferenceTask) {
 // executeInferenceTask executes an inference task
 func (wp *WorkerPool) executeInferenceTask(task *InferenceTask, reactor *HypercyclicReactor) *InferenceResult {
 	startTime := time.Now()
-	
+
 	result := &InferenceResult{
 		TaskID:   task.ID,
 		Success:  false,
@@ -777,7 +777,7 @@ func (wp *WorkerPool) executeInferenceTask(task *InferenceTask, reactor *Hypercy
 		Cost:     0.0,
 		Duration: 0,
 	}
-	
+
 	// Execute based on inference type
 	switch task.Type {
 	case ForwardInference:
@@ -786,41 +786,41 @@ func (wp *WorkerPool) executeInferenceTask(task *InferenceTask, reactor *Hypercy
 		result.TruthValue = tv
 		result.Error = err
 		result.Success = err == nil
-		
+
 	case BackwardInference:
 		output, tv, err := reactor.InferenceEngine.BackwardChain.Execute(reactor.AtomSpace, task.Input, task.Goal)
 		result.Output = output
 		result.TruthValue = tv
 		result.Error = err
 		result.Success = err == nil
-		
+
 	case DeductiveInference:
 		output, tv := reactor.InferenceEngine.PLNEngine.ApplyDeduction(reactor.AtomSpace, task.Input)
 		result.Output = output
 		result.TruthValue = tv
 		result.Success = len(output) > 0
-		
+
 	case InductiveInference:
 		output, tv := reactor.InferenceEngine.PLNEngine.ApplyInduction(reactor.AtomSpace, task.Input)
 		result.Output = output
 		result.TruthValue = tv
 		result.Success = len(output) > 0
-		
+
 	case AbductiveInference:
 		output, tv := reactor.InferenceEngine.PLNEngine.ApplyAbduction(reactor.AtomSpace, task.Input)
 		result.Output = output
 		result.TruthValue = tv
 		result.Success = len(output) > 0
 	}
-	
+
 	result.Duration = time.Since(startTime)
 	result.Cost = result.Duration.Seconds()
-	
+
 	reactor.InferenceEngine.mu.Lock()
 	reactor.InferenceEngine.InferenceCount++
 	reactor.InferenceEngine.LastInference = time.Now()
 	reactor.InferenceEngine.mu.Unlock()
-	
+
 	return result
 }
 
@@ -829,9 +829,9 @@ func (ce *ChainEngine) Execute(as *AtomSpace, input []string, goal string) ([]st
 	// Simplified chaining implementation
 	ce.mu.Lock()
 	defer ce.mu.Unlock()
-	
+
 	ce.Visited = make(map[string]bool)
-	
+
 	if ce.Mode == ForwardChainMode {
 		return ce.forwardChain(as, input, goal, 0)
 	}
@@ -843,7 +843,7 @@ func (ce *ChainEngine) forwardChain(as *AtomSpace, current []string, goal string
 	if depth >= ce.MaxDepth {
 		return []string{}, nil, fmt.Errorf("max depth reached")
 	}
-	
+
 	// Check if goal is reached
 	for _, atomID := range current {
 		if atomID == goal {
@@ -852,7 +852,7 @@ func (ce *ChainEngine) forwardChain(as *AtomSpace, current []string, goal string
 			}
 		}
 	}
-	
+
 	// Find applicable rules and continue chaining
 	derived := []string{}
 	for _, atomID := range current {
@@ -871,11 +871,11 @@ func (ce *ChainEngine) forwardChain(as *AtomSpace, current []string, goal string
 			}
 		}
 	}
-	
+
 	if len(derived) > 0 {
 		return ce.forwardChain(as, derived, goal, depth+1)
 	}
-	
+
 	return []string{}, nil, fmt.Errorf("goal not reached")
 }
 
@@ -884,12 +884,12 @@ func (ce *ChainEngine) backwardChain(as *AtomSpace, current []string, goal strin
 	if depth >= ce.MaxDepth {
 		return []string{}, nil, fmt.Errorf("max depth reached")
 	}
-	
+
 	// Start from goal and work backwards
 	if len(current) == 0 {
 		current = []string{goal}
 	}
-	
+
 	// Check if current premises are satisfied
 	satisfied := true
 	for _, atomID := range current {
@@ -903,7 +903,7 @@ func (ce *ChainEngine) backwardChain(as *AtomSpace, current []string, goal strin
 			break
 		}
 	}
-	
+
 	if satisfied {
 		if len(current) > 0 {
 			if atom, exists := as.GetAtom(current[0]); exists {
@@ -911,7 +911,7 @@ func (ce *ChainEngine) backwardChain(as *AtomSpace, current []string, goal strin
 			}
 		}
 	}
-	
+
 	// Find atoms that could derive current atoms
 	premises := []string{}
 	for _, atomID := range current {
@@ -922,11 +922,11 @@ func (ce *ChainEngine) backwardChain(as *AtomSpace, current []string, goal strin
 			}
 		}
 	}
-	
+
 	if len(premises) > 0 {
 		return ce.backwardChain(as, premises, goal, depth+1)
 	}
-	
+
 	return []string{}, nil, fmt.Errorf("goal not provable")
 }
 
@@ -935,18 +935,18 @@ func (pln *PLNEngine) ApplyDeduction(as *AtomSpace, input []string) ([]string, *
 	// Simplified deduction
 	output := []string{}
 	tvs := []*TruthValue{}
-	
+
 	for _, atomID := range input {
 		if atom, exists := as.GetAtom(atomID); exists {
 			tvs = append(tvs, atom.TruthValue)
 		}
 	}
-	
+
 	if len(pln.DeductionRules) > 0 && len(tvs) > 0 {
 		resultTV := pln.DeductionRules[0].Formula(tvs)
 		return output, resultTV
 	}
-	
+
 	return output, &TruthValue{Strength: 0.5, Confidence: 0.0, Count: 0.0}
 }
 
@@ -954,18 +954,18 @@ func (pln *PLNEngine) ApplyDeduction(as *AtomSpace, input []string) ([]string, *
 func (pln *PLNEngine) ApplyInduction(as *AtomSpace, input []string) ([]string, *TruthValue) {
 	output := []string{}
 	tvs := []*TruthValue{}
-	
+
 	for _, atomID := range input {
 		if atom, exists := as.GetAtom(atomID); exists {
 			tvs = append(tvs, atom.TruthValue)
 		}
 	}
-	
+
 	if len(pln.InductionRules) > 0 && len(tvs) > 0 {
 		resultTV := pln.InductionRules[0].Formula(tvs)
 		return output, resultTV
 	}
-	
+
 	return output, &TruthValue{Strength: 0.5, Confidence: 0.0, Count: 0.0}
 }
 
@@ -973,18 +973,18 @@ func (pln *PLNEngine) ApplyInduction(as *AtomSpace, input []string) ([]string, *
 func (pln *PLNEngine) ApplyAbduction(as *AtomSpace, input []string) ([]string, *TruthValue) {
 	output := []string{}
 	tvs := []*TruthValue{}
-	
+
 	for _, atomID := range input {
 		if atom, exists := as.GetAtom(atomID); exists {
 			tvs = append(tvs, atom.TruthValue)
 		}
 	}
-	
+
 	if len(pln.AbductionRules) > 0 && len(tvs) > 0 {
 		resultTV := pln.AbductionRules[0].Formula(tvs)
 		return output, resultTV
 	}
-	
+
 	return output, &TruthValue{Strength: 0.5, Confidence: 0.0, Count: 0.0}
 }
 
@@ -992,17 +992,17 @@ func (pln *PLNEngine) ApplyAbduction(as *AtomSpace, input []string) ([]string, *
 func (tc *TemporalCompressor) Compress() {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	
+
 	// Compress events in buffer
 	for _, event := range tc.Buffer {
 		compressedTime := time.Now().Add(time.Duration(float64(time.Since(event.OriginalTime).Nanoseconds()) / tc.CompressionRatio))
 		event.CompressedTime = compressedTime
 		event.CompressionFactor = tc.CompressionRatio
 	}
-	
+
 	tc.EventsProcessed += int64(len(tc.Buffer))
 	tc.CompressionGain = tc.CompressionRatio
-	
+
 	// Clear buffer
 	tc.Buffer = tc.Buffer[:0]
 }

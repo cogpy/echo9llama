@@ -25,16 +25,16 @@ type JanClient struct {
 type Config struct {
 	// Name is the identifier for this provider instance
 	Name string `json:"name"`
-	
+
 	// URL is the base URL of the janecho-server (e.g., "http://localhost:8080")
 	URL string `json:"url"`
-	
+
 	// APIKey is the authentication key (optional, depends on janecho-server config)
 	APIKey string `json:"api_key,omitempty"`
-	
+
 	// Timeout is the HTTP request timeout
 	Timeout time.Duration `json:"timeout"`
-	
+
 	// Model is the default model to use (janecho-server handles routing)
 	Model string `json:"model"`
 }
@@ -99,7 +99,7 @@ func (c *JanClient) MaxTokens() int {
 func (c *JanClient) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
 	// Build the request payload
 	messages := []ChatMessage{{Role: "user", Content: prompt}}
-	
+
 	// Add system prompt if provided
 	if opts.SystemPrompt != "" {
 		messages = append([]ChatMessage{{Role: "system", Content: opts.SystemPrompt}}, messages...)
@@ -165,7 +165,7 @@ func (c *JanClient) StreamGenerate(ctx context.Context, prompt string, opts llm.
 
 	// Build the request payload with streaming enabled
 	messages := []ChatMessage{{Role: "user", Content: prompt}}
-	
+
 	if opts.SystemPrompt != "" {
 		messages = append([]ChatMessage{{Role: "system", Content: opts.SystemPrompt}}, messages...)
 	}

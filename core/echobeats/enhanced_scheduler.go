@@ -9,55 +9,55 @@ import (
 
 // EnhancedScheduler extends EchoBeats with 12-step cognitive loop and 3 inference engines
 type EnhancedScheduler struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Original EchoBeats scheduler
-	echoBeats       *EchoBeats
-	
+	echoBeats *EchoBeats
+
 	// New components: 3 concurrent inference engines
-	engines         []*InferenceEngine
-	
+	engines []*InferenceEngine
+
 	// 12-step cognitive loop (shared across engines)
-	masterLoop      *CognitiveLoop
-	
+	masterLoop *CognitiveLoop
+
 	// Integration points
-	wakeRestManager   interface{} // *deeptreeecho.AutonomousWakeRestManager
-	goalOrchestrator  interface{} // *deeptreeecho.GoalOrchestrator
-	streamOfConsc     interface{} // *consciousness.StreamOfConsciousness
-	dreamCycle        interface{} // *echodream.DreamCycleIntegration
-	
+	wakeRestManager  interface{} // *deeptreeecho.AutonomousWakeRestManager
+	goalOrchestrator interface{} // *deeptreeecho.GoalOrchestrator
+	streamOfConsc    interface{} // *consciousness.StreamOfConsciousness
+	dreamCycle       interface{} // *echodream.DreamCycleIntegration
+
 	// Enhanced metrics
-	loopCycles      uint64
-	engineTasks     uint64
-	
+	loopCycles  uint64
+	engineTasks uint64
+
 	// Control
-	running         bool
+	running bool
 }
 
 // NewEnhancedScheduler creates an enhanced scheduler
 func NewEnhancedScheduler() *EnhancedScheduler {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	es := &EnhancedScheduler{
 		ctx:       ctx,
 		cancel:    cancel,
 		echoBeats: NewEchoBeats(),
 		engines:   make([]*InferenceEngine, 0, 3),
 	}
-	
+
 	// Create 3 concurrent inference engines with different specializations
 	es.engines = append(es.engines, NewInferenceEngine(1, SpecializationPerception))
 	es.engines = append(es.engines, NewInferenceEngine(2, SpecializationCognition))
 	es.engines = append(es.engines, NewInferenceEngine(3, SpecializationAction))
-	
+
 	// Create master 12-step cognitive loop
 	es.masterLoop = NewCognitiveLoop()
-	
+
 	// Set up callbacks to coordinate systems
 	es.setupCallbacks()
-	
+
 	return es
 }
 
@@ -74,11 +74,11 @@ func (es *EnhancedScheduler) setupCallbacks() {
 			es.mu.Lock()
 			es.loopCycles++
 			es.mu.Unlock()
-			
+
 			fmt.Printf("🔄 Enhanced Scheduler: Cognitive cycle %d complete\n", cycle)
 		},
 	)
-	
+
 	// Register EchoBeats handlers that route to inference engines
 	es.registerEnhancedHandlers()
 }
@@ -96,7 +96,7 @@ func (es *EnhancedScheduler) registerEnhancedHandlers() {
 		}
 		return es.engines[0].SubmitTask(task)
 	})
-	
+
 	// Goal pursuit handler - route to action engine
 	es.echoBeats.RegisterHandler(EventGoalPursuit, func(event *CognitiveEvent) error {
 		task := &InferenceTask{
@@ -108,7 +108,7 @@ func (es *EnhancedScheduler) registerEnhancedHandlers() {
 		}
 		return es.engines[2].SubmitTask(task)
 	})
-	
+
 	// Introspection handler - route to cognition engine
 	es.echoBeats.RegisterHandler(EventIntrospection, func(event *CognitiveEvent) error {
 		task := &InferenceTask{
@@ -120,7 +120,7 @@ func (es *EnhancedScheduler) registerEnhancedHandlers() {
 		}
 		return es.engines[1].SubmitTask(task)
 	})
-	
+
 	// Learning handler - route to cognition engine
 	es.echoBeats.RegisterHandler(EventLearning, func(event *CognitiveEvent) error {
 		task := &InferenceTask{
@@ -139,7 +139,7 @@ func (es *EnhancedScheduler) onCognitiveStepComplete(step int, result *StepResul
 	if result == nil || !result.Success {
 		return
 	}
-	
+
 	// Generate insights can trigger new events
 	if len(result.Insights) > 0 {
 		for _, insight := range result.Insights {
@@ -156,7 +156,7 @@ func (es *EnhancedScheduler) onCognitiveStepComplete(step int, result *StepResul
 			})
 		}
 	}
-	
+
 	// High cognitive load can trigger rest
 	if result.CognitiveLoad > 0.8 {
 		es.echoBeats.ScheduleEvent(&CognitiveEvent{
@@ -178,32 +178,32 @@ func (es *EnhancedScheduler) Start() error {
 	}
 	es.running = true
 	es.mu.Unlock()
-	
+
 	fmt.Println("🎵 Enhanced EchoBeats Scheduler: Starting...")
 	fmt.Println("   Components:")
 	fmt.Println("   • Original EchoBeats event scheduler")
 	fmt.Println("   • 3 concurrent inference engines")
 	fmt.Println("   • 12-step cognitive loop")
-	
+
 	// Start original EchoBeats
 	if err := es.echoBeats.Start(); err != nil {
 		return fmt.Errorf("failed to start EchoBeats: %w", err)
 	}
-	
+
 	// Start all inference engines
 	for _, engine := range es.engines {
 		if err := engine.Start(); err != nil {
 			return fmt.Errorf("failed to start inference engine: %w", err)
 		}
 	}
-	
+
 	// Start master cognitive loop
 	if err := es.masterLoop.Start(); err != nil {
 		return fmt.Errorf("failed to start cognitive loop: %w", err)
 	}
-	
+
 	fmt.Println("🎵 Enhanced EchoBeats Scheduler: All systems operational!")
-	
+
 	return nil
 }
 
@@ -211,32 +211,32 @@ func (es *EnhancedScheduler) Start() error {
 func (es *EnhancedScheduler) Stop() error {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	
+
 	if !es.running {
 		return fmt.Errorf("enhanced scheduler not running")
 	}
-	
+
 	fmt.Println("🎵 Enhanced EchoBeats Scheduler: Stopping...")
 	es.running = false
 	es.cancel()
-	
+
 	// Stop cognitive loop
 	if err := es.masterLoop.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping cognitive loop: %v\n", err)
 	}
-	
+
 	// Stop all inference engines
 	for _, engine := range es.engines {
 		if err := engine.Stop(); err != nil {
 			fmt.Printf("⚠️  Error stopping inference engine: %v\n", err)
 		}
 	}
-	
+
 	// Stop original EchoBeats
 	if err := es.echoBeats.Stop(); err != nil {
 		fmt.Printf("⚠️  Error stopping EchoBeats: %v\n", err)
 	}
-	
+
 	return nil
 }
 
@@ -277,25 +277,25 @@ func (es *EnhancedScheduler) SetDreamCycle(dc interface{}) {
 func (es *EnhancedScheduler) GetStatus() map[string]interface{} {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	// Get EchoBeats status
 	echoBeatsStatus := es.echoBeats.GetStatus()
-	
+
 	// Get cognitive loop metrics
 	loopMetrics := es.masterLoop.GetMetrics()
-	
+
 	// Get engine metrics
 	engineMetrics := make([]map[string]interface{}, len(es.engines))
 	for i, engine := range es.engines {
 		engineMetrics[i] = engine.GetMetrics()
 	}
-	
+
 	return map[string]interface{}{
-		"running":          es.running,
-		"loop_cycles":      es.loopCycles,
-		"engine_tasks":     es.engineTasks,
-		"echobeats":        echoBeatsStatus,
-		"cognitive_loop":   loopMetrics,
+		"running":           es.running,
+		"loop_cycles":       es.loopCycles,
+		"engine_tasks":      es.engineTasks,
+		"echobeats":         echoBeatsStatus,
+		"cognitive_loop":    loopMetrics,
 		"inference_engines": engineMetrics,
 	}
 }

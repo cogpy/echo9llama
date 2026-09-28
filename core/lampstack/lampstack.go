@@ -42,10 +42,10 @@ type Stack struct {
 // Config holds the configuration for the LAMPSTACK
 type Config struct {
 	// Echo configuration
-	EnableEchobeats      bool          `json:"enable_echobeats"`
-	EnableConsciousness  bool          `json:"enable_consciousness"`
-	EnableDreaming       bool          `json:"enable_dreaming"`
-	CycleDuration        time.Duration `json:"cycle_duration"`
+	EnableEchobeats     bool          `json:"enable_echobeats"`
+	EnableConsciousness bool          `json:"enable_consciousness"`
+	EnableDreaming      bool          `json:"enable_dreaming"`
+	CycleDuration       time.Duration `json:"cycle_duration"`
 
 	// API configuration
 	PrimaryProvider   string            `json:"primary_provider"`
@@ -56,16 +56,16 @@ type Config struct {
 	Timeout           time.Duration     `json:"timeout"`
 
 	// Memory configuration
-	EnableHypergraph    bool   `json:"enable_hypergraph"`
-	EnableEpisodicMemory bool  `json:"enable_episodic_memory"`
-	EnableSemanticMemory bool  `json:"enable_semantic_memory"`
-	MemoryCapacity      int    `json:"memory_capacity"`
-	VectorDimension     int    `json:"vector_dimension"`
+	EnableHypergraph     bool `json:"enable_hypergraph"`
+	EnableEpisodicMemory bool `json:"enable_episodic_memory"`
+	EnableSemanticMemory bool `json:"enable_semantic_memory"`
+	MemoryCapacity       int  `json:"memory_capacity"`
+	VectorDimension      int  `json:"vector_dimension"`
 
 	// Persistence configuration
-	PersistenceBackend string `json:"persistence_backend"`
-	DataDirectory      string `json:"data_directory"`
-	AutoSave           bool   `json:"auto_save"`
+	PersistenceBackend string        `json:"persistence_backend"`
+	DataDirectory      string        `json:"data_directory"`
+	AutoSave           bool          `json:"auto_save"`
 	SaveInterval       time.Duration `json:"save_interval"`
 
 	// Integration configuration
@@ -116,8 +116,8 @@ type StackMetrics struct {
 	mu sync.RWMutex
 
 	// Timing
-	StartTime    time.Time     `json:"start_time"`
-	Uptime       time.Duration `json:"uptime"`
+	StartTime time.Time     `json:"start_time"`
+	Uptime    time.Duration `json:"uptime"`
 
 	// Request counts
 	TotalRequests      int64 `json:"total_requests"`
@@ -130,7 +130,7 @@ type StackMetrics struct {
 	ConsolidationsCycles int64 `json:"consolidation_cycles"`
 
 	// Memory metrics
-	MemoriesStored   int64 `json:"memories_stored"`
+	MemoriesStored    int64 `json:"memories_stored"`
 	MemoriesRetrieved int64 `json:"memories_retrieved"`
 
 	// Performance

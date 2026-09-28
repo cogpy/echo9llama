@@ -11,7 +11,7 @@ func TestPersonaManagerActivation(t *testing.T) {
 
 	// Scenario 1: Low coherence, many patterns -> should activate Ordo
 	identity.Coherence = 0.4
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.7,
@@ -29,7 +29,7 @@ func TestPersonaManagerActivation(t *testing.T) {
 	// Scenario 2: High coherence, few patterns -> should activate Chao
 	identity.Coherence = 0.92
 	identity.Patterns = make(map[string]*Pattern)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.9,
@@ -121,7 +121,7 @@ func TestPersonaTransitions(t *testing.T) {
 	// Phase 1: Early exploration (Chao)
 	identity.Coherence = 0.3
 	identity.Iterations = 10
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.5,
@@ -193,7 +193,7 @@ func TestEmotionalPersonaModulation(t *testing.T) {
 	// Set baseline state
 	identity.Coherence = 0.6
 	identity.Iterations = 500
-	for i := 0; i < 25; i++ {
+	for i := range 25 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.7,
@@ -236,13 +236,13 @@ func TestPersonaManagerStats(t *testing.T) {
 	pm := identity.PersonaManager
 
 	// Generate multiple activations
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		// Alternate between Ordo-favoring and Chao-favoring states
 		if i%2 == 0 {
 			// Ordo state
 			identity.Coherence = 0.3
 			identity.Iterations = uint64(1000 + i*100)
-			for j := 0; j < 50; j++ {
+			for j := range 50 {
 				identity.Patterns[string(rune(j))] = &Pattern{
 					ID:       string(rune(j)),
 					Strength: 0.7,
@@ -253,7 +253,7 @@ func TestPersonaManagerStats(t *testing.T) {
 			identity.Coherence = 0.95
 			identity.Iterations = uint64(50 + i*10)
 			identity.Patterns = make(map[string]*Pattern)
-			for j := 0; j < 5; j++ {
+			for j := range 5 {
 				identity.Patterns[string(rune(j))] = &Pattern{
 					ID:       string(rune(j)),
 					Strength: 0.6,
@@ -295,7 +295,7 @@ func TestIntegratedPersonaDecisionMaking(t *testing.T) {
 	// Scenario 1: Force Ordo activation and verify decisions
 	identity.Coherence = 0.35
 	identity.Iterations = 2000
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.75,
@@ -314,7 +314,7 @@ func TestIntegratedPersonaDecisionMaking(t *testing.T) {
 	// Scenario 2: Force Chao activation and verify decisions
 	identity.Coherence = 0.93
 	identity.Patterns = make(map[string]*Pattern)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.9,

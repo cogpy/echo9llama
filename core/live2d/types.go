@@ -51,22 +51,22 @@ type AvatarState struct {
 
 // Live2DModel represents a Live2D Cubism model
 type Live2DModel struct {
-	mu          sync.RWMutex
-	ModelPath   string                    `json:"model_path"`
-	Name        string                    `json:"name"`
-	Parameters  map[string]*ModelParameter `json:"parameters"`
-	CurrentState AvatarState              `json:"current_state"`
-	UpdateRate  time.Duration             `json:"update_rate"` // How often to update parameters
+	mu           sync.RWMutex
+	ModelPath    string                     `json:"model_path"`
+	Name         string                     `json:"name"`
+	Parameters   map[string]*ModelParameter `json:"parameters"`
+	CurrentState AvatarState                `json:"current_state"`
+	UpdateRate   time.Duration              `json:"update_rate"` // How often to update parameters
 }
 
 // ParameterMapper maps cognitive/emotional states to Live2D parameters
 type ParameterMapper interface {
 	// MapEmotionalState maps emotional state to parameter values
 	MapEmotionalState(state EmotionalState) []ModelParameter
-	
+
 	// MapCognitiveState maps cognitive state to parameter values
 	MapCognitiveState(state CognitiveState) []ModelParameter
-	
+
 	// MapCombinedState maps both states together
 	MapCombinedState(state AvatarState) []ModelParameter
 }
@@ -74,30 +74,30 @@ type ParameterMapper interface {
 // StandardParameterNames defines common Live2D parameter IDs
 var StandardParameterNames = struct {
 	// Face expression parameters
-	EyeOpenLeft      string
-	EyeOpenRight     string
-	EyeSmileLeft     string
-	EyeSmileRight    string
-	MouthOpenY       string
-	MouthForm        string
-	MouthSmile       string
-	
+	EyeOpenLeft   string
+	EyeOpenRight  string
+	EyeSmileLeft  string
+	EyeSmileRight string
+	MouthOpenY    string
+	MouthForm     string
+	MouthSmile    string
+
 	// Eye movement
-	EyeBallX         string
-	EyeBallY         string
-	
+	EyeBallX string
+	EyeBallY string
+
 	// Head movement
-	AngleX           string
-	AngleY           string
-	AngleZ           string
-	
+	AngleX string
+	AngleY string
+	AngleZ string
+
 	// Body
-	BodyAngleX       string
-	BodyAngleY       string
-	BodyAngleZ       string
-	
+	BodyAngleX string
+	BodyAngleY string
+	BodyAngleZ string
+
 	// Breathing
-	Breathing        string
+	Breathing string
 }{
 	// Standard Cubism parameter IDs
 	EyeOpenLeft:   "ParamEyeLOpen",
@@ -107,19 +107,19 @@ var StandardParameterNames = struct {
 	MouthOpenY:    "ParamMouthOpenY",
 	MouthForm:     "ParamMouthForm",
 	MouthSmile:    "ParamMouthSmile",
-	
-	EyeBallX:      "ParamEyeBallX",
-	EyeBallY:      "ParamEyeBallY",
-	
-	AngleX:        "ParamAngleX",
-	AngleY:        "ParamAngleY",
-	AngleZ:        "ParamAngleZ",
-	
-	BodyAngleX:    "ParamBodyAngleX",
-	BodyAngleY:    "ParamBodyAngleY",
-	BodyAngleZ:    "ParamBodyAngleZ",
-	
-	Breathing:     "ParamBreath",
+
+	EyeBallX: "ParamEyeBallX",
+	EyeBallY: "ParamEyeBallY",
+
+	AngleX: "ParamAngleX",
+	AngleY: "ParamAngleY",
+	AngleZ: "ParamAngleZ",
+
+	BodyAngleX: "ParamBodyAngleX",
+	BodyAngleY: "ParamBodyAngleY",
+	BodyAngleZ: "ParamBodyAngleZ",
+
+	Breathing: "ParamBreath",
 }
 
 // EmotionPresets defines preset parameter values for common emotions

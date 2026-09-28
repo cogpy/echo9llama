@@ -13,60 +13,60 @@ import (
 // NeuralPatternProcessor provides neural network-inspired pattern processing
 // This is inspired by GoMLX's tensor and graph computation approach
 type NeuralPatternProcessor struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// Pattern storage
-	patterns        map[string]*CognitivePattern
-	patternIndex    map[string][]string // category -> pattern IDs
+	patterns     map[string]*CognitivePattern
+	patternIndex map[string][]string // category -> pattern IDs
 
 	// Neural layers
-	layers          []*NeuralLayer
+	layers []*NeuralLayer
 
 	// Learning parameters
-	learningRate    float64
-	momentum        float64
-	decayRate       float64
+	learningRate float64
+	momentum     float64
+	decayRate    float64
 
 	// Activation history
 	activations     []*PatternActivation
 	activationLimit int
 
 	// Metrics
-	totalPatterns   uint64
+	totalPatterns    uint64
 	totalActivations uint64
-	totalLearnings  uint64
+	totalLearnings   uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // CognitivePattern represents a learned pattern
 type CognitivePattern struct {
-	ID          string
-	Category    string
-	Name        string
-	Features    []float64
-	Weights     []float64
-	Bias        float64
-	Strength    float64
-	Frequency   uint64
-	LastActive  time.Time
-	CreatedAt   time.Time
-	Metadata    map[string]interface{}
+	ID         string
+	Category   string
+	Name       string
+	Features   []float64
+	Weights    []float64
+	Bias       float64
+	Strength   float64
+	Frequency  uint64
+	LastActive time.Time
+	CreatedAt  time.Time
+	Metadata   map[string]interface{}
 }
 
 // NeuralLayer represents a layer in the neural processing pipeline
 type NeuralLayer struct {
-	ID          string
-	Name        string
-	Type        NeuralLayerType
-	InputSize   int
-	OutputSize  int
-	Weights     [][]float64
-	Biases      []float64
-	Activation  ActivationFunc
+	ID         string
+	Name       string
+	Type       NeuralLayerType
+	InputSize  int
+	OutputSize int
+	Weights    [][]float64
+	Biases     []float64
+	Activation ActivationFunc
 }
 
 // NeuralLayerType represents the type of neural layer
@@ -92,12 +92,12 @@ const (
 
 // PatternActivation records when a pattern was activated
 type PatternActivation struct {
-	PatternID   string
-	Timestamp   time.Time
-	Strength    float64
-	Context     string
-	Input       []float64
-	Output      []float64
+	PatternID string
+	Timestamp time.Time
+	Strength  float64
+	Context   string
+	Input     []float64
+	Output    []float64
 }
 
 // NewNeuralPatternProcessor creates a new neural pattern processor
@@ -241,9 +241,9 @@ func (npp *NeuralPatternProcessor) initializeWeights(inputSize, outputSize int) 
 	weights := make([][]float64, outputSize)
 	scale := math.Sqrt(2.0 / float64(inputSize+outputSize))
 
-	for i := 0; i < outputSize; i++ {
+	for i := range outputSize {
 		weights[i] = make([]float64, inputSize)
-		for j := 0; j < inputSize; j++ {
+		for j := range inputSize {
 			// Simple pseudo-random initialization
 			weights[i][j] = (float64((i*inputSize+j)%1000)/1000.0 - 0.5) * scale
 		}
@@ -346,7 +346,7 @@ func (npp *NeuralPatternProcessor) computeSimilarity(a, b []float64) float64 {
 	normA := 0.0
 	normB := 0.0
 
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		dotProduct += aPadded[i] * bPadded[i]
 		normA += aPadded[i] * aPadded[i]
 		normB += bPadded[i] * bPadded[i]
@@ -407,9 +407,9 @@ func (npp *NeuralPatternProcessor) forwardLayer(layer *NeuralLayer, input []floa
 	output := make([]float64, layer.OutputSize)
 
 	// Matrix multiplication
-	for i := 0; i < layer.OutputSize; i++ {
+	for i := range layer.OutputSize {
 		sum := layer.Biases[i]
-		for j := 0; j < layer.InputSize; j++ {
+		for j := range layer.InputSize {
 			sum += layer.Weights[i][j] * paddedInput[j]
 		}
 		output[i] = sum
@@ -522,7 +522,7 @@ func (npp *NeuralPatternProcessor) GetStrongestPatterns(n int) []*CognitivePatte
 	}
 
 	// Sort by strength (simple bubble sort for small N)
-	for i := 0; i < len(allPatterns)-1; i++ {
+	for i := range len(allPatterns) - 1 {
 		for j := i + 1; j < len(allPatterns); j++ {
 			if allPatterns[j].Strength > allPatterns[i].Strength {
 				allPatterns[i], allPatterns[j] = allPatterns[j], allPatterns[i]

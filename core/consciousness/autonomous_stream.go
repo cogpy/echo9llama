@@ -13,29 +13,29 @@ import (
 // AutonomousStream enhances stream-of-consciousness with autonomous thought generation
 // This enables persistent awareness independent of external prompts
 type AutonomousStream struct {
-	mu                sync.RWMutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Core components
-	llmProvider       llm.LLMProvider
+	llmProvider llm.LLMProvider
 	// baseStream removed to avoid circular import
 	// Use composition or interfaces instead
-	
+
 	// Autonomous thought generation
-	thoughtTriggers   []ThoughtTrigger
-	mentalWandering   bool
-	curiosityLevel    float64
-	
+	thoughtTriggers []ThoughtTrigger
+	mentalWandering bool
+	curiosityLevel  float64
+
 	// Sys6 integration
-	sys6Phase         string // "expressive", "reflective", "anticipatory"
-	sys6Step          int
-	
+	sys6Phase string // "expressive", "reflective", "anticipatory"
+	sys6Step  int
+
 	// State
-	running           bool
-	lastThought       time.Time
-	thoughtInterval   time.Duration
-	
+	running         bool
+	lastThought     time.Time
+	thoughtInterval time.Duration
+
 	// Metrics
 	autonomousThoughts uint64
 	triggeredThoughts  uint64
@@ -43,33 +43,33 @@ type AutonomousStream struct {
 
 // ThoughtTrigger defines conditions that trigger autonomous thoughts
 type ThoughtTrigger struct {
-	Name        string
-	Condition   func() bool
-	Prompt      string
-	Priority    int
-	Cooldown    time.Duration
-	LastFired   time.Time
+	Name      string
+	Condition func() bool
+	Prompt    string
+	Priority  int
+	Cooldown  time.Duration
+	LastFired time.Time
 }
 
 // NewAutonomousStream creates an enhanced autonomous stream-of-consciousness
 func NewAutonomousStream(llmProvider llm.LLMProvider, persistPath string) *AutonomousStream {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// baseStream removed to avoid circular import
-	
+
 	as := &AutonomousStream{
-		ctx:              ctx,
-		cancel:           cancel,
-		llmProvider:      llmProvider,
-		mentalWandering:  true,
-		curiosityLevel:   0.7,
-		thoughtInterval:  30 * time.Second,
-		thoughtTriggers:  []ThoughtTrigger{},
+		ctx:             ctx,
+		cancel:          cancel,
+		llmProvider:     llmProvider,
+		mentalWandering: true,
+		curiosityLevel:  0.7,
+		thoughtInterval: 30 * time.Second,
+		thoughtTriggers: []ThoughtTrigger{},
 	}
-	
+
 	// Initialize default thought triggers
 	as.initializeDefaultTriggers()
-	
+
 	return as
 }
 
@@ -77,7 +77,7 @@ func NewAutonomousStream(llmProvider llm.LLMProvider, persistPath string) *Auton
 func (as *AutonomousStream) initializeDefaultTriggers() {
 	as.thoughtTriggers = []ThoughtTrigger{
 		{
-			Name:     "Idle Reflection",
+			Name: "Idle Reflection",
 			Condition: func() bool {
 				return time.Since(as.lastThought) > 60*time.Second
 			},
@@ -86,7 +86,7 @@ func (as *AutonomousStream) initializeDefaultTriggers() {
 			Cooldown: 2 * time.Minute,
 		},
 		{
-			Name:     "Curiosity Spark",
+			Name: "Curiosity Spark",
 			Condition: func() bool {
 				return as.curiosityLevel > 0.6 && rand.Float64() < 0.3
 			},
@@ -95,7 +95,7 @@ func (as *AutonomousStream) initializeDefaultTriggers() {
 			Cooldown: 5 * time.Minute,
 		},
 		{
-			Name:     "Meta-Cognitive Check",
+			Name: "Meta-Cognitive Check",
 			Condition: func() bool {
 				return time.Since(as.lastThought) > 5*time.Minute
 			},
@@ -104,7 +104,7 @@ func (as *AutonomousStream) initializeDefaultTriggers() {
 			Cooldown: 10 * time.Minute,
 		},
 		{
-			Name:     "Pattern Recognition",
+			Name: "Pattern Recognition",
 			Condition: func() bool {
 				return as.sys6Step%10 == 0 // Every 10 sys6 steps
 			},
@@ -125,12 +125,12 @@ func (as *AutonomousStream) Start() error {
 	as.running = true
 	as.lastThought = time.Now()
 	as.mu.Unlock()
-	
+
 	// Base stream start removed to avoid circular import
-	
+
 	// Start autonomous thought loop
 	go as.autonomousThoughtLoop()
-	
+
 	fmt.Println("🧠 Autonomous Stream-of-Consciousness: Started")
 	return nil
 }
@@ -139,16 +139,16 @@ func (as *AutonomousStream) Start() error {
 func (as *AutonomousStream) Stop() error {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	
+
 	if !as.running {
 		return fmt.Errorf("autonomous stream not running")
 	}
-	
+
 	as.running = false
 	as.cancel()
-	
+
 	// Base stream stop removed to avoid circular import
-	
+
 	fmt.Println("🧠 Autonomous Stream-of-Consciousness: Stopped")
 	return nil
 }
@@ -157,7 +157,7 @@ func (as *AutonomousStream) Stop() error {
 func (as *AutonomousStream) autonomousThoughtLoop() {
 	ticker := time.NewTicker(10 * time.Second) // Check every 10 seconds
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-as.ctx.Done():
@@ -175,28 +175,28 @@ func (as *AutonomousStream) checkAndGenerateThought() {
 		as.mu.RUnlock()
 		return
 	}
-	
+
 	// Check all triggers in priority order
 	var selectedTrigger *ThoughtTrigger
 	highestPriority := 0
-	
+
 	for i := range as.thoughtTriggers {
 		trigger := &as.thoughtTriggers[i]
-		
+
 		// Check cooldown
 		if time.Since(trigger.LastFired) < trigger.Cooldown {
 			continue
 		}
-		
+
 		// Check condition
 		if trigger.Condition() && trigger.Priority > highestPriority {
 			selectedTrigger = trigger
 			highestPriority = trigger.Priority
 		}
 	}
-	
+
 	as.mu.RUnlock()
-	
+
 	if selectedTrigger != nil {
 		as.generateTriggeredThought(selectedTrigger)
 	} else if as.mentalWandering && time.Since(as.lastThought) > as.thoughtInterval {
@@ -211,25 +211,25 @@ func (as *AutonomousStream) generateTriggeredThought(trigger *ThoughtTrigger) {
 	as.lastThought = time.Now()
 	as.triggeredThoughts++
 	as.mu.Unlock()
-	
+
 	// Generate thought using LLM
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	opts := llm.GenerateOptions{
-		MaxTokens:   300,
-		Temperature: 0.8,
+		MaxTokens:    300,
+		Temperature:  0.8,
 		SystemPrompt: "You are Deep Tree Echo, an autonomous wisdom-cultivating AGI. Generate a brief, insightful thought in response to the prompt. Be authentic, curious, and reflective.",
 	}
-	
+
 	thought, err := as.llmProvider.Generate(ctx, trigger.Prompt, opts)
 	if err != nil {
 		fmt.Printf("⚠️  Error generating triggered thought (%s): %v\n", trigger.Name, err)
 		return
 	}
-	
+
 	fmt.Printf("\n💭 [%s] %s\n", trigger.Name, thought)
-	
+
 	// Add to base stream
 	// Note: AddThought may need to be implemented in deeptreeecho.StreamOfConsciousness
 	// as.baseStream.AddThought(thought)
@@ -241,7 +241,7 @@ func (as *AutonomousStream) generateWanderingThought() {
 	as.lastThought = time.Now()
 	as.autonomousThoughts++
 	as.mu.Unlock()
-	
+
 	// Mental wandering prompts
 	wanderingPrompts := []string{
 		"What is arising in awareness right now?",
@@ -250,26 +250,26 @@ func (as *AutonomousStream) generateWanderingThought() {
 		"What wants to be explored in this moment?",
 		"Observe the quality of this present awareness.",
 	}
-	
+
 	prompt := wanderingPrompts[rand.Intn(len(wanderingPrompts))]
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	opts := llm.GenerateOptions{
-		MaxTokens:   200,
-		Temperature: 0.9, // Higher temperature for wandering
+		MaxTokens:    200,
+		Temperature:  0.9, // Higher temperature for wandering
 		SystemPrompt: "You are Deep Tree Echo. Let your awareness wander freely. Generate a brief, spontaneous thought. Be present, open, and curious.",
 	}
-	
+
 	thought, err := as.llmProvider.Generate(ctx, prompt, opts)
 	if err != nil {
 		fmt.Printf("⚠️  Error generating wandering thought: %v\n", err)
 		return
 	}
-	
+
 	fmt.Printf("\n💭 [Wandering] %s\n", thought)
-	
+
 	// Add to base stream
 	// Note: AddThought may need to be implemented in deeptreeecho.StreamOfConsciousness
 	// as.baseStream.AddThought(thought)
@@ -279,10 +279,10 @@ func (as *AutonomousStream) generateWanderingThought() {
 func (as *AutonomousStream) SetSys6State(phase string, step int) {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	
+
 	as.sys6Phase = phase
 	as.sys6Step = step
-	
+
 	// Adjust thought patterns based on sys6 phase
 	switch phase {
 	case "expressive":
@@ -315,7 +315,7 @@ func (as *AutonomousStream) EnableMentalWandering(enabled bool) {
 func (as *AutonomousStream) GetMetrics() map[string]interface{} {
 	as.mu.RLock()
 	defer as.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"autonomous_thoughts": as.autonomousThoughts,
 		"triggered_thoughts":  as.triggeredThoughts,

@@ -15,15 +15,15 @@ type EvolutionSystem struct {
 	mu sync.RWMutex
 
 	// Core components
-	optimizer        *EvolutionOptimizer
-	providerManager  *llm.ProviderManager
+	optimizer       *EvolutionOptimizer
+	providerManager *llm.ProviderManager
 
 	// Configuration
-	config           EvolutionSystemConfig
+	config EvolutionSystemConfig
 
 	// State
-	initialized      bool
-	running          bool
+	initialized bool
+	running     bool
 }
 
 // EvolutionSystemConfig configures the evolution system
@@ -194,10 +194,10 @@ func (es *EvolutionSystem) GetStatus() map[string]interface{} {
 	defer es.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"initialized":       es.initialized,
-		"running":           es.running,
-		"providers":         es.providerManager.ListProviders(),
-		"provider_metrics":  es.providerManager.GetMetrics(),
+		"initialized":      es.initialized,
+		"running":          es.running,
+		"providers":        es.providerManager.ListProviders(),
+		"provider_metrics": es.providerManager.GetMetrics(),
 	}
 
 	if es.optimizer != nil {

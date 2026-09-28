@@ -230,12 +230,9 @@ func (m *AutonomousWakeRestManager) evaluateNeedForRest(awakeTime time.Duration)
 	m.mu.Unlock()
 
 	// Decision logic for resting
-	shouldRest := false
+	shouldRest := fatigue > m.restThreshold
 
 	// High fatigue
-	if fatigue > m.restThreshold {
-		shouldRest = true
-	}
 
 	// High cognitive load for extended period
 	if cogLoad > 0.8 && awakeTime > m.minWakeDuration {
@@ -267,12 +264,9 @@ func (m *AutonomousWakeRestManager) evaluateNeedForWake(dreamTime time.Duration)
 	m.mu.Unlock()
 
 	// Decision logic for waking
-	shouldWake := false
+	shouldWake := fatigue < m.wakeThreshold
 
 	// Fatigue recovered
-	if fatigue < m.wakeThreshold {
-		shouldWake = true
-	}
 
 	// Minimum rest duration reached and fatigue low enough
 	if dreamTime > m.minRestDuration && fatigue < 0.5 {

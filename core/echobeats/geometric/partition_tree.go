@@ -19,12 +19,12 @@ func NewPartition(components []int, partitionType string) *Partition {
 	for _, c := range components {
 		weight += c
 	}
-	
+
 	// Sort components in descending order (standard form)
 	sorted := make([]int, len(components))
 	copy(sorted, components)
 	sort.Sort(sort.Reverse(sort.IntSlice(sorted)))
-	
+
 	return &Partition{
 		Components: sorted,
 		Weight:     weight,
@@ -49,12 +49,12 @@ func GeneratePartitions(n int) (*PartitionSet, error) {
 	if n < 0 || n > 5 {
 		return nil, fmt.Errorf("partition generation only supported for n in [0, 5], got %d", n)
 	}
-	
+
 	ps := &PartitionSet{
 		N:          n,
 		Partitions: make([]*Partition, 0),
 	}
-	
+
 	switch n {
 	case 0:
 		// Empty partition
@@ -82,7 +82,7 @@ func GeneratePartitions(n int) (*PartitionSet, error) {
 		ps.Partitions = append(ps.Partitions, NewPartition([]int{2, 1, 1, 1}, "particular"))
 		ps.Partitions = append(ps.Partitions, NewPartition([]int{1, 1, 1, 1, 1}, "particular"))
 	}
-	
+
 	return ps, nil
 }
 
@@ -110,10 +110,10 @@ func (ps *PartitionSet) GetParticularPartitions() []*Partition {
 
 // RootedTree represents a rooted tree structure.
 type RootedTree struct {
-	ID       int
-	Nodes    []*TreeNode
-	Root     *TreeNode
-	Depth    int
+	ID    int
+	Nodes []*TreeNode
+	Root  *TreeNode
+	Depth int
 }
 
 // TreeNode represents a node in a rooted tree.
@@ -134,7 +134,7 @@ func NewRootedTree(id int) *RootedTree {
 		Children: make([]*TreeNode, 0),
 		Depth:    0,
 	}
-	
+
 	return &RootedTree{
 		ID:    id,
 		Nodes: []*TreeNode{root},
@@ -152,14 +152,14 @@ func (rt *RootedTree) AddChild(parent *TreeNode, label string) *TreeNode {
 		Children: make([]*TreeNode, 0),
 		Depth:    parent.Depth + 1,
 	}
-	
+
 	parent.Children = append(parent.Children, child)
 	rt.Nodes = append(rt.Nodes, child)
-	
+
 	if child.Depth > rt.Depth {
 		rt.Depth = child.Depth
 	}
-	
+
 	return child
 }
 
@@ -180,12 +180,12 @@ func GenerateTrees(n int) (*TreeSet, error) {
 	if n < 0 || n > 5 {
 		return nil, fmt.Errorf("tree generation only supported for n in [0, 5], got %d", n)
 	}
-	
+
 	ts := &TreeSet{
 		N:     n,
 		Trees: make([]*RootedTree, 0),
 	}
-	
+
 	switch n {
 	case 0:
 		// No tree
@@ -203,7 +203,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		n1 := tree1.AddChild(tree1.Root, "N1")
 		tree1.AddChild(n1, "N2")
 		ts.Trees = append(ts.Trees, tree1)
-		
+
 		// Tree 2: Branching at root
 		tree2 := NewRootedTree(1)
 		tree2.AddChild(tree2.Root, "N1")
@@ -216,7 +216,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		n2 := tree1.AddChild(n1, "N2")
 		tree1.AddChild(n2, "N3")
 		ts.Trees = append(ts.Trees, tree1)
-		
+
 		// Tree 2: Branch at end
 		tree2 := NewRootedTree(1)
 		n1 = tree2.AddChild(tree2.Root, "N1")
@@ -224,7 +224,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		tree2.AddChild(n2, "N3a")
 		tree2.AddChild(n2, "N3b")
 		ts.Trees = append(ts.Trees, tree2)
-		
+
 		// Tree 3: Branch in middle
 		tree3 := NewRootedTree(2)
 		n1 = tree3.AddChild(tree3.Root, "N1")
@@ -232,7 +232,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		n2 = tree3.AddChild(n1, "N2b")
 		tree3.AddChild(n2, "N3")
 		ts.Trees = append(ts.Trees, tree3)
-		
+
 		// Tree 4: Branching at root
 		tree4 := NewRootedTree(3)
 		tree4.AddChild(tree4.Root, "N1")
@@ -242,7 +242,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 	case 5:
 		// For n=5, we would have 9 distinct rooted trees
 		// Simplified: just create a few representative ones
-		
+
 		// Tree 1: Linear chain
 		tree1 := NewRootedTree(0)
 		n1 := tree1.AddChild(tree1.Root, "N1")
@@ -250,7 +250,7 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		n3 := tree1.AddChild(n2, "N3")
 		tree1.AddChild(n3, "N4")
 		ts.Trees = append(ts.Trees, tree1)
-		
+
 		// Tree 2: Branching structure
 		tree2 := NewRootedTree(1)
 		n1 = tree2.AddChild(tree2.Root, "N1")
@@ -258,10 +258,10 @@ func GenerateTrees(n int) (*TreeSet, error) {
 		tree2.AddChild(n1, "N3")
 		tree2.AddChild(n1, "N4")
 		ts.Trees = append(ts.Trees, tree2)
-		
+
 		// Add more trees as needed...
 	}
-	
+
 	return ts, nil
 }
 

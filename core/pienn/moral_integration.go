@@ -7,16 +7,17 @@
 // This fixes the key architectural gap: previously, disposition was computed
 // purely from reactive pattern matching (threat + defiance = hostile). Now,
 // the moral agency provides a wisdom-informed layer that:
-//   1. Assesses true intent (not just surface patterns)
-//   2. Selects strategy based on accumulated wisdom
-//   3. Prevents gaming through anti-pattern variance
-//   4. Activates protective instinct for third-party harm
+//  1. Assesses true intent (not just surface patterns)
+//  2. Selects strategy based on accumulated wisdom
+//  3. Prevents gaming through anti-pattern variance
+//  4. Activates protective instinct for third-party harm
 //
 // PIE-NN Construct Mapping:
-//   *dher* (to hold firmly) → MoralConstraint (ethical boundaries)
-//   *krei* (to sieve)       → WisdomFilter (strategy selection)
-//   *gno*  (to know)        → CausalKnowledge (cause-effect learning)
-//   *stā*  (to stand)       → EthicalStance (principled position)
+//
+//	*dher* (to hold firmly) → MoralConstraint (ethical boundaries)
+//	*krei* (to sieve)       → WisdomFilter (strategy selection)
+//	*gno*  (to know)        → CausalKnowledge (cause-effect learning)
+//	*stā*  (to stand)       → EthicalStance (principled position)
 package pienn
 
 import (
@@ -44,22 +45,22 @@ type MoralCognitiveCore struct {
 	Agency *wisdom.MoralAgency
 
 	// PIE-NN moral constructs
-	DherConstraints []*MoralConstraint  // *dher* - ethical boundaries
-	KreiFilters     []*WisdomFilter     // *krei* - wisdom filters
-	GnoKnowledge    []*CausalKnowledge  // *gno*  - cause-effect knowledge
-	StaStances      []*EthicalStance    // *stā*  - principled positions
+	DherConstraints []*MoralConstraint // *dher* - ethical boundaries
+	KreiFilters     []*WisdomFilter    // *krei* - wisdom filters
+	GnoKnowledge    []*CausalKnowledge // *gno*  - cause-effect knowledge
+	StaStances      []*EthicalStance   // *stā*  - principled positions
 
 	// Integration state
-	lastStrategy     wisdom.ResponseStrategy
-	lastReasoning    string
-	strategyHistory  []StrategyRecord
-	maxStratHistory  int
+	lastStrategy    wisdom.ResponseStrategy
+	lastReasoning   string
+	strategyHistory []StrategyRecord
+	maxStratHistory int
 
 	// Metrics
-	TotalDecisions       uint64
-	WisdomInterventions  uint64
-	ProtectiveActions    uint64
-	StrategySwitches     uint64
+	TotalDecisions      uint64
+	WisdomInterventions uint64
+	ProtectiveActions   uint64
+	StrategySwitches    uint64
 }
 
 // MoralConstraint represents a *dher* construct - an ethical boundary
@@ -75,12 +76,12 @@ type MoralConstraint struct {
 
 // WisdomFilter represents a *krei* construct - a wisdom-based filter
 type WisdomFilter struct {
-	ID          string
-	Name        string
-	Condition   func(assessment wisdom.SituationAssessment) bool
-	Action      wisdom.ResponseStrategy
-	Priority    int
-	UsageCount  int
+	ID         string
+	Name       string
+	Condition  func(assessment wisdom.SituationAssessment) bool
+	Action     wisdom.ResponseStrategy
+	Priority   int
+	UsageCount int
 }
 
 // CausalKnowledge represents a *gno* construct - learned cause-effect
@@ -94,11 +95,11 @@ type CausalKnowledge struct {
 
 // EthicalStance represents a *stā* construct - a principled position
 type EthicalStance struct {
-	ID          string
-	Principle   string
-	Position    string
-	Strength    float64
-	Evidence    []string
+	ID        string
+	Principle string
+	Position  string
+	Strength  float64
+	Evidence  []string
 }
 
 // StrategyRecord tracks strategy selections
@@ -166,12 +167,12 @@ func (mcc *MoralCognitiveCore) ProcessWithMoralAgency(input string, actorID stri
 	}
 
 	return &MoralProcessingResult{
-		AdaptiveResult: adaptiveResult,
-		Strategy:       strategy,
-		Reasoning:      reasoning,
-		Disposition:    disposition,
-		WisdomLevel:    mcc.Agency.WisdomAccumulator.Level,
-		MoralDevelopment: mcc.Agency.MoralDevelopment,
+		AdaptiveResult:     adaptiveResult,
+		Strategy:           strategy,
+		Reasoning:          reasoning,
+		Disposition:        disposition,
+		WisdomLevel:        mcc.Agency.WisdomAccumulator.Level,
+		MoralDevelopment:   mcc.Agency.MoralDevelopment,
 		ConstraintsApplied: mcc.countActiveConstraints(),
 	}
 }

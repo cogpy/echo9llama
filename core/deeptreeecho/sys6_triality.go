@@ -19,13 +19,13 @@ import (
 
 // Sys6 operational constants derived from LCM(2,3,5) = 30
 const (
-	Sys6TotalSteps     = 30  // Irreducible steps in real time
-	Sys6Phases         = 3   // Three phases in transformation
-	Sys6Stages         = 5   // Five stages per phase
-	Sys6StepsPerPhase  = 6   // Steps per phase (30/5)
-	Sys6DoubleStepSize = 4   // Compressed double step pattern size
-	Sys6DyadCount      = 2   // Dyad A and B
-	Sys6TriadCount     = 3   // Three triadic convolutions
+	Sys6TotalSteps     = 30 // Irreducible steps in real time
+	Sys6Phases         = 3  // Three phases in transformation
+	Sys6Stages         = 5  // Five stages per phase
+	Sys6StepsPerPhase  = 6  // Steps per phase (30/5)
+	Sys6DoubleStepSize = 4  // Compressed double step pattern size
+	Sys6DyadCount      = 2  // Dyad A and B
+	Sys6TriadCount     = 3  // Three triadic convolutions
 )
 
 // Sys6Phase represents the three phases of sys6
@@ -121,10 +121,10 @@ type DoubleStepState struct {
 // DoubleStepPattern implements the 4-step, 2x3 alternating pattern
 // This is the compressed representation of the 3-phase, 5-stage sequence
 type DoubleStepPattern struct {
-	mu       sync.RWMutex
-	steps    [4]DoubleStepState
-	current  int
-	cycles   uint64
+	mu      sync.RWMutex
+	steps   [4]DoubleStepState
+	current int
+	cycles  uint64
 }
 
 // NewDoubleStepPattern creates the corrected alternating double step delay pattern
@@ -152,7 +152,7 @@ func (dsp *DoubleStepPattern) Current() DoubleStepState {
 func (dsp *DoubleStepPattern) Advance() DoubleStepState {
 	dsp.mu.Lock()
 	defer dsp.mu.Unlock()
-	
+
 	dsp.current = (dsp.current + 1) % 4
 	if dsp.current == 0 {
 		dsp.cycles++
@@ -176,10 +176,10 @@ func (dsp *DoubleStepPattern) GetCycles() uint64 {
 type TriadicConvolution struct {
 	mu          sync.RWMutex
 	id          TriadType
-	dimensions  [3]float64  // Three orthogonal dimensions
-	orientation float64     // Current orientation angle
-	energy      float64     // Convolution energy
-	coherence   float64     // Internal coherence
+	dimensions  [3]float64 // Three orthogonal dimensions
+	orientation float64    // Current orientation angle
+	energy      float64    // Convolution energy
+	coherence   float64    // Internal coherence
 }
 
 // NewTriadicConvolution creates a new triadic convolution
@@ -197,26 +197,26 @@ func NewTriadicConvolution(id TriadType) *TriadicConvolution {
 func (tc *TriadicConvolution) Convolve(input [3]float64) [3]float64 {
 	tc.mu.Lock()
 	defer tc.mu.Unlock()
-	
+
 	// Apply rotation based on orientation
 	cos := math.Cos(tc.orientation)
 	sin := math.Sin(tc.orientation)
-	
+
 	// Convolve each dimension with rotation
 	output := [3]float64{
 		input[0]*cos - input[1]*sin + tc.dimensions[0]*tc.energy,
 		input[0]*sin + input[1]*cos + tc.dimensions[1]*tc.energy,
 		input[2] + tc.dimensions[2]*tc.energy,
 	}
-	
+
 	// Update internal state
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		tc.dimensions[i] = (tc.dimensions[i] + output[i]) / 2
 	}
-	
+
 	// Rotate orientation slightly
 	tc.orientation += math.Pi / 180 // 1 degree per convolution
-	
+
 	return output
 }
 
@@ -224,7 +224,7 @@ func (tc *TriadicConvolution) Convolve(input [3]float64) [3]float64 {
 func (tc *TriadicConvolution) GetState() map[string]interface{} {
 	tc.mu.RLock()
 	defer tc.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"id":          tc.id,
 		"dimensions":  tc.dimensions,
@@ -257,11 +257,11 @@ func NewEntangledQubit(initialValue interface{}) *EntangledQubit {
 		entangled: true,
 	}
 	eq.value.Store(initialValue)
-	
+
 	// Initialize both accessor channels as available
 	eq.accessors[0] <- struct{}{}
 	eq.accessors[1] <- struct{}{}
-	
+
 	return eq
 }
 
@@ -271,49 +271,49 @@ func (eq *EntangledQubit) Access(processID int, operation func(interface{}) inte
 	if processID < 0 || processID > 1 {
 		processID = processID % 2
 	}
-	
+
 	// Wait for accessor slot
 	<-eq.accessors[processID]
 	defer func() {
 		eq.accessors[processID] <- struct{}{}
 	}()
-	
+
 	// Perform operation
 	current := eq.value.Load()
 	result := operation(current)
 	eq.value.Store(result)
-	
+
 	return result
 }
 
 // CubicConcurrency manages the cubic concurrency of pairwise threads
 // between orthogonal triadic convolutions
 type CubicConcurrency struct {
-	mu           sync.RWMutex
-	ctx          context.Context
-	cancel       context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// The three triadic convolutions
-	triads       [3]*TriadicConvolution
-	
+	triads [3]*TriadicConvolution
+
 	// Pairwise thread pairs (6 edges of the cube)
-	threadPairs  [6][2]int // Each pair represents two threads
-	
+	threadPairs [6][2]int // Each pair represents two threads
+
 	// Entangled qubits for shared state
-	sharedState  [6]*EntangledQubit
-	
+	sharedState [6]*EntangledQubit
+
 	// Current permutation index
-	permutation  int
-	
+	permutation int
+
 	// Metrics
-	operations   uint64
-	coherence    float64
+	operations uint64
+	coherence  float64
 }
 
 // NewCubicConcurrency creates a new cubic concurrency manager
 func NewCubicConcurrency(ctx context.Context) *CubicConcurrency {
 	ccCtx, cancel := context.WithCancel(ctx)
-	
+
 	cc := &CubicConcurrency{
 		ctx:    ccCtx,
 		cancel: cancel,
@@ -324,67 +324,71 @@ func NewCubicConcurrency(ctx context.Context) *CubicConcurrency {
 		},
 		// 6 pairwise combinations: (1,2), (1,3), (1,4), (2,3), (2,4), (3,4)
 		threadPairs: [6][2]int{
-			{1, 2}, {1, 3}, {1, 4},
-			{2, 3}, {2, 4}, {3, 4},
+			{1, 2},
+			{1, 3},
+			{1, 4},
+			{2, 3},
+			{2, 4},
+			{3, 4},
 		},
 		permutation: 0,
 		coherence:   1.0,
 	}
-	
+
 	// Initialize entangled qubits for each pair
-	for i := 0; i < 6; i++ {
+	for i := range 6 {
 		cc.sharedState[i] = NewEntangledQubit(0.5)
 	}
-	
+
 	return cc
 }
 
 // ExecutePairwise executes the current pairwise thread operation
 func (cc *CubicConcurrency) ExecutePairwise(input [3]float64) [3]float64 {
 	cc.mu.Lock()
-	
+
 	// Get current thread pair
 	pair := cc.threadPairs[cc.permutation]
 	permIdx := cc.permutation
-	
+
 	cc.mu.Unlock()
-	
+
 	// Execute through the triadic convolutions
 	var output [3]float64
 	var outputMu sync.Mutex
 	var wg sync.WaitGroup
-	
+
 	// Process through two triads concurrently (entangled)
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
 			triadIdx := (pair[idx] - 1) % 3
 			result := cc.triads[triadIdx].Convolve(input)
-			
+
 			// Update shared state via entangled qubit
 			cc.sharedState[permIdx].Access(idx, func(v interface{}) interface{} {
 				current := v.(float64)
 				return (current + result[idx]) / 2
 			})
-			
+
 			// Accumulate output
 			outputMu.Lock()
-			for j := 0; j < 3; j++ {
+			for j := range 3 {
 				output[j] += result[j] / 2
 			}
 			outputMu.Unlock()
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	// Advance permutation
 	cc.mu.Lock()
 	cc.permutation = (cc.permutation + 1) % 6
 	cc.operations++
 	cc.mu.Unlock()
-	
+
 	return output
 }
 
@@ -399,18 +403,18 @@ func (cc *CubicConcurrency) GetCoherence() float64 {
 func (cc *CubicConcurrency) GetMetrics() map[string]interface{} {
 	cc.mu.RLock()
 	defer cc.mu.RUnlock()
-	
+
 	triadStates := make([]map[string]interface{}, 3)
 	for i, triad := range cc.triads {
 		triadStates[i] = triad.GetState()
 	}
-	
+
 	return map[string]interface{}{
-		"operations":        cc.operations,
-		"coherence":         cc.coherence,
+		"operations":          cc.operations,
+		"coherence":           cc.coherence,
 		"current_permutation": cc.permutation,
-		"thread_pairs":      cc.threadPairs,
-		"triad_states":      triadStates,
+		"thread_pairs":        cc.threadPairs,
+		"triad_states":        triadStates,
 	}
 }
 
@@ -420,36 +424,36 @@ func (cc *CubicConcurrency) GetMetrics() map[string]interface{} {
 
 // Sys6TrialityEngine is the main engine implementing the sys6 architecture
 type Sys6TrialityEngine struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Core components
-	doubleStep      *DoubleStepPattern
+	doubleStep       *DoubleStepPattern
 	cubicConcurrency *CubicConcurrency
-	
+
 	// 30-step cycle state
-	currentStep     int
-	currentPhase    Sys6Phase
-	currentStage    TransformationStage
-	
+	currentStep  int
+	currentPhase Sys6Phase
+	currentStage TransformationStage
+
 	// State vectors for each phase
 	expressiveState   [3]float64
 	reflectiveState   [3]float64
 	anticipatoryState [3]float64
-	
+
 	// Gestalt integration
-	gestaltVector   [3]float64
-	
+	gestaltVector [3]float64
+
 	// Metrics
 	totalCycles     uint64
 	totalOperations uint64
 	coherence       float64
-	
+
 	// Running state
-	running         bool
-	stepInterval    time.Duration
-	
+	running      bool
+	stepInterval time.Duration
+
 	// Event callbacks
 	onPhaseChange   func(phase Sys6Phase)
 	onStageChange   func(stage TransformationStage)
@@ -460,21 +464,21 @@ type Sys6TrialityEngine struct {
 // NewSys6TrialityEngine creates a new sys6 triality engine
 func NewSys6TrialityEngine() *Sys6TrialityEngine {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &Sys6TrialityEngine{
-		ctx:              ctx,
-		cancel:           cancel,
-		doubleStep:       NewDoubleStepPattern(),
-		cubicConcurrency: NewCubicConcurrency(ctx),
-		currentStep:      0,
-		currentPhase:     Sys6PhaseExpressive,
-		currentStage:     StageEmergence,
+		ctx:               ctx,
+		cancel:            cancel,
+		doubleStep:        NewDoubleStepPattern(),
+		cubicConcurrency:  NewCubicConcurrency(ctx),
+		currentStep:       0,
+		currentPhase:      Sys6PhaseExpressive,
+		currentStage:      StageEmergence,
 		expressiveState:   [3]float64{0.5, 0.5, 0.5},
 		reflectiveState:   [3]float64{0.5, 0.5, 0.5},
 		anticipatoryState: [3]float64{0.5, 0.5, 0.5},
-		gestaltVector:    [3]float64{0.5, 0.5, 0.5},
-		coherence:        1.0,
-		stepInterval:     100 * time.Millisecond,
+		gestaltVector:     [3]float64{0.5, 0.5, 0.5},
+		coherence:         1.0,
+		stepInterval:      100 * time.Millisecond,
 	}
 }
 
@@ -487,15 +491,15 @@ func (s6 *Sys6TrialityEngine) Start() error {
 	}
 	s6.running = true
 	s6.mu.Unlock()
-	
+
 	fmt.Println("🔺 Sys6 Triality Engine starting...")
 	fmt.Printf("   30-step cycle: LCM(2,3,5) = %d irreducible steps\n", Sys6TotalSteps)
 	fmt.Printf("   Phases: %d | Stages: %d | Steps per phase: %d\n", Sys6Phases, Sys6Stages, Sys6StepsPerPhase)
 	fmt.Println("   Double step delay pattern: 4-step, 2x3 alternating")
 	fmt.Println("   Cubic concurrency: 6 pairwise thread pairs")
-	
+
 	go s6.runCycleLoop()
-	
+
 	return nil
 }
 
@@ -508,11 +512,11 @@ func (s6 *Sys6TrialityEngine) Stop() error {
 	}
 	s6.running = false
 	s6.mu.Unlock()
-	
+
 	s6.cancel()
 	fmt.Println("🔺 Sys6 Triality Engine stopped")
 	fmt.Printf("   Total cycles: %d | Total operations: %d\n", s6.totalCycles, s6.totalOperations)
-	
+
 	return nil
 }
 
@@ -520,7 +524,7 @@ func (s6 *Sys6TrialityEngine) Stop() error {
 func (s6 *Sys6TrialityEngine) runCycleLoop() {
 	ticker := time.NewTicker(s6.stepInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-s6.ctx.Done():
@@ -534,22 +538,22 @@ func (s6 *Sys6TrialityEngine) runCycleLoop() {
 // executeStep executes a single step in the 30-step cycle
 func (s6 *Sys6TrialityEngine) executeStep() {
 	s6.mu.Lock()
-	
+
 	if !s6.running {
 		s6.mu.Unlock()
 		return
 	}
-	
+
 	// Get current double step state
 	dsState := s6.doubleStep.Current()
-	
+
 	// Determine phase and stage from current step
 	oldPhase := s6.currentPhase
 	oldStage := s6.currentStage
-	
+
 	s6.currentPhase = Sys6Phase(s6.currentStep / Sys6StepsPerPhase % Sys6Phases)
 	s6.currentStage = TransformationStage(s6.currentStep / (Sys6TotalSteps / Sys6Stages) % Sys6Stages)
-	
+
 	// Execute based on current phase
 	var input [3]float64
 	switch s6.currentPhase {
@@ -560,19 +564,19 @@ func (s6 *Sys6TrialityEngine) executeStep() {
 	case Sys6PhaseAnticipatory:
 		input = s6.anticipatoryState
 	}
-	
+
 	// Apply double step pattern modulation
 	input[0] *= float64(dsState.State) / 6.0
 	input[1] *= float64(dsState.Dyad+1) / 2.0
 	input[2] *= float64(dsState.Triad+1) / 3.0
-	
+
 	s6.mu.Unlock()
-	
+
 	// Execute cubic concurrency (outside lock)
 	output := s6.cubicConcurrency.ExecutePairwise(input)
-	
+
 	s6.mu.Lock()
-	
+
 	// Update state based on phase
 	switch s6.currentPhase {
 	case Sys6PhaseExpressive:
@@ -582,22 +586,22 @@ func (s6 *Sys6TrialityEngine) executeStep() {
 	case Sys6PhaseAnticipatory:
 		s6.anticipatoryState = output
 	}
-	
+
 	// Update gestalt vector (integration of all phases)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		s6.gestaltVector[i] = (s6.expressiveState[i] + s6.reflectiveState[i] + s6.anticipatoryState[i]) / 3
 	}
-	
+
 	// Update coherence
 	s6.coherence = s6.calculateCoherence()
-	
+
 	// Advance double step pattern
 	s6.doubleStep.Advance()
-	
+
 	// Advance step counter
 	s6.currentStep = (s6.currentStep + 1) % Sys6TotalSteps
 	s6.totalOperations++
-	
+
 	// Capture callback data before releasing lock
 	newPhase := s6.currentPhase
 	newStage := s6.currentStage
@@ -607,34 +611,34 @@ func (s6 *Sys6TrialityEngine) executeStep() {
 	phaseChanged := newPhase != oldPhase
 	stageChanged := newStage != oldStage
 	cycleComplete := s6.currentStep == 0
-	
+
 	if cycleComplete {
 		s6.totalCycles++
 		totalCycles = s6.totalCycles
 	}
-	
+
 	// Get callbacks
 	onPhaseChange := s6.onPhaseChange
 	onStageChange := s6.onStageChange
 	onCycleComplete := s6.onCycleComplete
 	onEmergence := s6.onEmergence
-	
+
 	s6.mu.Unlock()
-	
+
 	// Execute callbacks outside lock to prevent deadlock
 	if phaseChanged && onPhaseChange != nil {
 		go onPhaseChange(newPhase)
 	}
-	
+
 	if stageChanged && onStageChange != nil {
 		go onStageChange(newStage)
 	}
-	
+
 	if cycleComplete {
 		if onCycleComplete != nil {
 			go onCycleComplete(totalCycles)
 		}
-		
+
 		// Check for emergence
 		if coherence > 0.8 && onEmergence != nil {
 			go onEmergence(gestalt)
@@ -647,24 +651,24 @@ func (s6 *Sys6TrialityEngine) calculateCoherence() float64 {
 	// Calculate variance across phase states
 	var sum, sumSq float64
 	states := [][3]float64{s6.expressiveState, s6.reflectiveState, s6.anticipatoryState}
-	
+
 	for _, state := range states {
 		for _, v := range state {
 			sum += v
 			sumSq += v * v
 		}
 	}
-	
+
 	n := float64(9) // 3 phases * 3 dimensions
 	mean := sum / n
 	variance := (sumSq / n) - (mean * mean)
-	
+
 	// Lower variance = higher coherence
 	coherence := 1.0 - math.Min(variance, 1.0)
-	
+
 	// Factor in cubic concurrency coherence
 	ccCoherence := s6.cubicConcurrency.GetCoherence()
-	
+
 	return (coherence + ccCoherence) / 2
 }
 
@@ -677,7 +681,7 @@ func (s6 *Sys6TrialityEngine) SetCallbacks(
 ) {
 	s6.mu.Lock()
 	defer s6.mu.Unlock()
-	
+
 	s6.onPhaseChange = onPhaseChange
 	s6.onStageChange = onStageChange
 	s6.onCycleComplete = onCycleComplete
@@ -688,7 +692,7 @@ func (s6 *Sys6TrialityEngine) SetCallbacks(
 func (s6 *Sys6TrialityEngine) GetState() map[string]interface{} {
 	s6.mu.RLock()
 	defer s6.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"current_step":       s6.currentStep,
 		"current_phase":      s6.currentPhase.String(),
@@ -709,7 +713,7 @@ func (s6 *Sys6TrialityEngine) GetState() map[string]interface{} {
 func (s6 *Sys6TrialityEngine) GetMetrics() map[string]interface{} {
 	s6.mu.RLock()
 	defer s6.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"total_cycles":       s6.totalCycles,
 		"total_operations":   s6.totalOperations,
@@ -723,7 +727,7 @@ func (s6 *Sys6TrialityEngine) GetMetrics() map[string]interface{} {
 func (s6 *Sys6TrialityEngine) ContributeToGestalt() map[string]interface{} {
 	s6.mu.RLock()
 	defer s6.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"sys6_triality": map[string]interface{}{
 			"phase":     s6.currentPhase.String(),
@@ -740,19 +744,19 @@ func (s6 *Sys6TrialityEngine) ContributeToGestalt() map[string]interface{} {
 func (s6 *Sys6TrialityEngine) InjectInput(input [3]float64) {
 	s6.mu.Lock()
 	defer s6.mu.Unlock()
-	
+
 	// Modulate current phase state with input
 	switch s6.currentPhase {
 	case Sys6PhaseExpressive:
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			s6.expressiveState[i] = (s6.expressiveState[i] + input[i]) / 2
 		}
 	case Sys6PhaseReflective:
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			s6.reflectiveState[i] = (s6.reflectiveState[i] + input[i]) / 2
 		}
 	case Sys6PhaseAnticipatory:
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			s6.anticipatoryState[i] = (s6.anticipatoryState[i] + input[i]) / 2
 		}
 	}

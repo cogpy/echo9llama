@@ -8,9 +8,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
-	"sync"
 
 	pb "github.com/cogpy/echo9llama/core/echobridge"
 	"google.golang.org/grpc"
@@ -136,21 +136,21 @@ func (s *EchoBridgeServerWrapper) RegisterGoal(ctx context.Context, goal *pb.Goa
 func (s *EchoBridgeServerWrapper) GetActiveGoals(ctx context.Context, req *pb.GoalRequest) (*pb.GoalList, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	goals := make([]*pb.Goal, 0)
 	for _, goal := range s.goals {
 		if req.StatusFilter == pb.GoalStatus_GOAL_UNKNOWN || goal.Status == req.StatusFilter {
 			goals = append(goals, goal)
 		}
 	}
-	
+
 	return &pb.GoalList{Goals: goals}, nil
 }
 
 func (s *EchoBridgeServerWrapper) UpdateGoalProgress(ctx context.Context, progress *pb.GoalProgress) (*pb.GoalResponse, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	goal, exists := s.goals[progress.GoalId]
 	if !exists {
 		return &pb.GoalResponse{
@@ -158,7 +158,7 @@ func (s *EchoBridgeServerWrapper) UpdateGoalProgress(ctx context.Context, progre
 			Message: "Goal not found",
 		}, fmt.Errorf("goal not found")
 	}
-	
+
 	goal.Progress = progress.Progress
 	return &pb.GoalResponse{
 		Success: true,
@@ -170,7 +170,7 @@ func (s *EchoBridgeServerWrapper) UpdateGoalProgress(ctx context.Context, progre
 func (s *EchoBridgeServerWrapper) GetMetrics() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"energy":            s.state.Energy,
 		"fatigue":           s.state.Fatigue,
@@ -185,37 +185,37 @@ func (s *EchoBridgeServerWrapper) GetMetrics() map[string]interface{} {
 
 func main() {
 	log.Println("🌳 Starting EchoBridge gRPC Server...")
-	
+
 	// Create scheduler
 	scheduler := NewSimpleScheduler()
-	
+
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 	bridgeServer := NewEchoBridgeServerWrapper(scheduler)
 	pb.RegisterEchoBridgeServer(grpcServer, bridgeServer)
-	
+
 	// Enable reflection for debugging
 	reflection.Register(grpcServer)
-	
+
 	// Start gRPC server
 	lis, err := net.Listen("tcp", grpcPort)
 	if err != nil {
 		log.Fatalf("Failed to listen on %s: %v", grpcPort, err)
 	}
-	
+
 	go func() {
 		log.Printf("✅ gRPC server listening on %s", grpcPort)
 		if err := grpcServer.Serve(lis); err != nil {
 			log.Fatalf("Failed to serve gRPC: %v", err)
 		}
 	}()
-	
+
 	// Start HTTP status server
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, "OK\n")
 	})
-	
+
 	http.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		metrics := bridgeServer.GetMetrics()
 		w.Header().Set("Content-Type", "application/json")
@@ -244,7 +244,7 @@ func main() {
 		}
 		fmt.Fprintf(w, "\n}\n")
 	})
-	
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
@@ -274,26 +274,26 @@ func main() {
 </body>
 </html>`, grpcPort, httpPort)
 	})
-	
+
 	go func() {
 		log.Printf("✅ HTTP status server listening on %s", httpPort)
 		if err := http.ListenAndServe(httpPort, nil); err != nil {
 			log.Fatalf("Failed to serve HTTP: %v", err)
 		}
 	}()
-	
+
 	// Graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	
+
 	<-sigChan
 	log.Println("🛑 Shutting down EchoBridge server...")
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	grpcServer.GracefulStop()
-	
+
 	<-ctx.Done()
 	log.Println("✅ EchoBridge server stopped")
 }

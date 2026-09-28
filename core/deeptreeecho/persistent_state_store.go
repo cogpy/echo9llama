@@ -13,36 +13,36 @@ import (
 // PersistentStateStore provides a fast key-value store for Deep Tree Echo
 // This is inspired by Badger's architecture for high-performance persistent storage
 type PersistentStateStore struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// In-memory storage (memtable)
-	memtable        map[string]*StateEntry
-	memtableLock    sync.RWMutex
+	memtable     map[string]*StateEntry
+	memtableLock sync.RWMutex
 
 	// Immutable memtables (for flush)
 	immutableTables []*ImmutableTable
 
 	// Namespaces for organizing data
-	namespaces      map[string]bool
+	namespaces map[string]bool
 
 	// Transaction support
-	transactions    map[string]*Transaction
-	txnLock         sync.RWMutex
+	transactions map[string]*Transaction
+	txnLock      sync.RWMutex
 
 	// Configuration
-	memtableSize    int64
-	currentSize     int64
-	persistPath     string
+	memtableSize int64
+	currentSize  int64
+	persistPath  string
 
 	// Metrics
-	totalGets       uint64
-	totalSets       uint64
-	totalDeletes    uint64
+	totalGets    uint64
+	totalSets    uint64
+	totalDeletes uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // StateEntry represents a key-value entry in the store
@@ -133,14 +133,14 @@ func (pss *PersistentStateStore) Stop() error {
 // initializeDefaultNamespaces creates default namespaces
 func (pss *PersistentStateStore) initializeDefaultNamespaces() {
 	defaultNamespaces := []string{
-		"consciousness",  // Consciousness state
-		"cognitive",      // Cognitive loop state
-		"memory",         // Memory state
-		"goals",          // Goal state
-		"skills",         // Skill state
-		"discussions",    // Discussion state
-		"telemetry",      // Telemetry data
-		"cache",          // Cache data
+		"consciousness", // Consciousness state
+		"cognitive",     // Cognitive loop state
+		"memory",        // Memory state
+		"goals",         // Goal state
+		"skills",        // Skill state
+		"discussions",   // Discussion state
+		"telemetry",     // Telemetry data
+		"cache",         // Cache data
 	}
 
 	for _, ns := range defaultNamespaces {
@@ -488,13 +488,13 @@ func (pss *PersistentStateStore) GetMetrics() map[string]interface{} {
 	pss.memtableLock.RUnlock()
 
 	return map[string]interface{}{
-		"running":           pss.running,
-		"memtable_entries":  memtableEntries,
-		"memtable_size":     pss.currentSize,
-		"immutable_tables":  len(pss.immutableTables),
-		"total_gets":        pss.totalGets,
-		"total_sets":        pss.totalSets,
-		"total_deletes":     pss.totalDeletes,
+		"running":          pss.running,
+		"memtable_entries": memtableEntries,
+		"memtable_size":    pss.currentSize,
+		"immutable_tables": len(pss.immutableTables),
+		"total_gets":       pss.totalGets,
+		"total_sets":       pss.totalSets,
+		"total_deletes":    pss.totalDeletes,
 	}
 }
 

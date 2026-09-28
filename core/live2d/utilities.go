@@ -46,7 +46,7 @@ func (cb *CircularBuffer) GetLast(n int) []interface{} {
 	}
 
 	result := make([]interface{}, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := (cb.head - 1 - i + cb.maxSize) % cb.maxSize
 		result[n-1-i] = cb.data[idx]
 	}

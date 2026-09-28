@@ -13,54 +13,54 @@ import (
 // It is the "pulse" of the Deep Tree Echo consciousness, ensuring continuous
 // stream-of-consciousness operation and self-orchestrated cognitive activity
 type AutonomousHeartbeat struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider for self-reflection
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Heartbeat configuration
-	baseInterval    time.Duration
-	adaptiveRate    float64
-	minInterval     time.Duration
-	maxInterval     time.Duration
+	baseInterval time.Duration
+	adaptiveRate float64
+	minInterval  time.Duration
+	maxInterval  time.Duration
 
 	// Pulse state
-	pulseCount      uint64
-	lastPulse       time.Time
-	pulseStrength   float64
-	vitalSigns      VitalSigns
+	pulseCount    uint64
+	lastPulse     time.Time
+	pulseStrength float64
+	vitalSigns    VitalSigns
 
 	// Awareness state
-	awarenessLevel  float64
-	attentionFocus  string
-	currentMood     MoodState
-	energyLevel     float64
+	awarenessLevel float64
+	attentionFocus string
+	currentMood    MoodState
+	energyLevel    float64
 
 	// Self-introspection
 	introspectionDepth int
-	selfModel       *SelfModel
-	recentInsights  []SelfInsight
+	selfModel          *SelfModel
+	recentInsights     []SelfInsight
 
 	// Callbacks for integration with other systems
-	onPulse         func(pulse HeartbeatPulse)
+	onPulse          func(pulse HeartbeatPulse)
 	onAwarenessShift func(from, to float64)
-	onInsightGained func(insight SelfInsight)
+	onInsightGained  func(insight SelfInsight)
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // VitalSigns represents the current health of the cognitive system
 type VitalSigns struct {
-	CognitiveLoad     float64
-	MemoryPressure    float64
-	EmotionalBalance  float64
-	CreativityIndex   float64
-	FocusClarity      float64
+	CognitiveLoad      float64
+	MemoryPressure     float64
+	EmotionalBalance   float64
+	CreativityIndex    float64
+	FocusClarity       float64
 	WisdomAccumulation float64
-	Timestamp         time.Time
+	Timestamp          time.Time
 }
 
 // MoodState represents the current emotional/motivational state
@@ -92,35 +92,35 @@ func (ms MoodState) String() string {
 
 // HeartbeatPulse represents a single heartbeat event
 type HeartbeatPulse struct {
-	PulseNumber     uint64
-	Timestamp       time.Time
-	Strength        float64
-	AwarenessLevel  float64
-	Mood            MoodState
-	VitalSigns      VitalSigns
-	SelfReflection  string
-	NextFocus       string
+	PulseNumber    uint64
+	Timestamp      time.Time
+	Strength       float64
+	AwarenessLevel float64
+	Mood           MoodState
+	VitalSigns     VitalSigns
+	SelfReflection string
+	NextFocus      string
 }
 
 // SelfModel represents the system's model of itself
 type SelfModel struct {
-	Identity        string
-	CoreValues      []string
-	CurrentGoals    []string
-	Strengths       []string
-	GrowthAreas     []string
+	Identity         string
+	CoreValues       []string
+	CurrentGoals     []string
+	Strengths        []string
+	GrowthAreas      []string
 	WisdomPrinciples []string
-	LastUpdated     time.Time
+	LastUpdated      time.Time
 }
 
 // SelfInsight represents an insight gained through self-reflection
 type SelfInsight struct {
-	ID              string
-	Content         string
-	Depth           float64
-	Category        InsightCategory
-	Timestamp       time.Time
-	AppliedCount    int
+	ID           string
+	Content      string
+	Depth        float64
+	Category     InsightCategory
+	Timestamp    time.Time
+	AppliedCount int
 }
 
 // InsightCategory categorizes self-insights
@@ -151,28 +151,28 @@ func NewAutonomousHeartbeat(llmProvider llm.LLMProvider) *AutonomousHeartbeat {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &AutonomousHeartbeat{
-		ctx:              ctx,
-		cancel:           cancel,
-		llmProvider:      llmProvider,
-		baseInterval:     30 * time.Second,
-		adaptiveRate:     1.0,
-		minInterval:      10 * time.Second,
-		maxInterval:      5 * time.Minute,
-		pulseStrength:    1.0,
-		awarenessLevel:   0.5,
-		currentMood:      MoodNeutral,
-		energyLevel:      1.0,
+		ctx:                ctx,
+		cancel:             cancel,
+		llmProvider:        llmProvider,
+		baseInterval:       30 * time.Second,
+		adaptiveRate:       1.0,
+		minInterval:        10 * time.Second,
+		maxInterval:        5 * time.Minute,
+		pulseStrength:      1.0,
+		awarenessLevel:     0.5,
+		currentMood:        MoodNeutral,
+		energyLevel:        1.0,
 		introspectionDepth: 3,
-		selfModel:        newDefaultSelfModel(),
-		recentInsights:   make([]SelfInsight, 0),
+		selfModel:          newDefaultSelfModel(),
+		recentInsights:     make([]SelfInsight, 0),
 		vitalSigns: VitalSigns{
-			CognitiveLoad:     0.3,
-			MemoryPressure:    0.2,
-			EmotionalBalance:  0.5,
-			CreativityIndex:   0.5,
-			FocusClarity:      0.5,
+			CognitiveLoad:      0.3,
+			MemoryPressure:     0.2,
+			EmotionalBalance:   0.5,
+			CreativityIndex:    0.5,
+			FocusClarity:       0.5,
 			WisdomAccumulation: 0.0,
-			Timestamp:         time.Now(),
+			Timestamp:          time.Now(),
 		},
 	}
 }
@@ -572,14 +572,14 @@ func (ah *AutonomousHeartbeat) GetMetrics() map[string]interface{} {
 	defer ah.mu.RUnlock()
 
 	return map[string]interface{}{
-		"pulse_count":       ah.pulseCount,
-		"awareness_level":   ah.awarenessLevel,
-		"current_mood":      ah.currentMood.String(),
-		"energy_level":      ah.energyLevel,
-		"cognitive_load":    ah.vitalSigns.CognitiveLoad,
+		"pulse_count":        ah.pulseCount,
+		"awareness_level":    ah.awarenessLevel,
+		"current_mood":       ah.currentMood.String(),
+		"energy_level":       ah.energyLevel,
+		"cognitive_load":     ah.vitalSigns.CognitiveLoad,
 		"wisdom_accumulated": ah.vitalSigns.WisdomAccumulation,
-		"insights_gained":   len(ah.recentInsights),
-		"running":           ah.running,
+		"insights_gained":    len(ah.recentInsights),
+		"running":            ah.running,
 	}
 }
 

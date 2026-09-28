@@ -61,21 +61,21 @@ type InteractionRecord struct {
 
 // DispositionRecord tracks disposition changes
 type DispositionRecord struct {
-	Timestamp   time.Time
-	From        string
-	To          string
-	Trigger     string
+	Timestamp time.Time
+	From      string
+	To        string
+	Trigger   string
 }
 
 // NewAdaptiveCognitiveCore creates a new adaptive core
 func NewAdaptiveCognitiveCore() *AdaptiveCognitiveCore {
 	return &AdaptiveCognitiveCore{
-		Base:              NewCognitiveCore(),
-		Network:           NewCognitivePWLNetwork(),
-		contextHistory:    make([]ContextSnapshot, 0),
-		maxHistory:        100,
-		interactionBuffer: make([]InteractionRecord, 0),
-		maxBuffer:         50,
+		Base:               NewCognitiveCore(),
+		Network:            NewCognitivePWLNetwork(),
+		contextHistory:     make([]ContextSnapshot, 0),
+		maxHistory:         100,
+		interactionBuffer:  make([]InteractionRecord, 0),
+		maxBuffer:          50,
 		dispositionHistory: make([]DispositionRecord, 0),
 		currentDisposition: "curious",
 	}

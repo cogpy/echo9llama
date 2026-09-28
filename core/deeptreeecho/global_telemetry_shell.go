@@ -227,7 +227,7 @@ func newThreadMultiplexer() *ThreadMultiplexer {
 	}
 
 	// Initialize particular sets
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		multiplexer.particularSets[i] = &ParticularSet{
 			ID:          i + 1,
 			State:       nil,

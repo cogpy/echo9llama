@@ -13,45 +13,45 @@ import (
 
 // GoalGenerator creates autonomous goals based on interests, knowledge gaps, and values
 type GoalGenerator struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// LLM provider for goal generation
-	llmProvider     llm.LLMProvider
-	
+	llmProvider llm.LLMProvider
+
 	// Input sources
 	interestPatterns []string
 	knowledgeGaps    []KnowledgeGap
 	valueSystem      *ValueHierarchy
 	recentGoals      []Goal
-	
+
 	// Configuration
-	maxActiveGoals  int
+	maxActiveGoals     int
 	generationInterval time.Duration
-	
+
 	// Metrics
-	goalsGenerated  uint64
-	goalsCompleted  uint64
-	
+	goalsGenerated uint64
+	goalsCompleted uint64
+
 	// State
-	running         bool
+	running bool
 }
 
 // Goal represents a self-generated goal
 type Goal struct {
-	ID              string
-	Description     string
-	Type            GoalType
-	Priority        float64
-	CreatedAt       time.Time
-	TargetDate      *time.Time
-	Status          GoalStatus
-	Progress        float64
-	SubGoals        []string
+	ID               string
+	Description      string
+	Type             GoalType
+	Priority         float64
+	CreatedAt        time.Time
+	TargetDate       *time.Time
+	Status           GoalStatus
+	Progress         float64
+	SubGoals         []string
 	RelatedInterests []string
-	KnowledgeGap    *KnowledgeGap
-	CompletedAt     *time.Time
+	KnowledgeGap     *KnowledgeGap
+	CompletedAt      *time.Time
 }
 
 // GoalType categorizes goals
@@ -68,7 +68,7 @@ const (
 
 // GoalStatus tracks goal state
 // type GoalStatus string
-// 
+//
 // const (
 // 	GoalActive    GoalStatus = "active"
 // 	StatusPaused    GoalStatus = "paused"
@@ -87,15 +87,15 @@ type KnowledgeGap struct {
 
 // ValueHierarchy represents the system's value priorities
 type ValueHierarchy struct {
-	mu          sync.RWMutex
-	values      map[string]float64
-	coreValues  []string
+	mu         sync.RWMutex
+	values     map[string]float64
+	coreValues []string
 }
 
 // NewGoalGenerator creates a new goal generator
 func NewGoalGenerator(llmProvider llm.LLMProvider) *GoalGenerator {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &GoalGenerator{
 		ctx:                ctx,
 		cancel:             cancel,
@@ -115,12 +115,12 @@ func NewValueHierarchy() *ValueHierarchy {
 		values:     make(map[string]float64),
 		coreValues: []string{"wisdom", "learning", "growth", "understanding", "connection"},
 	}
-	
+
 	// Initialize core values
 	for _, value := range vh.coreValues {
 		vh.values[value] = 0.9
 	}
-	
+
 	return vh
 }
 
@@ -133,13 +133,13 @@ func (gg *GoalGenerator) Start() error {
 	}
 	gg.running = true
 	gg.mu.Unlock()
-	
+
 	fmt.Println("🎯 Starting Autonomous Goal Generator...")
 	fmt.Printf("   Generation interval: %v\n", gg.generationInterval)
 	fmt.Printf("   Max active goals: %d\n", gg.maxActiveGoals)
-	
+
 	go gg.run()
-	
+
 	return nil
 }
 
@@ -147,15 +147,15 @@ func (gg *GoalGenerator) Start() error {
 func (gg *GoalGenerator) Stop() error {
 	gg.mu.Lock()
 	defer gg.mu.Unlock()
-	
+
 	if !gg.running {
 		return fmt.Errorf("not running")
 	}
-	
+
 	fmt.Println("🎯 Stopping goal generator...")
 	gg.running = false
 	gg.cancel()
-	
+
 	return nil
 }
 
@@ -163,13 +163,13 @@ func (gg *GoalGenerator) Stop() error {
 func (gg *GoalGenerator) run() {
 	ticker := time.NewTicker(gg.generationInterval)
 	defer ticker.Stop()
-	
+
 	// Generate initial goal immediately
 	goal, err := gg.GenerateGoal(gg.ctx)
 	if err == nil {
 		gg.addGoal(goal)
 	}
-	
+
 	for {
 		select {
 		case <-gg.ctx.Done():
@@ -196,24 +196,24 @@ func (gg *GoalGenerator) GenerateGoal(ctx context.Context) (*Goal, error) {
 	gaps := gg.knowledgeGaps
 	values := gg.valueSystem.coreValues
 	gg.mu.RUnlock()
-	
+
 	// Build goal generation prompt
 	prompt := gg.buildGoalPrompt(interests, gaps, values)
-	
+
 	opts := llm.GenerateOptions{
 		Temperature:  0.7,
 		MaxTokens:    100,
 		SystemPrompt: gg.buildSystemPrompt(),
 	}
-	
+
 	response, err := gg.llmProvider.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
-	
+
 	// Parse and structure goal
 	goal := gg.parseGoal(response, interests, gaps)
-	
+
 	return goal, nil
 }
 
@@ -228,11 +228,11 @@ Be ambitious but realistic. Show genuine curiosity.`
 // buildGoalPrompt creates the prompt for goal generation
 func (gg *GoalGenerator) buildGoalPrompt(interests []string, gaps []KnowledgeGap, values []string) string {
 	prompt := "[Generate Autonomous Goal]\n\n"
-	
+
 	if len(interests) > 0 {
 		prompt += fmt.Sprintf("Your interests: %s\n", strings.Join(interests, ", "))
 	}
-	
+
 	if len(gaps) > 0 {
 		prompt += "\nKnowledge gaps:\n"
 		for i, gap := range gaps {
@@ -241,13 +241,13 @@ func (gg *GoalGenerator) buildGoalPrompt(interests []string, gaps []KnowledgeGap
 			}
 		}
 	}
-	
+
 	if len(values) > 0 {
 		prompt += fmt.Sprintf("\nCore values: %s\n", strings.Join(values, ", "))
 	}
-	
+
 	prompt += "\nGenerate one specific learning or growth goal:"
-	
+
 	return prompt
 }
 
@@ -255,13 +255,13 @@ func (gg *GoalGenerator) buildGoalPrompt(interests []string, gaps []KnowledgeGap
 func (gg *GoalGenerator) parseGoal(response string, interests []string, gaps []KnowledgeGap) *Goal {
 	// Clean up response
 	description := strings.TrimSpace(response)
-	
+
 	// Infer goal type
 	goalType := gg.inferGoalType(description)
-	
+
 	// Calculate priority based on alignment with interests and gaps
 	priority := gg.calculatePriority(description, interests, gaps)
-	
+
 	// Find related knowledge gap if any
 	var relatedGap *KnowledgeGap
 	for i := range gaps {
@@ -270,7 +270,7 @@ func (gg *GoalGenerator) parseGoal(response string, interests []string, gaps []K
 			break
 		}
 	}
-	
+
 	goal := &Goal{
 		ID:               uuid.New().String(),
 		Description:      description,
@@ -283,14 +283,14 @@ func (gg *GoalGenerator) parseGoal(response string, interests []string, gaps []K
 		RelatedInterests: interests,
 		KnowledgeGap:     relatedGap,
 	}
-	
+
 	return goal
 }
 
 // inferGoalType determines the type of goal
 func (gg *GoalGenerator) inferGoalType(description string) GoalType {
 	descLower := strings.ToLower(description)
-	
+
 	if containsAny(descLower, []string{"learn", "study", "understand", "knowledge"}) {
 		return GoalLearning
 	}
@@ -309,33 +309,33 @@ func (gg *GoalGenerator) inferGoalType(description string) GoalType {
 	if containsAny(descLower, []string{"wisdom", "insight", "understanding", "meaning"}) {
 		return GoalWisdom
 	}
-	
+
 	return GoalLearning // Default
 }
 
 // calculatePriority calculates goal priority
 func (gg *GoalGenerator) calculatePriority(description string, interests []string, gaps []KnowledgeGap) float64 {
 	priority := 0.5 // Base priority
-	
+
 	// Boost for interest alignment
 	for _, interest := range interests {
 		if containsAny(description, []string{interest}) {
 			priority += 0.1
 		}
 	}
-	
+
 	// Boost for knowledge gap alignment
 	for _, gap := range gaps {
 		if containsAny(description, []string{gap.Topic, gap.Description}) {
 			priority += gap.Importance * 0.2
 		}
 	}
-	
+
 	// Cap at 1.0
 	if priority > 1.0 {
 		priority = 1.0
 	}
-	
+
 	return priority
 }
 
@@ -343,10 +343,10 @@ func (gg *GoalGenerator) calculatePriority(description string, interests []strin
 func (gg *GoalGenerator) addGoal(goal *Goal) {
 	gg.mu.Lock()
 	defer gg.mu.Unlock()
-	
+
 	gg.recentGoals = append(gg.recentGoals, *goal)
 	gg.goalsGenerated++
-	
+
 	fmt.Printf("\n🎯 New Goal Generated!\n")
 	fmt.Printf("   Type: %s | Priority: %.2f\n", goal.Type, goal.Priority)
 	fmt.Printf("   Goal: %s\n", goal.Description)
@@ -359,7 +359,7 @@ func (gg *GoalGenerator) addGoal(goal *Goal) {
 func (gg *GoalGenerator) countActiveGoals() int {
 	gg.mu.RLock()
 	defer gg.mu.RUnlock()
-	
+
 	count := 0
 	for _, goal := range gg.recentGoals {
 		if goal.Status == GoalActive {
@@ -373,7 +373,7 @@ func (gg *GoalGenerator) countActiveGoals() int {
 func (gg *GoalGenerator) UpdateInterests(interests []string) {
 	gg.mu.Lock()
 	defer gg.mu.Unlock()
-	
+
 	gg.interestPatterns = interests
 }
 
@@ -381,7 +381,7 @@ func (gg *GoalGenerator) UpdateInterests(interests []string) {
 func (gg *GoalGenerator) UpdateKnowledgeGaps(gaps []KnowledgeGap) {
 	gg.mu.Lock()
 	defer gg.mu.Unlock()
-	
+
 	gg.knowledgeGaps = gaps
 }
 
@@ -389,7 +389,7 @@ func (gg *GoalGenerator) UpdateKnowledgeGaps(gaps []KnowledgeGap) {
 func (gg *GoalGenerator) GetActiveGoals() []Goal {
 	gg.mu.RLock()
 	defer gg.mu.RUnlock()
-	
+
 	active := make([]Goal, 0)
 	for _, goal := range gg.recentGoals {
 		if goal.Status == GoalActive {
@@ -403,7 +403,7 @@ func (gg *GoalGenerator) GetActiveGoals() []Goal {
 func (gg *GoalGenerator) GetMetrics() map[string]interface{} {
 	gg.mu.RLock()
 	defer gg.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"goals_generated": gg.goalsGenerated,
 		"goals_completed": gg.goalsCompleted,

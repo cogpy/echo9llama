@@ -40,14 +40,14 @@ type CognitiveEvent struct {
 type EventType int
 
 const (
-	EventThought      EventType = iota // Internal thought generated
-	EventIntrospection                 // Self-reflection cycle completed
-	EventCommand                       // PIE-NN command executed
-	EventStateChange                   // Cognitive state changed
-	EventEmergence                     // Emergent pattern detected
-	EventDream                         // Dream cycle event
-	EventWake                          // Wake event
-	EventRest                          // Rest event
+	EventThought       EventType = iota // Internal thought generated
+	EventIntrospection                  // Self-reflection cycle completed
+	EventCommand                        // PIE-NN command executed
+	EventStateChange                    // Cognitive state changed
+	EventEmergence                      // Emergent pattern detected
+	EventDream                          // Dream cycle event
+	EventWake                           // Wake event
+	EventRest                           // Rest event
 )
 
 func (et EventType) String() string {
@@ -136,9 +136,9 @@ func (e *Engine) Process(input string) (*ProcessingResult, error) {
 		Level:     activeLevel.Level,
 		Timestamp: time.Now(),
 		Metadata: map[string]interface{}{
-			"frame":  result.DominantFrame,
-			"cycle":  result.Cycle,
-			"level":  activeLevel.Name,
+			"frame": result.DominantFrame,
+			"cycle": result.Cycle,
+			"level": activeLevel.Name,
 		},
 	})
 
@@ -195,13 +195,13 @@ func (e *Engine) GetStatus() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"running":     e.running,
-		"cycle_count": e.cycleCount,
-		"uptime":      uptime.String(),
+		"running":        e.running,
+		"cycle_count":    e.cycleCount,
+		"uptime":         uptime.String(),
 		"dominant_frame": e.Core.DominantFrame,
-		"traits":      e.Core.Traits,
-		"active_level": e.Hierarchy.GetActiveLevel().Name,
-		"constructs":  len(e.Language.Namespace),
+		"traits":         e.Core.Traits,
+		"active_level":   e.Hierarchy.GetActiveLevel().Name,
+		"constructs":     len(e.Language.Namespace),
 	}
 }
 

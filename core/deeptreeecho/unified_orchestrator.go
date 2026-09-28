@@ -10,18 +10,18 @@ import (
 // UnifiedOrchestrator coordinates all cognitive subsystems for autonomous operation
 // This is the central nervous system that ties together all components
 type UnifiedOrchestrator struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// Core subsystem references
-	eventBus        *CognitiveEventBus
-	knowledgeGraph  *KnowledgeGraph
-	stateStore      *PersistentStateStore
-	stateMachine    *CognitiveStateMachine
+	eventBus         *CognitiveEventBus
+	knowledgeGraph   *KnowledgeGraph
+	stateStore       *PersistentStateStore
+	stateMachine     *CognitiveStateMachine
 	patternProcessor *NeuralPatternProcessor
-	semanticMemory  *SemanticMemory
-	scheduler       *CognitiveScheduler
+	semanticMemory   *SemanticMemory
+	scheduler        *CognitiveScheduler
 
 	// Orchestration state
 	orchestrationMode OrchestratorMode
@@ -29,19 +29,19 @@ type UnifiedOrchestrator struct {
 	lastCycleTime     time.Time
 
 	// Gestalt aggregation
-	gestaltCache      map[string]interface{}
-	gestaltTimestamp  time.Time
+	gestaltCache     map[string]interface{}
+	gestaltTimestamp time.Time
 
 	// Event subscriptions
-	subscriptions     []string
+	subscriptions []string
 
 	// Metrics
-	totalCycles       uint64
-	totalEvents       uint64
-	totalDecisions    uint64
+	totalCycles    uint64
+	totalEvents    uint64
+	totalDecisions uint64
 
 	// Running state
-	running           bool
+	running bool
 }
 
 // OrchestratorMode represents the current orchestration mode
@@ -75,15 +75,15 @@ func NewUnifiedOrchestrator(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	uo := &UnifiedOrchestrator{
-		ctx:              ctx,
-		cancel:           cancel,
-		eventBus:         eventBus,
-		knowledgeGraph:   knowledgeGraph,
-		stateStore:       stateStore,
-		stateMachine:     stateMachine,
+		ctx:               ctx,
+		cancel:            cancel,
+		eventBus:          eventBus,
+		knowledgeGraph:    knowledgeGraph,
+		stateStore:        stateStore,
+		stateMachine:      stateMachine,
 		orchestrationMode: ModeIdle,
-		gestaltCache:     make(map[string]interface{}),
-		subscriptions:    make([]string, 0),
+		gestaltCache:      make(map[string]interface{}),
+		subscriptions:     make([]string, 0),
 	}
 
 	return uo
@@ -344,7 +344,7 @@ func (uo *UnifiedOrchestrator) executeDecisions(decisions []OrchestratorDecision
 		case DecisionLearnPattern:
 			if uo.patternProcessor != nil {
 				// Learn a simple pattern based on current state
-				features := []float64{float64(uo.cycleCount % 100) / 100.0}
+				features := []float64{float64(uo.cycleCount%100) / 100.0}
 				uo.patternProcessor.LearnPattern("orchestration", "cycle_pattern", features)
 			}
 
@@ -433,10 +433,10 @@ func (uo *UnifiedOrchestrator) aggregateGestalt() {
 
 	// Orchestrator contribution
 	gestalt["orchestrator"] = map[string]interface{}{
-		"mode":           uo.orchestrationMode.String(),
-		"cycle_count":    uo.cycleCount,
-		"total_cycles":   uo.totalCycles,
-		"total_events":   uo.totalEvents,
+		"mode":            uo.orchestrationMode.String(),
+		"cycle_count":     uo.cycleCount,
+		"total_cycles":    uo.totalCycles,
+		"total_events":    uo.totalEvents,
 		"total_decisions": uo.totalDecisions,
 	}
 

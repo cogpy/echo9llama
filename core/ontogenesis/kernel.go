@@ -24,7 +24,7 @@ type Kernel struct {
 // Shell represents a nested execution context
 // Follows OEIS A000081: 1 nest->1 term, 2 nests->2 terms, 3 nests->4 terms, 4 nests->9 terms
 type Shell struct {
-	Level       int    // Nesting level (1-4)
+	Level       int // Nesting level (1-4)
 	ID          string
 	Terms       []*Term
 	ParentShell *Shell
@@ -64,10 +64,10 @@ type Relation struct {
 type RelationType string
 
 const (
-	RelationCausal      RelationType = "causal"
-	RelationAnalogical  RelationType = "analogical"
+	RelationCausal       RelationType = "causal"
+	RelationAnalogical   RelationType = "analogical"
 	RelationHierarchical RelationType = "hierarchical"
-	RelationTemporal    RelationType = "temporal"
+	RelationTemporal     RelationType = "temporal"
 )
 
 // CognitivePrimitive represents a fundamental cognitive operation
@@ -256,11 +256,12 @@ func (k *Kernel) createNestedShells() error {
 		Context:     make(map[string]interface{}),
 		Active:      true,
 	}
-	for i := 0; i < 9; i++ {
+	for i := range 9 {
 		termType := TermTypePerception
-		if i%3 == 1 {
+		switch i % 3 {
+		case 1:
 			termType = TermTypeAction
-		} else if i%3 == 2 {
+		case 2:
 			termType = TermTypeReflection
 		}
 		level4Shell.Terms[i] = &Term{
@@ -431,13 +432,13 @@ func (k *Kernel) GetKernelMetrics() map[string]interface{} {
 	defer k.mu.RUnlock()
 
 	return map[string]interface{}{
-		"initialized":        k.initialized,
-		"total_shells":       len(k.shells),
-		"total_primitives":   len(k.primitives),
-		"uptime":             time.Since(k.startTime).String(),
-		"current_step":       k.executionContext.stepCount,
-		"current_cycle":      k.executionContext.cycleCount,
-		"active_threads":     len(k.executionContext.activeThreads),
+		"initialized":         k.initialized,
+		"total_shells":        len(k.shells),
+		"total_primitives":    len(k.primitives),
+		"uptime":              time.Since(k.startTime).String(),
+		"current_step":        k.executionContext.stepCount,
+		"current_cycle":       k.executionContext.cycleCount,
+		"active_threads":      len(k.executionContext.activeThreads),
 		"current_thread_pair": k.threadMultiplexer.currentPairIndex,
 	}
 }

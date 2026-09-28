@@ -441,7 +441,7 @@ func BenchmarkMemoryStore(b *testing.B) {
 	ctx := context.Background()
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		entry := &MemoryEntry{
 			Type:       MemoryTypeEpisodic,
 			Content:    "Benchmark memory content",
@@ -457,7 +457,7 @@ func BenchmarkMemoryRetrieve(b *testing.B) {
 	ctx := context.Background()
 
 	// Pre-populate with memories
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		entry := &MemoryEntry{
 			Type:       MemoryTypeEpisodic,
 			Content:    "Memory content for benchmarking retrieval performance",
@@ -467,7 +467,7 @@ func BenchmarkMemoryRetrieve(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		memory.Retrieve(ctx, "benchmark", 10)
 	}
 }
@@ -477,7 +477,7 @@ func BenchmarkSimilarity(b *testing.B) {
 	s := "This is another string that is somewhat similar to the first one"
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		similarity(a, s)
 	}
 }

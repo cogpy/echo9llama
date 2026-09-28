@@ -134,7 +134,7 @@ func (eom *Echo9OptimizedMapper) calculateEyeParameters(state UnifiedAvatarState
 	case "contemplative":
 		eyeY = -0.2 * state.Cognitive.Attention // Look slightly down
 	case "dynamic":
-		eyeY = 0.3 * state.Cognitive.Attention  // Look up
+		eyeY = 0.3 * state.Cognitive.Attention // Look up
 		eyeX = math.Sin(eom.animationTime*0.5) * 0.2
 	case "cautious":
 		eyeX = 0.0 // Direct gaze
@@ -182,7 +182,7 @@ func (eom *Echo9OptimizedMapper) calculateMouthParameters(state UnifiedAvatarSta
 		mouthForm = 0.7 // More serious when under cognitive load
 	}
 	params = append(params,
-		ModelParameter{ID: StandardParameterNames.MouthForm, Value: mouthForm-0.5, Min: -1.0, Max: 1.0},
+		ModelParameter{ID: StandardParameterNames.MouthForm, Value: mouthForm - 0.5, Min: -1.0, Max: 1.0},
 	)
 
 	return params
@@ -199,7 +199,7 @@ func (eom *Echo9OptimizedMapper) calculateHeadParameters(state UnifiedAvatarStat
 	// Processing mode influences head position
 	switch state.Cognitive.ProcessingMode {
 	case "contemplative":
-		baseAngleX = -5.0 * state.Cognitive.CognitiveLoad  // Tilt down when thinking
+		baseAngleX = -5.0 * state.Cognitive.CognitiveLoad // Tilt down when thinking
 		baseAngleY = -3.0 * (1.0 - state.Cognitive.Coherence)
 	case "dynamic":
 		baseAngleX = 5.0 * state.Cognitive.EnergyLevel
@@ -384,7 +384,7 @@ func (eom *Echo9OptimizedMapper) calculateThoughtVisualizationParameters(state U
 	params = append(params, thoughtExpression)
 
 	// Add pulsing aura during thought
-	thoughtPulse := math.Sin(eom.animationTime*2.0) * state.ThoughtActivity.Intensity * 0.5 + 0.5
+	thoughtPulse := math.Sin(eom.animationTime*2.0)*state.ThoughtActivity.Intensity*0.5 + 0.5
 	params = append(params,
 		ModelParameter{ID: "ParamThoughtAura", Value: thoughtPulse, Min: 0.0, Max: 1.0},
 	)
@@ -442,7 +442,7 @@ func (eom *Echo9OptimizedMapper) updateAnimationPhases(dt float64, state Unified
 func (eom *Echo9OptimizedMapper) getEchoBeatsMicroMovement(phase EchoBeatPhase) struct{ X, Y float64 } {
 	// Create subtle rhythmic movement synchronized with cognitive cycle
 	stepProgress := phase.PhaseProgress
-	
+
 	var x, y float64
 	switch phase.Phase {
 	case "affordance":
@@ -511,7 +511,7 @@ func (am *ArchetypalModulator) Modulate(params []ModelParameter, archetype Cogni
 		switch archetype {
 		case ArchetypeChaos:
 			// Add controlled randomness
-			noise := (math.Sin(float64(i)*1.234567)*0.5 + 0.5) * 0.1 - 0.05
+			noise := (math.Sin(float64(i)*1.234567)*0.5+0.5)*0.1 - 0.05
 			modulated[i] = ModelParameter{
 				ID:    param.ID,
 				Value: clamp(param.Value+noise, param.Min, param.Max),

@@ -34,8 +34,8 @@ type EchobeatsGoalScheduler struct {
 	cycleCount   uint64
 
 	// Goal queue
-	goals       []*EchoGoal
-	activeGoal  *EchoGoal
+	goals          []*EchoGoal
+	activeGoal     *EchoGoal
 	completedGoals []*EchoGoal
 
 	// Event bus integration

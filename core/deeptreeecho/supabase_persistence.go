@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/supabase-community/supabase-go"
 	"github.com/supabase-community/postgrest-go"
+	"github.com/supabase-community/supabase-go"
 )
 
 // SupabasePersistence provides persistent storage for Deep Tree Echo's
@@ -55,15 +55,15 @@ type PersistentKnowledgeEdge struct {
 
 // IdentitySnapshot captures identity state at a point in time
 type IdentitySnapshot struct {
-	ID               string                 `json:"id"`
-	Timestamp        time.Time              `json:"timestamp"`
-	Coherence        float64                `json:"coherence"`
-	CoreValues       []string               `json:"core_values"`
-	Beliefs          map[string]float64     `json:"beliefs"` // belief -> confidence
-	Goals            []string               `json:"goals"`
-	Traits           map[string]float64     `json:"traits"`
-	WisdomMetrics    map[string]float64     `json:"wisdom_metrics"`
-	Metadata         map[string]interface{} `json:"metadata"`
+	ID            string                 `json:"id"`
+	Timestamp     time.Time              `json:"timestamp"`
+	Coherence     float64                `json:"coherence"`
+	CoreValues    []string               `json:"core_values"`
+	Beliefs       map[string]float64     `json:"beliefs"` // belief -> confidence
+	Goals         []string               `json:"goals"`
+	Traits        map[string]float64     `json:"traits"`
+	WisdomMetrics map[string]float64     `json:"wisdom_metrics"`
+	Metadata      map[string]interface{} `json:"metadata"`
 }
 
 // LearningRecord tracks skill development and learning progress
@@ -80,14 +80,14 @@ type LearningRecord struct {
 
 // DiscussionRecord stores conversation history
 type DiscussionRecord struct {
-	ID           string                 `json:"id"`
-	Topic        string                 `json:"topic"`
-	Participants []string               `json:"participants"`
-	StartTime    time.Time              `json:"start_time"`
-	EndTime      *time.Time             `json:"end_time,omitempty"`
-	Messages     []PersistentDiscussionMessage    `json:"messages"`
-	InterestScore float64               `json:"interest_score"`
-	Metadata     map[string]interface{} `json:"metadata"`
+	ID            string                        `json:"id"`
+	Topic         string                        `json:"topic"`
+	Participants  []string                      `json:"participants"`
+	StartTime     time.Time                     `json:"start_time"`
+	EndTime       *time.Time                    `json:"end_time,omitempty"`
+	Messages      []PersistentDiscussionMessage `json:"messages"`
+	InterestScore float64                       `json:"interest_score"`
+	Metadata      map[string]interface{}        `json:"metadata"`
 }
 
 // PersistentDiscussionMessage represents a single message in a discussion
@@ -166,18 +166,18 @@ func (sp *SupabasePersistence) RetrieveRelevantMemories(context string, limit in
 	// In a full implementation, this would use semantic search or vector similarity
 	// For now, we use a simple text search
 	var results []PersistentMemory
-	
+
 	data, _, err := sp.client.From("memories").
 		Select("*", "", false).
 		Ilike("content", fmt.Sprintf("%%%s%%", context)).
 		Order("importance", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		Execute()
-	
+
 	if err == nil && data != nil {
 		err = json.Unmarshal(data, &results)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve memories: %w", err)
 	}
@@ -262,17 +262,17 @@ func (sp *SupabasePersistence) SaveIdentitySnapshot(snapshot *IdentitySnapshot) 
 // LoadLatestIdentity retrieves the most recent identity snapshot
 func (sp *SupabasePersistence) LoadLatestIdentity() (*IdentitySnapshot, error) {
 	var results []IdentitySnapshot
-	
+
 	data, _, err := sp.client.From("identity_snapshots").
 		Select("*", "", false).
 		Order("timestamp", &postgrest.OrderOpts{Ascending: false}).
 		Limit(1, "").
 		Execute()
-	
+
 	if err == nil && data != nil {
 		err = json.Unmarshal(data, &results)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to load identity: %w", err)
 	}
@@ -309,17 +309,17 @@ func (sp *SupabasePersistence) TrackLearning(record *LearningRecord) error {
 // GetLearningProgress retrieves learning progress for a skill
 func (sp *SupabasePersistence) GetLearningProgress(skillName string) (*LearningRecord, error) {
 	var results []LearningRecord
-	
+
 	data, _, err := sp.client.From("learning_records").
 		Select("*", "", false).
 		Eq("skill_name", skillName).
 		Limit(1, "").
 		Execute()
-	
+
 	if err == nil && data != nil {
 		err = json.Unmarshal(data, &results)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get learning progress: %w", err)
 	}
@@ -356,17 +356,17 @@ func (sp *SupabasePersistence) SaveDiscussion(discussion *DiscussionRecord) erro
 // GetRecentDiscussions retrieves recent discussions
 func (sp *SupabasePersistence) GetRecentDiscussions(limit int) ([]*DiscussionRecord, error) {
 	var results []DiscussionRecord
-	
+
 	data, _, err := sp.client.From("discussions").
 		Select("*", "", false).
 		Order("start_time", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		Execute()
-	
+
 	if err == nil && data != nil {
 		err = json.Unmarshal(data, &results)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get discussions: %w", err)
 	}
@@ -382,12 +382,12 @@ func (sp *SupabasePersistence) GetRecentDiscussions(limit int) ([]*DiscussionRec
 // ConsolidateMemories marks memories as consolidated (moved to long-term storage)
 func (sp *SupabasePersistence) ConsolidateMemories(memoryIDs []string) error {
 	now := time.Now()
-	
+
 	for _, id := range memoryIDs {
 		update := map[string]interface{}{
 			"consolidated_at": now,
 		}
-		
+
 		data, err := json.Marshal(update)
 		if err != nil {
 			return fmt.Errorf("failed to marshal update: %w", err)
@@ -397,7 +397,6 @@ func (sp *SupabasePersistence) ConsolidateMemories(memoryIDs []string) error {
 			Update(data, "", "").
 			Eq("id", id).
 			Execute()
-		
 		if err != nil {
 			return fmt.Errorf("failed to consolidate memory %s: %w", id, err)
 		}
@@ -409,17 +408,17 @@ func (sp *SupabasePersistence) ConsolidateMemories(memoryIDs []string) error {
 // GetWisdomMetricsHistory retrieves wisdom metrics over time
 func (sp *SupabasePersistence) GetWisdomMetricsHistory(limit int) ([]IdentitySnapshot, error) {
 	var results []IdentitySnapshot
-	
+
 	data, _, err := sp.client.From("identity_snapshots").
 		Select("timestamp,wisdom_metrics", "", false).
 		Order("timestamp", &postgrest.OrderOpts{Ascending: false}).
 		Limit(limit, "").
 		Execute()
-	
+
 	if err == nil && data != nil {
 		err = json.Unmarshal(data, &results)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to get wisdom metrics: %w", err)
 	}

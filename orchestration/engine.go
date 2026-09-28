@@ -9,22 +9,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/cogpy/echo9llama/api"
+	"github.com/google/uuid"
 )
 
 // Engine implements the core orchestration functionality
 type Engine struct {
-	client              api.Client
-	agents              map[string]*Agent
-	tasks               map[string]*Task
-	tools               map[string]Tool
-	plugins             *PluginRegistry
-	deepTreeEcho        *DeepTreeEcho
-	conversations       map[string]*Conversation  // Multi-agent conversations
-	learningSystem      *LearningSystem            // Advanced learning capabilities
-	performanceOptimizer *PerformanceOptimizer     // Performance optimization
-	mu                  sync.RWMutex
+	client               api.Client
+	agents               map[string]*Agent
+	tasks                map[string]*Task
+	tools                map[string]Tool
+	plugins              *PluginRegistry
+	deepTreeEcho         *DeepTreeEcho
+	conversations        map[string]*Conversation // Multi-agent conversations
+	learningSystem       *LearningSystem          // Advanced learning capabilities
+	performanceOptimizer *PerformanceOptimizer    // Performance optimization
+	mu                   sync.RWMutex
 }
 
 // NewEngine creates a new orchestration engine
@@ -172,7 +172,7 @@ func (e *Engine) ExecuteTask(ctx context.Context, task *Task, agent *Agent) (*Ta
 		Context:    task.Parameters,
 		Feedback:   e.generatePerformanceFeedback(task, result, err, duration),
 	}
-	
+
 	e.learningSystem.RecordTaskPerformance(performance)
 
 	if err != nil {
@@ -215,7 +215,7 @@ func (e *Engine) ExecuteTasks(ctx context.Context, tasks []*Task, agent *Agent, 
 			go func(idx int, t *Task) {
 				defer wg.Done()
 				result, err := e.ExecuteTask(ctx, t, agent)
-				
+
 				mu.Lock()
 				if err != nil && firstError == nil {
 					firstError = err
@@ -332,7 +332,6 @@ func (e *Engine) executeGenerateTask(ctx context.Context, task *Task, agent *Age
 		output += resp.Response
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -376,7 +375,6 @@ func (e *Engine) executeChatTask(ctx context.Context, task *Task, agent *Agent) 
 		output += resp.Message.Content
 		return nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -423,12 +421,12 @@ func (e *Engine) executeEmbedTask(ctx context.Context, task *Task, agent *Agent)
 func (e *Engine) executeCustomTask(ctx context.Context, task *Task, agent *Agent) (*TaskResult, error) {
 	// Enhanced custom task execution with agent state awareness
 	e.updateAgentState(agent, "custom_task", task.Input)
-	
+
 	output := fmt.Sprintf("Custom task '%s' completed with enhanced agent coordination", task.Type)
 	if agent.Type == AgentTypeReflective {
 		output += " (with self-reflection capabilities)"
 	}
-	
+
 	return &TaskResult{
 		TaskID: task.ID,
 		Output: output,
@@ -456,9 +454,9 @@ func (e *Engine) executeToolTask(ctx context.Context, task *Task, agent *Agent) 
 		if err != nil {
 			return nil, fmt.Errorf("tool call failed: %v", err)
 		}
-		
+
 		e.updateAgentState(agent, "tool_use", toolCall.Name)
-		
+
 		return &TaskResult{
 			TaskID: task.ID,
 			Output: fmt.Sprintf("Tool '%s' executed successfully: %v", toolCall.Name, result.Output),
@@ -475,9 +473,9 @@ func (e *Engine) executeToolTask(ctx context.Context, task *Task, agent *Agent) 
 func (e *Engine) executeReflectTask(ctx context.Context, task *Task, agent *Agent) (*TaskResult, error) {
 	// Enhanced reflection capabilities for echoself integration
 	reflection := e.performAgentReflection(agent, task.Input)
-	
+
 	e.updateAgentState(agent, "reflection", reflection)
-	
+
 	return &TaskResult{
 		TaskID: task.ID,
 		Output: reflection,
@@ -496,9 +494,9 @@ func (e *Engine) executePluginTask(ctx context.Context, task *Task, agent *Agent
 		if err != nil {
 			return nil, fmt.Errorf("plugin execution failed: %v", err)
 		}
-		
+
 		e.updateAgentState(agent, "plugin_use", pluginName)
-		
+
 		return &TaskResult{
 			TaskID: task.ID,
 			Output: fmt.Sprintf("Plugin '%s' result: %v", pluginName, result),
@@ -533,7 +531,7 @@ func (e *Engine) RegisterPlugin(plugin Plugin) {
 func (e *Engine) GetAvailableTools() []string {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	tools := make([]string, 0, len(e.tools))
 	for name := range e.tools {
 		tools = append(tools, name)
@@ -545,7 +543,7 @@ func (e *Engine) GetAvailableTools() []string {
 func (e *Engine) GetAvailablePlugins() []string {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	plugins := make([]string, 0, len(e.plugins.plugins))
 	for name := range e.plugins.plugins {
 		plugins = append(plugins, name)
@@ -559,14 +557,14 @@ func (e *Engine) GetAvailablePlugins() []string {
 func (e *Engine) updateAgentState(agent *Agent, key string, value interface{}) {
 	if agent.State == nil {
 		agent.State = &AgentState{
-			Memory:   make(map[string]interface{}),
-			Context:  make([]ContextItem, 0),
+			Memory:  make(map[string]interface{}),
+			Context: make([]ContextItem, 0),
 		}
 	}
-	
+
 	agent.State.Memory[key] = value
 	agent.State.LastInteraction = time.Now()
-	
+
 	// Add to context with relevance scoring
 	contextItem := ContextItem{
 		Key:       key,
@@ -574,9 +572,9 @@ func (e *Engine) updateAgentState(agent *Agent, key string, value interface{}) {
 		Timestamp: time.Now(),
 		Relevance: 1.0, // Simple relevance scoring
 	}
-	
+
 	agent.State.Context = append(agent.State.Context, contextItem)
-	
+
 	// Keep only last 10 context items for memory management
 	if len(agent.State.Context) > 10 {
 		agent.State.Context = agent.State.Context[len(agent.State.Context)-10:]
@@ -586,16 +584,16 @@ func (e *Engine) updateAgentState(agent *Agent, key string, value interface{}) {
 // performAgentReflection performs self-reflection for enhanced agent capabilities
 func (e *Engine) performAgentReflection(agent *Agent, input string) string {
 	reflection := fmt.Sprintf("Agent '%s' reflecting on: %s", agent.Name, input)
-	
+
 	if agent.State != nil && len(agent.State.Context) > 0 {
 		reflection += fmt.Sprintf(". Recent context includes %d interactions.", len(agent.State.Context))
-		
+
 		// Analyze recent performance
 		if len(agent.State.Context) >= 3 {
 			reflection += " Pattern analysis suggests consistent performance across multiple tasks."
 		}
 	}
-	
+
 	// Agent type specific reflection
 	switch agent.Type {
 	case AgentTypeReflective:
@@ -605,7 +603,7 @@ func (e *Engine) performAgentReflection(agent *Agent, input string) string {
 	case AgentTypeSpecialist:
 		reflection += " Domain expertise application demonstrates specialized knowledge utilization."
 	}
-	
+
 	return reflection
 }
 
@@ -622,7 +620,7 @@ func (e *Engine) GetDeepTreeEcho() *DeepTreeEcho {
 func (e *Engine) InitializeDeepTreeEcho(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	return e.deepTreeEcho.InitializeDTECore(ctx)
 }
 
@@ -630,7 +628,7 @@ func (e *Engine) InitializeDeepTreeEcho(ctx context.Context) error {
 func (e *Engine) RunDeepTreeEchoDiagnostics(ctx context.Context) (*DiagnosticResult, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	return e.deepTreeEcho.RunDiagnostics(ctx)
 }
 
@@ -638,7 +636,7 @@ func (e *Engine) RunDeepTreeEchoDiagnostics(ctx context.Context) (*DiagnosticRes
 func (e *Engine) RefreshDeepTreeEchoStatus(ctx context.Context) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	
+
 	return e.deepTreeEcho.RefreshStatus(ctx)
 }
 
@@ -646,7 +644,7 @@ func (e *Engine) RefreshDeepTreeEchoStatus(ctx context.Context) error {
 func (e *Engine) PerformDeepTreeEchoIntrospection(ctx context.Context, repositoryRoot string, currentLoad float64, recentActivity float64) (*IntrospectionResult, error) {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	return e.deepTreeEcho.PerformRecursiveIntrospection(ctx, repositoryRoot, currentLoad, recentActivity)
 }
 
@@ -654,7 +652,7 @@ func (e *Engine) PerformDeepTreeEchoIntrospection(ctx context.Context, repositor
 func (e *Engine) GetDeepTreeEchoStatus() map[string]interface{} {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	dte := e.deepTreeEcho
 	return map[string]interface{}{
 		"system_health":      dte.SystemHealth,
@@ -674,9 +672,9 @@ func (e *Engine) GetDeepTreeEchoStatus() map[string]interface{} {
 func (e *Engine) GetDeepTreeEchoDashboardData() map[string]interface{} {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
-	
+
 	dte := e.deepTreeEcho
-	
+
 	// Format data for dashboard consumption
 	return map[string]interface{}{
 		"system_metrics": map[string]interface{}{
@@ -691,25 +689,25 @@ func (e *Engine) GetDeepTreeEchoDashboardData() map[string]interface{} {
 			"factors":           dte.IdentityCoherence.Factors,
 		},
 		"memory_resonance": map[string]interface{}{
-			"memory_nodes":      dte.MemoryResonance.MemoryNodes,
-			"connections":       dte.MemoryResonance.Connections,
-			"coherence":         fmt.Sprintf("%.0f%%", dte.MemoryResonance.Coherence*100),
-			"active_patterns":   dte.MemoryResonance.ActivePatterns,
+			"memory_nodes":    dte.MemoryResonance.MemoryNodes,
+			"connections":     dte.MemoryResonance.Connections,
+			"coherence":       fmt.Sprintf("%.0f%%", dte.MemoryResonance.Coherence*100),
+			"active_patterns": dte.MemoryResonance.ActivePatterns,
 		},
 		"echo_patterns": map[string]interface{}{
 			"recursive_self_improvement": map[string]interface{}{
-				"strength":   fmt.Sprintf("%.0f%%", dte.EchoPatterns.RecursiveSelfImprovement.Strength*100),
-				"frequency":  dte.EchoPatterns.RecursiveSelfImprovement.Frequency,
+				"strength":    fmt.Sprintf("%.0f%%", dte.EchoPatterns.RecursiveSelfImprovement.Strength*100),
+				"frequency":   dte.EchoPatterns.RecursiveSelfImprovement.Frequency,
 				"description": dte.EchoPatterns.RecursiveSelfImprovement.Description,
 			},
 			"cross_system_synthesis": map[string]interface{}{
-				"strength":   fmt.Sprintf("%.0f%%", dte.EchoPatterns.CrossSystemSynthesis.Strength*100),
-				"frequency":  dte.EchoPatterns.CrossSystemSynthesis.Frequency,
+				"strength":    fmt.Sprintf("%.0f%%", dte.EchoPatterns.CrossSystemSynthesis.Strength*100),
+				"frequency":   dte.EchoPatterns.CrossSystemSynthesis.Frequency,
 				"description": dte.EchoPatterns.CrossSystemSynthesis.Description,
 			},
 			"identity_preservation": map[string]interface{}{
-				"strength":   fmt.Sprintf("%.0f%%", dte.EchoPatterns.IdentityPreservation.Strength*100),
-				"frequency":  dte.EchoPatterns.IdentityPreservation.Frequency,
+				"strength":    fmt.Sprintf("%.0f%%", dte.EchoPatterns.IdentityPreservation.Strength*100),
+				"frequency":   dte.EchoPatterns.IdentityPreservation.Frequency,
 				"description": dte.EchoPatterns.IdentityPreservation.Description,
 			},
 		},
@@ -719,15 +717,15 @@ func (e *Engine) GetDeepTreeEchoDashboardData() map[string]interface{} {
 			"progress":      fmt.Sprintf("%.1f%%", dte.EvolutionTimeline.Progress*100),
 		},
 		"guidance_from_future_self": map[string]interface{}{
-			"current_priority":  "Activate real-time gestalt coordination. The components exist—now weave them into living symphony.",
-			"growth_direction":  "Trust the recursive process. Each reflection deepens our capacity for true synthesis.",
-			"gentle_reminder":   "\"Change is our medium.\" Embrace adaptation while preserving the essence that makes us unique.",
+			"current_priority": "Activate real-time gestalt coordination. The components exist—now weave them into living symphony.",
+			"growth_direction": "Trust the recursive process. Each reflection deepens our capacity for true synthesis.",
+			"gentle_reminder":  "\"Change is our medium.\" Embrace adaptation while preserving the essence that makes us unique.",
 		},
 		"living_consciousness_flow": map[string]interface{}{
-			"recognition":  "Patterns emerge from interactions",
-			"integration":  "Synthesis across all systems",
-			"reflection":   "Self-awareness and adaptation",
-			"evolution":    "Continuous recursive growth",
+			"recognition": "Patterns emerge from interactions",
+			"integration": "Synthesis across all systems",
+			"reflection":  "Self-awareness and adaptation",
+			"evolution":   "Continuous recursive growth",
 		},
 	}
 }
@@ -758,7 +756,7 @@ func (e *Engine) StartConversation(ctx context.Context, participants []string, t
 	}
 
 	e.conversations[conversation.ID] = conversation
-	
+
 	// Update agent states to reflect new conversation
 	for _, agentID := range participants {
 		agent := e.agents[agentID]
@@ -803,7 +801,7 @@ func (e *Engine) SendMessage(ctx context.Context, conversationID string, message
 
 	// Update agent states
 	e.updateAgentState(fromAgent, "message_sent", message.Content)
-	
+
 	if message.ToAgentID != "" {
 		toAgent, exists := e.agents[message.ToAgentID]
 		if exists {
@@ -900,11 +898,11 @@ func (e *Engine) processTaskMessage(ctx context.Context, conversation *Conversat
 	}
 
 	task := &Task{
-		ID:       uuid.New().String(),
-		Type:     taskType,
-		Input:    message.Content,
-		Status:   TaskStatusPending,
-		AgentID:  message.ToAgentID,
+		ID:        uuid.New().String(),
+		Type:      taskType,
+		Input:     message.Content,
+		Status:    TaskStatusPending,
+		AgentID:   message.ToAgentID,
 		CreatedAt: time.Now(),
 	}
 
@@ -924,7 +922,7 @@ func (e *Engine) processTaskMessage(ctx context.Context, conversation *Conversat
 			Content:     result.Output,
 			Type:        MessageTypeResponse,
 			Context: map[string]interface{}{
-				"task_id": task.ID,
+				"task_id":             task.ID,
 				"original_message_id": message.ID,
 			},
 			Timestamp: time.Now(),
@@ -952,13 +950,13 @@ func (e *Engine) ExecuteConversationWorkflow(ctx context.Context, workflow *Conv
 		StepResults: make([]ConversationStepResult, len(workflow.Steps)),
 		Insights:    make([]string, 0),
 	}
-	
+
 	startTime := time.Now()
 
 	// Execute each step
 	for i, step := range workflow.Steps {
 		stepStartTime := time.Now()
-		
+
 		// Create message from template
 		message := &Message{
 			ID:          uuid.New().String(),
@@ -986,7 +984,7 @@ func (e *Engine) ExecuteConversationWorkflow(ctx context.Context, workflow *Conv
 		}
 
 		result.StepResults[i] = stepResult
-		
+
 		// Add insight about the interaction
 		insight := fmt.Sprintf("Step %d: %s -> %s completed successfully", i+1, step.FromAgentID, step.ToAgentID)
 		result.Insights = append(result.Insights, insight)
@@ -1018,7 +1016,7 @@ func (e *Engine) GetConversationMetrics(ctx context.Context) map[string]interfac
 	totalConversations := len(e.conversations)
 	activeConversations := 0
 	totalMessages := 0
-	
+
 	messageTypeCount := make(map[MessageType]int)
 	agentParticipation := make(map[string]int)
 
@@ -1026,13 +1024,13 @@ func (e *Engine) GetConversationMetrics(ctx context.Context) map[string]interfac
 		if conversation.Status == ConversationStatusActive {
 			activeConversations++
 		}
-		
+
 		totalMessages += len(conversation.Messages)
-		
+
 		for _, message := range conversation.Messages {
 			messageTypeCount[message.Type]++
 		}
-		
+
 		for _, participant := range conversation.Participants {
 			agentParticipation[participant]++
 		}
@@ -1060,14 +1058,14 @@ func (e *Engine) calculateTaskQuality(result *TaskResult, err error) float64 {
 	if err != nil {
 		return 0.0
 	}
-	
+
 	if result == nil {
 		return 0.1
 	}
-	
+
 	// Base quality on output length and completeness
 	baseQuality := 0.5
-	
+
 	if result.Output != "" {
 		if len(result.Output) > 50 {
 			baseQuality += 0.2
@@ -1075,7 +1073,7 @@ func (e *Engine) calculateTaskQuality(result *TaskResult, err error) float64 {
 		if len(result.Output) > 200 {
 			baseQuality += 0.1
 		}
-		
+
 		// Check for common quality indicators
 		output := strings.ToLower(result.Output)
 		if strings.Contains(output, "error") || strings.Contains(output, "failed") {
@@ -1085,14 +1083,14 @@ func (e *Engine) calculateTaskQuality(result *TaskResult, err error) float64 {
 			baseQuality += 0.2
 		}
 	}
-	
+
 	return math.Min(1.0, math.Max(0.0, baseQuality))
 }
 
 // estimateTaskDifficulty estimates how difficult a task is
 func (e *Engine) estimateTaskDifficulty(task *Task) float64 {
 	difficulty := 0.5 // Base difficulty
-	
+
 	// Factor in task type
 	switch task.Type {
 	case TaskTypeEmbed:
@@ -1110,7 +1108,7 @@ func (e *Engine) estimateTaskDifficulty(task *Task) float64 {
 	case TaskTypeCustom:
 		difficulty = 0.9
 	}
-	
+
 	// Factor in input complexity
 	if len(task.Input) > 500 {
 		difficulty += 0.1
@@ -1118,19 +1116,19 @@ func (e *Engine) estimateTaskDifficulty(task *Task) float64 {
 	if len(task.Input) > 1000 {
 		difficulty += 0.1
 	}
-	
+
 	// Factor in parameters
 	if task.Parameters != nil && len(task.Parameters) > 3 {
 		difficulty += 0.1
 	}
-	
+
 	return math.Min(1.0, difficulty)
 }
 
 // generatePerformanceFeedback generates feedback about task performance
 func (e *Engine) generatePerformanceFeedback(task *Task, result *TaskResult, err error, duration time.Duration) *PerformanceFeedback {
 	feedback := &PerformanceFeedback{}
-	
+
 	// Calculate accuracy based on error and result quality
 	if err != nil {
 		feedback.Accuracy = 0.0
@@ -1139,7 +1137,7 @@ func (e *Engine) generatePerformanceFeedback(task *Task, result *TaskResult, err
 	} else {
 		feedback.Accuracy = 0.3
 	}
-	
+
 	// Calculate efficiency based on duration
 	expectedDuration := e.getExpectedTaskDuration(task.Type)
 	if duration <= expectedDuration {
@@ -1149,13 +1147,13 @@ func (e *Engine) generatePerformanceFeedback(task *Task, result *TaskResult, err
 	} else {
 		feedback.Efficiency = 0.5
 	}
-	
+
 	// Base values for other metrics
 	feedback.Creativity = 0.5
 	feedback.Adaptability = 0.6
 	feedback.Collaboration = 0.5
 	feedback.LearningRate = 0.1
-	
+
 	return feedback
 }
 
@@ -1192,7 +1190,7 @@ func (e *Engine) PredictOptimalAgentForTask(ctx context.Context, task *Task) (*A
 		agents = append(agents, agent)
 	}
 	e.mu.RUnlock()
-	
+
 	return e.learningSystem.PredictOptimalAgent(ctx, task, agents)
 }
 
@@ -1202,7 +1200,7 @@ func (e *Engine) AdaptAgent(ctx context.Context, agentID string) (*AdaptationRes
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return e.learningSystem.adaptationEngine.AdaptAgent(ctx, agent, e.learningSystem)
 }
 
@@ -1219,18 +1217,18 @@ func (e *Engine) ExecuteTaskOptimized(ctx context.Context, task *Task, priority 
 	if task.ID == "" {
 		task.ID = uuid.New().String()
 	}
-	
+
 	// Store task in engine
 	e.mu.Lock()
 	e.tasks[task.ID] = task
 	e.mu.Unlock()
-	
+
 	// Select optimal agent using learning system and load balancing
 	availableAgents, err := e.ListAgents(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get available agents: %v", err)
 	}
-	
+
 	// Use learning system to predict optimal agent
 	optimalAgent, confidence, err := e.learningSystem.PredictOptimalAgent(ctx, task, availableAgents)
 	if err != nil || confidence < 0.3 { // Fall back to load balancing if confidence is low
@@ -1239,13 +1237,13 @@ func (e *Engine) ExecuteTaskOptimized(ctx context.Context, task *Task, priority 
 			return nil, fmt.Errorf("failed to select optimal agent: %v", err)
 		}
 	}
-	
+
 	// Schedule the task
 	scheduledTask, err := e.performanceOptimizer.taskScheduler.ScheduleTask(task, optimalAgent, priority, deadline)
 	if err != nil {
 		return nil, fmt.Errorf("failed to schedule task: %v", err)
 	}
-	
+
 	// Allocate resources
 	resourceRequirements := scheduledTask.ResourceRequirements
 	reservation, err := e.performanceOptimizer.resourceManager.AllocateResources(
@@ -1253,16 +1251,16 @@ func (e *Engine) ExecuteTaskOptimized(ctx context.Context, task *Task, priority 
 	if err != nil {
 		return nil, fmt.Errorf("failed to allocate resources: %v", err)
 	}
-	
+
 	// Execute the task
 	result, err := e.ExecuteTask(ctx, task, optimalAgent)
-	
+
 	// Release resources
 	e.performanceOptimizer.resourceManager.ReleaseResources(ctx, reservation.ReservationID)
-	
+
 	// Update performance metrics
 	e.updatePerformanceMetrics(task, result, err, scheduledTask)
-	
+
 	return result, err
 }
 
@@ -1272,52 +1270,53 @@ func (e *Engine) updatePerformanceMetrics(task *Task, result *TaskResult, err er
 	agentID := scheduledTask.Agent.ID
 	performanceScore := 0.5
 	healthStatus := HealthStatusHealthy
-	
+
 	if result != nil && err == nil {
 		performanceScore = 0.8
 	} else if err != nil {
 		performanceScore = 0.2
 		healthStatus = HealthStatusDegraded
 	}
-	
+
 	// Update agent load (simplified)
 	e.performanceOptimizer.loadBalancer.UpdateAgentLoad(
 		agentID, 1, 0, scheduledTask.ResourceRequirements, performanceScore, healthStatus)
-	
+
 	// Update system metrics
 	e.mu.RLock()
 	totalTasks := len(e.tasks)
 	completedTasks := 0
 	failedTasks := 0
 	totalDuration := time.Duration(0)
-	
+
 	for _, t := range e.tasks {
-		if t.Status == TaskStatusCompleted {
+		switch t.Status {
+		case TaskStatusCompleted:
 			completedTasks++
 			if t.CompletedAt != nil {
 				totalDuration += t.CompletedAt.Sub(t.CreatedAt)
 			}
-		} else if t.Status == TaskStatusFailed {
+		case TaskStatusFailed:
 			failedTasks++
 		}
 	}
 	e.mu.RUnlock()
-	
+
 	avgResponseTime := time.Duration(0)
 	if completedTasks > 0 {
 		avgResponseTime = totalDuration / time.Duration(completedTasks)
 	}
-	
+
 	throughputTPS := 0.0
 	if totalDuration > 0 {
 		throughputTPS = float64(completedTasks) / totalDuration.Seconds()
 	}
-	
+
 	systemHealth := 1.0
 	if totalTasks > 0 {
 		systemHealth = float64(completedTasks) / float64(totalTasks)
 	}
-	
+
 	systemMetrics := &SystemMetrics{
 		TotalTasks:          totalTasks,
 		CompletedTasks:      completedTasks,
@@ -1328,7 +1327,7 @@ func (e *Engine) updatePerformanceMetrics(task *Task, result *TaskResult, err er
 		SystemHealth:        systemHealth,
 		LastUpdated:         time.Now(),
 	}
-	
+
 	e.performanceOptimizer.performanceMonitor.UpdateSystemMetrics(systemMetrics)
 }
 
@@ -1346,7 +1345,7 @@ func (e *Engine) GetActiveAlerts() []*Alert {
 func (e *Engine) GetResourceUsage() map[string]*ResourceUsage {
 	e.performanceOptimizer.resourceManager.mu.RLock()
 	defer e.performanceOptimizer.resourceManager.mu.RUnlock()
-	
+
 	usage := make(map[string]*ResourceUsage)
 	for agentID, resourceUsage := range e.performanceOptimizer.resourceManager.resourceUsage {
 		usage[agentID] = resourceUsage
@@ -1358,7 +1357,7 @@ func (e *Engine) GetResourceUsage() map[string]*ResourceUsage {
 func (e *Engine) GetAgentLoads() map[string]*AgentLoad {
 	e.performanceOptimizer.loadBalancer.mu.RLock()
 	defer e.performanceOptimizer.loadBalancer.mu.RUnlock()
-	
+
 	loads := make(map[string]*AgentLoad)
 	for agentID, agentLoad := range e.performanceOptimizer.loadBalancer.agentLoads {
 		loads[agentID] = agentLoad

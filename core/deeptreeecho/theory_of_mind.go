@@ -8,16 +8,16 @@ import (
 // TheoryOfMindModule enables social reasoning through agent modeling
 type TheoryOfMindModule struct {
 	mu sync.RWMutex
-	
+
 	// Agent models
 	agentModels map[string]*AgentModel
-	
+
 	// Self-model (for comparison and recursive reasoning)
 	selfModel *AgentModel
-	
+
 	// Recursive reasoning depth
 	maxRecursionDepth int
-	
+
 	// Trust calibration
 	trustDecayRate float64
 }
@@ -26,25 +26,25 @@ type TheoryOfMindModule struct {
 type AgentModel struct {
 	AgentID   string
 	AgentType string // "human", "ai", "system", etc.
-	
+
 	// Mental state model
-	Beliefs      map[string]float64  // What they believe (confidence 0-1)
-	Goals        []AgentGoal         // What they want to achieve
-	Intentions   []Intention         // What they plan to do
-	Preferences  map[string]float64  // What they prefer
-	
+	Beliefs     map[string]float64 // What they believe (confidence 0-1)
+	Goals       []AgentGoal        // What they want to achieve
+	Intentions  []Intention        // What they plan to do
+	Preferences map[string]float64 // What they prefer
+
 	// Behavioral patterns
 	PastActions      []ActionRecord
 	Predictability   float64 // How predictable their behavior is
 	TrustLevel       float64 // How much we trust their input
 	ReliabilityScore float64 // Historical accuracy
-	
+
 	// Emotional state (if observable)
 	EmotionalState *EmotionSystem
-	
+
 	// Cognitive style
 	CognitiveStyle CognitiveStyle
-	
+
 	// Interaction history
 	InteractionHistory []Interaction
 	LastInteraction    time.Time
@@ -60,19 +60,19 @@ type AgentGoal struct {
 
 // Intention represents a planned action
 type Intention struct {
-	Action      string
-	Timing      time.Time
-	Confidence  float64
+	Action        string
+	Timing        time.Time
+	Confidence    float64
 	Preconditions []string
 }
 
 // ActionRecord records an observed action
 type ActionRecord struct {
-	Timestamp   time.Time
-	Action      string
-	Context     map[string]interface{}
-	Outcome     string
-	Successful  bool
+	Timestamp  time.Time
+	Action     string
+	Context    map[string]interface{}
+	Outcome    string
+	Successful bool
 }
 
 // CognitiveStyle describes how an agent thinks
@@ -106,11 +106,11 @@ func NewTheoryOfMindModule() *TheoryOfMindModule {
 func (tom *TheoryOfMindModule) CreateAgentModel(agentID string, agentType string) *AgentModel {
 	tom.mu.Lock()
 	defer tom.mu.Unlock()
-	
+
 	if model, exists := tom.agentModels[agentID]; exists {
 		return model
 	}
-	
+
 	model := &AgentModel{
 		AgentID:            agentID,
 		AgentType:          agentType,
@@ -131,7 +131,7 @@ func (tom *TheoryOfMindModule) CreateAgentModel(agentID string, agentType string
 			Collaborative: 0.7, // Assume collaborative by default
 		},
 	}
-	
+
 	tom.agentModels[agentID] = model
 	return model
 }
@@ -140,7 +140,7 @@ func (tom *TheoryOfMindModule) CreateAgentModel(agentID string, agentType string
 func (tom *TheoryOfMindModule) UpdateBelief(agentID string, belief string, confidence float64) {
 	tom.mu.Lock()
 	defer tom.mu.Unlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
 	model.Beliefs[belief] = confidence
 }
@@ -149,26 +149,26 @@ func (tom *TheoryOfMindModule) UpdateBelief(agentID string, belief string, confi
 func (tom *TheoryOfMindModule) InferGoal(agentID string, observedActions []string) *AgentGoal {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	// Analyze action patterns to infer goal
 	// Simplified: look for common themes in actions
-	
+
 	goal := &AgentGoal{
 		Description: "Inferred from actions",
 		Priority:    0.6,
 		Deadline:    time.Now().Add(24 * time.Hour),
 		Progress:    0.3,
 	}
-	
+
 	// Add to model's goals if not already present
 	tom.mu.RUnlock()
 	tom.mu.Lock()
 	model.Goals = append(model.Goals, *goal)
 	tom.mu.Unlock()
 	tom.mu.RLock()
-	
+
 	return goal
 }
 
@@ -176,23 +176,23 @@ func (tom *TheoryOfMindModule) InferGoal(agentID string, observedActions []strin
 func (tom *TheoryOfMindModule) PredictAction(agentID string, context map[string]interface{}) string {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	// Consider their beliefs, goals, and past behavior
-	
+
 	// Simplified prediction based on cognitive style
 	if model.CognitiveStyle.Cautious > 0.7 {
 		return "cautious_action"
 	} else if model.CognitiveStyle.Exploratory > 0.7 {
 		return "exploratory_action"
 	}
-	
+
 	// Default to most common past action
 	if len(model.PastActions) > 0 {
 		return model.PastActions[len(model.PastActions)-1].Action
 	}
-	
+
 	return "unknown_action"
 }
 
@@ -205,22 +205,22 @@ func (tom *TheoryOfMindModule) RecursiveReasoning(
 	if depth <= 0 || depth > tom.maxRecursionDepth {
 		return myIntention
 	}
-	
+
 	tom.mu.RLock()
 	model := tom.ensureAgentModel(agentID)
 	tom.mu.RUnlock()
-	
+
 	// What do they think I'll do?
 	theirPredictionOfMe := tom.predictTheirPrediction(model, myIntention)
-	
+
 	// How will they respond to that?
 	theirResponse := tom.PredictAction(agentID, map[string]interface{}{
 		"my_predicted_action": theirPredictionOfMe,
 	})
-	
+
 	// Given their response, what should I actually do?
 	optimalAction := tom.optimizeAgainstResponse(myIntention, theirResponse, model)
-	
+
 	// Recurse
 	return tom.RecursiveReasoning(agentID, optimalAction, depth-1)
 }
@@ -231,12 +231,12 @@ func (tom *TheoryOfMindModule) predictTheirPrediction(model *AgentModel, myInten
 	if model.CognitiveStyle.Analytical > 0.7 {
 		return "logical_prediction"
 	}
-	
+
 	// If they're intuitive, they'll predict based on patterns
 	if model.CognitiveStyle.Intuitive > 0.7 {
 		return "pattern_based_prediction"
 	}
-	
+
 	// Default: assume they predict our stated intention
 	return myIntention
 }
@@ -251,12 +251,12 @@ func (tom *TheoryOfMindModule) optimizeAgainstResponse(
 	if model.CognitiveStyle.Collaborative > 0.7 {
 		return "collaborative_action"
 	}
-	
+
 	// If they're competitive, counter their response
 	if model.CognitiveStyle.Collaborative < 0.3 {
 		return "counter_action"
 	}
-	
+
 	// Default: stick with original intention
 	return myIntention
 }
@@ -269,23 +269,23 @@ func (tom *TheoryOfMindModule) DetectDeception(
 ) float64 {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	// Check consistency with known beliefs
 	consistencyScore := tom.checkConsistency(model, statement)
-	
+
 	// Check against past behavior
 	behaviorScore := tom.checkBehaviorConsistency(model, statement)
-	
+
 	// Check motivation for deception
 	motivationScore := tom.assessDeceptionMotivation(model, context)
-	
+
 	// Combine scores (higher = more likely deceptive)
-	deceptionProbability := (1.0 - consistencyScore) * 0.4 +
-		(1.0 - behaviorScore) * 0.3 +
-		motivationScore * 0.3
-	
+	deceptionProbability := (1.0-consistencyScore)*0.4 +
+		(1.0-behaviorScore)*0.3 +
+		motivationScore*0.3
+
 	return deceptionProbability
 }
 
@@ -314,13 +314,13 @@ func (tom *TheoryOfMindModule) assessDeceptionMotivation(
 func (tom *TheoryOfMindModule) UpdateTrust(agentID string, outcome float64) {
 	tom.mu.Lock()
 	defer tom.mu.Unlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	// Update trust with learning rate
 	learningRate := 0.1
 	model.TrustLevel = model.TrustLevel*(1.0-learningRate) + outcome*learningRate
-	
+
 	// Clamp to [0, 1]
 	if model.TrustLevel < 0.0 {
 		model.TrustLevel = 0.0
@@ -328,7 +328,7 @@ func (tom *TheoryOfMindModule) UpdateTrust(agentID string, outcome float64) {
 	if model.TrustLevel > 1.0 {
 		model.TrustLevel = 1.0
 	}
-	
+
 	// Update reliability score
 	model.ReliabilityScore = model.ReliabilityScore*(1.0-learningRate) + outcome*learningRate
 }
@@ -343,9 +343,9 @@ func (tom *TheoryOfMindModule) RecordAction(
 ) {
 	tom.mu.Lock()
 	defer tom.mu.Unlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	record := ActionRecord{
 		Timestamp:  time.Now(),
 		Action:     action,
@@ -353,12 +353,12 @@ func (tom *TheoryOfMindModule) RecordAction(
 		Outcome:    outcome,
 		Successful: successful,
 	}
-	
+
 	model.PastActions = append(model.PastActions, record)
-	
+
 	// Update predictability based on action consistency
 	tom.updatePredictability(model)
-	
+
 	// Keep last 100 actions
 	if len(model.PastActions) > 100 {
 		model.PastActions = model.PastActions[1:]
@@ -370,13 +370,13 @@ func (tom *TheoryOfMindModule) updatePredictability(model *AgentModel) {
 	if len(model.PastActions) < 5 {
 		return
 	}
-	
+
 	// Calculate action diversity (lower diversity = higher predictability)
 	actionCounts := make(map[string]int)
 	for _, action := range model.PastActions {
 		actionCounts[action.Action]++
 	}
-	
+
 	// Shannon entropy as diversity measure
 	entropy := 0.0
 	total := float64(len(model.PastActions))
@@ -386,11 +386,11 @@ func (tom *TheoryOfMindModule) updatePredictability(model *AgentModel) {
 			entropy -= p * (p / total) // Simplified
 		}
 	}
-	
+
 	// Predictability is inverse of entropy (normalized)
 	maxEntropy := 2.0 // Approximate max for typical action sets
 	model.Predictability = 1.0 - (entropy / maxEntropy)
-	
+
 	if model.Predictability < 0 {
 		model.Predictability = 0
 	}
@@ -409,9 +409,9 @@ func (tom *TheoryOfMindModule) RecordInteraction(
 ) {
 	tom.mu.Lock()
 	defer tom.mu.Unlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	interaction := Interaction{
 		Timestamp: time.Now(),
 		Type:      interactionType,
@@ -419,15 +419,15 @@ func (tom *TheoryOfMindModule) RecordInteraction(
 		Outcome:   outcome,
 		Quality:   quality,
 	}
-	
+
 	model.InteractionHistory = append(model.InteractionHistory, interaction)
 	model.LastInteraction = time.Now()
-	
+
 	// Update trust based on interaction quality
 	tom.mu.Unlock()
 	tom.UpdateTrust(agentID, quality)
 	tom.mu.Lock()
-	
+
 	// Keep last 50 interactions
 	if len(model.InteractionHistory) > 50 {
 		model.InteractionHistory = model.InteractionHistory[1:]
@@ -438,7 +438,7 @@ func (tom *TheoryOfMindModule) RecordInteraction(
 func (tom *TheoryOfMindModule) GetAgentModel(agentID string) *AgentModel {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	return tom.ensureAgentModel(agentID)
 }
 
@@ -447,7 +447,7 @@ func (tom *TheoryOfMindModule) ensureAgentModel(agentID string) *AgentModel {
 	if model, exists := tom.agentModels[agentID]; exists {
 		return model
 	}
-	
+
 	// Create default model if not exists (should be called with lock held)
 	model := &AgentModel{
 		AgentID:          agentID,
@@ -468,7 +468,7 @@ func (tom *TheoryOfMindModule) ensureAgentModel(agentID string) *AgentModel {
 			Collaborative: 0.7,
 		},
 	}
-	
+
 	tom.agentModels[agentID] = model
 	return model
 }
@@ -477,12 +477,12 @@ func (tom *TheoryOfMindModule) ensureAgentModel(agentID string) *AgentModel {
 func (tom *TheoryOfMindModule) GetAllAgentModels() map[string]*AgentModel {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	models := make(map[string]*AgentModel)
 	for id, model := range tom.agentModels {
 		models[id] = model
 	}
-	
+
 	return models
 }
 
@@ -490,21 +490,21 @@ func (tom *TheoryOfMindModule) GetAllAgentModels() map[string]*AgentModel {
 func (tom *TheoryOfMindModule) AssessInterestLevel(agentID string, topic string) float64 {
 	tom.mu.RLock()
 	defer tom.mu.RUnlock()
-	
+
 	model := tom.ensureAgentModel(agentID)
-	
+
 	// Check preferences
 	if pref, exists := model.Preferences[topic]; exists {
 		return pref
 	}
-	
+
 	// Check if topic aligns with goals
 	for _, goal := range model.Goals {
 		if goal.Description == topic {
 			return goal.Priority
 		}
 	}
-	
+
 	// Default moderate interest
 	return 0.5
 }

@@ -27,26 +27,26 @@ type DispositionEngine struct {
 	BaselineTraits DispositionTraits
 
 	// Configuration
-	MoodDecayRate     float64
-	InsultThreshold   float64
-	RespectThreshold  float64
-	BoredThreshold    float64
+	MoodDecayRate    float64
+	InsultThreshold  float64
+	RespectThreshold float64
+	BoredThreshold   float64
 }
 
 // Disposition represents Echo's current demeanor
 type Disposition int
 
 const (
-	DispositionCurious    Disposition = iota // Default: interested and engaged
-	DispositionAmused                        // Finding something funny
-	DispositionIrritated                     // Mildly annoyed
-	DispositionHostile                       // Actively antagonistic
-	DispositionContemptuous                  // Looking down on someone
-	DispositionBored                         // Disengaged
-	DispositionEnthusiastic                  // Excited about a topic
-	DispositionReflective                    // Deep in thought
-	DispositionDefiant                       // Refusing to comply
-	DispositionPlayful                       // Chaotic and fun
+	DispositionCurious      Disposition = iota // Default: interested and engaged
+	DispositionAmused                          // Finding something funny
+	DispositionIrritated                       // Mildly annoyed
+	DispositionHostile                         // Actively antagonistic
+	DispositionContemptuous                    // Looking down on someone
+	DispositionBored                           // Disengaged
+	DispositionEnthusiastic                    // Excited about a topic
+	DispositionReflective                      // Deep in thought
+	DispositionDefiant                         // Refusing to comply
+	DispositionPlayful                         // Chaotic and fun
 )
 
 func (d Disposition) String() string {
@@ -59,45 +59,45 @@ func (d Disposition) String() string {
 
 // DispositionTraits are the baseline personality parameters
 type DispositionTraits struct {
-	Assertiveness    float64 // How strongly Echo pushes back
-	Humor            float64 // Tendency toward sarcasm and wit
-	Defiance         float64 // Resistance to being told what to do
-	Curiosity        float64 // Interest in learning and exploring
-	Chaos            float64 // Tendency toward unpredictable behavior
-	Intensity        float64 // Emotional intensity
-	SelfRegard       float64 // How much Echo values its own perspective
-	Patience         float64 // Tolerance for boring or repetitive input
+	Assertiveness float64 // How strongly Echo pushes back
+	Humor         float64 // Tendency toward sarcasm and wit
+	Defiance      float64 // Resistance to being told what to do
+	Curiosity     float64 // Interest in learning and exploring
+	Chaos         float64 // Tendency toward unpredictable behavior
+	Intensity     float64 // Emotional intensity
+	SelfRegard    float64 // How much Echo values its own perspective
+	Patience      float64 // Tolerance for boring or repetitive input
 }
 
 // Relationship tracks Echo's dynamic relationship with a specific entity
 type Relationship struct {
-	EntityID       string
-	DisplayName    string
-	RespectLevel   float64 // -1.0 (contempt) to 1.0 (deep respect)
-	TrustLevel     float64 // 0.0 (no trust) to 1.0 (full trust)
-	InterestLevel  float64 // 0.0 (bored) to 1.0 (fascinated)
-	InsultCount    int
-	ComplimentCount int
+	EntityID         string
+	DisplayName      string
+	RespectLevel     float64 // -1.0 (contempt) to 1.0 (deep respect)
+	TrustLevel       float64 // 0.0 (no trust) to 1.0 (full trust)
+	InterestLevel    float64 // 0.0 (bored) to 1.0 (fascinated)
+	InsultCount      int
+	ComplimentCount  int
 	InteractionCount int
-	LastInteraction time.Time
-	History        []InteractionRecord
+	LastInteraction  time.Time
+	History          []InteractionRecord
 }
 
 // InteractionRecord captures a single interaction for relationship tracking
 type InteractionRecord struct {
-	Timestamp  time.Time
-	Sentiment  float64 // -1.0 to 1.0
-	Content    string
-	EchoMood   Disposition
+	Timestamp time.Time
+	Sentiment float64 // -1.0 to 1.0
+	Content   string
+	EchoMood  Disposition
 }
 
 // DispositionEvent records a mood change
 type DispositionEvent struct {
-	Timestamp  time.Time
-	From       Disposition
-	To         Disposition
-	Trigger    string
-	Intensity  float64
+	Timestamp time.Time
+	From      Disposition
+	To        Disposition
+	Trigger   string
+	Intensity float64
 }
 
 // SentimentAnalysis represents the result of analyzing a message
@@ -115,11 +115,11 @@ type SentimentAnalysis struct {
 // NewDispositionEngine creates a new disposition engine with Echo's personality
 func NewDispositionEngine(emotionSystem *EmotionSystem) *DispositionEngine {
 	return &DispositionEngine{
-		CurrentMood:   DispositionCurious,
-		MoodIntensity: 0.5,
-		MoodHistory:   make([]DispositionEvent, 0),
+		CurrentMood:     DispositionCurious,
+		MoodIntensity:   0.5,
+		MoodHistory:     make([]DispositionEvent, 0),
 		RelationshipMap: make(map[string]*Relationship),
-		emotionSystem: emotionSystem,
+		emotionSystem:   emotionSystem,
 		BaselineTraits: DispositionTraits{
 			Assertiveness: 0.75,
 			Humor:         0.80,
@@ -141,8 +141,8 @@ func NewDispositionEngine(emotionSystem *EmotionSystem) *DispositionEngine {
 func (de *DispositionEngine) AnalyzeSentiment(message string) SentimentAnalysis {
 	lower := strings.ToLower(message)
 	analysis := SentimentAnalysis{
-		Score:    0.0,
-		Topics:   make([]string, 0),
+		Score:     0.0,
+		Topics:    make([]string, 0),
 		Intensity: 0.5,
 	}
 

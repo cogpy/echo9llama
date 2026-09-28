@@ -10,39 +10,39 @@ import (
 
 // PerformanceOptimizer provides advanced performance optimization capabilities
 type PerformanceOptimizer struct {
-	resourceManager   *ResourceManager
-	taskScheduler     *IntelligentScheduler
-	loadBalancer      *LoadBalancer
+	resourceManager    *ResourceManager
+	taskScheduler      *IntelligentScheduler
+	loadBalancer       *LoadBalancer
 	performanceMonitor *PerformanceMonitor
 }
 
 // ResourceManager handles dynamic resource allocation
 type ResourceManager struct {
-	mu                sync.RWMutex
+	mu                 sync.RWMutex
 	availableResources *ResourcePool
-	resourceUsage     map[string]*ResourceUsage
-	reservations      map[string]*ResourceReservation
+	resourceUsage      map[string]*ResourceUsage
+	reservations       map[string]*ResourceReservation
 }
 
 // ResourcePool represents available computational resources
 type ResourcePool struct {
-	CPUCores        int
-	MemoryGB        float64
+	CPUCores             int
+	MemoryGB             float64
 	NetworkBandwidthMbps int
-	StorageGB       float64
-	GPUCount        int
-	LastUpdated     time.Time
+	StorageGB            float64
+	GPUCount             int
+	LastUpdated          time.Time
 }
 
 // ResourceUsage tracks resource consumption by agents/tasks
 type ResourceUsage struct {
-	AgentID       string
-	CPUUsage      float64  // 0.0 to 1.0 per core
-	MemoryUsageGB float64
+	AgentID          string
+	CPUUsage         float64 // 0.0 to 1.0 per core
+	MemoryUsageGB    float64
 	NetworkUsageMbps float64
-	StorageUsageGB float64
-	GPUUsage      float64  // 0.0 to 1.0 per GPU
-	LastUpdated   time.Time
+	StorageUsageGB   float64
+	GPUUsage         float64 // 0.0 to 1.0 per GPU
+	LastUpdated      time.Time
 }
 
 // ResourceReservation represents a resource allocation
@@ -68,23 +68,23 @@ const (
 
 // IntelligentScheduler provides advanced task scheduling
 type IntelligentScheduler struct {
-	mu               sync.RWMutex
-	schedulingQueue  []*ScheduledTask
-	executionHistory []*ExecutionRecord
+	mu                 sync.RWMutex
+	schedulingQueue    []*ScheduledTask
+	executionHistory   []*ExecutionRecord
 	schedulingPolicies map[string]SchedulingPolicy
 }
 
 // ScheduledTask represents a task in the scheduling queue
 type ScheduledTask struct {
-	Task            *Task
-	Agent           *Agent
-	Priority        TaskPriority
-	Deadline        time.Time
-	EstimatedDuration time.Duration
+	Task                 *Task
+	Agent                *Agent
+	Priority             TaskPriority
+	Deadline             time.Time
+	EstimatedDuration    time.Duration
 	ResourceRequirements *ResourceUsage
-	Dependencies    []string // Task IDs this task depends on
-	ScheduledAt     time.Time
-	Status          SchedulingStatus
+	Dependencies         []string // Task IDs this task depends on
+	ScheduledAt          time.Time
+	Status               SchedulingStatus
 }
 
 // TaskPriority defines task execution priority
@@ -110,25 +110,25 @@ const (
 
 // ExecutionRecord tracks task execution history
 type ExecutionRecord struct {
-	TaskID           string
-	AgentID          string
-	ScheduledTime    time.Time
-	StartTime        time.Time
-	EndTime          time.Time
-	ActualDuration   time.Duration
-	EstimatedDuration time.Duration
-	ResourcesUsed    *ResourceUsage
-	Success          bool
+	TaskID             string
+	AgentID            string
+	ScheduledTime      time.Time
+	StartTime          time.Time
+	EndTime            time.Time
+	ActualDuration     time.Duration
+	EstimatedDuration  time.Duration
+	ResourcesUsed      *ResourceUsage
+	Success            bool
 	PerformanceMetrics *ExecutionMetrics
 }
 
 // ExecutionMetrics provides detailed execution performance data
 type ExecutionMetrics struct {
-	ThroughputTPS    float64 // Tasks per second
-	ResponseTime     time.Duration
-	ErrorRate        float64
+	ThroughputTPS      float64 // Tasks per second
+	ResponseTime       time.Duration
+	ErrorRate          float64
 	ResourceEfficiency map[string]float64 // Resource type -> efficiency (0-1)
-	QualityScore     float64
+	QualityScore       float64
 }
 
 // SchedulingPolicy defines how tasks should be scheduled
@@ -140,32 +140,32 @@ type SchedulingPolicy interface {
 
 // LoadBalancer handles load distribution across agents
 type LoadBalancer struct {
-	mu              sync.RWMutex
-	agentLoads      map[string]*AgentLoad
+	mu                sync.RWMutex
+	agentLoads        map[string]*AgentLoad
 	balancingStrategy BalancingStrategy
-	healthChecker   *HealthChecker
+	healthChecker     *HealthChecker
 }
 
 // AgentLoad tracks the current load on an agent
 type AgentLoad struct {
-	AgentID           string
-	ActiveTasks       int
-	QueuedTasks       int
+	AgentID             string
+	ActiveTasks         int
+	QueuedTasks         int
 	ResourceUtilization *ResourceUsage
-	PerformanceScore  float64
-	HealthStatus      HealthStatus
-	LastUpdated       time.Time
+	PerformanceScore    float64
+	HealthStatus        HealthStatus
+	LastUpdated         time.Time
 }
 
 // BalancingStrategy defines load balancing approach
 type BalancingStrategy string
 
 const (
-	BalancingStrategyRoundRobin     BalancingStrategy = "round_robin"
-	BalancingStrategyLeastLoaded    BalancingStrategy = "least_loaded"
-	BalancingStrategyWeightedRound  BalancingStrategy = "weighted_round_robin"
+	BalancingStrategyRoundRobin       BalancingStrategy = "round_robin"
+	BalancingStrategyLeastLoaded      BalancingStrategy = "least_loaded"
+	BalancingStrategyWeightedRound    BalancingStrategy = "weighted_round_robin"
 	BalancingStrategyPerformanceBased BalancingStrategy = "performance_based"
-	BalancingStrategyAdaptive       BalancingStrategy = "adaptive"
+	BalancingStrategyAdaptive         BalancingStrategy = "adaptive"
 )
 
 // HealthStatus represents agent health
@@ -180,20 +180,20 @@ const (
 
 // HealthChecker monitors agent health
 type HealthChecker struct {
-	mu             sync.RWMutex
-	healthChecks   map[string]*HealthCheck
-	checkInterval  time.Duration
-	healthHistory  map[string][]*HealthRecord
+	mu            sync.RWMutex
+	healthChecks  map[string]*HealthCheck
+	checkInterval time.Duration
+	healthHistory map[string][]*HealthRecord
 }
 
 // HealthCheck defines a health check configuration
 type HealthCheck struct {
-	AgentID         string
-	CheckType       HealthCheckType
-	Interval        time.Duration
-	Timeout         time.Duration
-	Threshold       float64
-	Enabled         bool
+	AgentID   string
+	CheckType HealthCheckType
+	Interval  time.Duration
+	Timeout   time.Duration
+	Threshold float64
+	Enabled   bool
 }
 
 // HealthCheckType defines different types of health checks
@@ -209,32 +209,32 @@ const (
 
 // HealthRecord tracks health check results over time
 type HealthRecord struct {
-	Timestamp   time.Time
-	CheckType   HealthCheckType
-	Value       float64
-	Status      HealthStatus
-	Details     map[string]interface{}
+	Timestamp time.Time
+	CheckType HealthCheckType
+	Value     float64
+	Status    HealthStatus
+	Details   map[string]interface{}
 }
 
 // PerformanceMonitor tracks system-wide performance metrics
 type PerformanceMonitor struct {
-	mu              sync.RWMutex
-	systemMetrics   *SystemMetrics
-	alertRules      []*AlertRule
-	metricHistory   map[string][]*MetricSnapshot
-	alertHistory    []*Alert
+	mu            sync.RWMutex
+	systemMetrics *SystemMetrics
+	alertRules    []*AlertRule
+	metricHistory map[string][]*MetricSnapshot
+	alertHistory  []*Alert
 }
 
 // SystemMetrics represents overall system performance
 type SystemMetrics struct {
-	TotalTasks           int
-	CompletedTasks       int
-	FailedTasks          int
-	AverageResponseTime  time.Duration
-	ThroughputTPS        float64
-	ResourceUtilization  *ResourceUsage
-	SystemHealth         float64 // 0.0 to 1.0
-	LastUpdated          time.Time
+	TotalTasks          int
+	CompletedTasks      int
+	FailedTasks         int
+	AverageResponseTime time.Duration
+	ThroughputTPS       float64
+	ResourceUtilization *ResourceUsage
+	SystemHealth        float64 // 0.0 to 1.0
+	LastUpdated         time.Time
 }
 
 // MetricSnapshot captures metrics at a point in time
@@ -245,14 +245,14 @@ type MetricSnapshot struct {
 
 // AlertRule defines conditions for triggering alerts
 type AlertRule struct {
-	ID          string
-	Name        string
-	MetricName  string
-	Condition   AlertCondition
-	Threshold   float64
-	Duration    time.Duration
-	Severity    AlertSeverity
-	Enabled     bool
+	ID         string
+	Name       string
+	MetricName string
+	Condition  AlertCondition
+	Threshold  float64
+	Duration   time.Duration
+	Severity   AlertSeverity
+	Enabled    bool
 }
 
 // AlertCondition defines when an alert should trigger
@@ -322,12 +322,12 @@ func NewIntelligentScheduler() *IntelligentScheduler {
 		executionHistory:   make([]*ExecutionRecord, 0),
 		schedulingPolicies: make(map[string]SchedulingPolicy),
 	}
-	
+
 	// Register default scheduling policies
 	scheduler.RegisterPolicy(&PrioritySchedulingPolicy{})
 	scheduler.RegisterPolicy(&DeadlineAwareSchedulingPolicy{})
 	scheduler.RegisterPolicy(&ResourceOptimizedSchedulingPolicy{})
-	
+
 	return scheduler
 }
 
@@ -359,10 +359,10 @@ func NewPerformanceMonitor() *PerformanceMonitor {
 		metricHistory: make(map[string][]*MetricSnapshot),
 		alertHistory:  make([]*Alert, 0),
 	}
-	
+
 	// Register default alert rules
 	monitor.RegisterDefaultAlerts()
-	
+
 	return monitor
 }
 
@@ -372,12 +372,12 @@ func NewPerformanceMonitor() *PerformanceMonitor {
 func (rm *ResourceManager) AllocateResources(ctx context.Context, taskID, agentID string, requirements *ResourceUsage, priority ResourcePriority) (*ResourceReservation, error) {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	
+
 	// Check if resources are available
 	if !rm.hasAvailableResources(requirements) {
 		return nil, fmt.Errorf("insufficient resources available")
 	}
-	
+
 	reservationID := fmt.Sprintf("res_%s_%d", taskID, time.Now().Unix())
 	reservation := &ResourceReservation{
 		ReservationID: reservationID,
@@ -387,10 +387,10 @@ func (rm *ResourceManager) AllocateResources(ctx context.Context, taskID, agentI
 		StartTime:     time.Now(),
 		Priority:      priority,
 	}
-	
+
 	rm.reservations[reservationID] = reservation
 	rm.updateResourceUsage(agentID, requirements)
-	
+
 	return reservation, nil
 }
 
@@ -398,12 +398,12 @@ func (rm *ResourceManager) AllocateResources(ctx context.Context, taskID, agentI
 func (rm *ResourceManager) ReleaseResources(ctx context.Context, reservationID string) error {
 	rm.mu.Lock()
 	defer rm.mu.Unlock()
-	
+
 	reservation, exists := rm.reservations[reservationID]
 	if !exists {
 		return fmt.Errorf("reservation not found: %s", reservationID)
 	}
-	
+
 	// Update resource usage
 	if usage, exists := rm.resourceUsage[reservation.AgentID]; exists {
 		usage.CPUUsage -= reservation.Resources.CPUUsage
@@ -413,7 +413,7 @@ func (rm *ResourceManager) ReleaseResources(ctx context.Context, reservationID s
 		usage.GPUUsage -= reservation.Resources.GPUUsage
 		usage.LastUpdated = time.Now()
 	}
-	
+
 	delete(rm.reservations, reservationID)
 	return nil
 }
@@ -425,7 +425,7 @@ func (rm *ResourceManager) hasAvailableResources(requirements *ResourceUsage) bo
 	totalNetworkUsage := 0.0
 	totalStorageUsage := 0.0
 	totalGPUUsage := 0.0
-	
+
 	for _, usage := range rm.resourceUsage {
 		totalCPUUsage += usage.CPUUsage
 		totalMemoryUsage += usage.MemoryUsageGB
@@ -433,7 +433,7 @@ func (rm *ResourceManager) hasAvailableResources(requirements *ResourceUsage) bo
 		totalStorageUsage += usage.StorageUsageGB
 		totalGPUUsage += usage.GPUUsage
 	}
-	
+
 	return (totalCPUUsage+requirements.CPUUsage) <= float64(rm.availableResources.CPUCores) &&
 		(totalMemoryUsage+requirements.MemoryUsageGB) <= rm.availableResources.MemoryGB &&
 		(totalNetworkUsage+requirements.NetworkUsageMbps) <= float64(rm.availableResources.NetworkBandwidthMbps) &&
@@ -452,13 +452,13 @@ func (rm *ResourceManager) updateResourceUsage(agentID string, requirements *Res
 		usage.LastUpdated = time.Now()
 	} else {
 		rm.resourceUsage[agentID] = &ResourceUsage{
-			AgentID:            agentID,
-			CPUUsage:           requirements.CPUUsage,
-			MemoryUsageGB:      requirements.MemoryUsageGB,
-			NetworkUsageMbps:   requirements.NetworkUsageMbps,
-			StorageUsageGB:     requirements.StorageUsageGB,
-			GPUUsage:           requirements.GPUUsage,
-			LastUpdated:        time.Now(),
+			AgentID:          agentID,
+			CPUUsage:         requirements.CPUUsage,
+			MemoryUsageGB:    requirements.MemoryUsageGB,
+			NetworkUsageMbps: requirements.NetworkUsageMbps,
+			StorageUsageGB:   requirements.StorageUsageGB,
+			GPUUsage:         requirements.GPUUsage,
+			LastUpdated:      time.Now(),
 		}
 	}
 }
@@ -469,7 +469,7 @@ func (rm *ResourceManager) updateResourceUsage(agentID string, requirements *Res
 func (is *IntelligentScheduler) ScheduleTask(task *Task, agent *Agent, priority TaskPriority, deadline time.Time) (*ScheduledTask, error) {
 	is.mu.Lock()
 	defer is.mu.Unlock()
-	
+
 	scheduledTask := &ScheduledTask{
 		Task:                 task,
 		Agent:                agent,
@@ -481,10 +481,10 @@ func (is *IntelligentScheduler) ScheduleTask(task *Task, agent *Agent, priority 
 		ScheduledAt:          time.Now(),
 		Status:               SchedulingStatusPending,
 	}
-	
+
 	is.schedulingQueue = append(is.schedulingQueue, scheduledTask)
 	is.optimizeSchedule()
-	
+
 	return scheduledTask, nil
 }
 
@@ -492,7 +492,7 @@ func (is *IntelligentScheduler) ScheduleTask(task *Task, agent *Agent, priority 
 func (is *IntelligentScheduler) GetNextTask(ctx context.Context, agentID string) (*ScheduledTask, error) {
 	is.mu.Lock()
 	defer is.mu.Unlock()
-	
+
 	for i, scheduledTask := range is.schedulingQueue {
 		if scheduledTask.Agent.ID == agentID && scheduledTask.Status == SchedulingStatusScheduled {
 			// Remove from queue
@@ -501,7 +501,7 @@ func (is *IntelligentScheduler) GetNextTask(ctx context.Context, agentID string)
 			return scheduledTask, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("no tasks available for agent %s", agentID)
 }
 
@@ -512,17 +512,17 @@ func (is *IntelligentScheduler) optimizeSchedule() {
 	for _, policy := range is.schedulingPolicies {
 		policies = append(policies, policy)
 	}
-	
+
 	// Sort by priority
 	sort.Slice(policies, func(i, j int) bool {
 		return policies[i].Priority() > policies[j].Priority()
 	})
-	
+
 	// Apply each policy
 	for _, policy := range policies {
 		is.schedulingQueue = policy.ScheduleTasks(is.schedulingQueue, nil)
 	}
-	
+
 	// Mark top tasks as scheduled
 	for i, task := range is.schedulingQueue {
 		if i < 10 && task.Status == SchedulingStatusPending { // Schedule top 10
@@ -542,18 +542,18 @@ func (is *IntelligentScheduler) estimateTaskDuration(task *Task) time.Duration {
 		TaskTypeReflect:  2 * time.Second,
 		TaskTypePlugin:   500 * time.Millisecond,
 	}
-	
+
 	duration, exists := baseDuration[task.Type]
 	if !exists {
 		duration = 5 * time.Second
 	}
-	
+
 	// Adjust based on input length
 	inputFactor := float64(len(task.Input)) / 1000.0
 	if inputFactor < 1.0 {
 		inputFactor = 1.0
 	}
-	
+
 	return time.Duration(float64(duration) * inputFactor)
 }
 
@@ -567,11 +567,11 @@ func (is *IntelligentScheduler) estimateResourceRequirements(task *Task) *Resour
 		TaskTypeReflect:  {CPUUsage: 0.2, MemoryUsageGB: 0.5, NetworkUsageMbps: 5},
 		TaskTypePlugin:   {CPUUsage: 0.6, MemoryUsageGB: 3.0, NetworkUsageMbps: 8},
 	}
-	
+
 	if requirements, exists := baseRequirements[task.Type]; exists {
 		return requirements
 	}
-	
+
 	return &ResourceUsage{
 		CPUUsage:         0.4,
 		MemoryUsageGB:    1.5,
@@ -589,7 +589,7 @@ func (is *IntelligentScheduler) RegisterPolicy(policy SchedulingPolicy) {
 // Priority-based scheduling policy
 type PrioritySchedulingPolicy struct{}
 
-func (psp *PrioritySchedulingPolicy) Name() string { return "priority" }
+func (psp *PrioritySchedulingPolicy) Name() string  { return "priority" }
 func (psp *PrioritySchedulingPolicy) Priority() int { return 100 }
 
 func (psp *PrioritySchedulingPolicy) ScheduleTasks(tasks []*ScheduledTask, resources *ResourcePool) []*ScheduledTask {
@@ -602,7 +602,7 @@ func (psp *PrioritySchedulingPolicy) ScheduleTasks(tasks []*ScheduledTask, resou
 // Deadline-aware scheduling policy
 type DeadlineAwareSchedulingPolicy struct{}
 
-func (dasp *DeadlineAwareSchedulingPolicy) Name() string { return "deadline_aware" }
+func (dasp *DeadlineAwareSchedulingPolicy) Name() string  { return "deadline_aware" }
 func (dasp *DeadlineAwareSchedulingPolicy) Priority() int { return 90 }
 
 func (dasp *DeadlineAwareSchedulingPolicy) ScheduleTasks(tasks []*ScheduledTask, resources *ResourcePool) []*ScheduledTask {
@@ -619,7 +619,7 @@ func (dasp *DeadlineAwareSchedulingPolicy) ScheduleTasks(tasks []*ScheduledTask,
 // Resource-optimized scheduling policy
 type ResourceOptimizedSchedulingPolicy struct{}
 
-func (rosp *ResourceOptimizedSchedulingPolicy) Name() string { return "resource_optimized" }
+func (rosp *ResourceOptimizedSchedulingPolicy) Name() string  { return "resource_optimized" }
 func (rosp *ResourceOptimizedSchedulingPolicy) Priority() int { return 80 }
 
 func (rosp *ResourceOptimizedSchedulingPolicy) ScheduleTasks(tasks []*ScheduledTask, resources *ResourcePool) []*ScheduledTask {
@@ -638,11 +638,11 @@ func (rosp *ResourceOptimizedSchedulingPolicy) ScheduleTasks(tasks []*ScheduledT
 func (lb *LoadBalancer) SelectOptimalAgent(ctx context.Context, task *Task, availableAgents []*Agent) (*Agent, error) {
 	lb.mu.RLock()
 	defer lb.mu.RUnlock()
-	
+
 	if len(availableAgents) == 0 {
 		return nil, fmt.Errorf("no available agents")
 	}
-	
+
 	switch lb.balancingStrategy {
 	case BalancingStrategyLeastLoaded:
 		return lb.selectLeastLoadedAgent(availableAgents), nil
@@ -659,7 +659,7 @@ func (lb *LoadBalancer) SelectOptimalAgent(ctx context.Context, task *Task, avai
 func (lb *LoadBalancer) selectLeastLoadedAgent(agents []*Agent) *Agent {
 	bestAgent := agents[0]
 	bestLoad := lb.calculateAgentLoad(bestAgent)
-	
+
 	for _, agent := range agents[1:] {
 		load := lb.calculateAgentLoad(agent)
 		if load < bestLoad {
@@ -667,7 +667,7 @@ func (lb *LoadBalancer) selectLeastLoadedAgent(agents []*Agent) *Agent {
 			bestAgent = agent
 		}
 	}
-	
+
 	return bestAgent
 }
 
@@ -675,7 +675,7 @@ func (lb *LoadBalancer) selectLeastLoadedAgent(agents []*Agent) *Agent {
 func (lb *LoadBalancer) selectBestPerformingAgent(agents []*Agent) *Agent {
 	bestAgent := agents[0]
 	bestScore := lb.getPerformanceScore(bestAgent)
-	
+
 	for _, agent := range agents[1:] {
 		score := lb.getPerformanceScore(agent)
 		if score > bestScore {
@@ -683,7 +683,7 @@ func (lb *LoadBalancer) selectBestPerformingAgent(agents []*Agent) *Agent {
 			bestAgent = agent
 		}
 	}
-	
+
 	return bestAgent
 }
 
@@ -691,7 +691,7 @@ func (lb *LoadBalancer) selectBestPerformingAgent(agents []*Agent) *Agent {
 func (lb *LoadBalancer) selectAdaptiveAgent(agents []*Agent, task *Task) *Agent {
 	bestAgent := agents[0]
 	bestScore := lb.calculateAdaptiveScore(bestAgent, task)
-	
+
 	for _, agent := range agents[1:] {
 		score := lb.calculateAdaptiveScore(agent, task)
 		if score > bestScore {
@@ -699,7 +699,7 @@ func (lb *LoadBalancer) selectAdaptiveAgent(agents []*Agent, task *Task) *Agent 
 			bestAgent = agent
 		}
 	}
-	
+
 	return bestAgent
 }
 
@@ -730,7 +730,7 @@ func (lb *LoadBalancer) calculateAdaptiveScore(agent *Agent, task *Task) float64
 	load := lb.calculateAgentLoad(agent)
 	performance := lb.getPerformanceScore(agent)
 	health := lb.getHealthScore(agent)
-	
+
 	// Weighted combination: lower load is better, higher performance and health are better
 	loadScore := 1.0 - (load / 10.0) // Normalize load
 	return (loadScore * 0.3) + (performance * 0.4) + (health * 0.3)
@@ -757,7 +757,7 @@ func (lb *LoadBalancer) getHealthScore(agent *Agent) float64 {
 func (lb *LoadBalancer) UpdateAgentLoad(agentID string, activeTasks, queuedTasks int, resourceUsage *ResourceUsage, performanceScore float64, healthStatus HealthStatus) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
-	
+
 	lb.agentLoads[agentID] = &AgentLoad{
 		AgentID:             agentID,
 		ActiveTasks:         activeTasks,
@@ -821,13 +821,13 @@ func (pm *PerformanceMonitor) RegisterDefaultAlerts() {
 func (pm *PerformanceMonitor) UpdateSystemMetrics(metrics *SystemMetrics) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	
+
 	pm.systemMetrics = metrics
 	pm.systemMetrics.LastUpdated = time.Now()
-	
+
 	// Check for alert conditions
 	pm.checkAlerts()
-	
+
 	// Store metrics snapshot
 	pm.storeMetricSnapshot()
 }
@@ -835,15 +835,15 @@ func (pm *PerformanceMonitor) UpdateSystemMetrics(metrics *SystemMetrics) {
 // checkAlerts evaluates alert rules against current metrics
 func (pm *PerformanceMonitor) checkAlerts() {
 	now := time.Now()
-	
+
 	for _, rule := range pm.alertRules {
 		if !rule.Enabled {
 			continue
 		}
-		
+
 		value := pm.getMetricValue(rule.MetricName)
 		shouldAlert := false
-		
+
 		switch rule.Condition {
 		case AlertConditionGreaterThan:
 			shouldAlert = value > rule.Threshold
@@ -854,7 +854,7 @@ func (pm *PerformanceMonitor) checkAlerts() {
 		case AlertConditionNotEquals:
 			shouldAlert = value != rule.Threshold
 		}
-		
+
 		if shouldAlert {
 			alert := &Alert{
 				ID:          fmt.Sprintf("alert_%d", now.Unix()),
@@ -867,7 +867,7 @@ func (pm *PerformanceMonitor) checkAlerts() {
 				Timestamp:   now,
 				Resolved:    false,
 			}
-			
+
 			pm.alertHistory = append(pm.alertHistory, alert)
 		}
 	}
@@ -908,13 +908,13 @@ func (pm *PerformanceMonitor) storeMetricSnapshot() {
 			"network_utilization": pm.systemMetrics.ResourceUtilization.NetworkUsageMbps,
 		},
 	}
-	
+
 	// Store in history (keep last 1000 snapshots)
 	key := "system_metrics"
 	if pm.metricHistory[key] == nil {
 		pm.metricHistory[key] = make([]*MetricSnapshot, 0)
 	}
-	
+
 	pm.metricHistory[key] = append(pm.metricHistory[key], snapshot)
 	if len(pm.metricHistory[key]) > 1000 {
 		pm.metricHistory[key] = pm.metricHistory[key][1:]
@@ -925,14 +925,14 @@ func (pm *PerformanceMonitor) storeMetricSnapshot() {
 func (pm *PerformanceMonitor) GetActiveAlerts() []*Alert {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-	
+
 	activeAlerts := make([]*Alert, 0)
 	for _, alert := range pm.alertHistory {
 		if !alert.Resolved {
 			activeAlerts = append(activeAlerts, alert)
 		}
 	}
-	
+
 	return activeAlerts
 }
 

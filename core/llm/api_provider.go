@@ -27,7 +27,7 @@ type APIProvider struct {
 // NewAPIProvider creates a new API-based LLM provider
 func NewAPIProvider(provider, model string) (*APIProvider, error) {
 	var apiKey, baseURL string
-	
+
 	switch provider {
 	case "anthropic":
 		apiKey = os.Getenv("ANTHROPIC_API_KEY")
@@ -50,11 +50,11 @@ func NewAPIProvider(provider, model string) (*APIProvider, error) {
 	default:
 		return nil, fmt.Errorf("unsupported provider: %s", provider)
 	}
-	
+
 	if apiKey == "" {
 		return nil, fmt.Errorf("%s API key not found in environment", strings.ToUpper(provider))
 	}
-	
+
 	return &APIProvider{
 		apiKey:      apiKey,
 		baseURL:     baseURL,
@@ -88,12 +88,12 @@ func (p *APIProvider) Generate(ctx context.Context, prompt string, opts Generate
 	if opts.Temperature > 0 {
 		temp = opts.Temperature
 	}
-	
+
 	maxTok := p.maxTokens
 	if opts.MaxTokens > 0 {
 		maxTok = opts.MaxTokens
 	}
-	
+
 	if p.provider == "anthropic" {
 		return p.generateAnthropic(ctx, opts.SystemPrompt, prompt, temp, maxTok)
 	}
@@ -105,73 +105,73 @@ func (p *APIProvider) StreamGenerate(ctx context.Context, prompt string, opts Ge
 	// For now, implement as non-streaming with single chunk
 	// TODO: Implement true streaming
 	outChan := make(chan StreamChunk, 1)
-	
+
 	go func() {
 		defer close(outChan)
-		
+
 		result, err := p.Generate(ctx, prompt, opts)
 		if err != nil {
 			outChan <- StreamChunk{Error: err, Done: true}
 			return
 		}
-		
+
 		outChan <- StreamChunk{Content: result, Done: true}
 	}()
-	
+
 	return outChan, nil
 }
 
 // generateOpenAI uses OpenAI-compatible API
 func (p *APIProvider) generateOpenAI(ctx context.Context, system, prompt string, temperature float64, maxTokens int) (string, error) {
 	messages := []map[string]string{}
-	
+
 	if system != "" {
 		messages = append(messages, map[string]string{
 			"role":    "system",
 			"content": system,
 		})
 	}
-	
+
 	messages = append(messages, map[string]string{
 		"role":    "user",
 		"content": prompt,
 	})
-	
+
 	requestBody := map[string]interface{}{
 		"model":       p.model,
 		"messages":    messages,
 		"temperature": temperature,
 		"max_tokens":  maxTokens,
 	}
-	
+
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/chat/completions", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	
+
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
-	
+
 	var result struct {
 		Choices []struct {
 			Message struct {
@@ -179,15 +179,15 @@ func (p *APIProvider) generateOpenAI(ctx context.Context, system, prompt string,
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("no response from API")
 	}
-	
+
 	return result.Choices[0].Message.Content, nil
 }
 
@@ -203,54 +203,54 @@ func (p *APIProvider) generateAnthropic(ctx context.Context, system, prompt stri
 		},
 		"max_tokens": maxTokens,
 	}
-	
+
 	if system != "" {
 		requestBody["system"] = system
 	}
-	
+
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/messages", bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", p.apiKey)
 	req.Header.Set("anthropic-version", "2023-06-01")
-	
+
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to send request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
 	}
-	
+
 	var result struct {
 		Content []struct {
 			Text string `json:"text"`
 		} `json:"content"`
 	}
-	
+
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(result.Content) == 0 {
 		return "", fmt.Errorf("no response from API")
 	}
-	
+
 	return result.Content[0].Text, nil
 }
 

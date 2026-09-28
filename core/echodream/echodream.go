@@ -9,46 +9,46 @@ import (
 
 // EchoDream represents the knowledge integration and consolidation system
 type EchoDream struct {
-	mu                    sync.RWMutex
-	ctx                   context.Context
-	cancel                context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Memory consolidation
 	episodicMemories      []EpisodicMemory
 	consolidatedKnowledge []KnowledgeItem
 	wisdomInsights        []WisdomInsight
-	
+
 	// Dream state
-	dreaming              bool
-	dreamStartTime        time.Time
-	dreamPhase            DreamPhase
-	
+	dreaming       bool
+	dreamStartTime time.Time
+	dreamPhase     DreamPhase
+
 	// Metrics
-	dreamCycles           uint64
-	memoriesProcessed     uint64
-	wisdomExtracted       uint64
-	
-	running               bool
+	dreamCycles       uint64
+	memoriesProcessed uint64
+	wisdomExtracted   uint64
+
+	running bool
 }
 
 // EpisodicMemory is defined in dream_cycle_integration.go
 
 // KnowledgeItem represents consolidated knowledge
 type KnowledgeItem struct {
-	ID          string
-	Content     string
-	Source      []string // IDs of source memories
-	Confidence  float64
-	Created     time.Time
+	ID         string
+	Content    string
+	Source     []string // IDs of source memories
+	Confidence float64
+	Created    time.Time
 }
 
 // WisdomInsight represents extracted wisdom
 type WisdomInsight struct {
-	ID          string
-	Insight     string
-	Depth       float64
+	ID            string
+	Insight       string
+	Depth         float64
 	Applicability float64
-	Created     time.Time
+	Created       time.Time
 }
 
 // DreamPhase represents the current dream phase
@@ -68,7 +68,7 @@ func (dp DreamPhase) String() string {
 // NewEchoDream creates a new EchoDream system
 func NewEchoDream() *EchoDream {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &EchoDream{
 		ctx:                   ctx,
 		cancel:                cancel,
@@ -92,11 +92,11 @@ func (ed *EchoDream) Start() error {
 	ed.dreamStartTime = time.Now()
 	ed.dreamCycles++
 	ed.mu.Unlock()
-	
+
 	fmt.Printf("🌙 EchoDream: Starting dream cycle #%d\n", ed.dreamCycles)
-	
+
 	go ed.dreamLoop()
-	
+
 	return nil
 }
 
@@ -104,18 +104,18 @@ func (ed *EchoDream) Start() error {
 func (ed *EchoDream) Stop() error {
 	ed.mu.Lock()
 	defer ed.mu.Unlock()
-	
+
 	if !ed.running {
 		return fmt.Errorf("EchoDream not running")
 	}
-	
+
 	ed.running = false
 	ed.dreaming = false
-	
+
 	dreamDuration := time.Since(ed.dreamStartTime)
 	fmt.Printf("✨ EchoDream: Completed dream cycle (duration: %v)\n", dreamDuration.Round(time.Second))
 	fmt.Printf("   Memories processed: %d | Wisdom extracted: %d\n", ed.memoriesProcessed, ed.wisdomExtracted)
-	
+
 	return nil
 }
 
@@ -123,7 +123,7 @@ func (ed *EchoDream) Stop() error {
 func (ed *EchoDream) dreamLoop() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ed.ctx.Done():
@@ -132,11 +132,11 @@ func (ed *EchoDream) dreamLoop() {
 			ed.mu.RLock()
 			running := ed.running
 			ed.mu.RUnlock()
-			
+
 			if !running {
 				return
 			}
-			
+
 			ed.processDreamPhase()
 		}
 	}
@@ -146,23 +146,23 @@ func (ed *EchoDream) dreamLoop() {
 func (ed *EchoDream) processDreamPhase() {
 	ed.mu.Lock()
 	defer ed.mu.Unlock()
-	
+
 	switch ed.dreamPhase {
 	case PhaseREM:
 		// Process recent memories
 		ed.processRecentMemories()
 		ed.dreamPhase = PhaseDeepSleep
-		
+
 	case PhaseDeepSleep:
 		// Consolidate memories into knowledge
 		ed.consolidateMemories()
 		ed.dreamPhase = PhaseConsolidation
-		
+
 	case PhaseConsolidation:
 		// Extract wisdom from knowledge
 		ed.extractWisdom()
 		ed.dreamPhase = PhaseIntegration
-		
+
 	case PhaseIntegration:
 		// Integrate wisdom into cognitive system
 		ed.integrateWisdom()
@@ -203,11 +203,11 @@ func (ed *EchoDream) extractWisdom() {
 	// Simulate wisdom extraction
 	if len(ed.consolidatedKnowledge) > 0 {
 		wisdom := WisdomInsight{
-			ID:             fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-			Insight:        "Wisdom insight from integrated knowledge",
-			Depth:          0.7,
-			Applicability:  0.8,
-			Created:        time.Now(),
+			ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+			Insight:       "Wisdom insight from integrated knowledge",
+			Depth:         0.7,
+			Applicability: 0.8,
+			Created:       time.Now(),
 		}
 		ed.wisdomInsights = append(ed.wisdomInsights, wisdom)
 		ed.wisdomExtracted++
@@ -224,15 +224,15 @@ func (ed *EchoDream) integrateWisdom() {
 func (ed *EchoDream) AddEpisodicMemory(content string, importance float64) {
 	ed.mu.Lock()
 	defer ed.mu.Unlock()
-	
+
 	memory := EpisodicMemory{
-		ID:          fmt.Sprintf("memory_%d", time.Now().UnixNano()),
-		Timestamp:   time.Now(),
-		Content:     content,
-		Importance:  importance,
+		ID:           fmt.Sprintf("memory_%d", time.Now().UnixNano()),
+		Timestamp:    time.Now(),
+		Content:      content,
+		Importance:   importance,
 		Consolidated: false,
 	}
-	
+
 	ed.episodicMemories = append(ed.episodicMemories, memory)
 }
 
@@ -240,15 +240,15 @@ func (ed *EchoDream) AddEpisodicMemory(content string, importance float64) {
 func (ed *EchoDream) GetMetrics() map[string]interface{} {
 	ed.mu.RLock()
 	defer ed.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"dream_cycles":        ed.dreamCycles,
-		"memories_processed":  ed.memoriesProcessed,
-		"wisdom_extracted":    ed.wisdomExtracted,
-		"dreaming":            ed.dreaming,
-		"current_phase":       ed.dreamPhase.String(),
-		"episodic_memories":   len(ed.episodicMemories),
-		"knowledge_items":     len(ed.consolidatedKnowledge),
-		"wisdom_insights":     len(ed.wisdomInsights),
+		"dream_cycles":       ed.dreamCycles,
+		"memories_processed": ed.memoriesProcessed,
+		"wisdom_extracted":   ed.wisdomExtracted,
+		"dreaming":           ed.dreaming,
+		"current_phase":      ed.dreamPhase.String(),
+		"episodic_memories":  len(ed.episodicMemories),
+		"knowledge_items":    len(ed.consolidatedKnowledge),
+		"wisdom_insights":    len(ed.wisdomInsights),
 	}
 }

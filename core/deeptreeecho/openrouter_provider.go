@@ -21,10 +21,10 @@ type OpenRouterProvider struct {
 
 // OpenRouterRequest represents the request format for OpenRouter
 type OpenRouterRequest struct {
-	Model    string                   `json:"model"`
-	Messages []OpenRouterMessage      `json:"messages"`
-	Stream   bool                     `json:"stream"`
-	MaxTokens int                     `json:"max_tokens,omitempty"`
+	Model     string              `json:"model"`
+	Messages  []OpenRouterMessage `json:"messages"`
+	Stream    bool                `json:"stream"`
+	MaxTokens int                 `json:"max_tokens,omitempty"`
 }
 
 // OpenRouterMessage represents a message in the conversation
@@ -35,10 +35,10 @@ type OpenRouterMessage struct {
 
 // OpenRouterResponse represents the response from OpenRouter
 type OpenRouterResponse struct {
-	ID      string                  `json:"id"`
-	Choices []OpenRouterChoice      `json:"choices"`
-	Usage   OpenRouterUsage         `json:"usage,omitempty"`
-	Error   *OpenRouterError        `json:"error,omitempty"`
+	ID      string             `json:"id"`
+	Choices []OpenRouterChoice `json:"choices"`
+	Usage   OpenRouterUsage    `json:"usage,omitempty"`
+	Error   *OpenRouterError   `json:"error,omitempty"`
 }
 
 // OpenRouterChoice represents a choice in the response
@@ -66,7 +66,7 @@ func NewOpenRouterProvider(apiKey, model string) *OpenRouterProvider {
 	if apiKey == "" {
 		return nil
 	}
-	
+
 	return &OpenRouterProvider{
 		apiKey:    apiKey,
 		model:     model,
@@ -81,7 +81,7 @@ func (p *OpenRouterProvider) GenerateThought(ctx context.Context, prompt string)
 	if !p.available {
 		return "", fmt.Errorf("provider not available")
 	}
-	
+
 	// Build the request
 	request := OpenRouterRequest{
 		Model: p.model,
@@ -98,7 +98,7 @@ func (p *OpenRouterProvider) GenerateThought(ctx context.Context, prompt string)
 		Stream:    false,
 		MaxTokens: 150,
 	}
-	
+
 	return p.makeRequest(ctx, request)
 }
 
@@ -107,7 +107,7 @@ func (p *OpenRouterProvider) GenerateReflection(ctx context.Context, contextStr 
 	if !p.available {
 		return "", fmt.Errorf("provider not available")
 	}
-	
+
 	// Build the request
 	request := OpenRouterRequest{
 		Model: p.model,
@@ -124,7 +124,7 @@ func (p *OpenRouterProvider) GenerateReflection(ctx context.Context, contextStr 
 		Stream:    false,
 		MaxTokens: 200,
 	}
-	
+
 	return p.makeRequest(ctx, request)
 }
 
@@ -135,19 +135,19 @@ func (p *OpenRouterProvider) makeRequest(ctx context.Context, request OpenRouter
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	// Create HTTP request
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
-	
+
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", p.apiKey))
 	req.Header.Set("HTTP-Referer", "https://github.com/cogpy/echo9llama")
 	req.Header.Set("X-Title", "Echo9llama Deep Tree Echo")
-	
+
 	// Make request
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -155,41 +155,41 @@ func (p *OpenRouterProvider) makeRequest(ctx context.Context, request OpenRouter
 		return "", fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}
-	
+
 	// Check status code
 	if resp.StatusCode != http.StatusOK {
 		p.available = false
 		return "", fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
 	}
-	
+
 	// Parse response
 	var response OpenRouterResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	// Check for API error
 	if response.Error != nil {
 		p.available = false
 		return "", fmt.Errorf("API error: %s", response.Error.Message)
 	}
-	
+
 	// Extract content
 	if len(response.Choices) == 0 {
 		return "", fmt.Errorf("no choices in response")
 	}
-	
+
 	content := response.Choices[0].Message.Content
 	if content == "" {
 		return "", fmt.Errorf("empty content in response")
 	}
-	
+
 	p.available = true
 	return content, nil
 }

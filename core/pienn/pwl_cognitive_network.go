@@ -46,7 +46,7 @@ func NewPWLFunction(numSplits int, rangeMin, rangeMax float64) *PWLFunction {
 	controlGrads := make([]float64, numSplits)
 
 	step := (rangeMax - rangeMin) / float64(numSplits-1)
-	for i := 0; i < numSplits; i++ {
+	for i := range numSplits {
 		splits[i] = rangeMin + float64(i)*step
 		controls[i] = 0.5 // Initialize to midpoint
 	}
@@ -88,7 +88,7 @@ func (f *PWLFunction) Evaluate(x float64) float64 {
 	}
 
 	// Find the segment
-	for i := 0; i < n-1; i++ {
+	for i := range n - 1 {
 		if x >= f.SplitPoints[i] && x < f.SplitPoints[i+1] {
 			// Linear interpolation within segment
 			t := (x - f.SplitPoints[i]) / (f.SplitPoints[i+1] - f.SplitPoints[i])
@@ -107,7 +107,7 @@ func (f *PWLFunction) AccumulateGradient(x float64, gradient float64) {
 	}
 
 	// Find affected segment and accumulate gradient to control points
-	for i := 0; i < n-1; i++ {
+	for i := range n - 1 {
 		if x >= f.SplitPoints[i] && x < f.SplitPoints[i+1] {
 			t := (x - f.SplitPoints[i]) / (f.SplitPoints[i+1] - f.SplitPoints[i])
 			f.ControlGradients[i] += gradient * (1 - t)
@@ -175,9 +175,9 @@ type CognitivePWLNetwork struct {
 	RewardHistory []RewardSignal
 
 	// Network metadata
-	TotalUpdates   uint64
-	LastUpdate     time.Time
-	WisdomAccrued  float64
+	TotalUpdates  uint64
+	LastUpdate    time.Time
+	WisdomAccrued float64
 }
 
 // RewardSignal represents a learning signal from experience
@@ -371,13 +371,13 @@ func (n *CognitivePWLNetwork) GetWisdomMetrics() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_updates":   n.TotalUpdates,
-		"wisdom_accrued":  fmt.Sprintf("%.4f", n.WisdomAccrued),
-		"reward_history":  len(n.RewardHistory),
-		"avg_reward":      fmt.Sprintf("%.4f", avgReward),
-		"last_update":     n.LastUpdate.Format(time.RFC3339),
-		"trait_count":     len(n.TraitFunctions),
-		"context_count":   len(n.ContextFeatures),
+		"total_updates":  n.TotalUpdates,
+		"wisdom_accrued": fmt.Sprintf("%.4f", n.WisdomAccrued),
+		"reward_history": len(n.RewardHistory),
+		"avg_reward":     fmt.Sprintf("%.4f", avgReward),
+		"last_update":    n.LastUpdate.Format(time.RFC3339),
+		"trait_count":    len(n.TraitFunctions),
+		"context_count":  len(n.ContextFeatures),
 	}
 }
 

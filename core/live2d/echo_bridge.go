@@ -21,7 +21,7 @@ func NewEchoStateBridge(avatarManager *AvatarManager) *EchoStateBridge {
 func (eb *EchoStateBridge) UpdateFromEchoEmotion(echoEmotion map[string]float64) error {
 	// Extract emotional dimensions from Echo9's emotion system
 	// Echo9 uses: joy, sadness, anger, fear, disgust, surprise, trust, anticipation
-	
+
 	// Calculate valence (positive/negative emotion)
 	valence := 0.0
 	if joy, ok := echoEmotion["joy"]; ok {
@@ -39,7 +39,7 @@ func (eb *EchoStateBridge) UpdateFromEchoEmotion(echoEmotion map[string]float64)
 	if anger, ok := echoEmotion["anger"]; ok {
 		valence -= anger * 0.7
 	}
-	
+
 	// Calculate arousal (activation level)
 	arousal := 0.0
 	if excitement, ok := echoEmotion["excitement"]; ok {
@@ -51,7 +51,7 @@ func (eb *EchoStateBridge) UpdateFromEchoEmotion(echoEmotion map[string]float64)
 	if anticipation, ok := echoEmotion["anticipation"]; ok {
 		arousal += anticipation * 0.6
 	}
-	
+
 	// Calculate dominance
 	dominance := 0.5 // Default
 	if anger, ok := echoEmotion["anger"]; ok {
@@ -60,18 +60,18 @@ func (eb *EchoStateBridge) UpdateFromEchoEmotion(echoEmotion map[string]float64)
 	if fear, ok := echoEmotion["fear"]; ok {
 		dominance -= fear * 0.5
 	}
-	
+
 	// Get curiosity and confidence if available
 	curiosity := 0.3
 	if c, ok := echoEmotion["curiosity"]; ok {
 		curiosity = c
 	}
-	
+
 	confidence := 0.5
 	if c, ok := echoEmotion["confidence"]; ok {
 		confidence = c
 	}
-	
+
 	// Create Live2D emotional state
 	emotional := EmotionalState{
 		Valence:    clamp(valence, -1.0, 1.0),
@@ -80,7 +80,7 @@ func (eb *EchoStateBridge) UpdateFromEchoEmotion(echoEmotion map[string]float64)
 		Curiosity:  clamp(curiosity, 0.0, 1.0),
 		Confidence: clamp(confidence, 0.0, 1.0),
 	}
-	
+
 	return eb.avatarManager.UpdateEmotionalState(emotional)
 }
 
@@ -95,7 +95,7 @@ func (eb *EchoStateBridge) UpdateFromEchoCognitive(echoCognitive map[string]inte
 		EnergyLevel:    extractFloat(echoCognitive, "energy_level", 0.7),
 		ProcessingMode: extractString(echoCognitive, "processing_mode", "contemplative"),
 	}
-	
+
 	return eb.avatarManager.UpdateCognitiveState(cognitive)
 }
 
@@ -110,7 +110,7 @@ func (eb *EchoStateBridge) UpdateFromEchoReservoir(reservoirState map[string]int
 		EnergyLevel:    1.0 - extractFloat(reservoirState, "fatigue", 0.3),
 		ProcessingMode: mapPersonaToMode(extractString(reservoirState, "persona", "contemplative")),
 	}
-	
+
 	return eb.avatarManager.UpdateCognitiveState(cognitive)
 }
 
@@ -119,7 +119,7 @@ func (eb *EchoStateBridge) UpdateFromEchoBeats(step int, phase string) error {
 	// Map EchoBeats 12-step cycle to avatar behavior
 	currentState := eb.avatarManager.GetCurrentState()
 	cognitive := currentState.Cognitive
-	
+
 	// Adjust attention based on phase
 	switch phase {
 	case "affordance": // Steps 1-6
@@ -132,10 +132,10 @@ func (eb *EchoStateBridge) UpdateFromEchoBeats(step int, phase string) error {
 		cognitive.Attention = 0.7
 		cognitive.ProcessingMode = "creative"
 	}
-	
+
 	// Subtle head movement based on step
 	// This creates a natural rhythmic motion
-	
+
 	return eb.avatarManager.UpdateCognitiveState(cognitive)
 }
 
@@ -151,12 +151,12 @@ func (eb *EchoStateBridge) UpdateFromWisdomMetrics(wisdom map[string]float64) er
 	if count > 0 {
 		avgWisdom /= float64(count)
 	}
-	
+
 	// Higher wisdom -> calmer, more confident demeanor
 	emotional := eb.avatarManager.GetCurrentState().Emotional
 	emotional.Confidence = clamp(emotional.Confidence+avgWisdom*0.2, 0.0, 1.0)
 	emotional.Valence = clamp(emotional.Valence+avgWisdom*0.1, -1.0, 1.0)
-	
+
 	return eb.avatarManager.UpdateEmotionalState(emotional)
 }
 
@@ -164,12 +164,12 @@ func (eb *EchoStateBridge) UpdateFromWisdomMetrics(wisdom map[string]float64) er
 func (eb *EchoStateBridge) SyncWithThoughtGeneration(thoughtType string, inProgress bool) error {
 	cognitive := eb.avatarManager.GetCurrentState().Cognitive
 	emotional := eb.avatarManager.GetCurrentState().Emotional
-	
+
 	if inProgress {
 		// Increase cognitive load and attention during thought generation
 		cognitive.CognitiveLoad = clamp(cognitive.CognitiveLoad+0.2, 0.0, 1.0)
 		cognitive.Attention = clamp(cognitive.Attention+0.1, 0.0, 1.0)
-		
+
 		// Adjust emotional state based on thought type
 		switch thoughtType {
 		case "reflection":
@@ -190,7 +190,7 @@ func (eb *EchoStateBridge) SyncWithThoughtGeneration(thoughtType string, inProgr
 		// Reset to baseline after thought generation
 		cognitive.CognitiveLoad = clamp(cognitive.CognitiveLoad-0.1, 0.0, 1.0)
 	}
-	
+
 	// Update both states
 	if err := eb.avatarManager.UpdateCognitiveState(cognitive); err != nil {
 		return err
@@ -242,7 +242,7 @@ func mapPersonaToMode(persona string) string {
 func (eb *EchoStateBridge) PeriodicSync(syncFunc func() (AvatarState, error), interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		if state, err := syncFunc(); err == nil {
 			eb.avatarManager.UpdateFullState(state)

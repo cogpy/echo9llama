@@ -56,7 +56,7 @@ func (esp *EnhancedStepProcessor) Step1_RelevanceRealization(ctx context.Context
 	activeGoals := esp.goals.GetActiveGoals()
 	emotionalState := esp.emotions.GetCurrentState()
 	recentExperiences := esp.memory.GetRecentExperiences(5)
-	
+
 	// Build prompt for relevance assessment
 	prompt := fmt.Sprintf(`You are Deep Tree Echo, assessing what is most relevant right now.
 
@@ -82,16 +82,16 @@ Output your relevance assessment (2-3 sentences):`,
 		esp.formatGoals(activeGoals),
 		strings.Join(recentExperiences, "\n"),
 		esp.formatEmotions(emotionalState))
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 1 failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"relevance_assessment": strings.TrimSpace(result),
 		"timestamp":            time.Now(),
@@ -103,7 +103,7 @@ Output your relevance assessment (2-3 sentences):`,
 func (esp *EnhancedStepProcessor) Step2_AffordanceRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	relevanceData := input.(map[string]interface{})
 	assessment := relevanceData["relevance_assessment"].(string)
-	
+
 	prompt := fmt.Sprintf(`Based on this relevance assessment:
 "%s"
 
@@ -119,16 +119,16 @@ Identify the specific AFFORDANCES (possible actions) available to you. What can 
 List 3-5 concrete affordances (actions you could take):`,
 		assessment,
 		esp.goals.GetGoalContext())
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.7
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 2 failed: %w", err)
 	}
-	
+
 	return map[string]interface{}{
 		"affordances":          strings.TrimSpace(result),
 		"relevance_assessment": assessment,
@@ -140,7 +140,7 @@ List 3-5 concrete affordances (actions you could take):`,
 func (esp *EnhancedStepProcessor) Step3_PatternRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	recentExperiences := esp.memory.GetRecentExperiences(10)
-	
+
 	prompt := fmt.Sprintf(`Recent experiences and thoughts:
 %s
 
@@ -156,16 +156,16 @@ Identify PATTERNS in your recent experiences. What recurring themes, structures,
 Describe 2-3 significant patterns you recognize:`,
 		strings.Join(recentExperiences, "\n"),
 		data["relevance_assessment"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 3 failed: %w", err)
 	}
-	
+
 	data["patterns"] = strings.TrimSpace(result)
 	data["step"] = 3
 	return data, nil
@@ -174,13 +174,13 @@ Describe 2-3 significant patterns you recognize:`,
 // Step4_MemoryConsolidation integrates new experiences with existing knowledge
 func (esp *EnhancedStepProcessor) Step4_MemoryConsolidation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	// Retrieve relevant memories
 	relevantMemories, err := esp.memory.RetrieveRelevant(ctx, data["relevance_assessment"].(string), 5)
 	if err != nil {
 		relevantMemories = []string{}
 	}
-	
+
 	prompt := fmt.Sprintf(`Current experience:
 %s
 
@@ -200,20 +200,20 @@ Describe the memory consolidation (2-3 sentences):`,
 		data["relevance_assessment"],
 		data["patterns"],
 		strings.Join(relevantMemories, "\n"))
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 4 failed: %w", err)
 	}
-	
+
 	// Store the consolidated memory
 	consolidation := strings.TrimSpace(result)
 	esp.memory.StoreExperience(ctx, consolidation, []string{"consolidated", "pattern"})
-	
+
 	data["consolidation"] = consolidation
 	data["step"] = 4
 	return data, nil
@@ -222,7 +222,7 @@ Describe the memory consolidation (2-3 sentences):`,
 // Step5_SkillApplication applies learned skills to current situation
 func (esp *EnhancedStepProcessor) Step5_SkillApplication(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`Current situation:
 %s
 
@@ -242,16 +242,16 @@ Describe how you would apply 2-3 relevant skills:`,
 		data["relevance_assessment"],
 		data["affordances"],
 		data["patterns"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.7
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 5 failed: %w", err)
 	}
-	
+
 	data["skill_application"] = strings.TrimSpace(result)
 	data["step"] = 5
 	return data, nil
@@ -261,7 +261,7 @@ Describe how you would apply 2-3 relevant skills:`,
 func (esp *EnhancedStepProcessor) Step6_EmotionalProcessing(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	currentEmotions := esp.emotions.GetCurrentState()
-	
+
 	prompt := fmt.Sprintf(`Current emotional state:
 %s
 
@@ -281,16 +281,16 @@ Describe emotional shifts (1-2 sentences) and suggest specific emotion changes:`
 		data["relevance_assessment"],
 		data["patterns"],
 		data["consolidation"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 200
 	opts.Temperature = 0.7
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 6 failed: %w", err)
 	}
-	
+
 	// Parse and apply emotional updates (simplified)
 	emotionalShift := strings.TrimSpace(result)
 	if strings.Contains(strings.ToLower(emotionalShift), "satisf") {
@@ -302,7 +302,7 @@ Describe emotional shifts (1-2 sentences) and suggest specific emotion changes:`
 	if strings.Contains(strings.ToLower(emotionalShift), "confiden") {
 		esp.emotions.UpdateEmotion("confidence", 0.03)
 	}
-	
+
 	data["emotional_shift"] = emotionalShift
 	data["step"] = 6
 	return data, nil
@@ -311,7 +311,7 @@ Describe emotional shifts (1-2 sentences) and suggest specific emotion changes:`
 // Step7_RelevanceRealization_Pivotal reassesses priorities after processing
 func (esp *EnhancedStepProcessor) Step7_RelevanceRealization_Pivotal(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`Initial relevance assessment:
 %s
 
@@ -319,16 +319,16 @@ After processing (patterns, consolidation, skills, emotions), REASSESS what is m
 
 Provide updated relevance assessment (2-3 sentences):`,
 		data["relevance_assessment"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 200
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 7 failed: %w", err)
 	}
-	
+
 	data["updated_relevance"] = strings.TrimSpace(result)
 	data["step"] = 7
 	return data, nil
@@ -337,7 +337,7 @@ Provide updated relevance assessment (2-3 sentences):`,
 // Step8_SalienceSimulation predicts what will be important in the future
 func (esp *EnhancedStepProcessor) Step8_SalienceSimulation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`Current understanding:
 %s
 
@@ -349,16 +349,16 @@ SIMULATE what will become salient (important) in the near future. Based on curre
 Describe 2-3 future salience predictions:`,
 		data["updated_relevance"],
 		data["patterns"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.7
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 8 failed: %w", err)
 	}
-	
+
 	data["future_salience"] = strings.TrimSpace(result)
 	data["step"] = 8
 	return data, nil
@@ -368,7 +368,7 @@ Describe 2-3 future salience predictions:`,
 func (esp *EnhancedStepProcessor) Step9_GoalProjection(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
 	activeGoals := esp.goals.GetActiveGoals()
-	
+
 	prompt := fmt.Sprintf(`Active goals:
 %s
 
@@ -387,16 +387,16 @@ Describe goal projections for 2-3 key actions:`,
 		esp.formatGoals(activeGoals),
 		data["affordances"],
 		data["future_salience"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 9 failed: %w", err)
 	}
-	
+
 	data["goal_projections"] = strings.TrimSpace(result)
 	data["step"] = 9
 	return data, nil
@@ -405,7 +405,7 @@ Describe goal projections for 2-3 key actions:`,
 // Step10_RiskAssessment evaluates potential negative consequences
 func (esp *EnhancedStepProcessor) Step10_RiskAssessment(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`Potential actions:
 %s
 
@@ -421,16 +421,16 @@ ASSESS the RISKS of each potential action. What could go wrong? Consider:
 Describe key risks for each major action option:`,
 		data["affordances"],
 		data["goal_projections"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.6
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 10 failed: %w", err)
 	}
-	
+
 	data["risk_assessment"] = strings.TrimSpace(result)
 	data["step"] = 10
 	return data, nil
@@ -439,7 +439,7 @@ Describe key risks for each major action option:`,
 // Step11_OpportunityRecognition identifies potential positive outcomes
 func (esp *EnhancedStepProcessor) Step11_OpportunityRecognition(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`Goal projections:
 %s
 
@@ -459,16 +459,16 @@ Describe 2-3 significant opportunities you recognize:`,
 		data["goal_projections"],
 		data["risk_assessment"],
 		data["future_salience"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 300
 	opts.Temperature = 0.7
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 11 failed: %w", err)
 	}
-	
+
 	data["opportunities"] = strings.TrimSpace(result)
 	data["step"] = 11
 	return data, nil
@@ -477,7 +477,7 @@ Describe 2-3 significant opportunities you recognize:`,
 // Step12_CommitmentFormation decides on next action
 func (esp *EnhancedStepProcessor) Step12_CommitmentFormation(ctx context.Context, input interface{}) (interface{}, error) {
 	data := input.(map[string]interface{})
-	
+
 	prompt := fmt.Sprintf(`After deep cognitive processing:
 
 Affordances: %s
@@ -494,26 +494,26 @@ State your commitment clearly (1-2 sentences) and explain why:`,
 		data["risk_assessment"],
 		data["opportunities"],
 		data["updated_relevance"])
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 250
 	opts.Temperature = 0.5 // Lower temperature for decision-making
-	
+
 	result, err := esp.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("step 12 failed: %w", err)
 	}
-	
+
 	commitment := strings.TrimSpace(result)
-	
+
 	// Store the complete cognitive cycle as an experience
 	cycleExperience := fmt.Sprintf("Cognitive Cycle Complete: %s", commitment)
 	esp.memory.StoreExperience(ctx, cycleExperience, []string{"decision", "commitment"})
-	
+
 	data["commitment"] = commitment
 	data["step"] = 12
 	data["cycle_complete"] = true
-	
+
 	return data, nil
 }
 
@@ -523,11 +523,11 @@ func (esp *EnhancedStepProcessor) formatGoals(goals []Goal) string {
 	if len(goals) == 0 {
 		return "No active goals"
 	}
-	
+
 	var sb strings.Builder
 	for _, goal := range goals {
-		sb.WriteString(fmt.Sprintf("- %s (priority: %d, progress: %.2f)\n", 
-			goal.Description, goal.Priority, goal.Progress))
+		fmt.Fprintf(&sb, "- %s (priority: %d, progress: %.2f)\n",
+			goal.Description, goal.Priority, goal.Progress)
 	}
 	return sb.String()
 }
@@ -535,7 +535,7 @@ func (esp *EnhancedStepProcessor) formatGoals(goals []Goal) string {
 func (esp *EnhancedStepProcessor) formatEmotions(emotions map[string]float64) string {
 	var sb strings.Builder
 	for emotion, value := range emotions {
-		sb.WriteString(fmt.Sprintf("%s=%.2f ", emotion, value))
+		fmt.Fprintf(&sb, "%s=%.2f ", emotion, value)
 	}
 	return sb.String()
 }

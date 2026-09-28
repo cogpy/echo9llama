@@ -145,7 +145,7 @@ func TestGenerateThoughtStructure(t *testing.T) {
 
 	// Verify methods exist and have correct signatures
 	ctx := context.Background()
-	
+
 	// Test GenerateThought (will fail with API error, but that's expected)
 	_, err = client.GenerateThought(ctx, "test prompt", "test system")
 	// We expect an error since we're using a fake key
@@ -188,7 +188,7 @@ func TestChatCompletionMessages(t *testing.T) {
 // TestFEARLESS_KeyPriorityOrder verifies the correct precedence of API key sources
 func TestFEARLESS_KeyPriorityOrder(t *testing.T) {
 	// Setup: config > FEATHERLESS_API_KEY > FEARLESS
-	
+
 	t.Run("Config takes precedence over environment", func(t *testing.T) {
 		os.Setenv("FEATHERLESS_API_KEY", "env-key")
 		os.Setenv("FEARLESS", "fearless-key")

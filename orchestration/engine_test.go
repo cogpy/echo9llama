@@ -438,7 +438,7 @@ func TestStartConversation(t *testing.T) {
 		Models:      []string{"llama3.2"},
 	}
 	agent2 := &Agent{
-		Name:        "agent-2", 
+		Name:        "agent-2",
 		Description: "Test agent 2",
 		Type:        AgentTypeSpecialist,
 		Models:      []string{"llama3.2"},
@@ -491,7 +491,7 @@ func TestSendMessage(t *testing.T) {
 	}
 	agent2 := &Agent{
 		Name:        "receiver",
-		Description: "Receiver agent", 
+		Description: "Receiver agent",
 		Type:        AgentTypeSpecialist,
 		Models:      []string{"llama3.2"},
 	}
@@ -592,7 +592,7 @@ func TestListConversations(t *testing.T) {
 		t.Fatalf("StartConversation failed: %v", err)
 	}
 
-	conv2, err := engine.StartConversation(ctx, []string{agent1.ID, agent3.ID}, "Conversation 2") 
+	conv2, err := engine.StartConversation(ctx, []string{agent1.ID, agent3.ID}, "Conversation 2")
 	if err != nil {
 		t.Fatalf("StartConversation failed: %v", err)
 	}
@@ -719,9 +719,9 @@ func TestExecuteConversationWorkflow(t *testing.T) {
 
 	// Create workflow
 	workflow := &ConversationWorkflow{
-		ID:          "test-workflow",
-		Name:        "Test Workflow",
-		Description: "A test conversation workflow",
+		ID:           "test-workflow",
+		Name:         "Test Workflow",
+		Description:  "A test conversation workflow",
 		Participants: []string{orchestrator.ID, specialist.ID},
 		Steps: []ConversationStep{
 			{
@@ -735,7 +735,7 @@ func TestExecuteConversationWorkflow(t *testing.T) {
 				},
 			},
 			{
-				ID:              "step2", 
+				ID:              "step2",
 				Name:            "Follow-up",
 				FromAgentID:     orchestrator.ID,
 				ToAgentID:       specialist.ID,

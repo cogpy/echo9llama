@@ -151,11 +151,11 @@ func SampleCognitiveSteps() []*TestCognitiveStep {
 
 // TestLLMPrompt represents a test LLM prompt
 type TestLLMPrompt struct {
-	Prompt       string
-	Mode         string
-	MaxTokens    int
-	Temperature  float64
-	Expected     string
+	Prompt      string
+	Mode        string
+	MaxTokens   int
+	Temperature float64
+	Expected    string
 }
 
 // SampleLLMPrompts returns sample LLM prompts for testing

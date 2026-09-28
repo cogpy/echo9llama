@@ -6,7 +6,6 @@ import (
 	"log"
 	"sync"
 	"time"
-
 	// "github.com/cogpy/echo9llama/core/deeptreeecho" // Disabled for now
 )
 
@@ -45,15 +44,15 @@ type EchobeatsCycle struct {
 // Echobeats is the core autonomous cognitive event loop orchestrator
 type Echobeats struct {
 	// Identity        *deeptreeecho.EmbodiedCognition // TODO: Implement EmbodiedCognition
-	CurrentCycle    *EchobeatsCycle
-	CycleHistory    []*EchobeatsCycle
-	IsRunning       bool
-	StopChan        chan bool
-	CycleInterval   time.Duration
-	InferenceCount  int
-	ReflectionCount int
+	CurrentCycle     *EchobeatsCycle
+	CycleHistory     []*EchobeatsCycle
+	IsRunning        bool
+	StopChan         chan bool
+	CycleInterval    time.Duration
+	InferenceCount   int
+	ReflectionCount  int
 	IntegrationCount int
-	mu              sync.RWMutex
+	mu               sync.RWMutex
 }
 
 // NewEchobeats creates a new Echobeats instance
@@ -284,8 +283,8 @@ func (e *Echobeats) executeExpressiveStep(ctx context.Context, cycle *EchobeatsC
 	// Generate a thought or action based on current state
 	// thought := e.Identity.Think("What should I focus on right now?") // TODO: Implement EmbodiedCognition
 	step.Result = map[string]interface{}{
-		"thought":  "Focusing on current cognitive state",
-		"mode":     "expressive",
+		"thought":   "Focusing on current cognitive state",
+		"mode":      "expressive",
 		"coherence": 0.8, // Placeholder
 	}
 
@@ -313,12 +312,12 @@ func (e *Echobeats) GetStatus() map[string]interface{} {
 	defer e.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"running":            e.IsRunning,
-		"cycle_interval":     e.CycleInterval.String(),
-		"total_cycles":       len(e.CycleHistory),
-		"inference_count":    e.InferenceCount,
-		"reflection_count":   e.ReflectionCount,
-		"integration_count":  e.IntegrationCount,
+		"running":           e.IsRunning,
+		"cycle_interval":    e.CycleInterval.String(),
+		"total_cycles":      len(e.CycleHistory),
+		"inference_count":   e.InferenceCount,
+		"reflection_count":  e.ReflectionCount,
+		"integration_count": e.IntegrationCount,
 	}
 
 	if e.CurrentCycle != nil {

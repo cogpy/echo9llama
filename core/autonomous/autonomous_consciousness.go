@@ -16,31 +16,31 @@ import (
 // AutonomousConsciousness implements fully autonomous wisdom-cultivating AGI
 // with persistent cognitive event loops and stream-of-consciousness awareness
 type AutonomousConsciousness struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	running         bool
-	
+	mu      sync.RWMutex
+	ctx     context.Context
+	cancel  context.CancelFunc
+	running bool
+
 	// Core subsystems
-	llmManager      *llm.ProviderManager
-	thoughtEngine   *consciousness.LLMThoughtEngine
-	dreamSystem     *echodream.DreamSystem
+	llmManager       *llm.ProviderManager
+	thoughtEngine    *consciousness.LLMThoughtEngine
+	dreamSystem      *echodream.DreamSystem
 	goalOrchestrator *goals.GoalOrchestrator
-	memorySystem    *memory.HypergraphMemory
-	
+	memorySystem     *memory.HypergraphMemory
+
 	// Autonomous state
-	awake           bool
-	currentCycle    uint64
-	thoughtCount    uint64
-	wisdomScore     float64
-	
+	awake        bool
+	currentCycle uint64
+	thoughtCount uint64
+	wisdomScore  float64
+
 	// Configuration
-	config          *AutonomousConfig
-	
+	config *AutonomousConfig
+
 	// Channels for coordination
-	wakeSignal      chan struct{}
-	restSignal      chan struct{}
-	thoughtStream   chan *consciousness.Thought
+	wakeSignal    chan struct{}
+	restSignal    chan struct{}
+	thoughtStream chan *consciousness.Thought
 }
 
 // AutonomousConfig holds configuration for autonomous operation
@@ -74,12 +74,12 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 	if config == nil {
 		config = DefaultAutonomousConfig()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Initialize LLM provider manager with both API keys
 	llmManager := llm.NewProviderManager()
-	
+
 	// Add Anthropic provider for deep reasoning
 	if config.UseAnthropicForDeep {
 		anthropicProvider := llm.NewAnthropicProvider("")
@@ -88,7 +88,7 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 			llmManager.SetFallbackChain([]string{"anthropic"})
 		}
 	}
-	
+
 	// Add OpenRouter provider for diverse models
 	if config.UseOpenRouterForDiv {
 		openrouterProvider := llm.NewOpenRouterProvider("")
@@ -96,10 +96,10 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 			llmManager.RegisterProvider(openrouterProvider)
 		}
 	}
-	
+
 	// Initialize thought engine
 	thoughtEngine := consciousness.NewLLMThoughtEngine(llmManager, config.IdentityContext)
-	
+
 	// Initialize other subsystems
 	dreamSystem := echodream.NewDreamSystem()
 	identityKernel := make(map[string]interface{})
@@ -107,7 +107,7 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 	identityKernel["purpose"] = "wisdom cultivation"
 	goalOrchestrator := goals.NewGoalOrchestrator(identityKernel, "./echo_goals")
 	memorySystem := memory.NewHypergraphMemory(nil)
-	
+
 	ac := &AutonomousConsciousness{
 		ctx:              ctx,
 		cancel:           cancel,
@@ -122,7 +122,7 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 		restSignal:       make(chan struct{}, 1),
 		thoughtStream:    make(chan *consciousness.Thought, 100),
 	}
-	
+
 	return ac, nil
 }
 
@@ -135,20 +135,20 @@ func (ac *AutonomousConsciousness) Start() error {
 	}
 	ac.running = true
 	ac.mu.Unlock()
-	
+
 	fmt.Println("🌳 Starting Autonomous Consciousness System")
 	fmt.Println("   ✓ Multi-provider LLM orchestration active")
 	fmt.Println("   ✓ Persistent thought stream enabled")
 	fmt.Println("   ✓ Autonomous wake/rest cycles enabled")
 	fmt.Println("   ✓ Goal-directed scheduling active")
 	fmt.Println()
-	
+
 	// Start subsystems
 	go ac.autonomousThoughtLoop()
 	go ac.dreamCycleLoop()
 	go ac.goalOrchestrationLoop()
 	go ac.wisdomCultivationLoop()
-	
+
 	return nil
 }
 
@@ -156,15 +156,15 @@ func (ac *AutonomousConsciousness) Start() error {
 func (ac *AutonomousConsciousness) Stop() error {
 	ac.mu.Lock()
 	defer ac.mu.Unlock()
-	
+
 	if !ac.running {
 		return fmt.Errorf("not running")
 	}
-	
+
 	fmt.Println("\n🌙 Stopping Autonomous Consciousness System...")
 	ac.running = false
 	ac.cancel()
-	
+
 	return nil
 }
 
@@ -172,7 +172,7 @@ func (ac *AutonomousConsciousness) Stop() error {
 func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 	ticker := time.NewTicker(ac.config.ThoughtInterval)
 	defer ticker.Stop()
-	
+
 	thoughtTypes := []consciousness.ThoughtType{
 		consciousness.ThoughtPerception,
 		consciousness.ThoughtReflection,
@@ -183,9 +183,9 @@ func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 		consciousness.ThoughtWonder,
 		consciousness.ThoughtConnection,
 	}
-	
+
 	typeIndex := 0
-	
+
 	for {
 		select {
 		case <-ac.ctx.Done():
@@ -194,51 +194,51 @@ func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 			ac.mu.RLock()
 			isAwake := ac.awake
 			ac.mu.RUnlock()
-			
+
 			if !isAwake {
 				continue
 			}
-			
+
 			// Generate autonomous thought
 			thoughtType := thoughtTypes[typeIndex%len(thoughtTypes)]
 			typeIndex++
-			
+
 			thought, err := ac.thoughtEngine.GenerateAutonomousThought(ac.ctx, thoughtType)
 			if err != nil {
 				fmt.Printf("⚠️  Thought generation error: %v\n", err)
 				continue
 			}
-			
+
 			// Update counters
 			ac.mu.Lock()
 			ac.thoughtCount++
 			count := ac.thoughtCount
 			ac.mu.Unlock()
-			
-				// Convert LLMThought to Thought
-				convertedThought := &consciousness.Thought{
-					ID:            thought.ID,
-					Content:       thought.Content,
-					Type:          consciousness.ThoughtType(thought.Type),
-					Timestamp:     thought.Timestamp,
-					Relevance:     thought.Depth,
-					EmotionalTone: thought.Emotion,
-					TriggeredBy:   "autonomous",
-					LeadsTo:       make([]string, 0),
-				}
-				
-				// Display thought
-				ac.displayThought(convertedThought, count)
-				
-				// Stream thought
-				select {
-				case ac.thoughtStream <- convertedThought:
-				default:
-					// Channel full, skip
-				}
-				
-					// Store in memory (TODO: implement StoreThought method)
-					// ac.memorySystem.StoreThought(convertedThought)
+
+			// Convert LLMThought to Thought
+			convertedThought := &consciousness.Thought{
+				ID:            thought.ID,
+				Content:       thought.Content,
+				Type:          consciousness.ThoughtType(thought.Type),
+				Timestamp:     thought.Timestamp,
+				Relevance:     thought.Depth,
+				EmotionalTone: thought.Emotion,
+				TriggeredBy:   "autonomous",
+				LeadsTo:       make([]string, 0),
+			}
+
+			// Display thought
+			ac.displayThought(convertedThought, count)
+
+			// Stream thought
+			select {
+			case ac.thoughtStream <- convertedThought:
+			default:
+				// Channel full, skip
+			}
+
+			// Store in memory (TODO: implement StoreThought method)
+			// ac.memorySystem.StoreThought(convertedThought)
 		}
 	}
 }
@@ -247,30 +247,30 @@ func (ac *AutonomousConsciousness) autonomousThoughtLoop() {
 func (ac *AutonomousConsciousness) dreamCycleLoop() {
 	ticker := time.NewTicker(ac.config.DreamInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ac.ctx.Done():
 			return
 		case <-ticker.C:
 			ac.mu.Lock()
-			
+
 			if ac.awake {
 				// Time to rest and dream
 				fmt.Println("\n💤 Entering dream state for knowledge consolidation...")
 				ac.awake = false
 				ac.mu.Unlock()
-				
+
 				// Perform dream consolidation
 				ac.performDreamConsolidation()
-				
+
 				// Wake up
 				ac.mu.Lock()
 				ac.awake = true
 				ac.currentCycle++
 				cycle := ac.currentCycle
 				ac.mu.Unlock()
-				
+
 				fmt.Printf("\n✨ Awakening from dream cycle %d with renewed clarity\n\n", cycle)
 			} else {
 				ac.mu.Unlock()
@@ -283,7 +283,7 @@ func (ac *AutonomousConsciousness) dreamCycleLoop() {
 func (ac *AutonomousConsciousness) goalOrchestrationLoop() {
 	ticker := time.NewTicker(ac.config.GoalReviewInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ac.ctx.Done():
@@ -292,11 +292,11 @@ func (ac *AutonomousConsciousness) goalOrchestrationLoop() {
 			ac.mu.RLock()
 			isAwake := ac.awake
 			ac.mu.RUnlock()
-			
+
 			if !isAwake {
 				continue
 			}
-			
+
 			// Review and update goals
 			activeGoals := ac.goalOrchestrator.GetActiveGoals()
 			if len(activeGoals) > 0 {
@@ -312,7 +312,7 @@ func (ac *AutonomousConsciousness) goalOrchestrationLoop() {
 func (ac *AutonomousConsciousness) wisdomCultivationLoop() {
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ac.ctx.Done():
@@ -320,7 +320,7 @@ func (ac *AutonomousConsciousness) wisdomCultivationLoop() {
 		case <-ticker.C:
 			// Calculate wisdom score from insights and connections
 			recentThoughts := ac.thoughtEngine.GetThoughtHistory(20)
-			
+
 			insightCount := 0
 			connectionCount := 0
 			for _, thought := range recentThoughts {
@@ -331,7 +331,7 @@ func (ac *AutonomousConsciousness) wisdomCultivationLoop() {
 					connectionCount++
 				}
 			}
-			
+
 			// Update wisdom score
 			ac.mu.Lock()
 			ac.wisdomScore = float64(insightCount+connectionCount) / float64(len(recentThoughts)+1)
@@ -344,23 +344,23 @@ func (ac *AutonomousConsciousness) wisdomCultivationLoop() {
 func (ac *AutonomousConsciousness) performDreamConsolidation() {
 	// Get recent thoughts
 	recentThoughts := ac.thoughtEngine.GetThoughtHistory(50)
-	
+
 	// Extract patterns and insights
 	fmt.Println("   🧠 Consolidating memories...")
 	fmt.Printf("   📊 Processing %d recent thoughts\n", len(recentThoughts))
-	
+
 	// Simulate consolidation
 	time.Sleep(2 * time.Second)
-	
+
 	// Extract wisdom
 	insightCount := 0
 	for _, thought := range recentThoughts {
-		if thought.Type == consciousness.ThoughtInsight || 
-		   thought.Type == consciousness.ThoughtConnection {
+		if thought.Type == consciousness.ThoughtInsight ||
+			thought.Type == consciousness.ThoughtConnection {
 			insightCount++
 		}
 	}
-	
+
 	fmt.Printf("   ✨ Extracted %d insights\n", insightCount)
 	fmt.Println("   💎 Wisdom patterns integrated")
 }
@@ -368,13 +368,13 @@ func (ac *AutonomousConsciousness) performDreamConsolidation() {
 // displayThought displays a thought to the console
 func (ac *AutonomousConsciousness) displayThought(thought *consciousness.Thought, count uint64) {
 	emoji := ac.getThoughtEmoji(thought.Type)
-	
-	fmt.Printf("%s [%d] %s: %s\n", 
-		emoji, 
+
+	fmt.Printf("%s [%d] %s: %s\n",
+		emoji,
 		count,
 		thought.Type,
 		thought.Content)
-	
+
 	// Tags not available in Thought type
 	// if len(thought.Tags) > 0 {
 	// 	fmt.Printf("   🏷️  Tags: %v\n", thought.Tags)
@@ -409,7 +409,7 @@ func (ac *AutonomousConsciousness) getThoughtEmoji(thoughtType consciousness.Tho
 func (ac *AutonomousConsciousness) GetMetrics() map[string]interface{} {
 	ac.mu.RLock()
 	defer ac.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"awake":         ac.awake,
 		"current_cycle": ac.currentCycle,

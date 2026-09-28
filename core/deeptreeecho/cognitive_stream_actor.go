@@ -42,9 +42,9 @@ type StreamPhase int
 const (
 	// Triads occur every 4 steps: {1,5,9}, {2,6,10}, {3,7,11}, {4,8,12}
 	PhaseTriad1 StreamPhase = iota // Steps 1, 5, 9
-	PhaseTriad2                     // Steps 2, 6, 10
-	PhaseTriad3                     // Steps 3, 7, 11
-	PhaseTriad4                     // Steps 4, 8, 12
+	PhaseTriad2                    // Steps 2, 6, 10
+	PhaseTriad3                    // Steps 3, 7, 11
+	PhaseTriad4                    // Steps 4, 8, 12
 )
 
 func (sp StreamPhase) String() string {
@@ -99,39 +99,39 @@ type StreamState struct {
 // CognitiveStreamActor represents an actor-based cognitive stream
 // This implements the ergo actor pattern for the 3 concurrent cognitive loops
 type CognitiveStreamActor struct {
-	mu            sync.RWMutex
-	ctx           context.Context
-	cancel        context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// Identity
-	id            string
-	streamType    StreamType
-	phaseOffset   int // 0, 4, or 8 for the 120-degree phase offset
-	
+	id          string
+	streamType  StreamType
+	phaseOffset int // 0, 4, or 8 for the 120-degree phase offset
+
 	// State
-	state         StreamState
-	
+	state StreamState
+
 	// Communication channels (actor mailbox simulation)
-	inbox         chan CognitiveMessage
-	outbox        chan CognitiveMessage
-	
+	inbox  chan CognitiveMessage
+	outbox chan CognitiveMessage
+
 	// Peer references for inter-stream communication
-	peers         map[StreamType]chan CognitiveMessage
-	
+	peers map[StreamType]chan CognitiveMessage
+
 	// Processing callbacks
-	onPerceive    func(data interface{}) interface{}
-	onAct         func(data interface{}) interface{}
-	onSimulate    func(data interface{}) interface{}
-	onEmergence   func(pattern string, strength float64)
-	
+	onPerceive  func(data interface{}) interface{}
+	onAct       func(data interface{}) interface{}
+	onSimulate  func(data interface{}) interface{}
+	onEmergence func(pattern string, strength float64)
+
 	// Running state
-	running       bool
+	running bool
 }
 
 // NewCognitiveStreamActor creates a new cognitive stream actor
 func NewCognitiveStreamActor(streamType StreamType) *CognitiveStreamActor {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Calculate phase offset based on stream type
 	// Streams are phased 4 steps apart (120 degrees) over the 12-step cycle
 	var phaseOffset int
@@ -143,7 +143,7 @@ func NewCognitiveStreamActor(streamType StreamType) *CognitiveStreamActor {
 	case StreamTypeSimulation:
 		phaseOffset = 8 // Steps 9, 10, 11, 12
 	}
-	
+
 	return &CognitiveStreamActor{
 		ctx:         ctx,
 		cancel:      cancel,
@@ -205,13 +205,13 @@ func (csa *CognitiveStreamActor) Start() error {
 	}
 	csa.running = true
 	csa.mu.Unlock()
-	
+
 	// Start message processing loop
 	go csa.messageLoop()
-	
+
 	// Start cognitive processing loop
 	go csa.cognitiveLoop()
-	
+
 	fmt.Printf("🌊 Cognitive Stream Actor [%s] started (phase offset: %d)\n", csa.streamType, csa.phaseOffset)
 	return nil
 }
@@ -220,14 +220,14 @@ func (csa *CognitiveStreamActor) Start() error {
 func (csa *CognitiveStreamActor) Stop() error {
 	csa.mu.Lock()
 	defer csa.mu.Unlock()
-	
+
 	if !csa.running {
 		return fmt.Errorf("stream actor %s not running", csa.id)
 	}
-	
+
 	csa.running = false
 	csa.cancel()
-	
+
 	fmt.Printf("🌊 Cognitive Stream Actor [%s] stopped\n", csa.streamType)
 	return nil
 }
@@ -248,20 +248,20 @@ func (csa *CognitiveStreamActor) messageLoop() {
 func (csa *CognitiveStreamActor) handleMessage(msg CognitiveMessage) {
 	csa.mu.Lock()
 	defer csa.mu.Unlock()
-	
+
 	switch msg.Type {
 	case MsgTypePerception:
 		// Process perception data from peer
 		csa.state.AccumulatedData = append(csa.state.AccumulatedData, msg.Content)
-		
+
 	case MsgTypeAction:
 		// Process action result from peer
 		csa.state.AccumulatedData = append(csa.state.AccumulatedData, msg.Content)
-		
+
 	case MsgTypeSimulation:
 		// Process simulation result from peer
 		csa.state.AccumulatedData = append(csa.state.AccumulatedData, msg.Content)
-		
+
 	case MsgTypeSyncRequest:
 		// Respond with current state
 		csa.sendToPeer(msg.Source, CognitiveMessage{
@@ -273,18 +273,18 @@ func (csa *CognitiveStreamActor) handleMessage(msg CognitiveMessage) {
 			Content:   csa.state,
 			Timestamp: time.Now(),
 		})
-		
+
 	case MsgTypeStateUpdate:
 		// Update based on peer state
 		// This enables the interdependent self-balancing mechanism
-		
+
 	case MsgTypeEmergence:
 		// Handle emergence detection from peer
 		if pattern, ok := msg.Content.(string); ok {
 			csa.state.Insights = append(csa.state.Insights, pattern)
 		}
 	}
-	
+
 	csa.state.LastActivity = time.Now()
 }
 
@@ -294,7 +294,7 @@ func (csa *CognitiveStreamActor) cognitiveLoop() {
 	// Each step is approximately 500ms, full cycle is 6 seconds
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-csa.ctx.Done():
@@ -309,13 +309,13 @@ func (csa *CognitiveStreamActor) cognitiveLoop() {
 func (csa *CognitiveStreamActor) executeCognitiveStep() {
 	csa.mu.Lock()
 	defer csa.mu.Unlock()
-	
+
 	// Advance step (0-11 for 12-step cycle)
 	csa.state.CurrentStep = (csa.state.CurrentStep + 1) % 12
-	
+
 	// Calculate effective step with phase offset
 	effectiveStep := (csa.state.CurrentStep + csa.phaseOffset) % 12
-	
+
 	// Determine current phase based on effective step
 	// Triads: {1,5,9}, {2,6,10}, {3,7,11}, {4,8,12} (1-indexed)
 	switch effectiveStep % 4 {
@@ -328,7 +328,7 @@ func (csa *CognitiveStreamActor) executeCognitiveStep() {
 	case 3:
 		csa.state.CurrentPhase = PhaseTriad3
 	}
-	
+
 	// Execute stream-specific processing
 	var result interface{}
 	switch csa.streamType {
@@ -345,7 +345,7 @@ func (csa *CognitiveStreamActor) executeCognitiveStep() {
 			result = csa.onSimulate(csa.state.AccumulatedData)
 		}
 	}
-	
+
 	// Broadcast result to peers
 	if result != nil {
 		csa.broadcastToPeers(CognitiveMessage{
@@ -357,10 +357,10 @@ func (csa *CognitiveStreamActor) executeCognitiveStep() {
 			Timestamp: time.Now(),
 		})
 	}
-	
+
 	// Check for emergent patterns
 	csa.detectEmergence()
-	
+
 	// Update processing load
 	csa.updateProcessingLoad()
 }
@@ -415,11 +415,11 @@ func (csa *CognitiveStreamActor) detectEmergence() {
 		if strength > 1.0 {
 			strength = 1.0
 		}
-		
+
 		if csa.onEmergence != nil {
 			csa.onEmergence(pattern, strength)
 		}
-		
+
 		// Broadcast emergence to peers
 		csa.broadcastToPeers(CognitiveMessage{
 			Type:      MsgTypeEmergence,
@@ -429,7 +429,7 @@ func (csa *CognitiveStreamActor) detectEmergence() {
 			Content:   pattern,
 			Timestamp: time.Now(),
 		})
-		
+
 		// Clear accumulated data after emergence
 		csa.state.AccumulatedData = csa.state.AccumulatedData[:0]
 	}
@@ -442,7 +442,7 @@ func (csa *CognitiveStreamActor) updateProcessingLoad() {
 	if dataLoad > 1.0 {
 		dataLoad = 1.0
 	}
-	
+
 	// Smooth load update
 	csa.state.ProcessingLoad = csa.state.ProcessingLoad*0.9 + dataLoad*0.1
 }
@@ -463,7 +463,7 @@ func (csa *CognitiveStreamActor) GetStreamType() StreamType {
 func (csa *CognitiveStreamActor) ContributeToGestalt() map[string]interface{} {
 	csa.mu.RLock()
 	defer csa.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"stream_type":     csa.streamType.String(),
 		"current_step":    csa.state.CurrentStep,
@@ -477,42 +477,42 @@ func (csa *CognitiveStreamActor) ContributeToGestalt() map[string]interface{} {
 
 // ActorSupervisor manages the three cognitive stream actors
 type ActorSupervisor struct {
-	mu          sync.RWMutex
-	ctx         context.Context
-	cancel      context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// The three cognitive streams
-	perception  *CognitiveStreamActor
-	action      *CognitiveStreamActor
-	simulation  *CognitiveStreamActor
-	
+	perception *CognitiveStreamActor
+	action     *CognitiveStreamActor
+	simulation *CognitiveStreamActor
+
 	// Unified outbox for external communication
-	outbox      chan CognitiveMessage
-	
+	outbox chan CognitiveMessage
+
 	// Running state
-	running     bool
+	running bool
 }
 
 // NewActorSupervisor creates a new actor supervisor
 func NewActorSupervisor() *ActorSupervisor {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	// Create the three streams
 	perception := NewCognitiveStreamActor(StreamTypePerception)
 	action := NewCognitiveStreamActor(StreamTypeAction)
 	simulation := NewCognitiveStreamActor(StreamTypeSimulation)
-	
+
 	// Wire up peer communication
 	peers := map[StreamType]chan CognitiveMessage{
 		StreamTypePerception: perception.GetInbox(),
 		StreamTypeAction:     action.GetInbox(),
 		StreamTypeSimulation: simulation.GetInbox(),
 	}
-	
+
 	perception.SetPeers(peers)
 	action.SetPeers(peers)
 	simulation.SetPeers(peers)
-	
+
 	return &ActorSupervisor{
 		ctx:        ctx,
 		cancel:     cancel,
@@ -544,7 +544,7 @@ func (as *ActorSupervisor) Start() error {
 	}
 	as.running = true
 	as.mu.Unlock()
-	
+
 	// Start all streams
 	if err := as.perception.Start(); err != nil {
 		return err
@@ -555,7 +555,7 @@ func (as *ActorSupervisor) Start() error {
 	if err := as.simulation.Start(); err != nil {
 		return err
 	}
-	
+
 	fmt.Println("🎭 Actor Supervisor started - 3 concurrent cognitive streams active")
 	return nil
 }
@@ -564,19 +564,19 @@ func (as *ActorSupervisor) Start() error {
 func (as *ActorSupervisor) Stop() error {
 	as.mu.Lock()
 	defer as.mu.Unlock()
-	
+
 	if !as.running {
 		return fmt.Errorf("actor supervisor not running")
 	}
-	
+
 	as.running = false
 	as.cancel()
-	
+
 	// Stop all streams
 	as.perception.Stop()
 	as.action.Stop()
 	as.simulation.Stop()
-	
+
 	fmt.Println("🎭 Actor Supervisor stopped")
 	return nil
 }
@@ -606,12 +606,12 @@ func (as *ActorSupervisor) GetStreamStates() map[StreamType]StreamState {
 func (as *ActorSupervisor) ContributeToGestalt() map[string]interface{} {
 	as.mu.RLock()
 	defer as.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"subsystem":   "actor_supervisor",
-		"running":     as.running,
-		"perception":  as.perception.ContributeToGestalt(),
-		"action":      as.action.ContributeToGestalt(),
-		"simulation":  as.simulation.ContributeToGestalt(),
+		"subsystem":  "actor_supervisor",
+		"running":    as.running,
+		"perception": as.perception.ContributeToGestalt(),
+		"action":     as.action.ContributeToGestalt(),
+		"simulation": as.simulation.ContributeToGestalt(),
 	}
 }

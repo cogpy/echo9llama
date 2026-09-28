@@ -83,9 +83,9 @@ func TestInterleaving(t *testing.T) {
 		totalSteps := 12
 
 		// Each stream covers all 12 steps
-		for stream := 0; stream < streams; stream++ {
+		for stream := range streams {
 			startStep := stream * phaseOffset
-			for step := 0; step < totalSteps; step++ {
+			for step := range totalSteps {
 				currentStep := (startStep + step) % totalSteps
 				assert.GreaterOrEqual(t, currentStep, 0)
 				assert.Less(t, currentStep, totalSteps)
@@ -144,7 +144,7 @@ func TestScenarioStruct(t *testing.T) {
 // BenchmarkCognitiveLoop benchmarks cognitive loop operations
 func BenchmarkCognitiveLoop(b *testing.B) {
 	b.Run("StepCalculation", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			step := i % 12
 			_ = step
 		}
@@ -158,7 +158,7 @@ func BenchmarkCognitiveLoop(b *testing.B) {
 			{4, 8, 12},
 		}
 		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
+		for i := range b.N {
 			triadIdx := i % 4
 			_ = triads[triadIdx]
 		}

@@ -847,7 +847,7 @@ func (d Duration) MarshalJSON() ([]byte, error) {
 	if d.Duration < 0 {
 		return []byte("-1"), nil
 	}
-	return []byte("\"" + d.Duration.String() + "\""), nil
+	return []byte("\"" + d.String() + "\""), nil
 }
 
 func (d *Duration) UnmarshalJSON(b []byte) (err error) {
@@ -979,12 +979,12 @@ type ListAgentsResponse struct {
 
 // OrchestrationRequest represents a request to orchestrate multiple tasks
 type OrchestrationRequest struct {
-	AgentID     string                 `json:"agent_id"`
-	Tasks       []OrchestrationTask    `json:"tasks"`
-	Sequential  bool                   `json:"sequential"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
-	Stream      *bool                  `json:"stream,omitempty"`
-	KeepAlive   *Duration              `json:"keep_alive,omitempty"`
+	AgentID    string                 `json:"agent_id"`
+	Tasks      []OrchestrationTask    `json:"tasks"`
+	Sequential bool                   `json:"sequential"`
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	Stream     *bool                  `json:"stream,omitempty"`
+	KeepAlive  *Duration              `json:"keep_alive,omitempty"`
 }
 
 // OrchestrationTask represents a single task within an orchestration request
@@ -1022,10 +1022,10 @@ type OrchestrationTaskResult struct {
 
 // OrchestrationResult represents the result of a completed task
 type OrchestrationResult struct {
-	TaskID    string                    `json:"task_id"`
-	Output    string                    `json:"output"`
-	ModelUsed string                    `json:"model_used,omitempty"`
-	Metrics   OrchestrationTaskMetrics  `json:"metrics,omitempty"`
+	TaskID    string                   `json:"task_id"`
+	Output    string                   `json:"output"`
+	ModelUsed string                   `json:"model_used,omitempty"`
+	Metrics   OrchestrationTaskMetrics `json:"metrics,omitempty"`
 }
 
 // OrchestrationTaskMetrics contains performance metrics for a completed task

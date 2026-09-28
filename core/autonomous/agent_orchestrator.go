@@ -583,7 +583,7 @@ func (ao *AgentOrchestrator) PrintDetailedStatus() {
 
 func repeat(s string, n int) string {
 	result := ""
-	for i := 0; i < n; i++ {
+	for range n {
 		result += s
 	}
 	return result

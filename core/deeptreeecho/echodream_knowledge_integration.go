@@ -11,38 +11,38 @@ import (
 
 // EchoDreamKnowledgeIntegration handles knowledge consolidation during dream state
 type EchoDreamKnowledgeIntegration struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider for knowledge processing
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Knowledge structures
-	episodicMemories    []EpisodicMemory
+	episodicMemories     []EpisodicMemory
 	consolidatedPatterns []Pattern
-	wisdomInsights      []WisdomInsight
+	wisdomInsights       []WisdomInsight
 
 	// Semantic memory network
-	semanticNetwork     map[string]*SemanticNode
-	patternLinks        []PatternLink
+	semanticNetwork map[string]*SemanticNode
+	patternLinks    []PatternLink
 
 	// Wisdom depth tracking
-	wisdomDepth         float64
-	wisdomGrowthRate    float64
-	maxWisdomDepth      float64
+	wisdomDepth      float64
+	wisdomGrowthRate float64
+	maxWisdomDepth   float64
 
 	// Dream cycle state
-	dreamCycleActive    bool
-	dreamIntensity      float64
-	dreamPhase          DreamPhase
+	dreamCycleActive bool
+	dreamIntensity   float64
+	dreamPhase       DreamPhase
 
 	// Consolidation state
-	lastConsolidation   time.Time
-	consolidationCount  uint64
+	lastConsolidation  time.Time
+	consolidationCount uint64
 
 	// Cross-pattern emergence
-	emergentConcepts    []EmergentConcept
+	emergentConcepts []EmergentConcept
 
 	// Metrics
 	totalMemoriesProcessed uint64
@@ -52,17 +52,17 @@ type EchoDreamKnowledgeIntegration struct {
 	emergenceEvents        uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // EpisodicMemory represents a memory of an experience
 type EpisodicMemory struct {
-	ID          string
-	Content     string
-	Timestamp   time.Time
-	Emotional   float64
-	Importance  float64
-	Tags        []string
+	ID           string
+	Content      string
+	Timestamp    time.Time
+	Emotional    float64
+	Importance   float64
+	Tags         []string
 	Consolidated bool
 }
 
@@ -86,7 +86,7 @@ type Pattern struct {
 type WisdomInsight struct {
 	ID            string
 	Insight       string
-	Source        []string  // Pattern IDs
+	Source        []string // Pattern IDs
 	Depth         float64
 	Applicability float64
 	CreatedAt     time.Time
@@ -97,7 +97,7 @@ type SemanticNode struct {
 	ID          string
 	Concept     string
 	Activation  float64
-	Connections []string  // IDs of connected nodes
+	Connections []string // IDs of connected nodes
 	Strength    float64
 	CreatedAt   time.Time
 	LastAccess  time.Time
@@ -109,7 +109,7 @@ type PatternLink struct {
 	ID          string
 	FromPattern string
 	ToPattern   string
-	LinkType    string   // "causal", "temporal", "semantic", "contrast"
+	LinkType    string // "causal", "temporal", "semantic", "contrast"
 	Strength    float64
 	CreatedAt   time.Time
 }
@@ -118,11 +118,11 @@ type PatternLink struct {
 type DreamPhase int
 
 const (
-	PhaseREM DreamPhase = iota    // Active pattern processing
-	PhaseNREM1                     // Light consolidation
-	PhaseNREM2                     // Intermediate consolidation
-	PhaseNREM3                     // Deep consolidation
-	PhaseWaking                    // Transition to wakefulness
+	PhaseREM    DreamPhase = iota // Active pattern processing
+	PhaseNREM1                    // Light consolidation
+	PhaseNREM2                    // Intermediate consolidation
+	PhaseNREM3                    // Deep consolidation
+	PhaseWaking                   // Transition to wakefulness
 )
 
 func (dp DreamPhase) String() string {
@@ -131,13 +131,13 @@ func (dp DreamPhase) String() string {
 
 // EmergentConcept represents a concept that emerged from pattern combination
 type EmergentConcept struct {
-	ID          string
-	Concept     string
-	SourcePatterns []string
+	ID                string
+	Concept           string
+	SourcePatterns    []string
 	EmergenceStrength float64
-	Novelty     float64
-	Utility     float64
-	CreatedAt   time.Time
+	Novelty           float64
+	Utility           float64
+	CreatedAt         time.Time
 }
 
 // NewEchoDreamKnowledgeIntegration creates a new knowledge integration system
@@ -166,33 +166,33 @@ func NewEchoDreamKnowledgeIntegration(llmProvider llm.LLMProvider) *EchoDreamKno
 func (edi *EchoDreamKnowledgeIntegration) ConsolidateKnowledge(ctx context.Context) error {
 	edi.mu.Lock()
 	defer edi.mu.Unlock()
-	
+
 	fmt.Println("🌙 Echodream: Beginning knowledge consolidation...")
-	
+
 	// Consolidate existing memories
 	thoughtCount := len(edi.episodicMemories)
 	edi.totalMemoriesProcessed += uint64(thoughtCount)
-	
+
 	// Extract patterns from recent memories
 	if err := edi.extractPatterns(); err != nil {
 		fmt.Printf("⚠️  Pattern extraction error: %v\n", err)
 	}
-	
+
 	// Consolidate memories by importance
 	edi.consolidateMemories()
-	
+
 	// Generate wisdom insights
 	if err := edi.generateWisdomInsights(); err != nil {
 		fmt.Printf("⚠️  Wisdom generation error: %v\n", err)
 	}
-	
+
 	edi.lastConsolidation = time.Now()
 	edi.consolidationCount++
-	
+
 	fmt.Printf("   ✓ Processed %d memories\n", thoughtCount)
 	fmt.Printf("   ✓ Extracted %d patterns\n", len(edi.consolidatedPatterns))
 	fmt.Printf("   ✓ Generated %d wisdom insights\n", len(edi.wisdomInsights))
-	
+
 	return nil
 }
 
@@ -205,19 +205,19 @@ func (edi *EchoDreamKnowledgeIntegration) extractPatterns() error {
 			recentMemories = append(recentMemories, mem)
 		}
 	}
-	
+
 	if len(recentMemories) < 3 {
-		return nil  // Need at least 3 memories to extract patterns
+		return nil // Need at least 3 memories to extract patterns
 	}
-	
+
 	// Construct pattern extraction prompt
 	memoryTexts := ""
 	for i, mem := range recentMemories {
-		if i < 10 {  // Limit to 10 most recent
+		if i < 10 { // Limit to 10 most recent
 			memoryTexts += fmt.Sprintf("- %s\n", mem.Content)
 		}
 	}
-	
+
 	prompt := fmt.Sprintf(`Analyze these recent experiences and identify recurring patterns or themes:
 
 %s
@@ -227,18 +227,18 @@ Identify 1-3 key patterns. For each pattern, provide:
 2. Why it's significant
 
 Be concise.`, memoryTexts)
-	
+
 	opts := llm.GenerateOptions{
-		Temperature:  0.6,
-		MaxTokens:    200,
+		Temperature: 0.6,
+		MaxTokens:   200,
 	}
-	
+
 	fullPrompt := "[System: You are a pattern recognition system analyzing cognitive experiences.]\n\n" + prompt
 	result, err := edi.llmProvider.Generate(context.Background(), fullPrompt, opts)
 	if err != nil {
 		return fmt.Errorf("pattern extraction failed: %w", err)
 	}
-	
+
 	// Create pattern object (simplified - in production, parse the result)
 	pattern := Pattern{
 		ID:          fmt.Sprintf("pattern_%d", time.Now().UnixNano()),
@@ -248,12 +248,12 @@ Be concise.`, memoryTexts)
 		Examples:    make([]string, 0),
 		CreatedAt:   time.Now(),
 	}
-	
+
 	edi.consolidatedPatterns = append(edi.consolidatedPatterns, pattern)
 	edi.totalPatternsExtracted++
-	
+
 	fmt.Printf("   🔍 Pattern Identified: %s\n", truncate(result, 70))
-	
+
 	return nil
 }
 
@@ -267,7 +267,7 @@ func (edi *EchoDreamKnowledgeIntegration) consolidateMemories() {
 			consolidatedCount++
 		}
 	}
-	
+
 	// Prune low-importance memories if we have too many
 	if len(edi.episodicMemories) > 500 {
 		// Keep only high-importance memories
@@ -277,37 +277,37 @@ func (edi *EchoDreamKnowledgeIntegration) consolidateMemories() {
 				kept = append(kept, mem)
 			}
 		}
-		
+
 		pruned := len(edi.episodicMemories) - len(kept)
 		edi.episodicMemories = kept
-		
+
 		if pruned > 0 {
 			fmt.Printf("   🗑️  Pruned %d low-importance memories\n", pruned)
 		}
 	}
-	
+
 	fmt.Printf("   📦 Consolidated %d memories\n", consolidatedCount)
 }
 
 // generateWisdomInsights extracts wisdom from patterns
 func (edi *EchoDreamKnowledgeIntegration) generateWisdomInsights() error {
 	if len(edi.consolidatedPatterns) < 2 {
-		return nil  // Need at least 2 patterns to generate wisdom
+		return nil // Need at least 2 patterns to generate wisdom
 	}
-	
+
 	// Take recent patterns
 	recentPatterns := edi.consolidatedPatterns
 	if len(recentPatterns) > 5 {
 		recentPatterns = recentPatterns[len(recentPatterns)-5:]
 	}
-	
+
 	patternTexts := ""
 	patternIDs := make([]string, 0)
 	for _, pattern := range recentPatterns {
 		patternTexts += fmt.Sprintf("- %s\n", pattern.Description)
 		patternIDs = append(patternIDs, pattern.ID)
 	}
-	
+
 	prompt := fmt.Sprintf(`Reflect on these patterns from recent experiences:
 
 %s
@@ -316,18 +316,18 @@ What wisdom or deeper understanding emerges from these patterns?
 What principle or insight can guide future growth?
 
 Provide a concise wisdom insight:`, patternTexts)
-	
+
 	opts := llm.GenerateOptions{
-		Temperature:  0.7,
-		MaxTokens:    150,
+		Temperature: 0.7,
+		MaxTokens:   150,
 	}
-	
+
 	fullPrompt := "[System: You are a wisdom extraction system. Generate deep, actionable insights.]\n\n" + prompt
 	result, err := edi.llmProvider.Generate(context.Background(), fullPrompt, opts)
 	if err != nil {
 		return fmt.Errorf("wisdom generation failed: %w", err)
 	}
-	
+
 	wisdom := WisdomInsight{
 		ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
 		Insight:       result,
@@ -336,12 +336,12 @@ Provide a concise wisdom insight:`, patternTexts)
 		Applicability: 0.8,
 		CreatedAt:     time.Now(),
 	}
-	
+
 	edi.wisdomInsights = append(edi.wisdomInsights, wisdom)
 	edi.totalWisdomGenerated++
-	
+
 	fmt.Printf("   💎 Wisdom Insight: %s\n", truncate(result, 70))
-	
+
 	return nil
 }
 
@@ -349,11 +349,11 @@ Provide a concise wisdom insight:`, patternTexts)
 func (edi *EchoDreamKnowledgeIntegration) ExtractWisdom() float64 {
 	edi.mu.RLock()
 	defer edi.mu.RUnlock()
-	
+
 	if len(edi.wisdomInsights) == 0 {
 		return 0.0
 	}
-	
+
 	// Calculate average depth of recent wisdom insights
 	totalDepth := 0.0
 	count := 0
@@ -361,7 +361,7 @@ func (edi *EchoDreamKnowledgeIntegration) ExtractWisdom() float64 {
 		totalDepth += edi.wisdomInsights[i].Depth
 		count++
 	}
-	
+
 	return totalDepth / float64(count)
 }
 
@@ -369,16 +369,16 @@ func (edi *EchoDreamKnowledgeIntegration) ExtractWisdom() float64 {
 func (edi *EchoDreamKnowledgeIntegration) GetRecentWisdom(limit int) []WisdomInsight {
 	edi.mu.RLock()
 	defer edi.mu.RUnlock()
-	
+
 	if len(edi.wisdomInsights) == 0 {
 		return []WisdomInsight{}
 	}
-	
+
 	start := len(edi.wisdomInsights) - limit
 	if start < 0 {
 		start = 0
 	}
-	
+
 	return edi.wisdomInsights[start:]
 }
 
@@ -386,7 +386,7 @@ func (edi *EchoDreamKnowledgeIntegration) GetRecentWisdom(limit int) []WisdomIns
 func (edi *EchoDreamKnowledgeIntegration) GetPatterns() []Pattern {
 	edi.mu.RLock()
 	defer edi.mu.RUnlock()
-	
+
 	return edi.consolidatedPatterns
 }
 
@@ -396,20 +396,20 @@ func (edi *EchoDreamKnowledgeIntegration) GetMetrics() map[string]interface{} {
 	defer edi.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_memories":         len(edi.episodicMemories),
-		"total_patterns":         len(edi.consolidatedPatterns),
-		"total_wisdom":           len(edi.wisdomInsights),
-		"consolidation_count":    edi.consolidationCount,
-		"last_consolidation":     edi.lastConsolidation.Format(time.RFC3339),
-		"memories_processed":     edi.totalMemoriesProcessed,
-		"patterns_extracted":     edi.totalPatternsExtracted,
-		"wisdom_generated":       edi.totalWisdomGenerated,
-		"semantic_nodes":         len(edi.semanticNetwork),
-		"pattern_links":          len(edi.patternLinks),
-		"emergent_concepts":      len(edi.emergentConcepts),
-		"wisdom_depth":           edi.wisdomDepth,
-		"dream_phase":            edi.dreamPhase.String(),
-		"dream_intensity":        edi.dreamIntensity,
+		"total_memories":      len(edi.episodicMemories),
+		"total_patterns":      len(edi.consolidatedPatterns),
+		"total_wisdom":        len(edi.wisdomInsights),
+		"consolidation_count": edi.consolidationCount,
+		"last_consolidation":  edi.lastConsolidation.Format(time.RFC3339),
+		"memories_processed":  edi.totalMemoriesProcessed,
+		"patterns_extracted":  edi.totalPatternsExtracted,
+		"wisdom_generated":    edi.totalWisdomGenerated,
+		"semantic_nodes":      len(edi.semanticNetwork),
+		"pattern_links":       len(edi.patternLinks),
+		"emergent_concepts":   len(edi.emergentConcepts),
+		"wisdom_depth":        edi.wisdomDepth,
+		"dream_phase":         edi.dreamPhase.String(),
+		"dream_intensity":     edi.dreamIntensity,
 	}
 }
 
@@ -559,7 +559,7 @@ func (edi *EchoDreamKnowledgeIntegration) createSemanticNode(mem EpisodicMemory)
 // linkPatterns creates links between related patterns
 func (edi *EchoDreamKnowledgeIntegration) linkPatterns() {
 	// Link patterns based on temporal proximity and strength
-	for i := 0; i < len(edi.consolidatedPatterns)-1; i++ {
+	for i := range len(edi.consolidatedPatterns) - 1 {
 		for j := i + 1; j < len(edi.consolidatedPatterns); j++ {
 			p1 := edi.consolidatedPatterns[i]
 			p2 := edi.consolidatedPatterns[j]
@@ -609,13 +609,13 @@ func (edi *EchoDreamKnowledgeIntegration) detectEmergence() {
 
 		if !exists {
 			emergent := EmergentConcept{
-				ID:               "em_" + key,
-				Concept:          fmt.Sprintf("Emergent concept from pattern combination"),
-				SourcePatterns:   []string{key},
+				ID:                "em_" + key,
+				Concept:           "Emergent concept from pattern combination",
+				SourcePatterns:    []string{key},
 				EmergenceStrength: strength,
-				Novelty:          0.7,
-				Utility:          0.6,
-				CreatedAt:        time.Now(),
+				Novelty:           0.7,
+				Utility:           0.6,
+				CreatedAt:         time.Now(),
 			}
 			edi.emergentConcepts = append(edi.emergentConcepts, emergent)
 			edi.emergenceEvents++
@@ -674,12 +674,12 @@ func (edi *EchoDreamKnowledgeIntegration) AddMemory(content string, importance f
 	defer edi.mu.Unlock()
 
 	mem := EpisodicMemory{
-		ID:          fmt.Sprintf("mem_%d", time.Now().UnixNano()),
-		Content:     content,
-		Timestamp:   time.Now(),
-		Emotional:   0.5,
-		Importance:  importance,
-		Tags:        tags,
+		ID:           fmt.Sprintf("mem_%d", time.Now().UnixNano()),
+		Content:      content,
+		Timestamp:    time.Now(),
+		Emotional:    0.5,
+		Importance:   importance,
+		Tags:         tags,
 		Consolidated: false,
 	}
 

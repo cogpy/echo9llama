@@ -10,29 +10,29 @@ import (
 // OrchestratorV5 implements full goal-directed orchestration of cognitive processes
 // This makes the 12-step EchoBeats scheduler truly control all cognitive flow
 type OrchestratorV5 struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// 12-step scheduler
-	scheduler       *TwelveStepEchoBeats
-	
+	scheduler *TwelveStepEchoBeats
+
 	// Cognitive process coordination
 	consciousnessControl *ConsciousnessControl
 	learningControl      *LearningControl
 	actionControl        *ActionControl
-	
+
 	// Goal-directed behavior
-	currentGoals    []*CognitiveGoal
-	goalPriorities  map[string]float64
-	
+	currentGoals   []*CognitiveGoal
+	goalPriorities map[string]float64
+
 	// Orchestration state
-	orchestrating   bool
-	stepActions     map[int][]OrchestrationAction
-	
+	orchestrating bool
+	stepActions   map[int][]OrchestrationAction
+
 	// Metrics
-	goalsAchieved   int64
-	decisionsMade   int64
+	goalsAchieved       int64
+	decisionsMade       int64
 	orchestrationCycles int64
 }
 
@@ -63,10 +63,10 @@ type LearningControl struct {
 
 // ActionControl manages action generation based on cognitive step
 type ActionControl struct {
-	mu               sync.RWMutex
-	actionReadiness  float64
-	planningDepth    int
-	executionMode    ExecutionMode
+	mu              sync.RWMutex
+	actionReadiness float64
+	planningDepth   int
+	executionMode   ExecutionMode
 }
 
 // CognitiveGoal represents a goal for the cognitive system
@@ -114,10 +114,10 @@ const (
 
 // OrchestrationAction represents an action to take during a cognitive step
 type OrchestrationAction struct {
-	Type        ActionType
-	Target      string
-	Parameters  map[string]interface{}
-	Priority    float64
+	Type       ActionType
+	Target     string
+	Parameters map[string]interface{}
+	Priority   float64
 }
 
 // ActionType categorizes orchestration actions
@@ -137,39 +137,39 @@ const (
 // NewOrchestratorV5 creates a new V5 orchestrator
 func NewOrchestratorV5(ctx context.Context, scheduler *TwelveStepEchoBeats) *OrchestratorV5 {
 	ctx, cancel := context.WithCancel(ctx)
-	
+
 	orch := &OrchestratorV5{
-		ctx:              ctx,
-		cancel:           cancel,
-		scheduler:        scheduler,
-		currentGoals:     make([]*CognitiveGoal, 0),
-		goalPriorities:   make(map[string]float64),
-		stepActions:      make(map[int][]OrchestrationAction),
+		ctx:            ctx,
+		cancel:         cancel,
+		scheduler:      scheduler,
+		currentGoals:   make([]*CognitiveGoal, 0),
+		goalPriorities: make(map[string]float64),
+		stepActions:    make(map[int][]OrchestrationAction),
 	}
-	
+
 	// Initialize control systems
 	orch.consciousnessControl = &ConsciousnessControl{
 		attentionAllocation: make(map[string]float64),
 		thoughtPriority:     0.5,
 		stimulusReceptivity: 0.5,
 	}
-	
+
 	orch.learningControl = &LearningControl{
 		learningMode:      LearningExplorative,
 		consolidationRate: 0.3,
 		explorationRate:   0.7,
 		reflectionDepth:   0.5,
 	}
-	
+
 	orch.actionControl = &ActionControl{
 		actionReadiness: 0.5,
 		planningDepth:   3,
 		executionMode:   ExecutionPlanning,
 	}
-	
+
 	// Map cognitive steps to orchestration actions
 	orch.initializeStepActions()
-	
+
 	return orch
 }
 
@@ -182,69 +182,69 @@ func (orch *OrchestratorV5) initializeStepActions() {
 		{Type: ActionEvaluateProgress, Target: "current_goals", Priority: 0.9},
 		{Type: ActionModulateConsciousness, Parameters: map[string]interface{}{"arousal": 0.7, "clarity": 0.8}, Priority: 0.8},
 	}
-	
+
 	// Step 2: Affordance Detection (what actions are possible?)
 	orch.stepActions[2] = []OrchestrationAction{
 		{Type: ActionShiftAttention, Target: "environment_scan", Priority: 0.9},
 		{Type: ActionGenerateThought, Parameters: map[string]interface{}{"type": "exploration"}, Priority: 0.7},
 	}
-	
+
 	// Step 3: Affordance Evaluation (which actions are valuable?)
 	orch.stepActions[3] = []OrchestrationAction{
 		{Type: ActionEvaluateProgress, Target: "action_options", Priority: 0.9},
 		{Type: ActionModulateConsciousness, Parameters: map[string]interface{}{"clarity": 0.9}, Priority: 0.7},
 	}
-	
+
 	// Step 4: Affordance Selection (choose action)
 	orch.stepActions[4] = []OrchestrationAction{
 		{Type: ActionUpdateGoals, Target: "action_selection", Priority: 1.0},
 		{Type: ActionGenerateThought, Parameters: map[string]interface{}{"type": "decision"}, Priority: 0.8},
 	}
-	
+
 	// Step 5: Affordance Engagement (execute action)
 	orch.stepActions[5] = []OrchestrationAction{
 		{Type: ActionTriggerLearning, Parameters: map[string]interface{}{"mode": "active"}, Priority: 0.9},
 		{Type: ActionModulateConsciousness, Parameters: map[string]interface{}{"arousal": 0.8}, Priority: 0.7},
 	}
-	
+
 	// Step 6: Affordance Consolidation (integrate results)
 	orch.stepActions[6] = []OrchestrationAction{
 		{Type: ActionConsolidateMemory, Target: "recent_action", Priority: 0.9},
 		{Type: ActionTriggerLearning, Parameters: map[string]interface{}{"mode": "consolidative"}, Priority: 0.8},
 	}
-	
+
 	// Step 7: Relevance Realization (orienting present commitment)
 	orch.stepActions[7] = []OrchestrationAction{
 		{Type: ActionShiftAttention, Target: "present_moment", Priority: 1.0},
 		{Type: ActionEvaluateProgress, Target: "learning_progress", Priority: 0.9},
 		{Type: ActionInitiateReflection, Target: "recent_experiences", Priority: 0.8},
 	}
-	
+
 	// Step 8: Salience Generation (what futures are possible?)
 	orch.stepActions[8] = []OrchestrationAction{
 		{Type: ActionModulateConsciousness, Parameters: map[string]interface{}{"openness": 0.9, "creativity": 0.8}, Priority: 0.9},
 		{Type: ActionGenerateThought, Parameters: map[string]interface{}{"type": "imagination"}, Priority: 0.8},
 	}
-	
+
 	// Step 9: Salience Exploration (explore possibilities)
 	orch.stepActions[9] = []OrchestrationAction{
 		{Type: ActionTriggerLearning, Parameters: map[string]interface{}{"mode": "explorative"}, Priority: 0.9},
 		{Type: ActionGenerateThought, Parameters: map[string]interface{}{"type": "question"}, Priority: 0.8},
 	}
-	
+
 	// Step 10: Salience Evaluation (which futures are valuable?)
 	orch.stepActions[10] = []OrchestrationAction{
 		{Type: ActionEvaluateProgress, Target: "future_options", Priority: 0.9},
 		{Type: ActionInitiateReflection, Target: "potential_paths", Priority: 0.8},
 	}
-	
+
 	// Step 11: Salience Integration (integrate insights)
 	orch.stepActions[11] = []OrchestrationAction{
 		{Type: ActionConsolidateMemory, Target: "insights", Priority: 0.9},
 		{Type: ActionTriggerLearning, Parameters: map[string]interface{}{"mode": "integrative"}, Priority: 0.8},
 		{Type: ActionGenerateThought, Parameters: map[string]interface{}{"type": "insight"}, Priority: 0.7},
 	}
-	
+
 	// Step 12: Salience Commitment (commit to direction)
 	orch.stepActions[12] = []OrchestrationAction{
 		{Type: ActionUpdateGoals, Target: "future_direction", Priority: 1.0},
@@ -262,12 +262,12 @@ func (orch *OrchestratorV5) Start() error {
 	}
 	orch.orchestrating = true
 	orch.mu.Unlock()
-	
+
 	fmt.Println("🎭 EchoBeats Orchestrator V5: Beginning goal-directed orchestration...")
-	
+
 	// Start orchestration loop
 	go orch.orchestrationLoop()
-	
+
 	return nil
 }
 
@@ -283,7 +283,7 @@ func (orch *OrchestratorV5) Stop() {
 func (orch *OrchestratorV5) orchestrationLoop() {
 	ticker := time.NewTicker(500 * time.Millisecond) // Sync with scheduler steps
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-orch.ctx.Done():
@@ -298,18 +298,18 @@ func (orch *OrchestratorV5) orchestrationLoop() {
 func (orch *OrchestratorV5) orchestrateCognitiveStep() {
 	// Get current step from scheduler
 	currentStep := orch.getCurrentStep()
-	
+
 	// Get actions for this step
 	actions := orch.stepActions[currentStep]
-	
+
 	// Execute orchestration actions
 	for _, action := range actions {
 		orch.executeOrchestrationAction(action)
 	}
-	
+
 	// Update goals based on progress
 	orch.updateGoalProgress()
-	
+
 	orch.mu.Lock()
 	orch.orchestrationCycles++
 	orch.mu.Unlock()
@@ -320,25 +320,25 @@ func (orch *OrchestratorV5) executeOrchestrationAction(action OrchestrationActio
 	switch action.Type {
 	case ActionModulateConsciousness:
 		orch.modulateConsciousness(action.Parameters)
-		
+
 	case ActionTriggerLearning:
 		orch.triggerLearning(action.Parameters)
-		
+
 	case ActionInitiateReflection:
 		orch.initiateReflection(action.Target)
-		
+
 	case ActionGenerateThought:
 		orch.generateThought(action.Parameters)
-		
+
 	case ActionConsolidateMemory:
 		orch.consolidateMemory(action.Target)
-		
+
 	case ActionShiftAttention:
 		orch.shiftAttention(action.Target)
-		
+
 	case ActionEvaluateProgress:
 		orch.evaluateProgress(action.Target)
-		
+
 	case ActionUpdateGoals:
 		orch.updateGoals(action.Target)
 	}
@@ -349,7 +349,7 @@ func (orch *OrchestratorV5) executeOrchestrationAction(action OrchestrationActio
 func (orch *OrchestratorV5) modulateConsciousness(params map[string]interface{}) {
 	orch.consciousnessControl.mu.Lock()
 	defer orch.consciousnessControl.mu.Unlock()
-	
+
 	// Adjust consciousness parameters based on cognitive step
 	if arousal, ok := params["arousal"].(float64); ok {
 		orch.consciousnessControl.thoughtPriority = arousal
@@ -362,7 +362,7 @@ func (orch *OrchestratorV5) modulateConsciousness(params map[string]interface{})
 func (orch *OrchestratorV5) triggerLearning(params map[string]interface{}) {
 	orch.learningControl.mu.Lock()
 	defer orch.learningControl.mu.Unlock()
-	
+
 	// Adjust learning mode based on cognitive step
 	if mode, ok := params["mode"].(string); ok {
 		switch mode {
@@ -385,7 +385,7 @@ func (orch *OrchestratorV5) triggerLearning(params map[string]interface{}) {
 func (orch *OrchestratorV5) initiateReflection(target string) {
 	orch.learningControl.mu.Lock()
 	defer orch.learningControl.mu.Unlock()
-	
+
 	// Increase reflection depth for this target
 	orch.learningControl.reflectionDepth = 0.9
 	orch.learningControl.learningMode = LearningReflective
@@ -394,10 +394,10 @@ func (orch *OrchestratorV5) initiateReflection(target string) {
 func (orch *OrchestratorV5) generateThought(params map[string]interface{}) {
 	// Signal consciousness stream to generate specific type of thought
 	// This would integrate with LLMThoughtGeneratorV5
-	
+
 	orch.consciousnessControl.mu.Lock()
 	defer orch.consciousnessControl.mu.Unlock()
-	
+
 	if thoughtType, ok := params["type"].(string); ok {
 		orch.consciousnessControl.currentFocus = thoughtType
 		orch.consciousnessControl.thoughtPriority = 1.0
@@ -408,14 +408,14 @@ func (orch *OrchestratorV5) consolidateMemory(target string) {
 	// Signal memory system to consolidate specific target
 	orch.learningControl.mu.Lock()
 	defer orch.learningControl.mu.Unlock()
-	
+
 	orch.learningControl.consolidationRate = 0.9
 }
 
 func (orch *OrchestratorV5) shiftAttention(target string) {
 	orch.consciousnessControl.mu.Lock()
 	defer orch.consciousnessControl.mu.Unlock()
-	
+
 	// Shift attention to target
 	orch.consciousnessControl.currentFocus = target
 	orch.consciousnessControl.attentionAllocation[target] = 1.0
@@ -425,7 +425,7 @@ func (orch *OrchestratorV5) evaluateProgress(target string) {
 	// Evaluate progress on target
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
-	
+
 	for _, goal := range orch.currentGoals {
 		if goal.Type.String() == target {
 			// Simple progress update - in production, use actual metrics
@@ -441,10 +441,10 @@ func (orch *OrchestratorV5) evaluateProgress(target string) {
 func (orch *OrchestratorV5) updateGoals(context string) {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
-	
+
 	// Update goals based on context
 	// In production, this would use wisdom metrics and learning progress
-	
+
 	orch.decisionsMade++
 }
 
@@ -453,7 +453,7 @@ func (orch *OrchestratorV5) updateGoals(context string) {
 func (orch *OrchestratorV5) AddGoal(goal *CognitiveGoal) {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
-	
+
 	orch.currentGoals = append(orch.currentGoals, goal)
 	orch.goalPriorities[goal.ID] = goal.Priority
 }
@@ -461,13 +461,13 @@ func (orch *OrchestratorV5) AddGoal(goal *CognitiveGoal) {
 func (orch *OrchestratorV5) updateGoalProgress() {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
-	
+
 	// Update progress for all active goals
 	for _, goal := range orch.currentGoals {
 		if !goal.Achieved {
 			// Simple progress update - in production, use actual metrics
 			goal.Progress += 0.01
-			
+
 			if goal.Progress >= 1.0 {
 				goal.Achieved = true
 				orch.goalsAchieved++
@@ -482,10 +482,10 @@ func (orch *OrchestratorV5) getCurrentStep() int {
 	if orch.scheduler == nil {
 		return 1
 	}
-	
+
 	orch.scheduler.mu.RLock()
 	defer orch.scheduler.mu.RUnlock()
-	
+
 	return orch.scheduler.currentStep + 1 // Steps are 1-indexed
 }
 
@@ -508,7 +508,7 @@ func (orch *OrchestratorV5) GetActionControl() *ActionControl {
 func (orch *OrchestratorV5) GetMetrics() map[string]interface{} {
 	orch.mu.RLock()
 	defer orch.mu.RUnlock()
-	
+
 	activeGoals := 0
 	achievedGoals := 0
 	for _, goal := range orch.currentGoals {
@@ -518,7 +518,7 @@ func (orch *OrchestratorV5) GetMetrics() map[string]interface{} {
 			activeGoals++
 		}
 	}
-	
+
 	return map[string]interface{}{
 		"orchestration_cycles": orch.orchestrationCycles,
 		"goals_achieved":       orch.goalsAchieved,

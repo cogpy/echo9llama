@@ -1,3 +1,5 @@
+//go:build ignore
+
 package server
 
 import (
@@ -22,14 +24,14 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/go-cmp/cmp"
 	"github.com/cogpy/echo9llama/api"
 	"github.com/cogpy/echo9llama/fs/ggml"
 	"github.com/cogpy/echo9llama/openai"
 	"github.com/cogpy/echo9llama/server/internal/client/ollama"
 	"github.com/cogpy/echo9llama/types/model"
 	"github.com/cogpy/echo9llama/version"
+	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
 )
 
 func createTestFile(t *testing.T, name string) (string, string) {

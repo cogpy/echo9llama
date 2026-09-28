@@ -91,7 +91,7 @@ func (dc *DgraphClient) connect() error {
 	defer dc.mu.Unlock()
 
 	var lastErr error
-	for i := 0; i < dc.retryCount; i++ {
+	for i := range dc.retryCount {
 		dialCtx, cancel := context.WithTimeout(dc.ctx, dc.connectTimeout)
 		conn, err := grpc.DialContext(
 			dialCtx,

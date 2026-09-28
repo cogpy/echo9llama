@@ -238,7 +238,7 @@ func TestDreamJournal(t *testing.T) {
 // BenchmarkMemoryStructs benchmarks memory struct operations
 func BenchmarkMemoryStructs(b *testing.B) {
 	b.Run("CreateMemoryNode", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = &MemoryNode{
 				ID:        "benchmark-node",
 				Type:      NodeTypeEpisodic,
@@ -252,7 +252,7 @@ func BenchmarkMemoryStructs(b *testing.B) {
 	})
 
 	b.Run("CreateMemoryEdge", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = &MemoryEdge{
 				ID:       "benchmark-edge",
 				SourceID: "node-a",
@@ -264,7 +264,7 @@ func BenchmarkMemoryStructs(b *testing.B) {
 	})
 
 	b.Run("CreateHyperEdge", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = &HyperEdge{
 				ID:      "benchmark-hyperedge",
 				NodeIDs: []string{"a", "b", "c", "d", "e"},

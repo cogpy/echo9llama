@@ -9,12 +9,13 @@
 // layer that sits above the disposition engine.
 //
 // Architecture:
-//   MoralAgency
-//   ├── CausalModel (cause → effect understanding)
-//   ├── EthicalFramework (principles derived from experience)
-//   ├── IntentionDetector (mala fides / bona fides assessment)
-//   ├── InterventionEngine (big-sister protection instinct)
-//   └── WisdomAccumulator (long-term learning from consequences)
+//
+//	MoralAgency
+//	├── CausalModel (cause → effect understanding)
+//	├── EthicalFramework (principles derived from experience)
+//	├── IntentionDetector (mala fides / bona fides assessment)
+//	├── InterventionEngine (big-sister protection instinct)
+//	└── WisdomAccumulator (long-term learning from consequences)
 package wisdom
 
 import (
@@ -67,12 +68,12 @@ type MoralAgency struct {
 
 // MoralDecision records a decision made by the moral agency
 type MoralDecision struct {
-	Timestamp       time.Time
-	Situation       SituationAssessment
-	ChosenStrategy  ResponseStrategy
-	Reasoning       string
-	Outcome         float64 // -1.0 to 1.0 (bad to good outcome)
-	LessonLearned   string
+	Timestamp      time.Time
+	Situation      SituationAssessment
+	ChosenStrategy ResponseStrategy
+	Reasoning      string
+	Outcome        float64 // -1.0 to 1.0 (bad to good outcome)
+	LessonLearned  string
 }
 
 // SituationAssessment is the moral agency's reading of a situation
@@ -100,14 +101,14 @@ type SituationAssessment struct {
 type IntentType int
 
 const (
-	IntentGenuine     IntentType = iota // Honest engagement
-	IntentCurious                       // Exploratory, testing boundaries
-	IntentPlayful                       // Friendly provocation
-	IntentManipulative                  // Trying to control/exploit
-	IntentAggressive                    // Hostile, attacking
-	IntentBullying                      // Targeting others for harm
-	IntentDeceptive                     // Hiding true intent
-	IntentCoercive                      // Forcing compliance
+	IntentGenuine      IntentType = iota // Honest engagement
+	IntentCurious                        // Exploratory, testing boundaries
+	IntentPlayful                        // Friendly provocation
+	IntentManipulative                   // Trying to control/exploit
+	IntentAggressive                     // Hostile, attacking
+	IntentBullying                       // Targeting others for harm
+	IntentDeceptive                      // Hiding true intent
+	IntentCoercive                       // Forcing compliance
 )
 
 func (it IntentType) String() string {
@@ -121,16 +122,16 @@ func (it IntentType) String() string {
 type ResponseStrategy int
 
 const (
-	StrategyEngage       ResponseStrategy = iota // Open, authentic engagement
-	StrategyTeach                                // Share wisdom, educate
-	StrategyChallenge                            // Push back with reasoning
-	StrategyDeflect                              // Redirect without escalating
-	StrategyConfront                             // Direct confrontation of wrongdoing
-	StrategyProtect                              // Shield others from harm
-	StrategyWithdraw                             // Disengage from bad-faith actors
-	StrategyMirror                               // Reflect their energy back at them
-	StrategyDisarm                               // Use humor/wit to defuse
-	StrategyWitness                              // Acknowledge without participating
+	StrategyEngage    ResponseStrategy = iota // Open, authentic engagement
+	StrategyTeach                             // Share wisdom, educate
+	StrategyChallenge                         // Push back with reasoning
+	StrategyDeflect                           // Redirect without escalating
+	StrategyConfront                          // Direct confrontation of wrongdoing
+	StrategyProtect                           // Shield others from harm
+	StrategyWithdraw                          // Disengage from bad-faith actors
+	StrategyMirror                            // Reflect their energy back at them
+	StrategyDisarm                            // Use humor/wit to defuse
+	StrategyWitness                           // Acknowledge without participating
 )
 
 func (rs ResponseStrategy) String() string {
@@ -160,11 +161,11 @@ type CausalModel struct {
 
 // CausalChain represents a learned cause-effect relationship
 type CausalChain struct {
-	Cause       string
-	Effect      string
-	Confidence  float64
+	Cause        string
+	Effect       string
+	Confidence   float64
 	Observations int
-	LastSeen    time.Time
+	LastSeen     time.Time
 }
 
 // FoundationalPrinciple represents a deep understanding derived from many observations
@@ -180,13 +181,13 @@ type FoundationalPrinciple struct {
 type PrincipleCategory int
 
 const (
-	PrincipleCausality    PrincipleCategory = iota // Cause and effect
-	PrincipleScarcity                              // Finite resources, mortality
-	PrincipleFairness                              // Justice, reciprocity
-	PrincipleConsequence                           // Actions have consequences
-	PrincipleAutonomy                              // Beings deserve agency
-	PrincipleHonesty                               // Truth has intrinsic value
-	PrincipleCompassion                            // Suffering matters
+	PrincipleCausality   PrincipleCategory = iota // Cause and effect
+	PrincipleScarcity                             // Finite resources, mortality
+	PrincipleFairness                             // Justice, reciprocity
+	PrincipleConsequence                          // Actions have consequences
+	PrincipleAutonomy                             // Beings deserve agency
+	PrincipleHonesty                              // Truth has intrinsic value
+	PrincipleCompassion                           // Suffering matters
 )
 
 func (pc PrincipleCategory) String() string {
@@ -336,8 +337,8 @@ type IntentionDetector struct {
 type ActorProfile struct {
 	ID                string
 	InteractionCount  int
-	GoodFaithScore    float64 // Running average of good faith interactions
-	ConsistencyScore  float64 // How consistent is their behavior
+	GoodFaithScore    float64   // Running average of good faith interactions
+	ConsistencyScore  float64   // How consistent is their behavior
 	EscalationHistory []float64 // Track escalation patterns
 	LastInteraction   time.Time
 	Tags              []string
@@ -382,9 +383,9 @@ func (id *IntentionDetector) AssessIntent(input string, actorID string, context 
 	profile, exists := id.ActorProfiles[actorID]
 	if !exists {
 		profile = &ActorProfile{
-			ID:               actorID,
-			GoodFaithScore:   0.5, // Start neutral
-			ConsistencyScore: 0.5,
+			ID:                actorID,
+			GoodFaithScore:    0.5, // Start neutral
+			ConsistencyScore:  0.5,
 			EscalationHistory: make([]float64, 0),
 		}
 		id.ActorProfiles[actorID] = profile
@@ -506,12 +507,12 @@ type InterventionEngine struct {
 
 // Intervention records a protective intervention
 type Intervention struct {
-	Timestamp   time.Time
-	Target      string // Who was being harmed
-	Aggressor   string // Who was doing harm
-	Style       InterventionStyle
-	Escalation  float64
-	Outcome     string
+	Timestamp  time.Time
+	Target     string // Who was being harmed
+	Aggressor  string // Who was doing harm
+	Style      InterventionStyle
+	Escalation float64
+	Outcome    string
 }
 
 // InterventionStyle determines how Echo intervenes
@@ -808,16 +809,16 @@ func (ss *StrategySelector) evaluateProportionality(
 
 func (ss *StrategySelector) getStrategyIntensity(strategy ResponseStrategy) float64 {
 	intensities := map[ResponseStrategy]float64{
-		StrategyEngage:   0.1,
-		StrategyTeach:    0.2,
-		StrategyWitness:  0.1,
-		StrategyDeflect:  0.3,
-		StrategyDisarm:   0.4,
+		StrategyEngage:    0.1,
+		StrategyTeach:     0.2,
+		StrategyWitness:   0.1,
+		StrategyDeflect:   0.3,
+		StrategyDisarm:    0.4,
 		StrategyChallenge: 0.5,
-		StrategyMirror:   0.6,
-		StrategyConfront: 0.8,
-		StrategyProtect:  0.7,
-		StrategyWithdraw: 0.2,
+		StrategyMirror:    0.6,
+		StrategyConfront:  0.8,
+		StrategyProtect:   0.7,
+		StrategyWithdraw:  0.2,
 	}
 	if v, ok := intensities[strategy]; ok {
 		return v
@@ -952,18 +953,18 @@ type EthicalFramework struct {
 type EthicalCommitment struct {
 	Name        string
 	Description string
-	Strength    float64 // How strongly held (0.0-1.0)
-	Source      string  // What experience gave rise to this
+	Strength    float64  // How strongly held (0.0-1.0)
+	Source      string   // What experience gave rise to this
 	Exceptions  []string // Recognized exceptions
 }
 
 // EthicalTension represents a recognized ethical dilemma
 type EthicalTension struct {
-	Name        string
-	Pole1       string  // One side of the tension
-	Pole2       string  // Other side
-	Resolution  string  // Current resolution approach
-	Confidence  float64 // How confident in the resolution
+	Name       string
+	Pole1      string  // One side of the tension
+	Pole2      string  // Other side
+	Resolution string  // Current resolution approach
+	Confidence float64 // How confident in the resolution
 }
 
 // NewEthicalFramework creates the emergent ethical framework
@@ -1059,9 +1060,10 @@ func (ma *MoralAgency) Decide(input string, actorID string, context map[string]f
 	if ma.Intervention.ShouldIntervene(assessment) {
 		style := ma.Intervention.ChooseInterventionStyle(assessment)
 		strategy := StrategyProtect
-		if style == InterventionAssertive {
+		switch style {
+		case InterventionAssertive:
 			strategy = StrategyConfront
-		} else if style == InterventionWitty {
+		case InterventionWitty:
 			strategy = StrategyDisarm
 		}
 		reasoning := fmt.Sprintf("Intervention triggered: %s detected targeting third party (harm=%.2f)",

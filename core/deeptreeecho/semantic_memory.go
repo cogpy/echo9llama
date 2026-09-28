@@ -13,20 +13,20 @@ import (
 // SemanticMemory provides vector-based semantic memory for Deep Tree Echo
 // This is inspired by chromem-go's architecture for embedded vector databases
 type SemanticMemory struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider for generating embeddings
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Memory collections
-	collections     map[string]*MemoryCollection
+	collections map[string]*MemoryCollection
 
 	// Configuration
-	embeddingDim    int
-	persistPath     string
-	compress        bool
+	embeddingDim int
+	persistPath  string
+	compress     bool
 
 	// Metrics
 	totalDocuments  uint64
@@ -34,7 +34,7 @@ type SemanticMemory struct {
 	totalEmbeddings uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // MemoryCollection represents a collection of semantic memories
@@ -48,12 +48,12 @@ type MemoryCollection struct {
 
 // SemanticDocument represents a document with semantic embedding
 type SemanticDocument struct {
-	ID         string
-	Content    string
-	Embedding  []float32
-	Metadata   map[string]string
-	CreatedAt  time.Time
-	AccessedAt time.Time
+	ID          string
+	Content     string
+	Embedding   []float32
+	Metadata    map[string]string
+	CreatedAt   time.Time
+	AccessedAt  time.Time
 	AccessCount int
 }
 
@@ -196,12 +196,12 @@ func (sm *SemanticMemory) AddDocument(collectionName, content string, metadata m
 	// Create document
 	docID := fmt.Sprintf("doc_%s", uuid.New().String()[:8])
 	doc := &SemanticDocument{
-		ID:         docID,
-		Content:    content,
-		Embedding:  embedding,
-		Metadata:   metadata,
-		CreatedAt:  time.Now(),
-		AccessedAt: time.Now(),
+		ID:          docID,
+		Content:     content,
+		Embedding:   embedding,
+		Metadata:    metadata,
+		CreatedAt:   time.Now(),
+		AccessedAt:  time.Now(),
 		AccessCount: 0,
 	}
 
@@ -362,7 +362,7 @@ func sqrt32(x float32) float32 {
 
 // sortQueryResults sorts query results by similarity in descending order
 func sortQueryResults(results []QueryResult) {
-	for i := 0; i < len(results)-1; i++ {
+	for i := range len(results) - 1 {
 		for j := i + 1; j < len(results); j++ {
 			if results[j].Similarity > results[i].Similarity {
 				results[i], results[j] = results[j], results[i]
@@ -419,10 +419,10 @@ func (sm *SemanticMemory) ContributeToGestalt() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"running":          sm.running,
-		"collections":      collectionStats,
-		"total_documents":  sm.totalDocuments,
-		"total_queries":    sm.totalQueries,
+		"running":         sm.running,
+		"collections":     collectionStats,
+		"total_documents": sm.totalDocuments,
+		"total_queries":   sm.totalQueries,
 	}
 }
 

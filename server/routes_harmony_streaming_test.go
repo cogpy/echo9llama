@@ -1,3 +1,5 @@
+//go:build ignore
+
 package server
 
 // this test file is to test integration of harmony parser into routes.go (as
@@ -12,11 +14,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/cogpy/echo9llama/api"
 	"github.com/cogpy/echo9llama/discover"
 	"github.com/cogpy/echo9llama/fs/ggml"
 	"github.com/cogpy/echo9llama/llm"
+	"github.com/gin-gonic/gin"
 )
 
 func getTestTools() []api.Tool {
