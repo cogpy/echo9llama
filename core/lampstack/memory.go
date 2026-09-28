@@ -129,7 +129,14 @@ func (m *UnifiedMemoryStore) Retrieve(ctx context.Context, query string, limit i
 		return scored[i].score > scored[j].score
 	})
 
-	// Return top results
+	// Return top results; capacity is bounded by what was actually scored,
+	// never by the caller-supplied limit.
+	if limit > len(scored) {
+		limit = len(scored)
+	}
+	if limit < 0 {
+		limit = 0
+	}
 	results := make([]*MemoryEntry, 0, limit)
 	for i, sm := range scored {
 		if i >= limit {
