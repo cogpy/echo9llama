@@ -4,11 +4,11 @@
 // providing wisdom-informed cognitive processing. The enhanced engine
 // adds a moral evaluation phase to every cognitive cycle:
 //
-//   Input → TimeCrystal → CognitiveCore → MoralAgency → Output
-//                                              ↓
-//                                     WisdomAccumulator
-//                                              ↓
-//                                     CausalModel (learning)
+//	Input → TimeCrystal → CognitiveCore → MoralAgency → Output
+//	                                           ↓
+//	                                  WisdomAccumulator
+//	                                           ↓
+//	                                  CausalModel (learning)
 //
 // This addresses the key problem identified in the architecture:
 // reactive disposition (computed from threat + defiance) can be gamed.
@@ -50,25 +50,25 @@ type EnhancedEngine struct {
 
 // MoralCognitiveEvent extends CognitiveEvent with moral context
 type MoralCognitiveEvent struct {
-	Base     CognitiveEvent
-	Strategy wisdom.ResponseStrategy
-	Reasoning string
+	Base             CognitiveEvent
+	Strategy         wisdom.ResponseStrategy
+	Reasoning        string
 	MoralDevelopment float64
 	WisdomLevel      float64
 }
 
 // WisdomCultivationSnapshot tracks wisdom growth over time
 type WisdomCultivationSnapshot struct {
-	Timestamp            time.Time
-	MoralDevelopment     float64
-	WisdomLevel          float64
-	CausalUnderstanding  float64
-	EthicalClarity       float64
+	Timestamp             time.Time
+	MoralDevelopment      float64
+	WisdomLevel           float64
+	CausalUnderstanding   float64
+	EthicalClarity        float64
 	EmotionalIntelligence float64
-	StrategicDepth       float64
+	StrategicDepth        float64
 	CompassionateStrength float64
-	TotalDecisions       uint64
-	ProtectiveActions    uint64
+	TotalDecisions        uint64
+	ProtectiveActions     uint64
 }
 
 // NewEnhancedEngine creates the moral-aware PIE-NN engine

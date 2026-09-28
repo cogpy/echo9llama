@@ -150,7 +150,7 @@ func TestOntogeneticProfile_Evolution(t *testing.T) {
 	}
 
 	// Evolve with low interactions - should stay embryonic
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		profile.Update(wisdom)
 	}
 
@@ -159,7 +159,7 @@ func TestOntogeneticProfile_Evolution(t *testing.T) {
 	}
 
 	// Evolve to juvenile
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		profile.Update(wisdom)
 	}
 
@@ -297,7 +297,7 @@ func TestEcho9OptimizedMapper_DifferentialUpdate(t *testing.T) {
 	if len(params2) == 0 {
 		t.Error("Differential update should return changed parameters")
 	}
-	
+
 	// Call again with same state - should return nothing
 	params3 := mapper.MapDifferential(state2)
 	if len(params3) > 0 {
@@ -337,7 +337,7 @@ func TestCircularBuffer_Operations(t *testing.T) {
 	buffer := NewCircularBuffer(5)
 
 	// Add items
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		buffer.Add(i)
 	}
 
@@ -461,7 +461,7 @@ func BenchmarkEcho9OptimizedMapper_MapCombinedState(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		mapper.MapCombinedState(state)
 	}
 }
@@ -477,7 +477,7 @@ func BenchmarkEcho9AvatarOrchestrator_AggregateState(b *testing.B) {
 	orchestrator.UpdateWisdomMetrics(WisdomMetrics{Overall: 0.7})
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		orchestrator.aggregateAndUpdate()
 	}
 }
@@ -496,7 +496,7 @@ func BenchmarkStateDiffCalculator_Calculate(b *testing.B) {
 	}
 
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		calc.Calculate(state1, state2)
 	}
 }

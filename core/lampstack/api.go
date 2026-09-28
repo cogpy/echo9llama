@@ -287,7 +287,7 @@ func (a *MultiAPIProvider) generateWithAnthropic(ctx context.Context, provider *
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Anthropic API error: %s - %s", resp.Status, string(bodyBytes))
+		return nil, fmt.Errorf("API error from Anthropic: %s - %s", resp.Status, string(bodyBytes))
 	}
 
 	var result struct {
@@ -454,7 +454,7 @@ func (a *MultiAPIProvider) chatWithAnthropic(ctx context.Context, provider *Prov
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("Anthropic API error: %s - %s", resp.Status, string(bodyBytes))
+		return nil, fmt.Errorf("API error from Anthropic: %s - %s", resp.Status, string(bodyBytes))
 	}
 
 	var result struct {

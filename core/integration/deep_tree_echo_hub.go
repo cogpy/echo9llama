@@ -20,8 +20,8 @@ import (
 // - EchoDream knowledge consolidation
 // - Wisdom synthesis and goal pursuit
 type DeepTreeEchoHub struct {
-	mu sync.RWMutex
-	ctx context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core autonomous agent
@@ -43,106 +43,106 @@ type DeepTreeEchoHub struct {
 	config HubConfig
 
 	// Integration channels
-	eventChan chan HubEvent
+	eventChan   chan HubEvent
 	commandChan chan HubCommand
-	statusChan chan HubStatus
+	statusChan  chan HubStatus
 
 	// Metrics
 	metrics *HubMetrics
 
 	// Running state
-	running bool
+	running   bool
 	startTime time.Time
 }
 
 // HubConfig holds configuration for the integration hub
 type HubConfig struct {
 	// Identity
-	AgentID string
+	AgentID     string
 	SessionName string
 
 	// Timing
-	MainLoopInterval time.Duration
+	MainLoopInterval    time.Duration
 	StateUpdateInterval time.Duration
 	MetricsSyncInterval time.Duration
 
 	// Features
-	EnableAutonomousAgent bool
+	EnableAutonomousAgent     bool
 	EnableUnifiedOrchestrator bool
-	EnableTelemetryShell bool
-	EnableStateManager bool
+	EnableTelemetryShell      bool
+	EnableStateManager        bool
 
 	// Persistence
-	EnablePersistence bool
+	EnablePersistence   bool
 	PersistenceInterval time.Duration
 }
 
 // DefaultHubConfig returns the default hub configuration
 func DefaultHubConfig() HubConfig {
 	return HubConfig{
-		AgentID: fmt.Sprintf("dte-hub-%d", time.Now().Unix()),
-		SessionName: fmt.Sprintf("dte-session-%d", time.Now().Unix()),
-		MainLoopInterval: 5 * time.Second,
-		StateUpdateInterval: 1 * time.Second,
-		MetricsSyncInterval: 30 * time.Second,
-		EnableAutonomousAgent: true,
+		AgentID:                   fmt.Sprintf("dte-hub-%d", time.Now().Unix()),
+		SessionName:               fmt.Sprintf("dte-session-%d", time.Now().Unix()),
+		MainLoopInterval:          5 * time.Second,
+		StateUpdateInterval:       1 * time.Second,
+		MetricsSyncInterval:       30 * time.Second,
+		EnableAutonomousAgent:     true,
 		EnableUnifiedOrchestrator: true,
-		EnableTelemetryShell: true,
-		EnableStateManager: true,
-		EnablePersistence: true,
-		PersistenceInterval: 5 * time.Minute,
+		EnableTelemetryShell:      true,
+		EnableStateManager:        true,
+		EnablePersistence:         true,
+		PersistenceInterval:       5 * time.Minute,
 	}
 }
 
 // HubEvent represents an event from the hub
 type HubEvent struct {
-	Type string
-	Source string
-	Data interface{}
+	Type      string
+	Source    string
+	Data      interface{}
 	Timestamp time.Time
 }
 
 // HubCommand represents a command to the hub
 type HubCommand struct {
-	Type string
-	Target string
-	Payload interface{}
+	Type         string
+	Target       string
+	Payload      interface{}
 	ResponseChan chan HubCommandResponse
 }
 
 // HubCommandResponse represents a response to a hub command
 type HubCommandResponse struct {
 	Success bool
-	Data interface{}
-	Error error
+	Data    interface{}
+	Error   error
 }
 
 // HubStatus represents the current status of the hub
 type HubStatus struct {
-	Running bool
-	Uptime time.Duration
-	AgentStatus map[string]interface{}
+	Running            bool
+	Uptime             time.Duration
+	AgentStatus        map[string]interface{}
 	OrchestratorStatus map[string]interface{}
-	TelemetryStatus map[string]interface{}
+	TelemetryStatus    map[string]interface{}
 	StateManagerStatus map[string]interface{}
-	Metrics *HubMetrics
-	Timestamp time.Time
+	Metrics            *HubMetrics
+	Timestamp          time.Time
 }
 
 // HubMetrics tracks metrics for the hub
 type HubMetrics struct {
-	mu sync.RWMutex
-	TotalEvents uint64
-	TotalCommands uint64
-	TotalCycles uint64
-	TotalThoughts uint64
-	TotalGoals uint64
-	TotalWisdom uint64
-	EventsPerSecond float64
+	mu                sync.RWMutex
+	TotalEvents       uint64
+	TotalCommands     uint64
+	TotalCycles       uint64
+	TotalThoughts     uint64
+	TotalGoals        uint64
+	TotalWisdom       uint64
+	EventsPerSecond   float64
 	CommandsProcessed uint64
-	ErrorCount uint64
-	LastError string
-	LastErrorTime time.Time
+	ErrorCount        uint64
+	LastError         string
+	LastErrorTime     time.Time
 }
 
 // NewDeepTreeEchoHub creates a new integration hub
@@ -150,15 +150,15 @@ func NewDeepTreeEchoHub(llmProvider llm.LLMProvider, config HubConfig) *DeepTree
 	ctx, cancel := context.WithCancel(context.Background())
 
 	hub := &DeepTreeEchoHub{
-		ctx: ctx,
-		cancel: cancel,
+		ctx:         ctx,
+		cancel:      cancel,
 		llmProvider: llmProvider,
-		config: config,
-		eventChan: make(chan HubEvent, 1000),
+		config:      config,
+		eventChan:   make(chan HubEvent, 1000),
 		commandChan: make(chan HubCommand, 100),
-		statusChan: make(chan HubStatus, 10),
-		metrics: &HubMetrics{},
-		running: false,
+		statusChan:  make(chan HubStatus, 10),
+		metrics:     &HubMetrics{},
+		running:     false,
 	}
 
 	// Initialize subsystems based on configuration
@@ -378,8 +378,8 @@ func (hub *DeepTreeEchoHub) performIntegrationCycle() {
 		gestalt := hub.telemetryShell.GetGestalt()
 		if gestalt != nil {
 			gestaltData = map[string]interface{}{
-				"awareness": gestalt.CreateSnapshot().AwarenessLevel,
-				"coherence": gestalt.CreateSnapshot().CoherenceLevel,
+				"awareness":   gestalt.CreateSnapshot().AwarenessLevel,
+				"coherence":   gestalt.CreateSnapshot().CoherenceLevel,
 				"integration": gestalt.CreateSnapshot().IntegrationLevel,
 			}
 		}
@@ -476,7 +476,7 @@ func (hub *DeepTreeEchoHub) executeCommand(cmd HubCommand) HubCommandResponse {
 	case "get_status":
 		return HubCommandResponse{
 			Success: true,
-			Data: hub.GetStatus(),
+			Data:    hub.GetStatus(),
 		}
 
 	case "inject_thought":
@@ -515,7 +515,7 @@ func (hub *DeepTreeEchoHub) executeCommand(cmd HubCommand) HubCommandResponse {
 	default:
 		return HubCommandResponse{
 			Success: false,
-			Error: fmt.Errorf("unknown command type: %s", cmd.Type),
+			Error:   fmt.Errorf("unknown command type: %s", cmd.Type),
 		}
 	}
 }
@@ -545,9 +545,9 @@ func (hub *DeepTreeEchoHub) metricsCollector() {
 // publishEvent publishes an event to the hub
 func (hub *DeepTreeEchoHub) publishEvent(eventType, source string, data interface{}) {
 	event := HubEvent{
-		Type: eventType,
-		Source: source,
-		Data: data,
+		Type:      eventType,
+		Source:    source,
+		Data:      data,
 		Timestamp: time.Now(),
 	}
 
@@ -639,8 +639,8 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 	defer hub.mu.RUnlock()
 
 	status := HubStatus{
-		Running: hub.running,
-		Uptime: time.Since(hub.startTime),
+		Running:   hub.running,
+		Uptime:    time.Since(hub.startTime),
 		Timestamp: time.Now(),
 	}
 
@@ -653,11 +653,11 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 	if hub.unifiedOrchestrator != nil {
 		orchStatus := hub.unifiedOrchestrator.GetStatus()
 		status.OrchestratorStatus = map[string]interface{}{
-			"running": orchStatus.Running,
-			"is_awake": orchStatus.IsAwake,
+			"running":        orchStatus.Running,
+			"is_awake":       orchStatus.IsAwake,
 			"cognitive_load": orchStatus.CognitiveLoad,
-			"wisdom_depth": orchStatus.WisdomDepth,
-			"total_cycles": orchStatus.TotalCycles,
+			"wisdom_depth":   orchStatus.WisdomDepth,
+			"total_cycles":   orchStatus.TotalCycles,
 		}
 	}
 
@@ -667,9 +667,9 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 		if gestalt != nil {
 			snapshot := gestalt.CreateSnapshot()
 			status.TelemetryStatus = map[string]interface{}{
-				"awareness": snapshot.AwarenessLevel,
-				"coherence": snapshot.CoherenceLevel,
-				"integration": snapshot.IntegrationLevel,
+				"awareness":         snapshot.AwarenessLevel,
+				"coherence":         snapshot.CoherenceLevel,
+				"integration":       snapshot.IntegrationLevel,
 				"active_subsystems": snapshot.ActiveSubsystems,
 			}
 		}
@@ -683,15 +683,15 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 	// Get metrics
 	hub.metrics.mu.RLock()
 	status.Metrics = &HubMetrics{
-		TotalEvents: hub.metrics.TotalEvents,
-		TotalCommands: hub.metrics.TotalCommands,
-		TotalCycles: hub.metrics.TotalCycles,
-		TotalThoughts: hub.metrics.TotalThoughts,
-		TotalGoals: hub.metrics.TotalGoals,
-		TotalWisdom: hub.metrics.TotalWisdom,
-		EventsPerSecond: hub.metrics.EventsPerSecond,
+		TotalEvents:       hub.metrics.TotalEvents,
+		TotalCommands:     hub.metrics.TotalCommands,
+		TotalCycles:       hub.metrics.TotalCycles,
+		TotalThoughts:     hub.metrics.TotalThoughts,
+		TotalGoals:        hub.metrics.TotalGoals,
+		TotalWisdom:       hub.metrics.TotalWisdom,
+		EventsPerSecond:   hub.metrics.EventsPerSecond,
 		CommandsProcessed: hub.metrics.CommandsProcessed,
-		ErrorCount: hub.metrics.ErrorCount,
+		ErrorCount:        hub.metrics.ErrorCount,
 	}
 	hub.metrics.mu.RUnlock()
 
@@ -703,7 +703,7 @@ func (hub *DeepTreeEchoHub) SendCommand(cmd HubCommand) HubCommandResponse {
 	if !hub.running {
 		return HubCommandResponse{
 			Success: false,
-			Error: fmt.Errorf("hub not running"),
+			Error:   fmt.Errorf("hub not running"),
 		}
 	}
 
@@ -718,7 +718,7 @@ func (hub *DeepTreeEchoHub) SendCommand(cmd HubCommand) HubCommandResponse {
 	case <-time.After(10 * time.Second):
 		return HubCommandResponse{
 			Success: false,
-			Error: fmt.Errorf("command timeout"),
+			Error:   fmt.Errorf("command timeout"),
 		}
 	}
 }
@@ -750,10 +750,10 @@ func (hub *DeepTreeEchoHub) GetGestalt() map[string]interface{} {
 	// Get hub metrics
 	hub.metrics.mu.RLock()
 	gestalt["hub"] = map[string]interface{}{
-		"running": hub.running,
-		"uptime": time.Since(hub.startTime).String(),
-		"total_events": hub.metrics.TotalEvents,
-		"total_cycles": hub.metrics.TotalCycles,
+		"running":           hub.running,
+		"uptime":            time.Since(hub.startTime).String(),
+		"total_events":      hub.metrics.TotalEvents,
+		"total_cycles":      hub.metrics.TotalCycles,
 		"events_per_second": hub.metrics.EventsPerSecond,
 	}
 	hub.metrics.mu.RUnlock()
@@ -769,8 +769,8 @@ func (hub *DeepTreeEchoHub) GetGestalt() map[string]interface{} {
 		if g != nil {
 			snapshot := g.CreateSnapshot()
 			gestalt["telemetry"] = map[string]interface{}{
-				"awareness": snapshot.AwarenessLevel,
-				"coherence": snapshot.CoherenceLevel,
+				"awareness":   snapshot.AwarenessLevel,
+				"coherence":   snapshot.CoherenceLevel,
 				"integration": snapshot.IntegrationLevel,
 			}
 		}

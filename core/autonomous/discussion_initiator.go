@@ -12,8 +12,8 @@ import (
 
 // DiscussionInitiator autonomously initiates meaningful discussions based on interests
 type DiscussionInitiator struct {
-	mu sync.RWMutex
-	ctx    context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for generating discussion topics and content
@@ -23,27 +23,27 @@ type DiscussionInitiator struct {
 	interestTracker *consciousness.InterestPatternTracker
 
 	// Discussion state
-	discussions        []Discussion
-	pendingTopics      []DiscussionTopic
-	activeDiscussion   *Discussion
+	discussions      []Discussion
+	pendingTopics    []DiscussionTopic
+	activeDiscussion *Discussion
 
 	// Configuration
-	interestThreshold  float64        // Minimum interest score to initiate
-	cooldownPeriod     time.Duration  // Time between initiations
-	maxPendingTopics   int            // Maximum pending topics to queue
-	checkInterval      time.Duration  // How often to check for discussion opportunities
+	interestThreshold float64       // Minimum interest score to initiate
+	cooldownPeriod    time.Duration // Time between initiations
+	maxPendingTopics  int           // Maximum pending topics to queue
+	checkInterval     time.Duration // How often to check for discussion opportunities
 
 	// Temporal tracking
-	lastInitiation     time.Time
-	lastCheck          time.Time
+	lastInitiation time.Time
+	lastCheck      time.Time
 
 	// Metrics
-	totalDiscussions   uint64
-	totalTopics        uint64
-	insightsGenerated  uint64
+	totalDiscussions  uint64
+	totalTopics       uint64
+	insightsGenerated uint64
 
 	// Running state
-	running            bool
+	running bool
 }
 
 // Discussion represents an initiated discussion
@@ -55,7 +55,7 @@ type Discussion struct {
 	Messages     []DiscussionMessage
 	Insights     []string
 	Status       DiscussionStatus
-	Satisfaction float64  // How satisfying was this discussion?
+	Satisfaction float64 // How satisfying was this discussion?
 }
 
 // DiscussionTopic represents a topic for discussion
@@ -74,7 +74,7 @@ type DiscussionTopic struct {
 
 // DiscussionMessage represents a message in a discussion
 type DiscussionMessage struct {
-	Role      string    // "self", "other", "system"
+	Role      string // "self", "other", "system"
 	Content   string
 	Timestamp time.Time
 	Emotion   string
@@ -550,14 +550,14 @@ func (di *DiscussionInitiator) GetMetrics() map[string]interface{} {
 	defer di.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_discussions":   di.totalDiscussions,
-		"total_topics":        di.totalTopics,
-		"insights_generated":  di.insightsGenerated,
-		"pending_topics":      len(di.pendingTopics),
-		"has_active":          di.activeDiscussion != nil,
-		"interest_threshold":  di.interestThreshold,
-		"cooldown_period":     di.cooldownPeriod.String(),
-		"running":             di.running,
+		"total_discussions":  di.totalDiscussions,
+		"total_topics":       di.totalTopics,
+		"insights_generated": di.insightsGenerated,
+		"pending_topics":     len(di.pendingTopics),
+		"has_active":         di.activeDiscussion != nil,
+		"interest_threshold": di.interestThreshold,
+		"cooldown_period":    di.cooldownPeriod.String(),
+		"running":            di.running,
 	}
 }
 

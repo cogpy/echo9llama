@@ -62,7 +62,7 @@ func (sc *SupabaseClient) Insert(table string, record interface{}) error {
 // Query queries records from a table
 func (sc *SupabaseClient) Query(table string, filter map[string]interface{}, limit int) ([]map[string]interface{}, error) {
 	url := fmt.Sprintf("%s/rest/v1/%s", sc.url, table)
-	
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -220,17 +220,17 @@ func (pm *PersistentMemory) StoreDreamJournalActual(journal *DreamJournal) error
 // QueryNodesActual queries nodes using actual Supabase client
 func (pm *PersistentMemory) QueryNodesActual(nodeType NodeType, limit int) ([]*MemoryNode, error) {
 	client := NewSupabaseClient(pm.supabaseURL, pm.supabaseKey)
-	
+
 	filter := make(map[string]interface{})
 	if nodeType != "" {
 		filter["type"] = string(nodeType)
 	}
-	
+
 	results, err := client.Query("memory_nodes", filter, limit)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var nodes []*MemoryNode
 	for _, result := range results {
 		node := &MemoryNode{}
@@ -239,27 +239,27 @@ func (pm *PersistentMemory) QueryNodesActual(nodeType NodeType, limit int) ([]*M
 		json.Unmarshal(data, node)
 		nodes = append(nodes, node)
 	}
-	
+
 	return nodes, nil
 }
 
 // GetLatestIdentitySnapshotActual retrieves the most recent identity snapshot
 func (pm *PersistentMemory) GetLatestIdentitySnapshotActual() (*IdentitySnapshot, error) {
 	client := NewSupabaseClient(pm.supabaseURL, pm.supabaseKey)
-	
+
 	results, err := client.Query("identity_snapshots", map[string]interface{}{}, 1)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if len(results) == 0 {
 		return nil, fmt.Errorf("no identity snapshots found")
 	}
-	
+
 	snapshot := &IdentitySnapshot{}
 	data, _ := json.Marshal(results[0])
 	json.Unmarshal(data, snapshot)
-	
+
 	return snapshot, nil
 }
 

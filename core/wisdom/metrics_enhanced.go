@@ -498,10 +498,10 @@ func (ewm *EnhancedWisdomMetrics) createProgressBar(value float64, width int) st
 	empty := width - filled
 
 	bar := "["
-	for i := 0; i < filled; i++ {
+	for range filled {
 		bar += "█"
 	}
-	for i := 0; i < empty; i++ {
+	for range empty {
 		bar += "░"
 	}
 	bar += "]"

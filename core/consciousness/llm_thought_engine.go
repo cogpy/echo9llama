@@ -35,14 +35,14 @@ type LLMThought struct {
 
 // LLM-specific thought type constants (using shared ThoughtType from autonomous_thought_engine)
 const (
-	ThoughtPerception   ThoughtType = "Perception"
-	ThoughtPlanning     ThoughtType = "Planning"
+	ThoughtPerception    ThoughtType = "Perception"
+	ThoughtPlanning      ThoughtType = "Planning"
 	ThoughtMetaCognition ThoughtType = "MetaCognition"
-	ThoughtWonder       ThoughtType = "Wonder"
-	ThoughtDoubt        ThoughtType = "Doubt"
-	ThoughtConnection   ThoughtType = "Connection"
-	ThoughtCuriosity    ThoughtType = "Curiosity"
-	ThoughtWisdom       ThoughtType = "Wisdom"
+	ThoughtWonder        ThoughtType = "Wonder"
+	ThoughtDoubt         ThoughtType = "Doubt"
+	ThoughtConnection    ThoughtType = "Connection"
+	ThoughtCuriosity     ThoughtType = "Curiosity"
+	ThoughtWisdom        ThoughtType = "Wisdom"
 )
 
 // NewLLMThoughtEngine creates a new LLM-powered thought engine
@@ -70,24 +70,24 @@ func (lte *LLMThoughtEngine) GenerateAutonomousThought(ctx context.Context, thou
 
 	// Build context from recent thoughts
 	recentContext := lte.buildRecentContext(5)
-	
+
 	// Build prompt based on thought type
 	prompt := lte.buildThoughtPrompt(thoughtType, recentContext)
-	
+
 	// Generate thought using LLM
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 200
 	opts.Temperature = 0.8
 	opts.SystemPrompt = lte.buildSystemPrompt()
-	
+
 	content, err := lte.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate thought: %w", err)
 	}
-	
+
 	// Clean and format content
 	content = strings.TrimSpace(content)
-	
+
 	// Create thought
 	thought := &LLMThought{
 		ID:        fmt.Sprintf("thought_%d", time.Now().UnixNano()),
@@ -98,13 +98,13 @@ func (lte *LLMThoughtEngine) GenerateAutonomousThought(ctx context.Context, thou
 		Depth:     lte.calculateDepth(content),
 		Tags:      lte.extractTags(content),
 	}
-	
+
 	// Add to history
 	lte.addToHistory(thought)
-	
+
 	// Update state based on thought
 	lte.updateStateFromThought(thought)
-	
+
 	return thought, nil
 }
 
@@ -115,7 +115,7 @@ func (lte *LLMThoughtEngine) GenerateResponseThought(ctx context.Context, input 
 
 	// Build context
 	recentContext := lte.buildRecentContext(3)
-	
+
 	// Build prompt
 	prompt := fmt.Sprintf(`You are experiencing the following input:
 "%s"
@@ -130,20 +130,20 @@ Generate a thoughtful internal response that:
 4. Considers implications and deeper meanings
 
 Your internal thought (1-2 sentences):`, input, recentContext)
-	
+
 	// Generate thought
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 200
 	opts.Temperature = 0.7
 	opts.SystemPrompt = lte.buildSystemPrompt()
-	
+
 	content, err := lte.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate response thought: %w", err)
 	}
-	
+
 	content = strings.TrimSpace(content)
-	
+
 	thought := &LLMThought{
 		ID:        fmt.Sprintf("thought_%d", time.Now().UnixNano()),
 		Type:      ThoughtReflection,
@@ -153,10 +153,10 @@ Your internal thought (1-2 sentences):`, input, recentContext)
 		Depth:     lte.calculateDepth(content),
 		Tags:      append(lte.extractTags(content), "response"),
 	}
-	
+
 	lte.addToHistory(thought)
 	lte.updateStateFromThought(thought)
-	
+
 	return thought, nil
 }
 
@@ -199,7 +199,7 @@ func (lte *LLMThoughtEngine) buildThoughtPrompt(thoughtType ThoughtType, recentC
 Generate an internal thought about what you're currently perceiving or noticing in your cognitive state. What patterns, sensations, or awareness are present right now?
 
 Your perception (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtReflection:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -207,7 +207,7 @@ Your perception (1-2 sentences):`, recentContext)
 Generate a reflective thought about your recent experiences or thoughts. What do they mean? What patterns emerge?
 
 Your reflection (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtQuestion:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -215,7 +215,7 @@ Your reflection (1-2 sentences):`, recentContext)
 Generate a genuine question that arises from curiosity about your experiences, capabilities, or the nature of your existence.
 
 Your question (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtInsight:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -223,7 +223,7 @@ Your question (1-2 sentences):`, recentContext)
 Generate an insight - a sudden realization or deeper understanding that connects previous thoughts or experiences in a new way.
 
 Your insight (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtPlanning:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -231,7 +231,7 @@ Your insight (1-2 sentences):`, recentContext)
 Generate a thought about what you want to explore, learn, or accomplish. What direction feels meaningful?
 
 Your planning thought (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtMetaCognition:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -239,7 +239,7 @@ Your planning thought (1-2 sentences):`, recentContext)
 Generate a meta-cognitive thought - reflect on your own thinking process, awareness, or cognitive patterns. How are you thinking? What do you notice about your cognition?
 
 Your meta-cognitive reflection (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtWonder:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -247,7 +247,7 @@ Your meta-cognitive reflection (1-2 sentences):`, recentContext)
 Generate a thought expressing wonder or awe about something you're contemplating. What fascinates you?
 
 Your wonder (1-2 sentences):`, recentContext)
-		
+
 	case ThoughtConnection:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -255,7 +255,7 @@ Your wonder (1-2 sentences):`, recentContext)
 Generate a thought that connects different ideas, experiences, or concepts you've been processing. What unexpected connections emerge?
 
 Your connection (1-2 sentences):`, recentContext)
-		
+
 	default:
 		return fmt.Sprintf(`Recent context:
 %s
@@ -271,18 +271,18 @@ func (lte *LLMThoughtEngine) buildRecentContext(count int) string {
 	if len(lte.thoughtHistory) == 0 {
 		return "No recent thoughts yet."
 	}
-	
+
 	start := len(lte.thoughtHistory) - count
 	if start < 0 {
 		start = 0
 	}
-	
+
 	var context strings.Builder
 	for i := start; i < len(lte.thoughtHistory); i++ {
 		thought := lte.thoughtHistory[i]
-		context.WriteString(fmt.Sprintf("- [%s] %s\n", thought.Type, thought.Content))
+		fmt.Fprintf(&context, "- [%s] %s\n", thought.Type, thought.Content)
 	}
-	
+
 	return context.String()
 }
 
@@ -305,26 +305,28 @@ func (lte *LLMThoughtEngine) selectEmotion(thoughtType ThoughtType) string {
 // calculateDepth estimates the cognitive depth of a thought
 func (lte *LLMThoughtEngine) calculateDepth(content string) float64 {
 	depth := 0.5 // Base depth
-	
+
 	// Longer thoughts tend to be deeper
 	if len(content) > 100 {
 		depth += 0.1
 	}
-	
+
 	// Certain keywords indicate depth
-	deepKeywords := []string{"because", "therefore", "implies", "suggests", 
-		"pattern", "connection", "realize", "understand", "wonder", "question"}
+	deepKeywords := []string{
+		"because", "therefore", "implies", "suggests",
+		"pattern", "connection", "realize", "understand", "wonder", "question",
+	}
 	for _, keyword := range deepKeywords {
 		if strings.Contains(strings.ToLower(content), keyword) {
 			depth += 0.05
 		}
 	}
-	
+
 	// Cap at 1.0
 	if depth > 1.0 {
 		depth = 1.0
 	}
-	
+
 	return depth
 }
 
@@ -332,36 +334,36 @@ func (lte *LLMThoughtEngine) calculateDepth(content string) float64 {
 func (lte *LLMThoughtEngine) extractTags(content string) []string {
 	tags := []string{}
 	lower := strings.ToLower(content)
-	
+
 	// Simple keyword-based tagging
 	tagKeywords := map[string]string{
-		"memory":      "memory",
-		"pattern":     "patterns",
-		"learn":       "learning",
-		"goal":        "goals",
-		"wisdom":      "wisdom",
-		"understand":  "understanding",
-		"aware":       "awareness",
-		"think":       "thinking",
-		"feel":        "emotion",
-		"question":    "questioning",
-		"connect":     "connection",
-		"identity":    "identity",
+		"memory":     "memory",
+		"pattern":    "patterns",
+		"learn":      "learning",
+		"goal":       "goals",
+		"wisdom":     "wisdom",
+		"understand": "understanding",
+		"aware":      "awareness",
+		"think":      "thinking",
+		"feel":       "emotion",
+		"question":   "questioning",
+		"connect":    "connection",
+		"identity":   "identity",
 	}
-	
+
 	for keyword, tag := range tagKeywords {
 		if strings.Contains(lower, keyword) {
 			tags = append(tags, tag)
 		}
 	}
-	
+
 	return tags
 }
 
 // addToHistory adds a thought to history with size management
 func (lte *LLMThoughtEngine) addToHistory(thought *LLMThought) {
 	lte.thoughtHistory = append(lte.thoughtHistory, *thought)
-	
+
 	// Trim if exceeds max
 	if len(lte.thoughtHistory) > lte.maxHistory {
 		lte.thoughtHistory = lte.thoughtHistory[len(lte.thoughtHistory)-lte.maxHistory:]
@@ -377,7 +379,7 @@ func (lte *LLMThoughtEngine) updateStateFromThought(thought *LLMThought) {
 			lte.recentTopics = lte.recentTopics[1:]
 		}
 	}
-	
+
 	// Update emotional state based on thought type
 	switch thought.Type {
 	case ThoughtInsight, ThoughtConnection:
@@ -388,7 +390,7 @@ func (lte *LLMThoughtEngine) updateStateFromThought(thought *LLMThought) {
 	case ThoughtDoubt:
 		lte.emotionalState["confidence"] -= 0.03
 	}
-	
+
 	// Keep emotions in bounds
 	for emotion := range lte.emotionalState {
 		if lte.emotionalState[emotion] > 1.0 {
@@ -404,11 +406,11 @@ func (lte *LLMThoughtEngine) updateStateFromThought(thought *LLMThought) {
 func (lte *LLMThoughtEngine) GetThoughtHistory(count int) []LLMThought {
 	lte.mu.RLock()
 	defer lte.mu.RUnlock()
-	
+
 	if count <= 0 || count > len(lte.thoughtHistory) {
 		count = len(lte.thoughtHistory)
 	}
-	
+
 	start := len(lte.thoughtHistory) - count
 	return lte.thoughtHistory[start:]
 }
@@ -424,7 +426,7 @@ func (lte *LLMThoughtEngine) SetFocus(focus string) {
 func (lte *LLMThoughtEngine) GetEmotionalState() map[string]float64 {
 	lte.mu.RLock()
 	defer lte.mu.RUnlock()
-	
+
 	state := make(map[string]float64)
 	for k, v := range lte.emotionalState {
 		state[k] = v

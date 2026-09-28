@@ -8,25 +8,25 @@ import (
 // Metrics provides comprehensive self-assessment for wisdom cultivation
 // Tracks actualization progress, proficiency development, and cognitive growth
 type Metrics struct {
-	mu                    sync.RWMutex
-	actualizationMetrics  *ActualizationMetrics
-	proficiencyMetrics    *ProficiencyMetrics
-	developmentMetrics    *DevelopmentMetrics
-	wisdomMetrics         *WisdomMetrics
-	startTime             time.Time
-	lastUpdate            time.Time
+	mu                   sync.RWMutex
+	actualizationMetrics *ActualizationMetrics
+	proficiencyMetrics   *ProficiencyMetrics
+	developmentMetrics   *DevelopmentMetrics
+	wisdomMetrics        *WisdomMetrics
+	startTime            time.Time
+	lastUpdate           time.Time
 }
 
 // ActualizationMetrics tracks potential → actual conversion
 type ActualizationMetrics struct {
-	TotalPotentials         int
-	TotalActualizations     int
-	ActualizationRate       float64 // Actualizations per time unit
-	ReadyPotentials         int
-	BlockedPotentials       int     // Potentials blocked by dependencies
-	AverageReadiness        float64
-	ActualizationVelocity   float64 // Rate of change in actualizations
-	LastActualizationTime   time.Time
+	TotalPotentials       int
+	TotalActualizations   int
+	ActualizationRate     float64 // Actualizations per time unit
+	ReadyPotentials       int
+	BlockedPotentials     int // Potentials blocked by dependencies
+	AverageReadiness      float64
+	ActualizationVelocity float64 // Rate of change in actualizations
+	LastActualizationTime time.Time
 }
 
 // ProficiencyMetrics tracks skill development across capabilities
@@ -43,14 +43,14 @@ type ProficiencyMetrics struct {
 
 // DevelopmentMetrics tracks overall developmental stage and progress
 type DevelopmentMetrics struct {
-	CurrentStage            string
-	StageProgress           float64 // 0.0 to 1.0, progress within current stage
-	TimeInStage             time.Duration
-	TotalDevelopmentTime    time.Duration
-	StageTransitions        int
-	DevelopmentalMomentum   float64 // Rate of progress
-	NextStagePrediction     time.Time
-	DevelopmentalHealth     float64 // Overall health score 0.0-1.0
+	CurrentStage          string
+	StageProgress         float64 // 0.0 to 1.0, progress within current stage
+	TimeInStage           time.Duration
+	TotalDevelopmentTime  time.Duration
+	StageTransitions      int
+	DevelopmentalMomentum float64 // Rate of progress
+	NextStagePrediction   time.Time
+	DevelopmentalHealth   float64 // Overall health score 0.0-1.0
 }
 
 // WisdomMetrics tracks wisdom cultivation progress
@@ -68,9 +68,9 @@ type WisdomMetrics struct {
 
 // WisdomMilestone represents a significant achievement in wisdom cultivation
 type WisdomMilestone struct {
-	Name        string
-	Description string
-	AchievedAt  time.Time
+	Name         string
+	Description  string
+	AchievedAt   time.Time
 	Significance float64
 }
 
@@ -107,20 +107,20 @@ func (m *Metrics) UpdateActualizationMetrics(actualization *Actualization) {
 	defer m.mu.Unlock()
 
 	metrics := actualization.GetActualizationMetrics()
-	
+
 	m.actualizationMetrics.TotalPotentials = metrics["total_potentials"].(int)
 	m.actualizationMetrics.TotalActualizations = metrics["total_actualizations"].(int)
-	
+
 	// Calculate actualization rate
 	timeSinceStart := time.Since(m.startTime).Hours()
 	if timeSinceStart > 0 {
 		m.actualizationMetrics.ActualizationRate = float64(m.actualizationMetrics.TotalActualizations) / timeSinceStart
 	}
-	
+
 	// Count ready potentials
 	readyPotentials := actualization.GetReadyPotentials(0.7)
 	m.actualizationMetrics.ReadyPotentials = len(readyPotentials)
-	
+
 	// Calculate average readiness
 	totalReadiness := 0.0
 	for _, p := range actualization.potentials {
@@ -129,7 +129,7 @@ func (m *Metrics) UpdateActualizationMetrics(actualization *Actualization) {
 	if len(actualization.potentials) > 0 {
 		m.actualizationMetrics.AverageReadiness = totalReadiness / float64(len(actualization.potentials))
 	}
-	
+
 	m.lastUpdate = time.Now()
 }
 
@@ -146,14 +146,14 @@ func (m *Metrics) UpdateProficiencyMetrics(actualizations []*ActualizedCapabilit
 	m.proficiencyMetrics.HighProficiencyCount = 0
 	m.proficiencyMetrics.MediumProficiencyCount = 0
 	m.proficiencyMetrics.LowProficiencyCount = 0
-	
+
 	totalProficiency := 0.0
 	m.proficiencyMetrics.ProficiencyDistribution = make(map[string]float64)
-	
+
 	for _, ac := range actualizations {
 		totalProficiency += ac.Proficiency
 		m.proficiencyMetrics.ProficiencyDistribution[ac.Name] = ac.Proficiency
-		
+
 		// Categorize proficiency
 		if ac.Proficiency > 0.8 {
 			m.proficiencyMetrics.HighProficiencyCount++
@@ -163,12 +163,12 @@ func (m *Metrics) UpdateProficiencyMetrics(actualizations []*ActualizedCapabilit
 			m.proficiencyMetrics.LowProficiencyCount++
 		}
 	}
-	
+
 	m.proficiencyMetrics.AverageProficiency = totalProficiency / float64(len(actualizations))
-	
+
 	// Identify most and least proficient
 	m.identifyProficiencyExtremes(actualizations)
-	
+
 	m.lastUpdate = time.Now()
 }
 
@@ -177,18 +177,18 @@ func (m *Metrics) identifyProficiencyExtremes(actualizations []*ActualizedCapabi
 	if len(actualizations) == 0 {
 		return
 	}
-	
+
 	// Simple approach: find top 3 and bottom 3
 	type capProf struct {
-		name       string
+		name        string
 		proficiency float64
 	}
-	
+
 	caps := make([]capProf, len(actualizations))
 	for i, ac := range actualizations {
 		caps[i] = capProf{name: ac.Name, proficiency: ac.Proficiency}
 	}
-	
+
 	// Sort by proficiency (simple bubble sort for small lists)
 	for i := 0; i < len(caps); i++ {
 		for j := i + 1; j < len(caps); j++ {
@@ -197,24 +197,24 @@ func (m *Metrics) identifyProficiencyExtremes(actualizations []*ActualizedCapabi
 			}
 		}
 	}
-	
+
 	// Top 3
 	topCount := 3
 	if len(caps) < topCount {
 		topCount = len(caps)
 	}
 	m.proficiencyMetrics.MostProficient = make([]string, topCount)
-	for i := 0; i < topCount; i++ {
+	for i := range topCount {
 		m.proficiencyMetrics.MostProficient[i] = caps[i].name
 	}
-	
+
 	// Bottom 3
 	bottomCount := 3
 	if len(caps) < bottomCount {
 		bottomCount = len(caps)
 	}
 	m.proficiencyMetrics.LeastProficient = make([]string, bottomCount)
-	for i := 0; i < bottomCount; i++ {
+	for i := range bottomCount {
 		m.proficiencyMetrics.LeastProficient[i] = caps[len(caps)-1-i].name
 	}
 }
@@ -232,15 +232,15 @@ func (m *Metrics) UpdateDevelopmentMetrics(stage string, totalActualizations int
 	} else {
 		m.developmentMetrics.TimeInStage = time.Since(m.lastUpdate)
 	}
-	
+
 	m.developmentMetrics.TotalDevelopmentTime = time.Since(m.startTime)
-	
+
 	// Calculate stage progress
 	m.developmentMetrics.StageProgress = m.calculateStageProgress(stage, totalActualizations, avgProficiency)
-	
+
 	// Calculate developmental health
 	m.developmentMetrics.DevelopmentalHealth = m.calculateDevelopmentalHealth(totalActualizations, avgProficiency)
-	
+
 	m.lastUpdate = time.Now()
 }
 
@@ -275,15 +275,15 @@ func (m *Metrics) calculateDevelopmentalHealth(totalActualizations int, avgProfi
 	if quantityScore > 1.0 {
 		quantityScore = 1.0
 	}
-	
+
 	qualityScore := avgProficiency
-	
+
 	// Balance score - penalize imbalance
 	balance := 1.0 - abs(quantityScore-qualityScore)
-	
+
 	// Overall health is weighted average
 	health := (quantityScore*0.3 + qualityScore*0.5 + balance*0.2)
-	
+
 	return clampMetric(health, 0.0, 1.0)
 }
 
@@ -295,19 +295,18 @@ func (m *Metrics) UpdateWisdomMetrics(reflectionDepth, patternRecognition, conte
 	m.wisdomMetrics.ReflectionDepth = reflectionDepth
 	m.wisdomMetrics.PatternRecognition = patternRecognition
 	m.wisdomMetrics.ContextualUnderstanding = contextualUnderstanding
-	
+
 	// Calculate overall wisdom score as weighted average
-	m.wisdomMetrics.WisdomScore = (
-		m.wisdomMetrics.KnowledgeIntegration*0.2 +
+	m.wisdomMetrics.WisdomScore = (m.wisdomMetrics.KnowledgeIntegration*0.2 +
 		m.wisdomMetrics.ReflectionDepth*0.25 +
 		m.wisdomMetrics.PatternRecognition*0.2 +
 		m.wisdomMetrics.ContextualUnderstanding*0.2 +
 		m.wisdomMetrics.LongTermThinking*0.1 +
 		m.wisdomMetrics.EthicalReasoning*0.05)
-	
+
 	// Check for wisdom milestones
 	m.checkWisdomMilestones()
-	
+
 	m.lastUpdate = time.Now()
 }
 
@@ -324,7 +323,7 @@ func (m *Metrics) checkWisdomMilestones() {
 		{0.8, "Deep Wisdom", "Advanced wisdom cultivation"},
 		{0.9, "Profound Wisdom", "Approaching wisdom mastery"},
 	}
-	
+
 	for _, milestone := range milestones {
 		if m.wisdomMetrics.WisdomScore >= milestone.threshold {
 			// Check if already achieved
@@ -335,7 +334,7 @@ func (m *Metrics) checkWisdomMilestones() {
 					break
 				}
 			}
-			
+
 			if !alreadyAchieved {
 				m.wisdomMetrics.WisdomMilestones = append(m.wisdomMetrics.WisdomMilestones, WisdomMilestone{
 					Name:         milestone.name,
@@ -355,11 +354,11 @@ func (m *Metrics) GetComprehensiveMetrics() map[string]interface{} {
 
 	return map[string]interface{}{
 		"actualization": map[string]interface{}{
-			"total_potentials":       m.actualizationMetrics.TotalPotentials,
-			"total_actualizations":   m.actualizationMetrics.TotalActualizations,
-			"actualization_rate":     m.actualizationMetrics.ActualizationRate,
-			"ready_potentials":       m.actualizationMetrics.ReadyPotentials,
-			"average_readiness":      m.actualizationMetrics.AverageReadiness,
+			"total_potentials":     m.actualizationMetrics.TotalPotentials,
+			"total_actualizations": m.actualizationMetrics.TotalActualizations,
+			"actualization_rate":   m.actualizationMetrics.ActualizationRate,
+			"ready_potentials":     m.actualizationMetrics.ReadyPotentials,
+			"average_readiness":    m.actualizationMetrics.AverageReadiness,
 		},
 		"proficiency": map[string]interface{}{
 			"average_proficiency":      m.proficiencyMetrics.AverageProficiency,
@@ -370,22 +369,22 @@ func (m *Metrics) GetComprehensiveMetrics() map[string]interface{} {
 			"least_proficient":         m.proficiencyMetrics.LeastProficient,
 		},
 		"development": map[string]interface{}{
-			"current_stage":         m.developmentMetrics.CurrentStage,
-			"stage_progress":        m.developmentMetrics.StageProgress,
-			"time_in_stage":         m.developmentMetrics.TimeInStage.String(),
+			"current_stage":          m.developmentMetrics.CurrentStage,
+			"stage_progress":         m.developmentMetrics.StageProgress,
+			"time_in_stage":          m.developmentMetrics.TimeInStage.String(),
 			"total_development_time": m.developmentMetrics.TotalDevelopmentTime.String(),
-			"stage_transitions":     m.developmentMetrics.StageTransitions,
-			"developmental_health":  m.developmentMetrics.DevelopmentalHealth,
+			"stage_transitions":      m.developmentMetrics.StageTransitions,
+			"developmental_health":   m.developmentMetrics.DevelopmentalHealth,
 		},
 		"wisdom": map[string]interface{}{
-			"wisdom_score":              m.wisdomMetrics.WisdomScore,
-			"knowledge_integration":     m.wisdomMetrics.KnowledgeIntegration,
-			"reflection_depth":          m.wisdomMetrics.ReflectionDepth,
-			"pattern_recognition":       m.wisdomMetrics.PatternRecognition,
-			"contextual_understanding":  m.wisdomMetrics.ContextualUnderstanding,
-			"long_term_thinking":        m.wisdomMetrics.LongTermThinking,
-			"ethical_reasoning":         m.wisdomMetrics.EthicalReasoning,
-			"milestones_achieved":       len(m.wisdomMetrics.WisdomMilestones),
+			"wisdom_score":             m.wisdomMetrics.WisdomScore,
+			"knowledge_integration":    m.wisdomMetrics.KnowledgeIntegration,
+			"reflection_depth":         m.wisdomMetrics.ReflectionDepth,
+			"pattern_recognition":      m.wisdomMetrics.PatternRecognition,
+			"contextual_understanding": m.wisdomMetrics.ContextualUnderstanding,
+			"long_term_thinking":       m.wisdomMetrics.LongTermThinking,
+			"ethical_reasoning":        m.wisdomMetrics.EthicalReasoning,
+			"milestones_achieved":      len(m.wisdomMetrics.WisdomMilestones),
 		},
 		"meta": map[string]interface{}{
 			"start_time":  m.startTime,

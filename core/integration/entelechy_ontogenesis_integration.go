@@ -89,7 +89,7 @@ func initializeMilestones() []Milestone {
 // Update checks for milestone achievements and updates development
 func (e *EntelechyOntogenesisIntegration) Update(ctx context.Context) error {
 	age := time.Since(e.devTracker.startTime)
-	
+
 	// Check for milestone achievements
 	for i := range e.devTracker.milestones {
 		m := &e.devTracker.milestones[i]

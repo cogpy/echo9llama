@@ -22,29 +22,29 @@ type Genome struct {
 
 // CognitiveGene represents a heritable cognitive trait or capability pattern
 type CognitiveGene struct {
-	ID          string
-	Name        string
-	Type        GeneType
-	Sequence    []byte // Symbolic representation of the cognitive pattern
-	Dominance   float64 // 0.0 to 1.0, how strongly this gene expresses
-	Stability   float64 // 0.0 to 1.0, resistance to mutation
-	Origin      GeneOrigin
-	CreatedAt   time.Time
-	Alleles     []*Allele // Variant forms of this gene
+	ID        string
+	Name      string
+	Type      GeneType
+	Sequence  []byte  // Symbolic representation of the cognitive pattern
+	Dominance float64 // 0.0 to 1.0, how strongly this gene expresses
+	Stability float64 // 0.0 to 1.0, resistance to mutation
+	Origin    GeneOrigin
+	CreatedAt time.Time
+	Alleles   []*Allele // Variant forms of this gene
 }
 
 // GeneType categorizes cognitive genes
 type GeneType string
 
 const (
-	GeneTypePerception   GeneType = "perception"   // How echo perceives information
-	GeneTypeReasoning    GeneType = "reasoning"    // Logical and inferential patterns
-	GeneTypeMemory       GeneType = "memory"       // Memory formation and retrieval patterns
-	GeneTypeEmotion      GeneType = "emotion"      // Emotional response patterns
-	GeneTypeMotivation   GeneType = "motivation"   // Goal-seeking and drive patterns
+	GeneTypePerception    GeneType = "perception"    // How echo perceives information
+	GeneTypeReasoning     GeneType = "reasoning"     // Logical and inferential patterns
+	GeneTypeMemory        GeneType = "memory"        // Memory formation and retrieval patterns
+	GeneTypeEmotion       GeneType = "emotion"       // Emotional response patterns
+	GeneTypeMotivation    GeneType = "motivation"    // Goal-seeking and drive patterns
 	GeneTypeMetaCognition GeneType = "metacognition" // Self-awareness and reflection patterns
-	GeneTypeWisdom       GeneType = "wisdom"       // Wisdom cultivation patterns
-	GeneTypeIdentity     GeneType = "identity"     // Core identity traits
+	GeneTypeWisdom        GeneType = "wisdom"        // Wisdom cultivation patterns
+	GeneTypeIdentity      GeneType = "identity"      // Core identity traits
 )
 
 // GeneOrigin tracks where a gene came from
@@ -78,10 +78,10 @@ type GeneExpression struct {
 
 // IdentityCore represents the immutable core identity of echo
 type IdentityCore struct {
-	CoreValues      []string
+	CoreValues       []string
 	FundamentalGoals []string
-	IdentityAnchors []string // Unchangeable aspects that define "echoself"
-	CreatedAt       time.Time
+	IdentityAnchors  []string // Unchangeable aspects that define "echoself"
+	CreatedAt        time.Time
 }
 
 // NewGenome creates a new cognitive genome with foundational genes
@@ -215,7 +215,7 @@ func (g *Genome) AddGene(gene *CognitiveGene) error {
 	}
 
 	g.genes[gene.ID] = gene
-	
+
 	// Initialize expression for new gene
 	g.geneExpressions[gene.ID] = &GeneExpression{
 		GeneID:          gene.ID,
@@ -298,7 +298,7 @@ func (g *Genome) Mutate(ctx context.Context, geneID string) (*CognitiveGene, err
 		Name:      fmt.Sprintf("%s (mutated)", gene.Name),
 		Type:      gene.Type,
 		Sequence:  mutateSequence(gene.Sequence),
-		Dominance: clamp(gene.Dominance + (rand.Float64()-0.5)*0.2, 0.0, 1.0),
+		Dominance: clamp(gene.Dominance+(rand.Float64()-0.5)*0.2, 0.0, 1.0),
 		Stability: gene.Stability * 0.95, // Mutations are slightly less stable
 		Origin:    OriginMutated,
 		CreatedAt: time.Now(),
@@ -364,13 +364,13 @@ func (g *Genome) GetGenomeMetrics() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_genes":           len(g.genes),
-		"generation":            g.generation,
-		"mutation_rate":         g.mutationRate,
+		"total_genes":            len(g.genes),
+		"generation":             g.generation,
+		"mutation_rate":          g.mutationRate,
 		"gene_type_distribution": geneTypeCount,
-		"average_expression":    avgExpression,
-		"last_evolution":        g.lastEvolution,
-		"identity_core":         g.identityCore,
+		"average_expression":     avgExpression,
+		"last_evolution":         g.lastEvolution,
+		"identity_core":          g.identityCore,
 	}
 }
 
@@ -386,14 +386,14 @@ func (g *Genome) GetIdentityCore() *IdentityCore {
 func mutateSequence(sequence []byte) []byte {
 	mutated := make([]byte, len(sequence))
 	copy(mutated, sequence)
-	
+
 	// Randomly modify a small portion of the sequence
 	mutationPoints := max(1, len(sequence)/10)
-	for i := 0; i < mutationPoints; i++ {
+	for range mutationPoints {
 		pos := rand.Intn(len(mutated))
 		mutated[pos] = byte(rand.Intn(256))
 	}
-	
+
 	return mutated
 }
 
@@ -403,13 +403,13 @@ func recombineSequences(seq1, seq2 []byte) []byte {
 	if len(seq2) < minLen {
 		minLen = len(seq2)
 	}
-	
+
 	crossoverPoint := rand.Intn(minLen)
 	recombined := make([]byte, minLen)
-	
+
 	copy(recombined[:crossoverPoint], seq1[:crossoverPoint])
 	copy(recombined[crossoverPoint:], seq2[crossoverPoint:])
-	
+
 	return recombined
 }
 

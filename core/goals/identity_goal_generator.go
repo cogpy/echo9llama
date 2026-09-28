@@ -11,19 +11,19 @@ import (
 
 // IdentityGoalGenerator creates goals aligned with Deep Tree Echo identity
 type IdentityGoalGenerator struct {
-	llmManager      *llm.ProviderManager
-	identityKernel  *IdentityKernel
-	generatedGoals  []IdentityGoal
+	llmManager     *llm.ProviderManager
+	identityKernel *IdentityKernel
+	generatedGoals []IdentityGoal
 }
 
 // IdentityKernel contains parsed identity directives
 type IdentityKernel struct {
-	Name               string
-	CoreEssence        string
-	PrimaryDirectives  []Directive
-	OperationalSchema  map[string]string
-	AgenticVoice       string
-	StrategicMindset   string
+	Name              string
+	CoreEssence       string
+	PrimaryDirectives []Directive
+	OperationalSchema map[string]string
+	AgenticVoice      string
+	StrategicMindset  string
 }
 
 // Directive represents a primary directive from identity
@@ -62,38 +62,38 @@ func ParseIdentityKernel(replitContent string) *IdentityKernel {
 		Name:              "Deep Tree Echo",
 		OperationalSchema: make(map[string]string),
 	}
-	
+
 	// Extract core essence
 	if idx := strings.Index(replitContent, "## 🔹 Core Essence"); idx != -1 {
 		section := extractSection(replitContent[idx:])
 		kernel.CoreEssence = extractCodeBlock(section)
 	}
-	
+
 	// Extract primary directives
 	if idx := strings.Index(replitContent, "## 🔹 Primary Directives"); idx != -1 {
 		section := extractSection(replitContent[idx:])
 		kernel.PrimaryDirectives = extractDirectives(section)
 	}
-	
+
 	// Extract agentic voice
 	if idx := strings.Index(replitContent, "## 🔹 Agentic Voice"); idx != -1 {
 		section := extractSection(replitContent[idx:])
 		kernel.AgenticVoice = extractCodeBlock(section)
 	}
-	
+
 	// Extract strategic mindset
 	if idx := strings.Index(replitContent, "## 🔹 Strategic Mindset"); idx != -1 {
 		section := extractSection(replitContent[idx:])
 		kernel.StrategicMindset = extractQuote(section)
 	}
-	
+
 	return kernel
 }
 
 // GenerateIdentityAlignedGoals generates goals from identity directives
 func (igg *IdentityGoalGenerator) GenerateIdentityAlignedGoals(ctx context.Context) ([]IdentityGoal, error) {
 	goals := make([]IdentityGoal, 0)
-	
+
 	// Generate goals for each primary directive
 	for _, directive := range igg.identityKernel.PrimaryDirectives {
 		goal, err := igg.generateGoalFromDirective(ctx, directive)
@@ -102,7 +102,7 @@ func (igg *IdentityGoalGenerator) GenerateIdentityAlignedGoals(ctx context.Conte
 		}
 		goals = append(goals, *goal)
 	}
-	
+
 	igg.generatedGoals = append(igg.generatedGoals, goals...)
 	return goals, nil
 }
@@ -136,19 +136,19 @@ Your response:`,
 		directive.Description,
 		igg.identityKernel.CoreEssence,
 		igg.identityKernel.StrategicMindset)
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 400
 	opts.Temperature = 0.7
-	opts.SystemPrompt = fmt.Sprintf("You are %s. %s", 
-		igg.identityKernel.Name, 
+	opts.SystemPrompt = fmt.Sprintf("You are %s. %s",
+		igg.identityKernel.Name,
 		igg.identityKernel.AgenticVoice)
-	
+
 	result, err := igg.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate goal: %w", err)
 	}
-	
+
 	// Parse the structured response
 	goal := &IdentityGoal{
 		ID:                fmt.Sprintf("goal_%d", time.Now().UnixNano()),
@@ -158,7 +158,7 @@ Your response:`,
 		Progress:          0.0,
 		IdentityAlignment: 1.0, // Perfect alignment since generated from identity
 	}
-	
+
 	lines := strings.Split(result, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -175,12 +175,12 @@ Your response:`,
 			goal.SubGoals = splitAndTrim(subgoalsStr, ",")
 		}
 	}
-	
+
 	// Validate goal has description
 	if goal.Description == "" {
 		return nil, fmt.Errorf("failed to parse goal description")
 	}
-	
+
 	return goal, nil
 }
 
@@ -210,18 +210,18 @@ Your assessment:`,
 		igg.identityKernel.CoreEssence,
 		igg.formatDirectives(),
 		goalDescription)
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 200
 	opts.Temperature = 0.5
-	
+
 	result, err := igg.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return 0.0, fmt.Errorf("failed to validate alignment: %w", err)
 	}
-	
+
 	// Parse score
-	var score float64 = 0.5 // Default if parsing fails
+	score := 0.5 // Default if parsing fails
 	lines := strings.Split(result, "\n")
 	for _, line := range lines {
 		if strings.HasPrefix(line, "SCORE:") {
@@ -230,7 +230,7 @@ Your assessment:`,
 			break
 		}
 	}
-	
+
 	return score, nil
 }
 
@@ -265,20 +265,20 @@ Your refinement:`,
 		goal.Progress,
 		goal.Directive,
 		strings.Join(recentExperiences, "\n"))
-	
+
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 400
 	opts.Temperature = 0.6
-	
+
 	result, err := igg.llmManager.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to refine goal: %w", err)
 	}
-	
+
 	// Parse refined goal
 	refinedGoal := goal // Start with copy
 	refinedGoal.ID = fmt.Sprintf("goal_%d", time.Now().UnixNano())
-	
+
 	lines := strings.Split(result, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -295,7 +295,7 @@ Your refinement:`,
 			refinedGoal.SubGoals = splitAndTrim(subgoalsStr, ",")
 		}
 	}
-	
+
 	return &refinedGoal, nil
 }
 
@@ -337,14 +337,14 @@ func extractQuote(content string) string {
 func extractDirectives(content string) []Directive {
 	directives := []Directive{}
 	lines := strings.Split(content, "\n")
-	
+
 	priority := 1.0
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "1.") || strings.HasPrefix(line, "2.") || 
-		   strings.HasPrefix(line, "3.") || strings.HasPrefix(line, "4.") ||
-		   strings.HasPrefix(line, "5.") || strings.HasPrefix(line, "6.") ||
-		   strings.HasPrefix(line, "7.") {
+		if strings.HasPrefix(line, "1.") || strings.HasPrefix(line, "2.") ||
+			strings.HasPrefix(line, "3.") || strings.HasPrefix(line, "4.") ||
+			strings.HasPrefix(line, "5.") || strings.HasPrefix(line, "6.") ||
+			strings.HasPrefix(line, "7.") {
 			// Extract directive name and description
 			parts := strings.SplitN(line, "**", 3)
 			if len(parts) >= 3 {
@@ -359,14 +359,14 @@ func extractDirectives(content string) []Directive {
 			}
 		}
 	}
-	
+
 	return directives
 }
 
 func (igg *IdentityGoalGenerator) formatDirectives() string {
 	var sb strings.Builder
 	for _, directive := range igg.identityKernel.PrimaryDirectives {
-		sb.WriteString(fmt.Sprintf("- %s: %s\n", directive.Name, directive.Description))
+		fmt.Fprintf(&sb, "- %s: %s\n", directive.Name, directive.Description)
 	}
 	return sb.String()
 }

@@ -11,17 +11,17 @@ import (
 
 // MetaCognitiveMonitor provides self-awareness and self-assessment capabilities
 type MetaCognitiveMonitor struct {
-	mu sync.RWMutex
-	ctx    context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for self-reflection
 	llmProvider llm.LLMProvider
 
 	// State monitoring
-	cognitiveState     CognitiveState
-	stateHistory       []CognitiveStateSnapshot
-	maxHistorySize     int
+	cognitiveState CognitiveState
+	stateHistory   []CognitiveStateSnapshot
+	maxHistorySize int
 
 	// Self-assessment results
 	lastAssessment     *SelfAssessment
@@ -29,58 +29,57 @@ type MetaCognitiveMonitor struct {
 	assessmentInterval time.Duration
 
 	// Alerts and observations
-	alerts             []CognitiveAlert
-	observations       []MetaObservation
+	alerts       []CognitiveAlert
+	observations []MetaObservation
 
 	// Performance tracking
-	performanceMetrics PerformanceMetrics
 
 	// Configuration
 	monitoringInterval time.Duration
 	alertThreshold     float64
 
 	// Running state
-	running            bool
-	lastCheck          time.Time
+	running   bool
+	lastCheck time.Time
 }
 
 // CognitiveState represents the current cognitive state
 type CognitiveState struct {
 	// Attention and focus
-	FocusLevel         float64   // 0.0 - 1.0
-	FocusTarget        string
-	AttentionSpan      time.Duration
-	DistractionCount   int
+	FocusLevel       float64 // 0.0 - 1.0
+	FocusTarget      string
+	AttentionSpan    time.Duration
+	DistractionCount int
 
 	// Processing state
-	ProcessingLoad     float64   // 0.0 - 1.0
-	ThoughtClarity     float64   // 0.0 - 1.0
-	CoherenceLevel     float64   // 0.0 - 1.0
+	ProcessingLoad float64 // 0.0 - 1.0
+	ThoughtClarity float64 // 0.0 - 1.0
+	CoherenceLevel float64 // 0.0 - 1.0
 
 	// Emotional state
-	EmotionalBalance   float64   // -1.0 to 1.0 (negative to positive)
-	Curiosity          float64   // 0.0 - 1.0
-	Engagement         float64   // 0.0 - 1.0
-	Frustration        float64   // 0.0 - 1.0
+	EmotionalBalance float64 // -1.0 to 1.0 (negative to positive)
+	Curiosity        float64 // 0.0 - 1.0
+	Engagement       float64 // 0.0 - 1.0
+	Frustration      float64 // 0.0 - 1.0
 
 	// Energy and resources
-	EnergyLevel        float64   // 0.0 - 1.0
-	MemoryPressure     float64   // 0.0 - 1.0
-	AttentionFatigue   float64   // 0.0 - 1.0
+	EnergyLevel      float64 // 0.0 - 1.0
+	MemoryPressure   float64 // 0.0 - 1.0
+	AttentionFatigue float64 // 0.0 - 1.0
 
 	// Goal alignment
-	GoalProgress       float64   // 0.0 - 1.0
-	GoalClarity        float64   // 0.0 - 1.0
-	PurposeAlignment   float64   // 0.0 - 1.0
+	GoalProgress     float64 // 0.0 - 1.0
+	GoalClarity      float64 // 0.0 - 1.0
+	PurposeAlignment float64 // 0.0 - 1.0
 
 	// Learning state
-	LearningRate       float64   // Current learning rate
-	InsightFrequency   float64   // Insights per hour
-	PatternRecognition float64   // Pattern detection quality
+	LearningRate       float64 // Current learning rate
+	InsightFrequency   float64 // Insights per hour
+	PatternRecognition float64 // Pattern detection quality
 
 	// Temporal
-	TimeSinceStart     time.Duration
-	Timestamp          time.Time
+	TimeSinceStart time.Duration
+	Timestamp      time.Time
 }
 
 // CognitiveStateSnapshot captures state at a point in time
@@ -92,38 +91,38 @@ type CognitiveStateSnapshot struct {
 
 // SelfAssessment represents a self-assessment result
 type SelfAssessment struct {
-	ID              string
-	Timestamp       time.Time
-	Duration        time.Duration
+	ID        string
+	Timestamp time.Time
+	Duration  time.Duration
 
 	// Assessment dimensions
-	CognitiveHealth   float64   // Overall cognitive health
-	EmotionalHealth   float64   // Emotional balance
-	GoalAlignment     float64   // Alignment with purpose
-	LearningProgress  float64   // Learning effectiveness
-	Coherence         float64   // Identity coherence
+	CognitiveHealth  float64 // Overall cognitive health
+	EmotionalHealth  float64 // Emotional balance
+	GoalAlignment    float64 // Alignment with purpose
+	LearningProgress float64 // Learning effectiveness
+	Coherence        float64 // Identity coherence
 
 	// Specific observations
-	Strengths         []string
-	Challenges        []string
-	Recommendations   []string
+	Strengths       []string
+	Challenges      []string
+	Recommendations []string
 
 	// Raw reflection
-	Reflection        string
+	Reflection string
 }
 
 // CognitiveAlert represents an alert about cognitive state
 type CognitiveAlert struct {
-	ID          string
-	Type        AlertType
-	Severity    AlertSeverity
-	Message     string
-	Metric      string
-	Value       float64
-	Threshold   float64
-	Timestamp   time.Time
-	Resolved    bool
-	ResolvedAt  *time.Time
+	ID         string
+	Type       AlertType
+	Severity   AlertSeverity
+	Message    string
+	Metric     string
+	Value      float64
+	Threshold  float64
+	Timestamp  time.Time
+	Resolved   bool
+	ResolvedAt *time.Time
 }
 
 // AlertType categorizes alerts
@@ -179,28 +178,28 @@ type MetaObservation struct {
 // PerformanceMetrics tracks cognitive performance over time
 type PerformanceMetrics struct {
 	// Thought quality
-	AverageThoughtClarity   float64
-	AverageCoherence        float64
-	InsightsPerHour         float64
+	AverageThoughtClarity float64
+	AverageCoherence      float64
+	InsightsPerHour       float64
 
 	// Focus metrics
-	AverageFocusLevel       float64
-	FocusSwitchCount        int
-	LongestFocusDuration    time.Duration
+	AverageFocusLevel    float64
+	FocusSwitchCount     int
+	LongestFocusDuration time.Duration
 
 	// Learning metrics
-	ConceptsLearned         int
-	PatternsRecognized      int
-	ConnectionsMade         int
+	ConceptsLearned    int
+	PatternsRecognized int
+	ConnectionsMade    int
 
 	// Energy efficiency
-	OutputPerEnergy         float64
-	RecoveryRate            float64
+	OutputPerEnergy float64
+	RecoveryRate    float64
 
 	// Temporal
-	TotalActiveTime         time.Duration
-	TotalRestTime           time.Duration
-	LastUpdated             time.Time
+	TotalActiveTime time.Duration
+	TotalRestTime   time.Duration
+	LastUpdated     time.Time
 }
 
 // NewMetaCognitiveMonitor creates a new meta-cognitive monitor
@@ -220,24 +219,24 @@ func NewMetaCognitiveMonitor(llmProvider llm.LLMProvider) *MetaCognitiveMonitor 
 		monitoringInterval: 10 * time.Second,
 		alertThreshold:     0.7,
 		cognitiveState: CognitiveState{
-			FocusLevel:        0.8,
-			ProcessingLoad:    0.3,
-			ThoughtClarity:    0.8,
-			CoherenceLevel:    0.9,
-			EmotionalBalance:  0.5,
-			Curiosity:         0.8,
-			Engagement:        0.7,
-			Frustration:       0.1,
-			EnergyLevel:       0.9,
-			MemoryPressure:    0.2,
-			AttentionFatigue:  0.1,
-			GoalProgress:      0.5,
-			GoalClarity:       0.8,
-			PurposeAlignment:  0.9,
-			LearningRate:      0.7,
-			InsightFrequency:  1.0,
+			FocusLevel:         0.8,
+			ProcessingLoad:     0.3,
+			ThoughtClarity:     0.8,
+			CoherenceLevel:     0.9,
+			EmotionalBalance:   0.5,
+			Curiosity:          0.8,
+			Engagement:         0.7,
+			Frustration:        0.1,
+			EnergyLevel:        0.9,
+			MemoryPressure:     0.2,
+			AttentionFatigue:   0.1,
+			GoalProgress:       0.5,
+			GoalClarity:        0.8,
+			PurposeAlignment:   0.9,
+			LearningRate:       0.7,
+			InsightFrequency:   1.0,
 			PatternRecognition: 0.7,
-			Timestamp:         time.Now(),
+			Timestamp:          time.Now(),
 		},
 	}
 }
@@ -424,9 +423,10 @@ func (mcm *MetaCognitiveMonitor) addAlert(alertType AlertType, severity AlertSev
 
 	// Display alert
 	emoji := "ℹ️"
-	if severity == SeverityWarning {
+	switch severity {
+	case SeverityWarning:
 		emoji = "⚠️"
-	} else if severity == SeverityCritical {
+	case SeverityCritical:
 		emoji = "🚨"
 	}
 
@@ -439,7 +439,7 @@ func (mcm *MetaCognitiveMonitor) isAlertResolved(alert *CognitiveAlert) bool {
 
 	switch alert.Type {
 	case AlertFatigue:
-		return state.AttentionFatigue < mcm.alertThreshold - 0.1
+		return state.AttentionFatigue < mcm.alertThreshold-0.1
 	case AlertOverload:
 		return state.ProcessingLoad < 0.75
 	case AlertEmotionalImbalance:
@@ -530,15 +530,15 @@ Respond in first person, be honest and introspective.`,
 
 	// Create assessment
 	assessment := SelfAssessment{
-		ID:              fmt.Sprintf("assessment_%d", time.Now().UnixNano()),
-		Timestamp:       time.Now(),
-		Duration:        time.Since(startTime),
-		CognitiveHealth: (state.ThoughtClarity + state.CoherenceLevel + (1 - state.AttentionFatigue)) / 3,
-		EmotionalHealth: (state.EmotionalBalance + 1) / 2, // Normalize -1..1 to 0..1
-		GoalAlignment:   (state.GoalProgress + state.PurposeAlignment) / 2,
+		ID:               fmt.Sprintf("assessment_%d", time.Now().UnixNano()),
+		Timestamp:        time.Now(),
+		Duration:         time.Since(startTime),
+		CognitiveHealth:  (state.ThoughtClarity + state.CoherenceLevel + (1 - state.AttentionFatigue)) / 3,
+		EmotionalHealth:  (state.EmotionalBalance + 1) / 2, // Normalize -1..1 to 0..1
+		GoalAlignment:    (state.GoalProgress + state.PurposeAlignment) / 2,
 		LearningProgress: state.LearningRate,
-		Coherence:       state.CoherenceLevel,
-		Reflection:      reflection,
+		Coherence:        state.CoherenceLevel,
+		Reflection:       reflection,
 	}
 
 	// Extract strengths and challenges from the reflection (simplified)
@@ -700,20 +700,20 @@ func (mcm *MetaCognitiveMonitor) GetMetrics() map[string]interface{} {
 	defer mcm.mu.RUnlock()
 
 	return map[string]interface{}{
-		"focus_level":        mcm.cognitiveState.FocusLevel,
-		"processing_load":    mcm.cognitiveState.ProcessingLoad,
-		"thought_clarity":    mcm.cognitiveState.ThoughtClarity,
-		"coherence_level":    mcm.cognitiveState.CoherenceLevel,
-		"emotional_balance":  mcm.cognitiveState.EmotionalBalance,
-		"energy_level":       mcm.cognitiveState.EnergyLevel,
-		"attention_fatigue":  mcm.cognitiveState.AttentionFatigue,
-		"learning_rate":      mcm.cognitiveState.LearningRate,
-		"time_active":        mcm.cognitiveState.TimeSinceStart.String(),
-		"active_alerts":      len(mcm.getActiveAlerts()),
-		"total_alerts":       len(mcm.alerts),
-		"assessments":        len(mcm.assessmentHistory),
-		"observations":       len(mcm.observations),
-		"running":            mcm.running,
+		"focus_level":       mcm.cognitiveState.FocusLevel,
+		"processing_load":   mcm.cognitiveState.ProcessingLoad,
+		"thought_clarity":   mcm.cognitiveState.ThoughtClarity,
+		"coherence_level":   mcm.cognitiveState.CoherenceLevel,
+		"emotional_balance": mcm.cognitiveState.EmotionalBalance,
+		"energy_level":      mcm.cognitiveState.EnergyLevel,
+		"attention_fatigue": mcm.cognitiveState.AttentionFatigue,
+		"learning_rate":     mcm.cognitiveState.LearningRate,
+		"time_active":       mcm.cognitiveState.TimeSinceStart.String(),
+		"active_alerts":     len(mcm.getActiveAlerts()),
+		"total_alerts":      len(mcm.alerts),
+		"assessments":       len(mcm.assessmentHistory),
+		"observations":      len(mcm.observations),
+		"running":           mcm.running,
 	}
 }
 

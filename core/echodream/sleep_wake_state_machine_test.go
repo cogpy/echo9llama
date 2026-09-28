@@ -123,7 +123,7 @@ func TestDreamProcessorEmptyCycle(t *testing.T) {
 // TestIngestExperienceBounded verifies the pending buffer stays bounded
 func TestIngestExperienceBounded(t *testing.T) {
 	dp := NewDreamProcessor(context.Background())
-	for i := 0; i < 1200; i++ {
+	for range 1200 {
 		dp.IngestExperience("experience", 0.5, []string{"tag"})
 	}
 	dp.mu.RLock()

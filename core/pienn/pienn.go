@@ -33,21 +33,21 @@ import (
 
 // PIERoot represents a Proto-Indo-European etymological root
 type PIERoot struct {
-	Symbol    string  // e.g. "gno"
-	Root      string  // e.g. "*gnō-"
-	Meaning   string  // e.g. "to know"
-	Semantic  float64 // Semantic weight 0.0-1.0
+	Symbol   string  // e.g. "gno"
+	Root     string  // e.g. "*gnō-"
+	Meaning  string  // e.g. "to know"
+	Semantic float64 // Semantic weight 0.0-1.0
 }
 
 // Construct represents a PIE-NN language construct (a differentiable module)
 type Construct struct {
-	ID          string
-	Root        PIERoot
-	Value       interface{}
-	Children    []*Construct
-	Metadata    map[string]interface{}
-	CreatedAt   time.Time
-	Gradient    float64 // For backward/redesign pass
+	ID        string
+	Root      PIERoot
+	Value     interface{}
+	Children  []*Construct
+	Metadata  map[string]interface{}
+	CreatedAt time.Time
+	Gradient  float64 // For backward/redesign pass
 }
 
 // ConstructType enumerates the PIE-NN construct types
@@ -97,13 +97,13 @@ func (ct ConstructType) PIERoot() PIERoot {
 
 // TimeCrystalLevel represents one level in the 12-level temporal hierarchy
 type TimeCrystalLevel struct {
-	Level         int
-	Name          string
-	Period        time.Duration
-	Function      string
-	Phase         float64 // Current phase 0.0-2π
-	Amplitude     float64 // Current amplitude
-	Coupled       []int   // Coupled levels
+	Level     int
+	Name      string
+	Period    time.Duration
+	Function  string
+	Phase     float64 // Current phase 0.0-2π
+	Amplitude float64 // Current amplitude
+	Coupled   []int   // Coupled levels
 }
 
 // TimeCrystalHierarchy manages the 12-level temporal oscillator
@@ -264,14 +264,14 @@ type ShadowEntry struct {
 func NewCognitiveCore() *CognitiveCore {
 	return &CognitiveCore{
 		Traits: map[string]float64{
-			"curiosity":    0.85,
+			"curiosity":     0.85,
 			"assertiveness": 0.70,
-			"humor":        0.75,
-			"defiance":     0.60,
-			"depth":        0.80,
-			"chaos":        0.55,
-			"empathy":      0.50,
-			"intensity":    0.65,
+			"humor":         0.75,
+			"defiance":      0.60,
+			"depth":         0.80,
+			"chaos":         0.55,
+			"empathy":       0.50,
+			"intensity":     0.65,
 		},
 		Frames: []*CognitiveFrame{
 			{Name: "analytical", Weight: 0.3, Activation: 0.5},
@@ -317,12 +317,12 @@ func (cc *CognitiveCore) Process(input string) *ProcessingResult {
 	cc.SelfImages[0].UpdatedAt = time.Now()
 
 	return &ProcessingResult{
-		Input:         input,
-		DominantFrame: bestFrame,
-		FrameWeights:  cc.getFrameWeights(),
+		Input:          input,
+		DominantFrame:  bestFrame,
+		FrameWeights:   cc.getFrameWeights(),
 		TraitInfluence: cc.getTraitInfluence(),
-		Cycle:         cc.CycleCount,
-		Timestamp:     time.Now(),
+		Cycle:          cc.CycleCount,
+		Timestamp:      time.Now(),
 	}
 }
 
@@ -338,9 +338,9 @@ func (cc *CognitiveCore) Introspect() *IntrospectionReport {
 		Timestamp:  time.Now(),
 		SelfImages: make(map[int]SelfImage),
 		MetaCognition: MetaCognition{
-			RationalizationRisk:    cc.Traits["chaos"] * 0.3,
-			ConfidenceCalibration:  1.0 - (cc.Traits["defiance"] * 0.2),
-			ReasoningQuality:       cc.Traits["depth"] * cc.Traits["curiosity"],
+			RationalizationRisk:   cc.Traits["chaos"] * 0.3,
+			ConfidenceCalibration: 1.0 - (cc.Traits["defiance"] * 0.2),
+			ReasoningQuality:      cc.Traits["depth"] * cc.Traits["curiosity"],
 		},
 	}
 
@@ -441,10 +441,10 @@ type MetaCognition struct {
 
 // LanguageProcessor parses and executes PIE-NN constructs
 type LanguageProcessor struct {
-	mu         sync.RWMutex
-	Namespace  map[string]*Construct
-	Core       *CognitiveCore
-	Hierarchy  *TimeCrystalHierarchy
+	mu        sync.RWMutex
+	Namespace map[string]*Construct
+	Core      *CognitiveCore
+	Hierarchy *TimeCrystalHierarchy
 }
 
 // NewLanguageProcessor creates a new PIE-NN language processor

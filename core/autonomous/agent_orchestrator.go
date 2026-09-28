@@ -16,7 +16,7 @@ import (
 // AgentOrchestrator is the master controller for autonomous Deep Tree Echo operation
 type AgentOrchestrator struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Identity
@@ -583,7 +583,7 @@ func (ao *AgentOrchestrator) PrintDetailedStatus() {
 
 func repeat(s string, n int) string {
 	result := ""
-	for i := 0; i < n; i++ {
+	for range n {
 		result += s
 	}
 	return result

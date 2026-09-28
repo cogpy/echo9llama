@@ -1,4 +1,3 @@
-
 package memory
 
 import (
@@ -37,7 +36,7 @@ type UsagePattern struct {
 
 // AdaptationCycle records memory restructuring events
 type AdaptationCycle struct {
-	Timestamp      time.Time
+	Timestamp          time.Time
 	ConnectionsAdded   int
 	ConnectionsRemoved int
 	WeightAdjustments  int
@@ -52,11 +51,11 @@ type PatternDetector interface {
 
 // Adaptation represents a suggested memory structure change
 type Adaptation struct {
-	Type        string // "strengthen", "weaken", "create", "remove"
-	FromNode    string
-	ToNode      string
-	NewWeight   float64
-	Confidence  float64
+	Type       string // "strengthen", "weaken", "create", "remove"
+	FromNode   string
+	ToNode     string
+	NewWeight  float64
+	Confidence float64
 }
 
 // NewMemoryWeaver creates a new adaptive memory weaver
@@ -74,29 +73,29 @@ func NewMemoryWeaver(detector PatternDetector) *MemoryWeaver {
 func (mw *MemoryWeaver) WeaveConnections() error {
 	mw.mu.Lock()
 	defer mw.mu.Unlock()
-	
+
 	// Collect all connections for analysis
 	var allConnections []Connection
 	for _, conns := range mw.connections {
 		allConnections = append(allConnections, conns...)
 	}
-	
+
 	// Detect usage patterns
 	patterns := mw.detector.DetectUsagePatterns(allConnections)
-	
+
 	// Update pattern tracking
 	for _, pattern := range patterns {
 		mw.usagePatterns[pattern.ConnectionID] = pattern
 	}
-	
+
 	// Get adaptation suggestions
 	adaptations := mw.detector.SuggestAdaptations(patterns)
-	
+
 	// Apply adaptations
 	cycle := AdaptationCycle{
 		Timestamp: time.Now(),
 	}
-	
+
 	for _, adaptation := range adaptations {
 		switch adaptation.Type {
 		case "strengthen":
@@ -113,10 +112,10 @@ func (mw *MemoryWeaver) WeaveConnections() error {
 			cycle.ConnectionsRemoved++
 		}
 	}
-	
+
 	mw.adaptationCycles = append(mw.adaptationCycles, cycle)
 	mw.lastWeave = time.Now()
-	
+
 	return nil
 }
 
@@ -156,7 +155,7 @@ func (mw *MemoryWeaver) createConnection(from, to string, weight float64) {
 		LastAccess: time.Now(),
 		Strength:   0.5,
 	}
-	
+
 	mw.connections[from] = append(mw.connections[from], newConn)
 }
 

@@ -39,22 +39,22 @@ type GlobalTelemetryShell struct {
 
 // GTSConfig configures the Global Telemetry Shell.
 type GTSConfig struct {
-	CycleDuration    time.Duration
-	StepDuration     time.Duration
-	TelemetryRate    time.Duration
-	BufferSize       int
-	MaxHistorySize   int
+	CycleDuration          time.Duration
+	StepDuration           time.Duration
+	TelemetryRate          time.Duration
+	BufferSize             int
+	MaxHistorySize         int
 	EnableAnomalyDetection bool
 }
 
 // DefaultGTSConfig returns a default configuration.
 func DefaultGTSConfig() *GTSConfig {
 	return &GTSConfig{
-		CycleDuration:    1200 * time.Millisecond, // 12 steps × 100ms
-		StepDuration:     100 * time.Millisecond,
-		TelemetryRate:    50 * time.Millisecond,
-		BufferSize:       1000,
-		MaxHistorySize:   100,
+		CycleDuration:          1200 * time.Millisecond, // 12 steps × 100ms
+		StepDuration:           100 * time.Millisecond,
+		TelemetryRate:          50 * time.Millisecond,
+		BufferSize:             1000,
+		MaxHistorySize:         100,
 		EnableAnomalyDetection: true,
 	}
 }

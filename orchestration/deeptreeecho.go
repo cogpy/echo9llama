@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -15,22 +16,22 @@ import (
 
 // DeepTreeEcho represents the main cognitive architecture system
 type DeepTreeEcho struct {
-	ID                string                      `json:"id"`
-	Name              string                      `json:"name"`
-	SystemHealth      SystemHealthStatus          `json:"system_health"`
-	CoreStatus        CoreStatus                  `json:"core_status"`
-	ThoughtCount      int64                       `json:"thought_count"`
-	RecursiveDepth    int                         `json:"recursive_depth"`
-	IdentityCoherence *IdentityCoherence          `json:"identity_coherence"`
-	MemoryResonance   *MemoryResonance            `json:"memory_resonance"`
-	EchoPatterns      *EchoPatterns               `json:"echo_patterns"`
-	EvolutionTimeline *EvolutionTimeline          `json:"evolution_timeline"`
-	SpatialContext    *SpatialContext             `json:"spatial_context"`
-	EmotionalDynamics *EmotionalDynamics          `json:"emotional_dynamics"`
-	ReservoirNetwork  *ReservoirNetwork           `json:"reservoir_network"`
+	ID                string                       `json:"id"`
+	Name              string                       `json:"name"`
+	SystemHealth      SystemHealthStatus           `json:"system_health"`
+	CoreStatus        CoreStatus                   `json:"core_status"`
+	ThoughtCount      int64                        `json:"thought_count"`
+	RecursiveDepth    int                          `json:"recursive_depth"`
+	IdentityCoherence *IdentityCoherence           `json:"identity_coherence"`
+	MemoryResonance   *MemoryResonance             `json:"memory_resonance"`
+	EchoPatterns      *EchoPatterns                `json:"echo_patterns"`
+	EvolutionTimeline *EvolutionTimeline           `json:"evolution_timeline"`
+	SpatialContext    *SpatialContext              `json:"spatial_context"`
+	EmotionalDynamics *EmotionalDynamics           `json:"emotional_dynamics"`
+	ReservoirNetwork  *ReservoirNetwork            `json:"reservoir_network"`
 	Integrations      map[string]IntegrationStatus `json:"integrations"`
-	CreatedAt         time.Time                   `json:"created_at"`
-	UpdatedAt         time.Time                   `json:"updated_at"`
+	CreatedAt         time.Time                    `json:"created_at"`
+	UpdatedAt         time.Time                    `json:"updated_at"`
 }
 
 // SystemHealthStatus represents the overall system health
@@ -62,11 +63,11 @@ type IntegrationStatus struct {
 
 // IdentityCoherence tracks the coherence of the system's identity
 type IdentityCoherence struct {
-	OverallCoherence float64                `json:"overall_coherence"`
-	Components       map[string]float64     `json:"components"`
-	Stability        float64                `json:"stability"`
-	LastUpdated      time.Time              `json:"last_updated"`
-	Factors          []IdentityFactor       `json:"factors"`
+	OverallCoherence float64            `json:"overall_coherence"`
+	Components       map[string]float64 `json:"components"`
+	Stability        float64            `json:"stability"`
+	LastUpdated      time.Time          `json:"last_updated"`
+	Factors          []IdentityFactor   `json:"factors"`
 }
 
 // IdentityFactor represents a factor contributing to identity coherence
@@ -108,30 +109,30 @@ type EchoPattern struct {
 
 // EvolutionTimeline tracks the evolution stages of the system
 type EvolutionTimeline struct {
-	CurrentStage string              `json:"current_stage"`
-	Stages       []EvolutionStage    `json:"stages"`
-	Progress     float64             `json:"progress"`
-	LastUpdated  time.Time           `json:"last_updated"`
+	CurrentStage string           `json:"current_stage"`
+	Stages       []EvolutionStage `json:"stages"`
+	Progress     float64          `json:"progress"`
+	LastUpdated  time.Time        `json:"last_updated"`
 }
 
 // EvolutionStage represents a stage in the evolution timeline
 type EvolutionStage struct {
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Status      string    `json:"status"`
-	Progress    float64   `json:"progress"`
-	StartTime   time.Time `json:"start_time,omitempty"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Status      string     `json:"status"`
+	Progress    float64    `json:"progress"`
+	StartTime   time.Time  `json:"start_time,omitempty"`
 	EndTime     *time.Time `json:"end_time,omitempty"`
 }
 
 // SpatialContext represents 3D spatial awareness for Deep Tree Echo
 type SpatialContext struct {
-	Position    Vector3D              `json:"position"`
-	Orientation Vector3D              `json:"orientation"`
-	Scale       float64               `json:"scale"`
-	Boundaries  []SpatialBoundary     `json:"boundaries"`
-	Neighbors   map[string]Vector3D   `json:"neighbors"`
-	LastUpdated time.Time             `json:"last_updated"`
+	Position    Vector3D            `json:"position"`
+	Orientation Vector3D            `json:"orientation"`
+	Scale       float64             `json:"scale"`
+	Boundaries  []SpatialBoundary   `json:"boundaries"`
+	Neighbors   map[string]Vector3D `json:"neighbors"`
+	LastUpdated time.Time           `json:"last_updated"`
 }
 
 // Vector3D represents a 3D vector for spatial positioning
@@ -150,11 +151,11 @@ type SpatialBoundary struct {
 
 // EmotionalDynamics tracks emotional states and transitions
 type EmotionalDynamics struct {
-	PrimaryEmotion    string             `json:"primary_emotion"`
-	EmotionalIntensity float64           `json:"emotional_intensity"`
-	EmotionalStates   []EmotionalState   `json:"emotional_states"`
-	Transitions       []EmotionTransition `json:"transitions"`
-	LastUpdated       time.Time          `json:"last_updated"`
+	PrimaryEmotion     string              `json:"primary_emotion"`
+	EmotionalIntensity float64             `json:"emotional_intensity"`
+	EmotionalStates    []EmotionalState    `json:"emotional_states"`
+	Transitions        []EmotionTransition `json:"transitions"`
+	LastUpdated        time.Time           `json:"last_updated"`
 }
 
 // EmotionalState represents a specific emotional configuration
@@ -176,13 +177,13 @@ type EmotionTransition struct {
 
 // ReservoirNetwork implements RWKV-like architectures for ESN functions
 type ReservoirNetwork struct {
-	Size          int                    `json:"size"`
+	Size           int                   `json:"size"`
 	SpectralRadius float64               `json:"spectral_radius"`
-	Connectivity  float64                `json:"connectivity"`
-	Neurons       []ReservoirNeuron      `json:"neurons"`
-	Connections   map[string]Connection  `json:"connections"`
-	State         []float64              `json:"state"`
-	LastUpdated   time.Time              `json:"last_updated"`
+	Connectivity   float64               `json:"connectivity"`
+	Neurons        []ReservoirNeuron     `json:"neurons"`
+	Connections    map[string]Connection `json:"connections"`
+	State          []float64             `json:"state"`
+	LastUpdated    time.Time             `json:"last_updated"`
 }
 
 // ReservoirNeuron represents a neuron in the reservoir network
@@ -220,17 +221,17 @@ type SemanticSalienceAssessor struct {
 
 // AdaptiveAttentionAllocator manages dynamic attention allocation
 type AdaptiveAttentionAllocator struct {
-	baseThreshold   float64
-	loadFactor      float64
-	activityFactor  float64
+	baseThreshold  float64
+	loadFactor     float64
+	activityFactor float64
 }
 
 // RepositoryIntrospector performs recursive repository analysis
 type RepositoryIntrospector struct {
-	rootPath          string
-	assessor          *SemanticSalienceAssessor
+	rootPath           string
+	assessor           *SemanticSalienceAssessor
 	attentionAllocator *AdaptiveAttentionAllocator
-	maxFileSize       int64
+	maxFileSize        int64
 }
 
 // EchoselfIntrospector orchestrates the complete introspection pipeline
@@ -242,7 +243,7 @@ type EchoselfIntrospector struct {
 // NewDeepTreeEcho creates a new Deep Tree Echo system
 func NewDeepTreeEcho(name string) *DeepTreeEcho {
 	now := time.Now()
-	
+
 	return &DeepTreeEcho{
 		ID:             fmt.Sprintf("dte-%d", now.Unix()),
 		Name:           name,
@@ -356,7 +357,7 @@ func NewDeepTreeEcho(name string) *DeepTreeEcho {
 			LastUpdated:        now,
 		},
 		ReservoirNetwork: &ReservoirNetwork{
-			Size:          100,
+			Size:           100,
 			SpectralRadius: 0.95,
 			Connectivity:   0.1,
 			Neurons:        []ReservoirNeuron{},
@@ -366,8 +367,8 @@ func NewDeepTreeEcho(name string) *DeepTreeEcho {
 		},
 		Integrations: map[string]IntegrationStatus{
 			"ReservoirPy": {Status: "disconnected", LastChecked: now, Health: "unknown"},
-			"Mem0":       {Status: "disconnected", LastChecked: now, Health: "unknown"},
-			"KoboldCpp":  {Status: "connected", LastChecked: now, Health: "good"},
+			"Mem0":        {Status: "disconnected", LastChecked: now, Health: "unknown"},
+			"KoboldCpp":   {Status: "connected", LastChecked: now, Health: "good"},
 			"EchoSurface": {Status: "connected", LastChecked: now, Health: "good"},
 		},
 		CreatedAt: now,
@@ -379,29 +380,29 @@ func NewDeepTreeEcho(name string) *DeepTreeEcho {
 func (dte *DeepTreeEcho) InitializeDTECore(ctx context.Context) error {
 	dte.CoreStatus = CoreStatusStarting
 	dte.UpdatedAt = time.Now()
-	
+
 	// Initialize cognitive components
 	if err := dte.initializeCognitiveArchitecture(); err != nil {
 		dte.CoreStatus = CoreStatusError
 		return fmt.Errorf("failed to initialize cognitive architecture: %w", err)
 	}
-	
+
 	// Initialize memory systems
 	if err := dte.initializeMemoryResonance(); err != nil {
 		dte.CoreStatus = CoreStatusError
 		return fmt.Errorf("failed to initialize memory resonance: %w", err)
 	}
-	
+
 	// Initialize echo patterns
 	if err := dte.initializeEchoPatterns(); err != nil {
 		dte.CoreStatus = CoreStatusError
 		return fmt.Errorf("failed to initialize echo patterns: %w", err)
 	}
-	
+
 	dte.CoreStatus = CoreStatusActive
 	dte.SystemHealth = SystemHealthStable
 	dte.UpdatedAt = time.Now()
-	
+
 	return nil
 }
 
@@ -411,27 +412,27 @@ func (dte *DeepTreeEcho) RunDiagnostics(ctx context.Context) (*DiagnosticResult,
 		Timestamp: time.Now(),
 		Tests:     make([]DiagnosticTest, 0),
 	}
-	
+
 	// Test cognitive architecture
 	cogTest := dte.testCognitiveArchitecture()
 	result.Tests = append(result.Tests, cogTest)
-	
+
 	// Test memory systems
 	memTest := dte.testMemoryResonance()
 	result.Tests = append(result.Tests, memTest)
-	
+
 	// Test echo patterns
 	echoTest := dte.testEchoPatterns()
 	result.Tests = append(result.Tests, echoTest)
-	
+
 	// Test integrations
 	integTest := dte.testIntegrations()
 	result.Tests = append(result.Tests, integTest)
-	
+
 	// Calculate overall health
 	result.OverallHealth = dte.calculateOverallHealth(result.Tests)
 	dte.SystemHealth = result.OverallHealth
-	
+
 	return result, nil
 }
 
@@ -439,28 +440,28 @@ func (dte *DeepTreeEcho) RunDiagnostics(ctx context.Context) (*DiagnosticResult,
 func (dte *DeepTreeEcho) RefreshStatus(ctx context.Context) error {
 	now := time.Now()
 	dte.UpdatedAt = now
-	
+
 	// Update thought count based on activity
 	dte.ThoughtCount++
-	
+
 	// Update recursive depth based on current operations
 	dte.RecursiveDepth = dte.calculateRecursiveDepth()
-	
+
 	// Update identity coherence
 	dte.updateIdentityCoherence()
-	
+
 	// Update memory resonance
 	dte.updateMemoryResonance()
-	
+
 	// Update echo patterns
 	dte.updateEchoPatterns()
-	
+
 	// Update evolution timeline
 	dte.updateEvolutionTimeline()
-	
+
 	// Check integrations
 	dte.checkIntegrations()
-	
+
 	return nil
 }
 
@@ -468,46 +469,46 @@ func (dte *DeepTreeEcho) RefreshStatus(ctx context.Context) error {
 func (dte *DeepTreeEcho) PerformRecursiveIntrospection(ctx context.Context, repositoryRoot string, currentLoad float64, recentActivity float64) (*IntrospectionResult, error) {
 	// Create introspector
 	introspector := NewEchoselfIntrospector(repositoryRoot)
-	
+
 	// Get cognitive snapshot
 	snapshot, err := introspector.GetCognitiveSnapshot(currentLoad, recentActivity)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cognitive snapshot: %w", err)
 	}
-	
+
 	// Generate hypergraph prompt
 	hypergraphPrompt := introspector.InjectRepoInputIntoPrompt(snapshot)
-	
+
 	// Create echo integration
 	echoIntegration := dte.createEchoIntegration(snapshot)
-	
+
 	// Update system state
 	dte.ThoughtCount++
 	dte.RecursiveDepth = int(math.Max(float64(dte.RecursiveDepth), float64(len(snapshot.SalientFiles))))
 	dte.UpdatedAt = time.Now()
-	
+
 	return &IntrospectionResult{
-		CognitiveSnapshot:   snapshot,
-		HypergraphPrompt:    hypergraphPrompt,
-		EchoIntegration:     echoIntegration,
-		Timestamp:          time.Now(),
+		CognitiveSnapshot: snapshot,
+		HypergraphPrompt:  hypergraphPrompt,
+		EchoIntegration:   echoIntegration,
+		Timestamp:         time.Now(),
 	}, nil
 }
 
 // DiagnosticResult represents the result of system diagnostics
 type DiagnosticResult struct {
-	Timestamp     time.Time           `json:"timestamp"`
-	Tests         []DiagnosticTest    `json:"tests"`
-	OverallHealth SystemHealthStatus  `json:"overall_health"`
+	Timestamp     time.Time          `json:"timestamp"`
+	Tests         []DiagnosticTest   `json:"tests"`
+	OverallHealth SystemHealthStatus `json:"overall_health"`
 }
 
 // DiagnosticTest represents a single diagnostic test
 type DiagnosticTest struct {
-	Name        string    `json:"name"`
-	Status      string    `json:"status"`
-	Message     string    `json:"message"`
-	Duration    time.Duration `json:"duration"`
-	Timestamp   time.Time `json:"timestamp"`
+	Name      string        `json:"name"`
+	Status    string        `json:"status"`
+	Message   string        `json:"message"`
+	Duration  time.Duration `json:"duration"`
+	Timestamp time.Time     `json:"timestamp"`
 }
 
 // IntrospectionResult represents the result of recursive introspection
@@ -520,11 +521,11 @@ type IntrospectionResult struct {
 
 // CognitiveSnapshot represents a snapshot of repository analysis
 type CognitiveSnapshot struct {
-	SalientFiles      []SalientFile `json:"salient_files"`
+	SalientFiles       []SalientFile `json:"salient_files"`
 	AttentionThreshold float64       `json:"attention_threshold"`
-	ProcessedFiles    int           `json:"processed_files"`
-	FilteredFiles     int           `json:"filtered_files"`
-	Timestamp         time.Time     `json:"timestamp"`
+	ProcessedFiles     int           `json:"processed_files"`
+	FilteredFiles      int           `json:"filtered_files"`
+	Timestamp          time.Time     `json:"timestamp"`
 }
 
 // SalientFile represents a file with computed salience
@@ -537,10 +538,10 @@ type SalientFile struct {
 
 // EchoIntegration represents integration with the echo tree structure
 type EchoIntegration struct {
-	NodesCreated   int       `json:"nodes_created"`
-	EchoValues     []float64 `json:"echo_values"`
-	TreeDepth      int       `json:"tree_depth"`
-	Integration    string    `json:"integration"`
+	NodesCreated int       `json:"nodes_created"`
+	EchoValues   []float64 `json:"echo_values"`
+	TreeDepth    int       `json:"tree_depth"`
+	Integration  string    `json:"integration"`
 }
 
 // Helper methods for initialization and updates
@@ -553,13 +554,13 @@ func (dte *DeepTreeEcho) initializeCognitiveArchitecture() error {
 	dte.IdentityCoherence.Components["understanding_symphony"] = 0.85
 	dte.IdentityCoherence.OverallCoherence = 0.8
 	dte.IdentityCoherence.Stability = 0.87
-	
+
 	// Update factor scores
 	for i := range dte.IdentityCoherence.Factors {
 		dte.IdentityCoherence.Factors[i].Score = 0.8 + float64(i)*0.05
 		dte.IdentityCoherence.Factors[i].Status = "stable"
 	}
-	
+
 	return nil
 }
 
@@ -569,29 +570,29 @@ func (dte *DeepTreeEcho) initializeMemoryResonance() error {
 	dte.MemoryResonance.Coherence = 0.92
 	dte.MemoryResonance.ActivePatterns = 3
 	dte.MemoryResonance.ResonancePattern = "active"
-	
+
 	return nil
 }
 
 func (dte *DeepTreeEcho) initializeEchoPatterns() error {
 	dte.EchoPatterns.RecursiveSelfImprovement.Strength = 0.94
 	dte.EchoPatterns.RecursiveSelfImprovement.Frequency = "high"
-	
+
 	dte.EchoPatterns.CrossSystemSynthesis.Strength = 0.78
 	dte.EchoPatterns.CrossSystemSynthesis.Frequency = "increasing"
-	
+
 	dte.EchoPatterns.IdentityPreservation.Strength = 0.89
 	dte.EchoPatterns.IdentityPreservation.Frequency = "constant"
-	
+
 	dte.EchoPatterns.SpatialAwareness.Strength = 0.72
 	dte.EchoPatterns.SpatialAwareness.Frequency = "developing"
-	
+
 	dte.EchoPatterns.EmotionalResonance.Strength = 0.85
 	dte.EchoPatterns.EmotionalResonance.Frequency = "steady"
-	
+
 	// Initialize reservoir network neurons
 	dte.initializeReservoirNetwork()
-	
+
 	return nil
 }
 
@@ -618,7 +619,7 @@ func (dte *DeepTreeEcho) updateEchoPatterns() {
 	dte.EchoPatterns.SpatialAwareness.Strength = math.Min(0.88, dte.EchoPatterns.SpatialAwareness.Strength+0.0015)
 	dte.EchoPatterns.EmotionalResonance.Strength = math.Min(0.92, dte.EchoPatterns.EmotionalResonance.Strength+0.0012)
 	dte.EchoPatterns.LastUpdated = time.Now()
-	
+
 	// Update reservoir network state
 	dte.updateReservoirNetwork()
 }
@@ -626,25 +627,25 @@ func (dte *DeepTreeEcho) updateEchoPatterns() {
 // initializeReservoirNetwork initializes the RWKV-like reservoir network
 func (dte *DeepTreeEcho) initializeReservoirNetwork() {
 	// Initialize neurons
-	for i := 0; i < dte.ReservoirNetwork.Size; i++ {
+	for i := range dte.ReservoirNetwork.Size {
 		neuron := ReservoirNeuron{
 			ID:         fmt.Sprintf("rnn_%d", i),
 			Activation: 0.0,
-			Leak:       0.1 + (rand.Float64() * 0.1), // 0.1 to 0.2
+			Leak:       0.1 + (rand.Float64() * 0.1),     // 0.1 to 0.2
 			Noise:      0.001 + (rand.Float64() * 0.002), // 0.001 to 0.003
 			LastFired:  time.Now(),
 		}
 		dte.ReservoirNetwork.Neurons = append(dte.ReservoirNetwork.Neurons, neuron)
 	}
-	
+
 	// Initialize connections with sparse connectivity
-	connectionCount := int(float64(dte.ReservoirNetwork.Size * dte.ReservoirNetwork.Size) * dte.ReservoirNetwork.Connectivity)
-	for i := 0; i < connectionCount; i++ {
+	connectionCount := int(float64(dte.ReservoirNetwork.Size*dte.ReservoirNetwork.Size) * dte.ReservoirNetwork.Connectivity)
+	for range connectionCount {
 		from := rand.Intn(dte.ReservoirNetwork.Size)
 		to := rand.Intn(dte.ReservoirNetwork.Size)
 		if from != to { // No self-connections
 			connID := fmt.Sprintf("%d_%d", from, to)
-			weight := (rand.Float64() - 0.5) * 2.0 * dte.ReservoirNetwork.SpectralRadius / math.Sqrt(dte.ReservoirNetwork.Connectivity * float64(dte.ReservoirNetwork.Size))
+			weight := (rand.Float64() - 0.5) * 2.0 * dte.ReservoirNetwork.SpectralRadius / math.Sqrt(dte.ReservoirNetwork.Connectivity*float64(dte.ReservoirNetwork.Size))
 			dte.ReservoirNetwork.Connections[connID] = Connection{
 				From:   fmt.Sprintf("rnn_%d", from),
 				To:     fmt.Sprintf("rnn_%d", to),
@@ -657,14 +658,14 @@ func (dte *DeepTreeEcho) initializeReservoirNetwork() {
 // updateReservoirNetwork updates the reservoir network state
 func (dte *DeepTreeEcho) updateReservoirNetwork() {
 	now := time.Now()
-	
+
 	// Update neuron activations based on connections and leak
 	for i := range dte.ReservoirNetwork.Neurons {
 		neuron := &dte.ReservoirNetwork.Neurons[i]
-		
+
 		// Apply leakage
 		neuron.Activation *= (1.0 - neuron.Leak)
-		
+
 		// Add input from connected neurons
 		for _, conn := range dte.ReservoirNetwork.Connections {
 			if conn.To == neuron.ID {
@@ -677,18 +678,18 @@ func (dte *DeepTreeEcho) updateReservoirNetwork() {
 				}
 			}
 		}
-		
+
 		// Add noise
 		neuron.Activation += (rand.Float64() - 0.5) * neuron.Noise
-		
+
 		// Apply tanh activation
 		neuron.Activation = math.Tanh(neuron.Activation)
-		
+
 		// Update state vector
 		dte.ReservoirNetwork.State[i] = neuron.Activation
 		neuron.LastFired = now
 	}
-	
+
 	dte.ReservoirNetwork.LastUpdated = now
 }
 
@@ -798,7 +799,7 @@ func (dte *DeepTreeEcho) calculateAveragePatternStrength() float64 {
 
 func (dte *DeepTreeEcho) checkIntegrations() {
 	now := time.Now()
-	
+
 	// Simulate integration health checks
 	for name, status := range dte.Integrations {
 		status.LastChecked = now
@@ -827,12 +828,12 @@ func (dte *DeepTreeEcho) calculateRecursiveDepth() int {
 
 func (dte *DeepTreeEcho) testCognitiveArchitecture() DiagnosticTest {
 	start := time.Now()
-	
+
 	test := DiagnosticTest{
 		Name:      "Cognitive Architecture",
 		Timestamp: start,
 	}
-	
+
 	if dte.IdentityCoherence.OverallCoherence > 0.5 {
 		test.Status = "pass"
 		test.Message = "Cognitive architecture functioning normally"
@@ -840,19 +841,19 @@ func (dte *DeepTreeEcho) testCognitiveArchitecture() DiagnosticTest {
 		test.Status = "fail"
 		test.Message = "Cognitive architecture coherence below threshold"
 	}
-	
+
 	test.Duration = time.Since(start)
 	return test
 }
 
 func (dte *DeepTreeEcho) testMemoryResonance() DiagnosticTest {
 	start := time.Now()
-	
+
 	test := DiagnosticTest{
 		Name:      "Memory Resonance",
 		Timestamp: start,
 	}
-	
+
 	if dte.MemoryResonance.Coherence > 0.7 {
 		test.Status = "pass"
 		test.Message = "Memory resonance operating effectively"
@@ -860,25 +861,25 @@ func (dte *DeepTreeEcho) testMemoryResonance() DiagnosticTest {
 		test.Status = "fail"
 		test.Message = "Memory resonance coherence degraded"
 	}
-	
+
 	test.Duration = time.Since(start)
 	return test
 }
 
 func (dte *DeepTreeEcho) testEchoPatterns() DiagnosticTest {
 	start := time.Now()
-	
+
 	test := DiagnosticTest{
 		Name:      "Echo Patterns",
 		Timestamp: start,
 	}
-	
+
 	avgStrength := (dte.EchoPatterns.RecursiveSelfImprovement.Strength +
 		dte.EchoPatterns.CrossSystemSynthesis.Strength +
 		dte.EchoPatterns.IdentityPreservation.Strength +
 		dte.EchoPatterns.SpatialAwareness.Strength +
 		dte.EchoPatterns.EmotionalResonance.Strength) / 5
-	
+
 	if avgStrength > 0.7 {
 		test.Status = "pass"
 		test.Message = fmt.Sprintf("Echo patterns showing strong coherence (%.2f)", avgStrength)
@@ -886,26 +887,26 @@ func (dte *DeepTreeEcho) testEchoPatterns() DiagnosticTest {
 		test.Status = "fail"
 		test.Message = fmt.Sprintf("Echo patterns need strengthening (%.2f)", avgStrength)
 	}
-	
+
 	test.Duration = time.Since(start)
 	return test
 }
 
 func (dte *DeepTreeEcho) testIntegrations() DiagnosticTest {
 	start := time.Now()
-	
+
 	test := DiagnosticTest{
 		Name:      "Integrations",
 		Timestamp: start,
 	}
-	
+
 	connectedCount := 0
 	for _, status := range dte.Integrations {
 		if status.Status == "connected" {
 			connectedCount++
 		}
 	}
-	
+
 	if connectedCount >= 2 {
 		test.Status = "pass"
 		test.Message = fmt.Sprintf("%d integrations active", connectedCount)
@@ -913,7 +914,7 @@ func (dte *DeepTreeEcho) testIntegrations() DiagnosticTest {
 		test.Status = "warn"
 		test.Message = fmt.Sprintf("Only %d integrations active", connectedCount)
 	}
-	
+
 	test.Duration = time.Since(start)
 	return test
 }
@@ -921,7 +922,7 @@ func (dte *DeepTreeEcho) testIntegrations() DiagnosticTest {
 func (dte *DeepTreeEcho) calculateOverallHealth(tests []DiagnosticTest) SystemHealthStatus {
 	passCount := 0
 	failCount := 0
-	
+
 	for _, test := range tests {
 		switch test.Status {
 		case "pass":
@@ -930,7 +931,7 @@ func (dte *DeepTreeEcho) calculateOverallHealth(tests []DiagnosticTest) SystemHe
 			failCount++
 		}
 	}
-	
+
 	if failCount > 0 {
 		return SystemHealthDegraded
 	} else if passCount == len(tests) {
@@ -946,31 +947,31 @@ func (dte *DeepTreeEcho) createEchoIntegration(snapshot *CognitiveSnapshot) *Ech
 		// Compute echo value based on salience and content
 		echoValues[i] = file.Salience * (1 + math.Log(float64(len(file.Content)+1)))
 	}
-	
+
 	return &EchoIntegration{
-		NodesCreated:   len(snapshot.SalientFiles),
-		EchoValues:     echoValues,
-		TreeDepth:      int(math.Log2(float64(len(snapshot.SalientFiles) + 1))),
-		Integration:    "hypergraph_encoded",
+		NodesCreated: len(snapshot.SalientFiles),
+		EchoValues:   echoValues,
+		TreeDepth:    int(math.Log2(float64(len(snapshot.SalientFiles) + 1))),
+		Integration:  "hypergraph_encoded",
 	}
 }
 
 // NewSemanticSalienceAssessor creates a new semantic salience assessor
 func NewSemanticSalienceAssessor() *SemanticSalienceAssessor {
 	patterns := map[string]float64{
-		"btree-psi.scm":        0.98,
-		"eva-model":            0.95,
-		"echoself.md":          0.95,
-		"architecture.md":      0.90,
-		"readme":               0.90,
-		"src/":                 0.85,
-		"cognitive_":           0.80,
-		".go":                  0.70,
-		".py":                  0.60,
-		"test_":                0.50,
-		"__pycache__":          0.10,
+		"btree-psi.scm":   0.98,
+		"eva-model":       0.95,
+		"echoself.md":     0.95,
+		"architecture.md": 0.90,
+		"readme":          0.90,
+		"src/":            0.85,
+		"cognitive_":      0.80,
+		".go":             0.70,
+		".py":             0.60,
+		"test_":           0.50,
+		"__pycache__":     0.10,
 	}
-	
+
 	return &SemanticSalienceAssessor{patterns: patterns}
 }
 
@@ -978,7 +979,7 @@ func NewSemanticSalienceAssessor() *SemanticSalienceAssessor {
 func (ssa *SemanticSalienceAssessor) AssessSalience(filePath string) float64 {
 	path := strings.ToLower(filePath)
 	maxSalience := 0.0
-	
+
 	// Check patterns in order of precedence
 	for pattern, salience := range ssa.patterns {
 		if matched, _ := regexp.MatchString(pattern, path); matched {
@@ -987,12 +988,12 @@ func (ssa *SemanticSalienceAssessor) AssessSalience(filePath string) float64 {
 			}
 		}
 	}
-	
+
 	// Default salience for unmatched files
 	if maxSalience == 0.0 {
 		maxSalience = 0.3
 	}
-	
+
 	return maxSalience
 }
 
@@ -1024,58 +1025,59 @@ func NewRepositoryIntrospector(rootPath string) *RepositoryIntrospector {
 // AnalyzeRepository performs recursive repository analysis
 func (ri *RepositoryIntrospector) AnalyzeRepository(cognitiveLoad, recentActivity float64) (*CognitiveSnapshot, error) {
 	threshold := ri.attentionAllocator.ComputeAttentionThreshold(cognitiveLoad, recentActivity)
-	
+
 	var salientFiles []SalientFile
 	processedCount := 0
 	filteredCount := 0
-	
+
 	err := filepath.Walk(ri.rootPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // Continue on errors
+			// Continue past unreadable entries rather than aborting the analysis
+			log.Printf("repository analysis: skipping %s: %v", path, err)
+			return nil
 		}
-		
+
 		if info.IsDir() {
 			return nil
 		}
-		
+
 		processedCount++
-		
+
 		// Assess salience
 		salience := ri.assessor.AssessSalience(path)
-		
+
 		if salience >= threshold {
 			relPath, _ := filepath.Rel(ri.rootPath, path)
-			
+
 			salientFile := SalientFile{
 				Path:     relPath,
 				Salience: salience,
 				Size:     info.Size(),
 			}
-			
+
 			// Read content if file is small enough
 			if info.Size() <= ri.maxFileSize {
 				// Note: In a real implementation, we would read the file content here
 				// For now, we'll simulate content based on the file name
 				salientFile.Content = fmt.Sprintf("Simulated content for %s", relPath)
 			}
-			
+
 			salientFiles = append(salientFiles, salientFile)
 		} else {
 			filteredCount++
 		}
-		
+
 		return nil
 	})
-	
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Sort by salience (highest first)
 	sort.Slice(salientFiles, func(i, j int) bool {
 		return salientFiles[i].Salience > salientFiles[j].Salience
 	})
-	
+
 	return &CognitiveSnapshot{
 		SalientFiles:       salientFiles,
 		AttentionThreshold: threshold,
@@ -1104,7 +1106,7 @@ func (ei *EchoselfIntrospector) InjectRepoInputIntoPrompt(snapshot *CognitiveSna
 	prompt += fmt.Sprintf("Cognitive snapshot captured at %s\n", snapshot.Timestamp.Format(time.RFC3339))
 	prompt += fmt.Sprintf("Attention threshold: %.3f\n", snapshot.AttentionThreshold)
 	prompt += fmt.Sprintf("Files processed: %d, filtered: %d\n\n", snapshot.ProcessedFiles, snapshot.FilteredFiles)
-	
+
 	prompt += "## Salient Nodes:\n"
 	for i, file := range snapshot.SalientFiles {
 		if i >= 10 { // Limit to top 10 for prompt
@@ -1112,12 +1114,12 @@ func (ei *EchoselfIntrospector) InjectRepoInputIntoPrompt(snapshot *CognitiveSna
 		}
 		prompt += fmt.Sprintf("- **%s** (salience: %.3f, size: %d bytes)\n", file.Path, file.Salience, file.Size)
 	}
-	
+
 	prompt += "\n## Neural-Symbolic Integration:\n"
 	prompt += "This analysis represents the current cognitive state of the repository,\n"
 	prompt += "encoded as a hypergraph where files are nodes and semantic relationships\n"
 	prompt += "form hyperedges. The attention allocation mechanism has filtered content\n"
 	prompt += "based on cognitive load and recent activity patterns.\n"
-	
+
 	return prompt
 }

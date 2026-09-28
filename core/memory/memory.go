@@ -56,12 +56,12 @@ type EmbeddingProvider interface {
 
 // MemoryMetrics contains statistics about memory usage.
 type MemoryMetrics struct {
-	TotalThoughts     int64
-	ThoughtsByType    map[consciousness.ThoughtType]int64
-	OldestThought     int64 // Unix timestamp
-	NewestThought     int64 // Unix timestamp
-	AverageDepth      float64
-	StorageSize       int64 // Bytes
+	TotalThoughts  int64
+	ThoughtsByType map[consciousness.ThoughtType]int64
+	OldestThought  int64 // Unix timestamp
+	NewestThought  int64 // Unix timestamp
+	AverageDepth   float64
+	StorageSize    int64 // Bytes
 }
 
 // MetricsProvider is an optional interface for memory backends that support metrics.

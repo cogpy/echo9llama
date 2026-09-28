@@ -10,13 +10,13 @@ import (
 // Evolution manages the evolutionary development of cognitive capabilities
 // Combines ontogenetic (individual development) with phylogenetic (species-level) patterns
 type Evolution struct {
-	mu                 sync.RWMutex
-	generationCount    int
-	developmentalCurve *DevelopmentalCurve
-	adaptations        []*Adaptation
+	mu                    sync.RWMutex
+	generationCount       int
+	developmentalCurve    *DevelopmentalCurve
+	adaptations           []*Adaptation
 	evolutionaryPressures []EvolutionaryPressure
-	fitnessScore       float64
-	lastEvolution      time.Time
+	fitnessScore          float64
+	lastEvolution         time.Time
 }
 
 // DevelopmentalCurve tracks growth patterns over time

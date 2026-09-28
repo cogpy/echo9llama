@@ -53,7 +53,7 @@ type ChatCompletionStreamResponse struct {
 
 // StreamChoice is a choice in a streaming response.
 type StreamChoice struct {
-	Index        int          `json:"index"`
-	Delta        ChatMessage  `json:"delta"`
-	FinishReason string       `json:"finish_reason,omitempty"`
+	Index        int         `json:"index"`
+	Delta        ChatMessage `json:"delta"`
+	FinishReason string      `json:"finish_reason,omitempty"`
 }

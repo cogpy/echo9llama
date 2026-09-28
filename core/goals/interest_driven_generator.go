@@ -13,36 +13,36 @@ import (
 
 // InterestDrivenGoalGenerator creates goals based on curiosity and interest patterns
 type InterestDrivenGoalGenerator struct {
-	mu                  sync.RWMutex
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
+	cancel context.CancelFunc
+
 	// Interest tracking
-	interestPatterns    map[string]*InterestPattern
-	curiosityLevel      float64
-	explorationRate     float64
-	
+	interestPatterns map[string]*InterestPattern
+	curiosityLevel   float64
+	explorationRate  float64
+
 	// Goal generation
-	goalOrchestrator    *GoalOrchestrator
-	generatedGoals      []*Goal
-	
+	goalOrchestrator *GoalOrchestrator
+	generatedGoals   []*Goal
+
 	// Topic tracking
-	exploredTopics      map[string]bool
-	unexploredTopics    []string
-	currentFocus        []string
-	
+	exploredTopics   map[string]bool
+	unexploredTopics []string
+	currentFocus     []string
+
 	// Configuration
 	minInterestThreshold float64
-	maxGoalsPerCycle    int
-	generationInterval  time.Duration
-	
+	maxGoalsPerCycle     int
+	generationInterval   time.Duration
+
 	// Metrics
-	goalsGenerated      uint64
-	explorationGoals    uint64
-	learningGoals       uint64
-	discussionGoals     uint64
-	
-	running             bool
+	goalsGenerated   uint64
+	explorationGoals uint64
+	learningGoals    uint64
+	discussionGoals  uint64
+
+	running bool
 }
 
 // InterestPattern represents interest in a topic or domain
@@ -61,7 +61,7 @@ type InterestPattern struct {
 // NewInterestDrivenGoalGenerator creates a new interest-driven goal generator
 func NewInterestDrivenGoalGenerator(goalOrchestrator *GoalOrchestrator) *InterestDrivenGoalGenerator {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	idgg := &InterestDrivenGoalGenerator{
 		ctx:                  ctx,
 		cancel:               cancel,
@@ -77,10 +77,10 @@ func NewInterestDrivenGoalGenerator(goalOrchestrator *GoalOrchestrator) *Interes
 		maxGoalsPerCycle:     3,
 		generationInterval:   5 * time.Minute,
 	}
-	
+
 	// Initialize with seed interests
 	idgg.initializeSeedInterests()
-	
+
 	return idgg
 }
 
@@ -98,7 +98,7 @@ func (idgg *InterestDrivenGoalGenerator) initializeSeedInterests() {
 		"temporal reasoning",
 		"social understanding",
 	}
-	
+
 	for _, topic := range seedTopics {
 		idgg.interestPatterns[topic] = &InterestPattern{
 			Topic:           topic,
@@ -123,16 +123,16 @@ func (idgg *InterestDrivenGoalGenerator) Start() error {
 	}
 	idgg.running = true
 	idgg.mu.Unlock()
-	
+
 	// Start goal generation loop
 	go idgg.goalGenerationLoop()
-	
+
 	// Start interest decay loop
 	go idgg.interestDecayLoop()
-	
+
 	// Start curiosity evolution loop
 	go idgg.curiosityEvolutionLoop()
-	
+
 	return nil
 }
 
@@ -141,7 +141,7 @@ func (idgg *InterestDrivenGoalGenerator) Stop() {
 	idgg.mu.Lock()
 	idgg.running = false
 	idgg.mu.Unlock()
-	
+
 	idgg.cancel()
 }
 
@@ -149,7 +149,7 @@ func (idgg *InterestDrivenGoalGenerator) Stop() {
 func (idgg *InterestDrivenGoalGenerator) goalGenerationLoop() {
 	ticker := time.NewTicker(idgg.generationInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-idgg.ctx.Done():
@@ -163,19 +163,19 @@ func (idgg *InterestDrivenGoalGenerator) goalGenerationLoop() {
 // generateInterestDrivenGoals creates goals based on current interests
 func (idgg *InterestDrivenGoalGenerator) generateInterestDrivenGoals() {
 	idgg.mu.RLock()
-	
+
 	// Find strongest interests
 	strongInterests := idgg.findStrongestInterests(idgg.maxGoalsPerCycle)
-	
+
 	idgg.mu.RUnlock()
-	
+
 	// Generate goals for each strong interest
 	for _, interest := range strongInterests {
 		goal := idgg.createGoalFromInterest(interest)
 		if goal != nil {
 			// Store goal (orchestrator manages its own goals)
 			// In real implementation, would integrate with orchestrator's goal generation
-			
+
 			idgg.mu.Lock()
 			idgg.generatedGoals = append(idgg.generatedGoals, goal)
 			idgg.goalsGenerated++
@@ -191,33 +191,33 @@ func (idgg *InterestDrivenGoalGenerator) findStrongestInterests(count int) []*In
 		pattern *InterestPattern
 		score   float64
 	}
-	
+
 	scored := make([]scoredInterest, 0)
-	
+
 	for _, pattern := range idgg.interestPatterns {
 		// Composite score based on multiple factors
 		score := idgg.calculateInterestScore(pattern)
-		
+
 		if score > idgg.minInterestThreshold {
 			scored = append(scored, scoredInterest{pattern, score})
 		}
 	}
-	
+
 	// Sort by score
-	for i := 0; i < len(scored)-1; i++ {
+	for i := range len(scored) - 1 {
 		for j := i + 1; j < len(scored); j++ {
 			if scored[j].score > scored[i].score {
 				scored[i], scored[j] = scored[j], scored[i]
 			}
 		}
 	}
-	
+
 	// Return top interests
 	result := make([]*InterestPattern, 0)
 	for i := 0; i < count && i < len(scored); i++ {
 		result = append(result, scored[i].pattern)
 	}
-	
+
 	return result
 }
 
@@ -228,22 +228,22 @@ func (idgg *InterestDrivenGoalGenerator) calculateInterestScore(pattern *Interes
 	noveltyWeight := 0.3
 	utilityWeight := 0.2
 	recencyWeight := 0.1
-	
+
 	// Calculate recency score (decay over time)
 	timeSinceEngagement := time.Since(pattern.LastEngaged)
 	recencyScore := math.Exp(-timeSinceEngagement.Hours() / 24.0) // Decay over days
-	
+
 	// Composite score
 	score := pattern.Strength*strengthWeight +
 		pattern.Novelty*noveltyWeight +
 		pattern.Utility*utilityWeight +
 		recencyScore*recencyWeight
-	
+
 	// Boost for unexplored topics (curiosity bonus)
 	if pattern.Depth < 0.3 {
 		score += idgg.curiosityLevel * 0.2
 	}
-	
+
 	return score
 }
 
@@ -252,7 +252,7 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 	// Determine goal type based on interest characteristics
 	var goalType string
 	var description string
-	
+
 	if interest.Depth < 0.3 {
 		// Exploration goal for shallow interests
 		goalType = "exploration"
@@ -260,7 +260,6 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 		idgg.mu.Lock()
 		idgg.explorationGoals++
 		idgg.mu.Unlock()
-		
 	} else if interest.Novelty > 0.6 {
 		// Learning goal for novel topics
 		goalType = "learning"
@@ -268,7 +267,6 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 		idgg.mu.Lock()
 		idgg.learningGoals++
 		idgg.mu.Unlock()
-		
 	} else {
 		// Discussion goal for familiar topics
 		goalType = "discussion"
@@ -277,22 +275,22 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 		idgg.discussionGoals++
 		idgg.mu.Unlock()
 	}
-	
+
 	// Create goal
 	goal := &Goal{
-		ID:          uuid.New().String(),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		Title:       fmt.Sprintf("%s: %s", goalType, interest.Topic),
-		Description: description,
-		Category:    CategoryExploration,
-		Priority:    int(interest.Strength * 10),
-		Progress:    0.0,
-		Status:      StatusActive,
+		ID:              uuid.New().String(),
+		CreatedAt:       time.Now(),
+		UpdatedAt:       time.Now(),
+		Title:           fmt.Sprintf("%s: %s", goalType, interest.Topic),
+		Description:     description,
+		Category:        CategoryExploration,
+		Priority:        int(interest.Strength * 10),
+		Progress:        0.0,
+		Status:          StatusActive,
 		SuccessCriteria: []string{"Engage with topic", "Generate insights"},
-		Milestones:  []Milestone{},
-		Actions:     []Action{},
-		RelatedGoals: []string{},
+		Milestones:      []Milestone{},
+		Actions:         []Action{},
+		RelatedGoals:    []string{},
 		Metadata: map[string]interface{}{
 			"type":     goalType,
 			"topic":    interest.Topic,
@@ -302,7 +300,7 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 		LessonsLearned: []string{},
 		Challenges:     []string{},
 	}
-	
+
 	return goal
 }
 
@@ -310,7 +308,7 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 func (idgg *InterestDrivenGoalGenerator) interestDecayLoop() {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-idgg.ctx.Done():
@@ -325,7 +323,7 @@ func (idgg *InterestDrivenGoalGenerator) interestDecayLoop() {
 func (idgg *InterestDrivenGoalGenerator) decayInterests() {
 	idgg.mu.Lock()
 	defer idgg.mu.Unlock()
-	
+
 	for _, pattern := range idgg.interestPatterns {
 		// Decay strength over time if not engaged
 		timeSinceEngagement := time.Since(pattern.LastEngaged)
@@ -333,10 +331,10 @@ func (idgg *InterestDrivenGoalGenerator) decayInterests() {
 			decayFactor := 0.95
 			pattern.Strength *= decayFactor
 		}
-		
+
 		// Decay recency
 		pattern.Recency *= 0.98
-		
+
 		// Decay novelty as topic becomes familiar
 		if pattern.EngagementCount > 0 {
 			pattern.Novelty *= 0.99
@@ -348,7 +346,7 @@ func (idgg *InterestDrivenGoalGenerator) decayInterests() {
 func (idgg *InterestDrivenGoalGenerator) curiosityEvolutionLoop() {
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-idgg.ctx.Done():
@@ -363,18 +361,18 @@ func (idgg *InterestDrivenGoalGenerator) curiosityEvolutionLoop() {
 func (idgg *InterestDrivenGoalGenerator) evolveCuriosity() {
 	idgg.mu.Lock()
 	defer idgg.mu.Unlock()
-	
+
 	// Increase curiosity if many unexplored topics
 	unexploredCount := len(idgg.unexploredTopics)
 	if unexploredCount > 10 {
 		idgg.curiosityLevel += 0.01
 	}
-	
+
 	// Decrease curiosity if few unexplored topics
 	if unexploredCount < 3 {
 		idgg.curiosityLevel -= 0.01
 	}
-	
+
 	// Clamp curiosity level
 	idgg.curiosityLevel = clamp(idgg.curiosityLevel, 0.3, 0.9)
 }
@@ -383,7 +381,7 @@ func (idgg *InterestDrivenGoalGenerator) evolveCuriosity() {
 func (idgg *InterestDrivenGoalGenerator) RecordEngagement(topic string, depth float64) {
 	idgg.mu.Lock()
 	defer idgg.mu.Unlock()
-	
+
 	pattern, exists := idgg.interestPatterns[topic]
 	if !exists {
 		// Create new interest pattern
@@ -408,7 +406,7 @@ func (idgg *InterestDrivenGoalGenerator) RecordEngagement(topic string, depth fl
 		pattern.LastEngaged = time.Now()
 		pattern.EngagementCount++
 	}
-	
+
 	// Mark as explored
 	idgg.exploredTopics[topic] = true
 }
@@ -417,9 +415,9 @@ func (idgg *InterestDrivenGoalGenerator) RecordEngagement(topic string, depth fl
 func (idgg *InterestDrivenGoalGenerator) SuggestExplorationTopics(count int) []string {
 	idgg.mu.RLock()
 	defer idgg.mu.RUnlock()
-	
+
 	suggestions := make([]string, 0)
-	
+
 	// Find topics with high novelty and low depth
 	for topic, pattern := range idgg.interestPatterns {
 		if pattern.Novelty > 0.6 && pattern.Depth < 0.3 {
@@ -429,7 +427,7 @@ func (idgg *InterestDrivenGoalGenerator) SuggestExplorationTopics(count int) []s
 			}
 		}
 	}
-	
+
 	return suggestions
 }
 
@@ -437,13 +435,13 @@ func (idgg *InterestDrivenGoalGenerator) SuggestExplorationTopics(count int) []s
 func (idgg *InterestDrivenGoalGenerator) GetInterestPatterns() map[string]*InterestPattern {
 	idgg.mu.RLock()
 	defer idgg.mu.RUnlock()
-	
+
 	// Return copy to prevent external modification
 	patterns := make(map[string]*InterestPattern)
 	for k, v := range idgg.interestPatterns {
 		patterns[k] = v
 	}
-	
+
 	return patterns
 }
 
@@ -451,16 +449,16 @@ func (idgg *InterestDrivenGoalGenerator) GetInterestPatterns() map[string]*Inter
 func (idgg *InterestDrivenGoalGenerator) GetMetrics() map[string]interface{} {
 	idgg.mu.RLock()
 	defer idgg.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"goals_generated":    idgg.goalsGenerated,
-		"exploration_goals":  idgg.explorationGoals,
-		"learning_goals":     idgg.learningGoals,
-		"discussion_goals":   idgg.discussionGoals,
-		"curiosity_level":    idgg.curiosityLevel,
-		"exploration_rate":   idgg.explorationRate,
-		"active_interests":   len(idgg.interestPatterns),
-		"explored_topics":    len(idgg.exploredTopics),
+		"goals_generated":   idgg.goalsGenerated,
+		"exploration_goals": idgg.explorationGoals,
+		"learning_goals":    idgg.learningGoals,
+		"discussion_goals":  idgg.discussionGoals,
+		"curiosity_level":   idgg.curiosityLevel,
+		"exploration_rate":  idgg.explorationRate,
+		"active_interests":  len(idgg.interestPatterns),
+		"explored_topics":   len(idgg.exploredTopics),
 	}
 }
 

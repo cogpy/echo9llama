@@ -10,31 +10,31 @@ type WisdomMetrics struct {
 	mu sync.RWMutex
 
 	// Core metrics
-	WisdomDepthScore      float64
-	CoherenceStability    float64
-	LearningVelocity      float64
-	InsightFrequency      float64
+	WisdomDepthScore   float64
+	CoherenceStability float64
+	LearningVelocity   float64
+	InsightFrequency   float64
 
 	// Historical tracking
-	WisdomHistory         []WisdomSnapshot
-	InsightCount          int64
-	SkillsAcquired        int64
-	PatternsRecognized    int64
+	WisdomHistory      []WisdomSnapshot
+	InsightCount       int64
+	SkillsAcquired     int64
+	PatternsRecognized int64
 
 	// Temporal tracking
-	StartTime             time.Time
-	LastUpdate            time.Time
+	StartTime  time.Time
+	LastUpdate time.Time
 }
 
 // WisdomSnapshot represents wisdom state at a point in time
 type WisdomSnapshot struct {
-	Timestamp         time.Time
-	WisdomScore       float64
-	Coherence         float64
-	Stability         float64
-	Awareness         float64
-	ActiveSkills      int
-	MemoryNodes       int
+	Timestamp    time.Time
+	WisdomScore  float64
+	Coherence    float64
+	Stability    float64
+	Awareness    float64
+	ActiveSkills int
+	MemoryNodes  int
 }
 
 // NewWisdomMetrics creates a new wisdom metrics tracker

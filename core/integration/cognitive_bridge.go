@@ -14,8 +14,8 @@ import (
 // enabling bidirectional communication and state synchronization between the
 // autonomous agent systems and the high-level orchestration components.
 type CognitiveBridge struct {
-	mu sync.RWMutex
-	ctx context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core layer reference
@@ -37,10 +37,10 @@ type CognitiveBridge struct {
 	config BridgeConfig
 
 	// Metrics
-	messagesSent uint64
+	messagesSent     uint64
 	messagesReceived uint64
-	syncCount uint64
-	errorCount uint64
+	syncCount        uint64
+	errorCount       uint64
 
 	// Running state
 	running bool
@@ -48,30 +48,30 @@ type CognitiveBridge struct {
 
 // BridgeConfig holds configuration for the cognitive bridge
 type BridgeConfig struct {
-	SyncInterval time.Duration
-	BufferSize int
+	SyncInterval        time.Duration
+	BufferSize          int
 	EnableBidirectional bool
-	EnableAutoSync bool
+	EnableAutoSync      bool
 }
 
 // DefaultBridgeConfig returns default bridge configuration
 func DefaultBridgeConfig() BridgeConfig {
 	return BridgeConfig{
-		SyncInterval: 5 * time.Second,
-		BufferSize: 100,
+		SyncInterval:        5 * time.Second,
+		BufferSize:          100,
 		EnableBidirectional: true,
-		EnableAutoSync: true,
+		EnableAutoSync:      true,
 	}
 }
 
 // BridgeMessage represents a message passing through the bridge
 type BridgeMessage struct {
-	Type string
-	Source string
+	Type        string
+	Source      string
 	Destination string
-	Payload interface{}
-	Timestamp time.Time
-	Priority int
+	Payload     interface{}
+	Timestamp   time.Time
+	Priority    int
 }
 
 // BridgeMessageType defines message types for the bridge
@@ -79,12 +79,12 @@ type BridgeMessageType string
 
 const (
 	MessageTypeStateSync BridgeMessageType = "state_sync"
-	MessageTypeEvent BridgeMessageType = "event"
-	MessageTypeCommand BridgeMessageType = "command"
-	MessageTypeMetrics BridgeMessageType = "metrics"
-	MessageTypeThought BridgeMessageType = "thought"
-	MessageTypeWisdom BridgeMessageType = "wisdom"
-	MessageTypePattern BridgeMessageType = "pattern"
+	MessageTypeEvent     BridgeMessageType = "event"
+	MessageTypeCommand   BridgeMessageType = "command"
+	MessageTypeMetrics   BridgeMessageType = "metrics"
+	MessageTypeThought   BridgeMessageType = "thought"
+	MessageTypeWisdom    BridgeMessageType = "wisdom"
+	MessageTypePattern   BridgeMessageType = "pattern"
 )
 
 // NewCognitiveBridge creates a new cognitive bridge
@@ -96,14 +96,14 @@ func NewCognitiveBridge(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &CognitiveBridge{
-		ctx: ctx,
-		cancel: cancel,
+		ctx:             ctx,
+		cancel:          cancel,
 		autonomousAgent: agent,
-		deepTreeEcho: dte,
-		coreToOrchChan: make(chan BridgeMessage, config.BufferSize),
-		orchToCoreChan: make(chan BridgeMessage, config.BufferSize),
-		syncInterval: config.SyncInterval,
-		config: config,
+		deepTreeEcho:    dte,
+		coreToOrchChan:  make(chan BridgeMessage, config.BufferSize),
+		orchToCoreChan:  make(chan BridgeMessage, config.BufferSize),
+		syncInterval:    config.SyncInterval,
+		config:          config,
 	}
 }
 
@@ -265,9 +265,9 @@ func (cb *CognitiveBridge) getOrchestrationStatus() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"system_health": string(cb.deepTreeEcho.SystemHealth),
-		"core_status": string(cb.deepTreeEcho.CoreStatus),
-		"thought_count": cb.deepTreeEcho.ThoughtCount,
+		"system_health":   string(cb.deepTreeEcho.SystemHealth),
+		"core_status":     string(cb.deepTreeEcho.CoreStatus),
+		"thought_count":   cb.deepTreeEcho.ThoughtCount,
 		"recursive_depth": cb.deepTreeEcho.RecursiveDepth,
 		"identity_coherence": func() float64 {
 			if cb.deepTreeEcho.IdentityCoherence != nil {
@@ -385,11 +385,11 @@ func (cb *CognitiveBridge) processOrchMessage(msg BridgeMessage) {
 		// State sync request from orchestration
 		// The core will respond with its current state
 		cb.sendToOrchestration(BridgeMessage{
-			Type: string(MessageTypeStateSync),
-			Source: "core",
+			Type:        string(MessageTypeStateSync),
+			Source:      "core",
 			Destination: "orchestration",
-			Payload: cb.autonomousAgent.GetStatus(),
-			Timestamp: time.Now(),
+			Payload:     cb.autonomousAgent.GetStatus(),
+			Timestamp:   time.Now(),
 		})
 	}
 }
@@ -480,13 +480,13 @@ func (cb *CognitiveBridge) GetMetrics() map[string]interface{} {
 	defer cb.mu.RUnlock()
 
 	return map[string]interface{}{
-		"running": cb.running,
-		"messages_sent": cb.messagesSent,
+		"running":           cb.running,
+		"messages_sent":     cb.messagesSent,
 		"messages_received": cb.messagesReceived,
-		"sync_count": cb.syncCount,
-		"error_count": cb.errorCount,
-		"last_core_sync": cb.lastCoreSync,
-		"last_orch_sync": cb.lastOrchSync,
+		"sync_count":        cb.syncCount,
+		"error_count":       cb.errorCount,
+		"last_core_sync":    cb.lastCoreSync,
+		"last_orch_sync":    cb.lastOrchSync,
 	}
 }
 

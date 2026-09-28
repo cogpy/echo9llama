@@ -1,4 +1,3 @@
-
 package meta
 
 import (
@@ -30,13 +29,13 @@ type LearningStrategy struct {
 
 // PerformanceMetrics tracks strategy effectiveness
 type PerformanceMetrics struct {
-	Accuracy        float64
-	LearningRate    float64
-	Convergence     time.Duration
-	Generalization  float64
-	Efficiency      float64
-	Robustness      float64
-	LastUpdated     time.Time
+	Accuracy       float64
+	LearningRate   float64
+	Convergence    time.Duration
+	Generalization float64
+	Efficiency     float64
+	Robustness     float64
+	LastUpdated    time.Time
 }
 
 // StrategyEvaluator assesses learning strategy performance
@@ -48,11 +47,11 @@ type StrategyEvaluator interface {
 
 // LearningContext provides environmental information for strategy evaluation
 type LearningContext struct {
-	TaskType        string
+	TaskType            string
 	DataCharacteristics map[string]interface{}
 	PerformanceTargets  map[string]float64
-	Constraints     map[string]interface{}
-	TimeHorizon     time.Duration
+	Constraints         map[string]interface{}
+	TimeHorizon         time.Duration
 }
 
 // AdaptationCycle records meta-learning adaptation events
@@ -89,19 +88,19 @@ func NewMetaLearner(evaluator StrategyEvaluator) *MetaLearner {
 func (ml *MetaLearner) AdaptLearningStrategy(context LearningContext) error {
 	ml.mu.Lock()
 	defer ml.mu.Unlock()
-	
+
 	// Evaluate all available strategies
 	var strategies []LearningStrategy
 	for _, strategy := range ml.strategies {
 		strategies = append(strategies, strategy)
 	}
-	
+
 	rankings := ml.strategyEvaluator.CompareStrategies(strategies, context)
-	
+
 	if len(rankings) == 0 {
 		return nil
 	}
-	
+
 	// Select best strategy with exploration
 	var selectedStrategy string
 	if ml.shouldExplore() {
@@ -111,7 +110,7 @@ func (ml *MetaLearner) AdaptLearningStrategy(context LearningContext) error {
 		// Exploitation: select best strategy
 		selectedStrategy = rankings[0].StrategyID
 	}
-	
+
 	// Record adaptation cycle
 	cycle := AdaptationCycle{
 		Timestamp:       time.Now(),
@@ -121,10 +120,10 @@ func (ml *MetaLearner) AdaptLearningStrategy(context LearningContext) error {
 		ExpectedGain:    rankings[0].Score,
 		ConfidenceLevel: rankings[0].Confidence,
 	}
-	
+
 	ml.currentStrategy = selectedStrategy
 	ml.adaptationCycles = append(ml.adaptationCycles, cycle)
-	
+
 	return nil
 }
 
@@ -145,9 +144,9 @@ func (ml *MetaLearner) exploreStrategies(rankings []StrategyRanking) string {
 func (ml *MetaLearner) UpdatePerformance(strategyID string, metrics PerformanceMetrics) {
 	ml.mu.Lock()
 	defer ml.mu.Unlock()
-	
+
 	ml.performance[strategyID] = metrics
-	
+
 	// Update last adaptation cycle with actual performance
 	if len(ml.adaptationCycles) > 0 {
 		lastCycle := &ml.adaptationCycles[len(ml.adaptationCycles)-1]
@@ -161,7 +160,7 @@ func (ml *MetaLearner) UpdatePerformance(strategyID string, metrics PerformanceM
 func (ml *MetaLearner) GetCurrentStrategy() (LearningStrategy, bool) {
 	ml.mu.RLock()
 	defer ml.mu.RUnlock()
-	
+
 	strategy, exists := ml.strategies[ml.currentStrategy]
 	return strategy, exists
 }
@@ -182,9 +181,9 @@ func (ml *MetaLearner) RegisterStrategy(strategy LearningStrategy) {
 
 // Improvement represents a suggested strategy enhancement
 type Improvement struct {
-	Parameter    string
-	CurrentValue interface{}
+	Parameter      string
+	CurrentValue   interface{}
 	SuggestedValue interface{}
-	ExpectedGain float64
-	Confidence   float64
+	ExpectedGain   float64
+	Confidence     float64
 }

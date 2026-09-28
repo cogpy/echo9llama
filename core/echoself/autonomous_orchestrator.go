@@ -15,7 +15,7 @@ import (
 // It orchestrates all cognitive components into a unified stream-of-consciousness
 type AutonomousEchoself struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core identity
@@ -692,19 +692,6 @@ func (ae *AutonomousEchoself) onWisdomExtracted(wisdom echodream.Wisdom) {
 func (ae *AutonomousEchoself) onDreamComplete(dream *echodream.Dream) {
 	fmt.Printf("🌅 Dream summary: %d memories processed, %d wisdom extracted\n",
 		dream.MemoriesProcessed, len(dream.WisdomExtracted))
-}
-
-func (ae *AutonomousEchoself) onThoughtGenerated(thought string) {
-	t := Thought{
-		ID:          fmt.Sprintf("echobeat_%d", time.Now().UnixNano()),
-		Timestamp:   time.Now(),
-		Type:        ThoughtPlanning,
-		Content:     thought,
-		SourceLayer: "echobeats",
-		Importance:  0.6,
-	}
-
-	ae.thoughtStream <- t
 }
 
 // SendMessage sends a message to echoself
