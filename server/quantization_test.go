@@ -40,7 +40,7 @@ func TestGetTensorNewType(t *testing.T) {
 			tensor_name: "output.weight",
 			shape:       []uint64{1024, 1024},
 			ftype:       fsggml.FileTypeF32,
-			expected:    fsggml.TensorTypeQ6_K,
+			expected:    fsggml.TensorTypeQ6K,
 		},
 		{
 			name: "attn_v.weight_q4_k_m",
@@ -52,8 +52,8 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "blk.0.attn_v.weight",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_M,
-			expected:    fsggml.TensorTypeQ6_K,
+			ftype:       fsggml.FileTypeQ4KM,
+			expected:    fsggml.TensorTypeQ6K,
 		},
 		{
 			name:        "attn_v.weight_q4_k_s",
@@ -62,8 +62,8 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "blk.0.attn_v.weight",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_S,
-			expected:    fsggml.TensorTypeQ5_K,
+			ftype:       fsggml.FileTypeQ4KS,
+			expected:    fsggml.TensorTypeQ5K,
 		},
 		{
 			name: "attn_v.weight_8_expert",
@@ -101,7 +101,7 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "ffn_down",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_M,
+			ftype:       fsggml.FileTypeQ4KM,
 			expected:    fsggml.TensorTypeQ4_0,
 		},
 		{
@@ -114,8 +114,8 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "ffn_down",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_M,
-			expected:    fsggml.TensorTypeQ6_K,
+			ftype:       fsggml.FileTypeQ4KM,
+			expected:    fsggml.TensorTypeQ6K,
 		},
 		{
 			name: "ffn_down_q4_k_s",
@@ -127,8 +127,8 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "ffn_down",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_S,
-			expected:    fsggml.TensorTypeQ5_K,
+			ftype:       fsggml.FileTypeQ4KS,
+			expected:    fsggml.TensorTypeQ5K,
 		},
 		{
 			name:        "attn_qkv.weight_q4_k_m",
@@ -137,8 +137,8 @@ func TestGetTensorNewType(t *testing.T) {
 			newType:     fsggml.TensorTypeQ4_0,
 			tensor_name: "blk.0.attn_qkv.weight",
 			shape:       []uint64{256},
-			ftype:       fsggml.FileTypeQ4_K_M,
-			expected:    fsggml.TensorTypeQ5_K,
+			ftype:       fsggml.FileTypeQ4KM,
+			expected:    fsggml.TensorTypeQ5K,
 		},
 	}
 	for _, tt := range cases {
@@ -197,8 +197,8 @@ func TestQuantizeModel(t *testing.T) {
 			},
 			newType: "Q4_K",
 			expectedTensorTypes: map[string]fsggml.TensorType{
-				"blk.0.attn.weight": fsggml.TensorTypeQ4_K,
-				"output.weight":     fsggml.TensorTypeQ6_K,
+				"blk.0.attn.weight": fsggml.TensorTypeQ4K,
+				"output.weight":     fsggml.TensorTypeQ6K,
 			},
 		},
 		{
@@ -222,7 +222,7 @@ func TestQuantizeModel(t *testing.T) {
 			},
 			newType: "Q4_K",
 			expectedTensorTypes: map[string]fsggml.TensorType{
-				"blk.0.attn_v.weight": fsggml.TensorTypeQ6_K,
+				"blk.0.attn_v.weight": fsggml.TensorTypeQ6K,
 				"output.weight":       fsggml.TensorTypeF32,
 			},
 		},
@@ -589,7 +589,7 @@ var (
 			0, 120, 67, 0, 0, 121, 67, 0, 0, 122, 67, 0, 0, 123, 67, 0, 0, 124, 67, 0, 0,
 			125, 67, 0, 0, 126, 67, 0, 0, 127, 67,
 		},
-		fsggml.TensorTypeQ4_K: {
+		fsggml.TensorTypeQ4K: {
 			52, 52, 0, 0, 136, 208, 216, 223, 0, 0, 0, 0, 8, 0, 8, 15, 128,
 			128, 129, 129, 146, 146, 147, 147, 164, 164, 165, 165, 166, 182,
 			183, 183, 184, 200, 201, 201, 202, 218, 218, 219, 219, 236, 236,
@@ -602,7 +602,7 @@ var (
 			238, 238, 238, 238, 238, 238, 238, 238, 254, 254, 254, 254, 254,
 			254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 		},
-		fsggml.TensorTypeQ2_K: {
+		fsggml.TensorTypeQ2K: {
 			1, 2, 3, 3, 4, 5, 7, 7, 8, 9, 10, 11, 12, 13, 14, 15, 184, 184,
 			184, 185, 249, 249, 249, 249, 249, 250, 250, 254, 254, 254, 254,
 			255, 253, 253, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254,
@@ -610,7 +610,7 @@ var (
 			255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
 			255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 171, 69, 0, 0,
 		},
-		fsggml.TensorTypeQ5_K: {
+		fsggml.TensorTypeQ5K: {
 			32, 48, 0, 0, 136, 208, 216, 223, 0, 0, 0, 0, 8, 0, 7, 15, 254,
 			254, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254, 254,
 			254, 254, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255,
@@ -625,7 +625,7 @@ var (
 			204, 220, 220, 220, 221, 221, 221, 221, 221, 237, 237, 238, 238,
 			238, 238, 238, 238, 254, 255, 255, 255, 255, 255, 255, 255,
 		},
-		fsggml.TensorTypeQ6_K: {
+		fsggml.TensorTypeQ6K: {
 			96, 110, 92, 90, 88, 70, 68, 50, 48, 46, 44, 42, 24, 22, 4, 2, 80,
 			95, 78, 77, 76, 59, 58, 57, 40, 39, 38, 21, 20, 19, 2, 1, 75, 75,
 			74, 57, 57, 56, 55, 39, 38, 37, 21, 20, 20, 19, 2, 2, 72, 55, 55,
@@ -639,7 +639,7 @@ var (
 			0, 0, 0, 0, 0, 248, 240, 231, 224, 216, 208, 200, 192, 184, 176,
 			166, 160, 152, 144, 136, 128, 235, 43,
 		},
-		fsggml.TensorTypeQ3_K: {
+		fsggml.TensorTypeQ3K: {
 			1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20, 20, 23, 23, 7, 7, 6, 6, 6, 2,
 			1, 1, 1, 1, 0, 0, 22, 22, 6, 6, 5, 5, 5, 1, 1, 1, 1, 1, 0, 0, 0,

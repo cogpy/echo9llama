@@ -4,8 +4,8 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/cogpy/echo9llama/api"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestParser(t *testing.T) {

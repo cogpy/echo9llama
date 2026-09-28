@@ -125,11 +125,11 @@ func TestSentencePieceModelDecodeByteTokens(t *testing.T) {
 			"<0xA3>",
 		},
 		Types: []int32{
-			TOKEN_TYPE_NORMAL,
-			TOKEN_TYPE_BYTE,
-			TOKEN_TYPE_BYTE,
-			TOKEN_TYPE_BYTE,
-			TOKEN_TYPE_BYTE,
+			TokenTypeNormal,
+			TokenTypeByte,
+			TokenTypeByte,
+			TokenTypeByte,
+			TokenTypeByte,
 		},
 		Scores: []float32{0, 0, 0, 0, 0},
 	}

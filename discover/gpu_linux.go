@@ -95,9 +95,9 @@ func GetCPUMem() (memInfo, error) {
 	return mem, nil
 }
 
-const CpuInfoFilename = "/proc/cpuinfo"
+const CPUInfoFilename = "/proc/cpuinfo"
 
-type linuxCpuInfo struct {
+type linuxCPUInfo struct {
 	ID         string `cpuinfo:"processor"`
 	VendorID   string `cpuinfo:"vendor_id"`
 	ModelName  string `cpuinfo:"model name"`
@@ -107,7 +107,7 @@ type linuxCpuInfo struct {
 }
 
 func GetCPUDetails() ([]CPU, error) {
-	file, err := os.Open(CpuInfoFilename)
+	file, err := os.Open(CPUInfoFilename)
 	if err != nil {
 		return nil, err
 	}
@@ -118,8 +118,8 @@ func GetCPUDetails() ([]CPU, error) {
 func linuxCPUDetails(file io.Reader) ([]CPU, error) {
 	reColumns := regexp.MustCompile("\t+: ")
 	scanner := bufio.NewScanner(file)
-	cpuInfos := []linuxCpuInfo{}
-	cpu := &linuxCpuInfo{}
+	cpuInfos := []linuxCPUInfo{}
+	cpu := &linuxCPUInfo{}
 	for scanner.Scan() {
 		line := scanner.Text()
 		if sl := reColumns.Split(line, 2); len(sl) > 1 {
@@ -135,7 +135,7 @@ func linuxCPUDetails(file io.Reader) ([]CPU, error) {
 			}
 		} else if strings.TrimSpace(line) == "" && cpu.ID != "" {
 			cpuInfos = append(cpuInfos, *cpu)
-			cpu = &linuxCpuInfo{}
+			cpu = &linuxCPUInfo{}
 		}
 	}
 	if cpu.ID != "" {

@@ -8,14 +8,14 @@ import (
 
 // MockLLMProvider provides a mock implementation of LLM providers for testing
 type MockLLMProvider struct {
-	mu            sync.RWMutex
-	name          string
-	responses     map[string]string
-	defaultResp   string
-	callCount     int
-	latency       time.Duration
-	shouldFail    bool
-	failureError  error
+	mu           sync.RWMutex
+	name         string
+	responses    map[string]string
+	defaultResp  string
+	callCount    int
+	latency      time.Duration
+	shouldFail   bool
+	failureError error
 }
 
 // NewMockLLMProvider creates a new mock LLM provider
@@ -110,9 +110,9 @@ func (m *MockLLMProvider) Reset() {
 
 // MockMemoryStore provides a mock implementation of memory storage
 type MockMemoryStore struct {
-	mu      sync.RWMutex
-	nodes   map[string]interface{}
-	edges   map[string]interface{}
+	mu    sync.RWMutex
+	nodes map[string]interface{}
+	edges map[string]interface{}
 }
 
 // NewMockMemoryStore creates a new mock memory store

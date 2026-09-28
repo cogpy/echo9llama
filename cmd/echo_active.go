@@ -184,7 +184,7 @@ func displayEchoAssessment(assessment echoAssessment, jsonFormat bool, outputFil
 	}
 
 	if outputFile != "" {
-		if err := os.WriteFile(outputFile, data, 0644); err != nil {
+		if err := os.WriteFile(outputFile, data, 0o644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 		fmt.Printf("Assessment written to: %s\n", outputFile)
@@ -221,7 +221,7 @@ func echoRequest(ctx context.Context, method string, path string, body any, out 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("Deep Tree Echo server not responding; start it with 'ollama serve': %w", err)
+		return fmt.Errorf("the Deep Tree Echo server is not responding; start it with 'ollama serve': %w", err)
 	}
 	defer resp.Body.Close()
 

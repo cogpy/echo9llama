@@ -68,10 +68,10 @@ type Usage struct {
 
 type ResponseFormat struct {
 	Type       string      `json:"type"`
-	JsonSchema *JsonSchema `json:"json_schema,omitempty"`
+	JSONSchema *JSONSchema `json:"json_schema,omitempty"`
 }
 
-type JsonSchema struct {
+type JSONSchema struct {
 	Schema json.RawMessage `json:"schema"`
 }
 
@@ -106,7 +106,7 @@ type ChatCompletionRequest struct {
 }
 
 type ChatCompletion struct {
-	Id                string   `json:"id"`
+	ID                string   `json:"id"`
 	Object            string   `json:"object"`
 	Created           int64    `json:"created"`
 	Model             string   `json:"model"`
@@ -116,7 +116,7 @@ type ChatCompletion struct {
 }
 
 type ChatCompletionChunk struct {
-	Id                string        `json:"id"`
+	ID                string        `json:"id"`
 	Object            string        `json:"object"`
 	Created           int64         `json:"created"`
 	Model             string        `json:"model"`
@@ -142,7 +142,7 @@ type CompletionRequest struct {
 }
 
 type Completion struct {
-	Id                string                `json:"id"`
+	ID                string                `json:"id"`
 	Object            string                `json:"object"`
 	Created           int64                 `json:"created"`
 	Model             string                `json:"model"`
@@ -152,7 +152,7 @@ type Completion struct {
 }
 
 type CompletionChunk struct {
-	Id                string                `json:"id"`
+	ID                string                `json:"id"`
 	Object            string                `json:"object"`
 	Created           int64                 `json:"created"`
 	Choices           []CompleteChunkChoice `json:"choices"`
@@ -172,7 +172,7 @@ type ToolCall struct {
 }
 
 type Model struct {
-	Id      string `json:"id"`
+	ID      string `json:"id"`
 	Object  string `json:"object"`
 	Created int64  `json:"created"`
 	OwnedBy string `json:"owned_by"`
@@ -223,7 +223,7 @@ func toUsage(r api.ChatResponse) Usage {
 	}
 }
 
-func toolCallId() string {
+func toolCallID() string {
 	const letterBytes = "abcdefghijklmnopqrstuvwxyz0123456789"
 	b := make([]byte, 8)
 	for i := range b {
@@ -235,7 +235,7 @@ func toolCallId() string {
 func toToolCalls(tc []api.ToolCall) []ToolCall {
 	toolCalls := make([]ToolCall, len(tc))
 	for i, tc := range tc {
-		toolCalls[i].ID = toolCallId()
+		toolCalls[i].ID = toolCallID()
 		toolCalls[i].Type = "function"
 		toolCalls[i].Function.Name = tc.Function.Name
 		toolCalls[i].Index = tc.Function.Index
@@ -254,7 +254,7 @@ func toToolCalls(tc []api.ToolCall) []ToolCall {
 func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
 	toolCalls := toToolCalls(r.Message.ToolCalls)
 	return ChatCompletion{
-		Id:                id,
+		ID:                id,
 		Object:            "chat.completion",
 		Created:           r.CreatedAt.Unix(),
 		Model:             r.Model,
@@ -279,7 +279,7 @@ func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
 func toChunk(id string, r api.ChatResponse, toolCallSent bool) ChatCompletionChunk {
 	toolCalls := toToolCalls(r.Message.ToolCalls)
 	return ChatCompletionChunk{
-		Id:                id,
+		ID:                id,
 		Object:            "chat.completion.chunk",
 		Created:           time.Now().Unix(),
 		Model:             r.Model,
@@ -310,7 +310,7 @@ func toUsageGenerate(r api.GenerateResponse) Usage {
 
 func toCompletion(id string, r api.GenerateResponse) Completion {
 	return Completion{
-		Id:                id,
+		ID:                id,
 		Object:            "text_completion",
 		Created:           r.CreatedAt.Unix(),
 		Model:             r.Model,
@@ -331,7 +331,7 @@ func toCompletion(id string, r api.GenerateResponse) Completion {
 
 func toCompleteChunk(id string, r api.GenerateResponse) CompletionChunk {
 	return CompletionChunk{
-		Id:                id,
+		ID:                id,
 		Object:            "text_completion",
 		Created:           time.Now().Unix(),
 		Model:             r.Model,
@@ -353,7 +353,7 @@ func toListCompletion(r api.ListResponse) ListCompletion {
 	var data []Model
 	for _, m := range r.Models {
 		data = append(data, Model{
-			Id:      m.Name,
+			ID:      m.Name,
 			Object:  "model",
 			Created: m.ModifiedAt.Unix(),
 			OwnedBy: model.ParseName(m.Name).Namespace,
@@ -393,7 +393,7 @@ func toEmbeddingList(model string, r api.EmbedResponse) EmbeddingList {
 
 func toModel(r api.ShowResponse, m string) Model {
 	return Model{
-		Id:      m,
+		ID:      m,
 		Object:  "model",
 		Created: r.ModifiedAt.Unix(),
 		OwnedBy: model.ParseName(m).Namespace,
@@ -552,8 +552,8 @@ func fromChatRequest(r ChatCompletionRequest) (*api.ChatRequest, error) {
 		case "json_object":
 			format = json.RawMessage(`"json"`)
 		case "json_schema":
-			if r.ResponseFormat.JsonSchema != nil {
-				format = r.ResponseFormat.JsonSchema.Schema
+			if r.ResponseFormat.JSONSchema != nil {
+				format = r.ResponseFormat.JSONSchema.Schema
 			}
 		}
 	}
@@ -722,7 +722,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 		}
 
 		w.ResponseWriter.Header().Set("Content-Type", "text/event-stream")
-		_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+		_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 		if err != nil {
 			return 0, err
 		}
@@ -736,7 +736,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+				_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 				if err != nil {
 					return 0, err
 				}
@@ -761,7 +761,7 @@ func (w *ChatWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *ChatWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -788,7 +788,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 		}
 
 		w.ResponseWriter.Header().Set("Content-Type", "text/event-stream")
-		_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+		_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 		if err != nil {
 			return 0, err
 		}
@@ -802,7 +802,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 				if err != nil {
 					return 0, err
 				}
-				_, err = w.ResponseWriter.Write([]byte(fmt.Sprintf("data: %s\n\n", d)))
+				_, err = fmt.Fprintf(w.ResponseWriter, "data: %s\n\n", d)
 				if err != nil {
 					return 0, err
 				}
@@ -827,7 +827,7 @@ func (w *CompleteWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *CompleteWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -852,7 +852,7 @@ func (w *ListWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *ListWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -878,7 +878,7 @@ func (w *RetrieveWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *RetrieveWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}
@@ -903,7 +903,7 @@ func (w *EmbedWriter) writeResponse(data []byte) (int, error) {
 }
 
 func (w *EmbedWriter) Write(data []byte) (int, error) {
-	code := w.ResponseWriter.Status()
+	code := w.Status()
 	if code != http.StatusOK {
 		return w.writeError(data)
 	}

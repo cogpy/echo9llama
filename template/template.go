@@ -150,7 +150,7 @@ func Parse(s string) (*Template, error) {
 	t := Template{Template: tmpl, raw: s}
 	if vars := t.Vars(); !slices.Contains(vars, "messages") && !slices.Contains(vars, "response") {
 		// touch up the template and append {{ .Response }}
-		tmpl.Tree.Root.Nodes = append(tmpl.Tree.Root.Nodes, &response)
+		tmpl.Root.Nodes = append(tmpl.Root.Nodes, &response)
 	}
 
 	return &t, nil
@@ -229,7 +229,7 @@ func (t *Template) Subtree(fn func(parse.Node) bool) *template.Template {
 		return nil
 	}
 
-	if n := walk(t.Tree.Root); n != nil {
+	if n := walk(t.Root); n != nil {
 		return (&template.Template{
 			Tree: &parse.Tree{
 				Root: &parse.ListNode{
@@ -308,7 +308,7 @@ func (t *Template) Execute(w io.Writer, v Values) error {
 	}
 
 	var cut bool
-	nodes := deleteNode(t.Template.Root.Copy(), func(n parse.Node) bool {
+	nodes := deleteNode(t.Root.Copy(), func(n parse.Node) bool {
 		if field, ok := n.(*parse.FieldNode); ok && slices.Contains(field.Ident, "Response") {
 			cut = true
 			return false

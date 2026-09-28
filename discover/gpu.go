@@ -551,7 +551,7 @@ func loadCUDARTMgmt(cudartLibPaths []string) (int, *C.cudart_handle_t, string, e
 		defer C.free(unsafe.Pointer(lib))
 		C.cudart_init(lib, &resp)
 		if resp.err != nil {
-			err = fmt.Errorf("Unable to load cudart library %s: %s", libPath, C.GoString(resp.err))
+			err = fmt.Errorf("unable to load cudart library %s: %s", libPath, C.GoString(resp.err))
 			slog.Debug(err.Error())
 			C.free(unsafe.Pointer(resp.err))
 		} else {
@@ -589,7 +589,7 @@ func loadNVCUDAMgmt(nvcudaLibPaths []string) (int, *C.nvcuda_handle_t, string, e
 				if strings.Contains(msg, "wrong ELF class") {
 					slog.Debug("skipping 32bit library", "library", libPath)
 				} else {
-					err = fmt.Errorf("Unable to load cudart library %s: %s", libPath, C.GoString(resp.err))
+					err = fmt.Errorf("unable to load cudart library %s: %s", libPath, C.GoString(resp.err))
 					slog.Info(err.Error())
 				}
 			}
@@ -613,7 +613,7 @@ func loadNVMLMgmt(nvmlLibPaths []string) (*C.nvml_handle_t, string, error) {
 		defer C.free(unsafe.Pointer(lib))
 		C.nvml_init(lib, &resp)
 		if resp.err != nil {
-			err = fmt.Errorf("Unable to load NVML management library %s: %s", libPath, C.GoString(resp.err))
+			err = fmt.Errorf("unable to load NVML management library %s: %s", libPath, C.GoString(resp.err))
 			slog.Info(err.Error())
 			C.free(unsafe.Pointer(resp.err))
 		} else {
@@ -628,7 +628,7 @@ func loadNVMLMgmt(nvmlLibPaths []string) (*C.nvml_handle_t, string, error) {
 // Returns: num devices, handle, libPath, error
 func loadOneapiMgmt(oneapiLibPaths []string) (int, *C.oneapi_handle_t, string, error) {
 	var resp C.oneapi_init_resp_t
-	num_devices := 0
+	numDevices := 0
 	resp.oh.verbose = getVerboseState()
 	var err error
 	for _, libPath := range oneapiLibPaths {
@@ -636,15 +636,15 @@ func loadOneapiMgmt(oneapiLibPaths []string) (int, *C.oneapi_handle_t, string, e
 		defer C.free(unsafe.Pointer(lib))
 		C.oneapi_init(lib, &resp)
 		if resp.err != nil {
-			err = fmt.Errorf("Unable to load oneAPI management library %s: %s", libPath, C.GoString(resp.err))
+			err = fmt.Errorf("unable to load oneAPI management library %s: %s", libPath, C.GoString(resp.err))
 			slog.Debug(err.Error())
 			C.free(unsafe.Pointer(resp.err))
 		} else {
 			err = nil
 			for i := range resp.oh.num_drivers {
-				num_devices += int(C.oneapi_get_device_count(resp.oh, C.int(i)))
+				numDevices += int(C.oneapi_get_device_count(resp.oh, C.int(i)))
 			}
-			return num_devices, &resp.oh, libPath, err
+			return numDevices, &resp.oh, libPath, err
 		}
 	}
 	return 0, nil, "", err

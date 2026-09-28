@@ -8,9 +8,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/cogpy/echo9llama/logutil"
 	"github.com/dlclark/regexp2"
 	heap "github.com/emirpasic/gods/v2/trees/binaryheap"
-	"github.com/cogpy/echo9llama/logutil"
 )
 
 type BytePairEncoding struct {

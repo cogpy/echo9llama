@@ -458,7 +458,7 @@ func (s *Server) processBatch() error {
 			}
 
 			batch.Positions = append(batch.Positions, int32(len(seq.cache.Inputs)+len(seq.pendingInputs)))
-			batch.Sequences = append(batch.Sequences, seq.cache.Id)
+			batch.Sequences = append(batch.Sequences, seq.cache.ID)
 
 			seq.iBatch = len(batch.Outputs)
 			if i+1 == len(seq.inputs) {
