@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/embodiment"
 	"github.com/cogpy/echo9llama/core/integration"
 	"github.com/cogpy/echo9llama/core/llm"
 )
@@ -24,6 +25,8 @@ type echoRuntime struct {
 	memory   map[string]echoMemory
 	env      *affordanceEnvironment
 	started  time.Time
+
+	embodiment *embodiment.Hub
 }
 
 type echoMemory struct {
@@ -125,6 +128,8 @@ func newEchoRuntime() (*echoRuntime, error) {
 		memory:   make(map[string]echoMemory),
 		env:      env,
 		started:  time.Now(),
+		// GTAngelEcho embodied-cognition link (contract dte.embodiment/v1)
+		embodiment: embodiment.NewHub(0.2, 256),
 	}, nil
 }
 
@@ -149,6 +154,7 @@ func (r *echoRuntime) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/echo/environment", r.handleEchoEnvironment)
 	mux.HandleFunc("/api/echo/environment/action", r.handleEchoEnvironmentAction)
 	mux.HandleFunc("/api/echo/environment/recall", r.handleEchoEnvironmentRecall)
+	r.embodiment.Register(mux)
 }
 
 func (r *echoRuntime) handleRoot(w http.ResponseWriter, req *http.Request) {
@@ -162,7 +168,7 @@ func (r *echoRuntime) handleRoot(w http.ResponseWriter, req *http.Request) {
 			"active":    true,
 			"principle": "Autonomy is cultivated through endogenous self-restraint rather than imposed control.",
 		},
-		"endpoints": []string{"/api/generate", "/api/chat", "/api/echo/status", "/api/echo/think", "/api/echo/gestalt"},
+		"endpoints": []string{"/api/generate", "/api/chat", "/api/echo/status", "/api/echo/think", "/api/echo/gestalt", embodiment.Path},
 	})
 }
 

@@ -1,0 +1,19 @@
+{
+  "contract": "dte.embodiment/v1",
+  "source": "archecho-desk",
+  "frame": 31,
+  "persona": "Lucy",
+  "valence": -0.4,
+  "arousal": 0.85,
+  "flow": 0.1,
+  "cognitiveLoad": 0.02,
+  "chaos": 0.15,
+  "lyapunov": 0.9,
+  "endocrineMode": "STRESSED",
+  "expression": "FRUSTRATED",
+  "dove9Term": "T2_IDEA_FORMATION",
+  "autonomyLevel": 1,
+  "autonomyProgress": 0.42,
+  "scenario": "RANKED_MATCH",
+  "traits": { "Confidence": 0.95 }
+}
