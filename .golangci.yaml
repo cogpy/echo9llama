@@ -37,7 +37,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
-      - sample$
+      - ^sample/
 severity:
   default: error
   rules:
