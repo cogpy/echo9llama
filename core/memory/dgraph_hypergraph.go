@@ -17,42 +17,42 @@ import (
 type DgraphHypergraph struct {
 	mu           sync.RWMutex
 	client       *persistence.DgraphClient
-	ctx          context.Context
+	ctx          context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel       context.CancelFunc
 	schemaLoaded bool
 
 	// Local cache for frequently accessed nodes
-	nodeCache    map[string]*MemoryNode
-	cacheSize    int
-	cacheTTL     time.Duration
+	nodeCache map[string]*MemoryNode
+	cacheSize int
+	cacheTTL  time.Duration
 }
 
 // DgraphNode represents a node in Dgraph format
 type DgraphNode struct {
-	UID         string                 `json:"uid,omitempty"`
-	DType       []string               `json:"dgraph.type,omitempty"`
-	NodeID      string                 `json:"node_id,omitempty"`
-	NodeType    string                 `json:"node_type,omitempty"`
-	Content     string                 `json:"content,omitempty"`
-	Embedding   []float64              `json:"embedding,omitempty"`
-	Activation  float64                `json:"activation,omitempty"`
-	Importance  float64                `json:"importance,omitempty"`
-	CreatedAt   time.Time              `json:"created_at,omitempty"`
-	AccessedAt  time.Time              `json:"accessed_at,omitempty"`
-	AccessCount int                    `json:"access_count,omitempty"`
-	Metadata    string                 `json:"metadata,omitempty"`
+	UID         string    `json:"uid,omitempty"`
+	DType       []string  `json:"dgraph.type,omitempty"`
+	NodeID      string    `json:"node_id,omitempty"`
+	NodeType    string    `json:"node_type,omitempty"`
+	Content     string    `json:"content,omitempty"`
+	Embedding   []float64 `json:"embedding,omitempty"`
+	Activation  float64   `json:"activation,omitempty"`
+	Importance  float64   `json:"importance,omitempty"`
+	CreatedAt   time.Time `json:"created_at,omitempty"`
+	AccessedAt  time.Time `json:"accessed_at,omitempty"`
+	AccessCount int       `json:"access_count,omitempty"`
+	Metadata    string    `json:"metadata,omitempty"`
 }
 
 // DgraphEdge represents an edge in Dgraph format
 type DgraphEdge struct {
-	UID        string    `json:"uid,omitempty"`
-	DType      []string  `json:"dgraph.type,omitempty"`
-	EdgeID     string    `json:"edge_id,omitempty"`
-	EdgeType   string    `json:"edge_type,omitempty"`
-	Weight     float64   `json:"weight,omitempty"`
-	Confidence float64   `json:"confidence,omitempty"`
-	CreatedAt  time.Time `json:"created_at,omitempty"`
-	Metadata   string    `json:"metadata,omitempty"`
+	UID        string      `json:"uid,omitempty"`
+	DType      []string    `json:"dgraph.type,omitempty"`
+	EdgeID     string      `json:"edge_id,omitempty"`
+	EdgeType   string      `json:"edge_type,omitempty"`
+	Weight     float64     `json:"weight,omitempty"`
+	Confidence float64     `json:"confidence,omitempty"`
+	CreatedAt  time.Time   `json:"created_at,omitempty"`
+	Metadata   string      `json:"metadata,omitempty"`
 	Source     *DgraphNode `json:"source,omitempty"`
 	Target     *DgraphNode `json:"target,omitempty"`
 }
@@ -196,7 +196,7 @@ func (hg *DgraphHypergraph) GetNode(nodeID string) (*MemoryNode, error) {
 	}
 
 	dgNode := result.Node[0]
-	
+
 	// Parse metadata
 	var metadata map[string]interface{}
 	if dgNode.Metadata != "" {
@@ -298,7 +298,7 @@ func (hg *DgraphHypergraph) AddHyperEdge(hyperEdge *HyperEdge) error {
 	dgHyperEdge := map[string]interface{}{
 		"dgraph.type":    []string{"HyperEdge"},
 		"hyperedge_id":   hyperEdge.ID,
-		"hyperedge_type": string(hyperEdge.Type),
+		"hyperedge_type": hyperEdge.Type,
 		"weight":         0.0, // HyperEdge has no Weight field
 		"created_at":     time.Now(),
 		"metadata":       string(metadataJSON),

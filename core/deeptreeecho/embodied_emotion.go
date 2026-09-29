@@ -36,10 +36,10 @@ func (et EmotionType) String() string {
 // Emotion represents a discrete emotional state with cognitive effects
 type Emotion struct {
 	Type      EmotionType
-	Intensity float64       // 0.0 to 1.0
+	Intensity float64 // 0.0 to 1.0
 	Duration  time.Duration
 	OnsetTime time.Time
-	
+
 	// Cognitive effects (constitutive of knowing, not decorative)
 	AttentionScope    float64 // Joy broadens (>1.0), fear narrows (<1.0)
 	ProcessingDepth   float64 // Wonder deepens (>1.0), anxiety hastens (<1.0)
@@ -51,19 +51,19 @@ type Emotion struct {
 // EmotionSystem manages embodied emotional states and their cognitive effects
 type EmotionSystem struct {
 	mu sync.RWMutex
-	
+
 	// Current emotional state
 	emotions        map[EmotionType]*Emotion
 	dominantEmotion EmotionType
 	emotionBlend    map[EmotionType]float64
-	
+
 	// Dimensional affect
 	arousal float64 // 0.0 (calm) to 1.0 (excited)
 	valence float64 // -1.0 (negative) to 1.0 (positive)
-	
+
 	// History
 	emotionHistory []EmotionEvent
-	
+
 	// Parameters
 	decayRate      float64 // How fast emotions fade
 	blendingFactor float64 // How much emotions mix
@@ -89,10 +89,10 @@ func NewEmotionSystem() *EmotionSystem {
 		arousal:        0.5,
 		valence:        0.5,
 	}
-	
+
 	// Initialize all emotion types
 	es.initializeEmotions()
-	
+
 	return es
 }
 
@@ -103,11 +103,11 @@ func (es *EmotionSystem) initializeEmotions() {
 		EmotionAnger, EmotionDisgust, EmotionContempt, EmotionFear,
 		EmotionShame, EmotionGuilt,
 	}
-	
+
 	for _, et := range emotionTypes {
 		es.emotions[et] = es.createEmotion(et, 0.1) // Baseline low intensity
 	}
-	
+
 	// Start with mild interest (default cognitive state)
 	es.emotions[EmotionInterest].Intensity = 0.4
 	es.dominantEmotion = EmotionInterest
@@ -120,7 +120,7 @@ func (es *EmotionSystem) createEmotion(emotionType EmotionType, intensity float6
 		Intensity: intensity,
 		OnsetTime: time.Now(),
 	}
-	
+
 	// Set cognitive effects based on emotion type
 	switch emotionType {
 	case EmotionInterest:
@@ -129,49 +129,49 @@ func (es *EmotionSystem) createEmotion(emotionType EmotionType, intensity float6
 		emotion.ApproachAvoidance = 0.8
 		emotion.MemoryStrength = 1.2
 		emotion.ExplorationBias = 0.6
-		
+
 	case EmotionJoy:
 		emotion.AttentionScope = 1.5 // Broadens attention
 		emotion.ProcessingDepth = 1.0
 		emotion.ApproachAvoidance = 0.9
 		emotion.MemoryStrength = 1.3
 		emotion.ExplorationBias = 0.8
-		
+
 	case EmotionSurprise:
-		emotion.AttentionScope = 1.8 // Very broad
-		emotion.ProcessingDepth = 0.7 // Shallow initially
+		emotion.AttentionScope = 1.8    // Very broad
+		emotion.ProcessingDepth = 0.7   // Shallow initially
 		emotion.ApproachAvoidance = 0.0 // Neutral
-		emotion.MemoryStrength = 1.5 // Very memorable
+		emotion.MemoryStrength = 1.5    // Very memorable
 		emotion.ExplorationBias = 0.5
-		
+
 	case EmotionFear:
-		emotion.AttentionScope = 0.5 // Narrows to threat
-		emotion.ProcessingDepth = 0.6 // Quick, shallow
+		emotion.AttentionScope = 0.5     // Narrows to threat
+		emotion.ProcessingDepth = 0.6    // Quick, shallow
 		emotion.ApproachAvoidance = -0.9 // Strong avoidance
-		emotion.MemoryStrength = 1.8 // Very memorable
-		emotion.ExplorationBias = -0.7 // Avoid exploration
-		
+		emotion.MemoryStrength = 1.8     // Very memorable
+		emotion.ExplorationBias = -0.7   // Avoid exploration
+
 	case EmotionAnger:
 		emotion.AttentionScope = 0.7
 		emotion.ProcessingDepth = 0.8
 		emotion.ApproachAvoidance = 0.7 // Approach to confront
 		emotion.MemoryStrength = 1.4
 		emotion.ExplorationBias = 0.3
-		
+
 	case EmotionSadness:
 		emotion.AttentionScope = 0.8
 		emotion.ProcessingDepth = 1.4 // Deep rumination
 		emotion.ApproachAvoidance = -0.5
 		emotion.MemoryStrength = 1.3
 		emotion.ExplorationBias = -0.4
-		
+
 	case EmotionDisgust:
 		emotion.AttentionScope = 0.6
 		emotion.ProcessingDepth = 0.5
 		emotion.ApproachAvoidance = -0.8
 		emotion.MemoryStrength = 1.2
 		emotion.ExplorationBias = -0.6
-		
+
 	default:
 		// Default neutral effects
 		emotion.AttentionScope = 1.0
@@ -180,7 +180,7 @@ func (es *EmotionSystem) createEmotion(emotionType EmotionType, intensity float6
 		emotion.MemoryStrength = 1.0
 		emotion.ExplorationBias = 0.0
 	}
-	
+
 	return emotion
 }
 
@@ -188,10 +188,10 @@ func (es *EmotionSystem) createEmotion(emotionType EmotionType, intensity float6
 func (es *EmotionSystem) TriggerEmotion(emotionType EmotionType, intensity float64, trigger string) {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	
+
 	// Clamp intensity
 	intensity = math.Max(0.0, math.Min(1.0, intensity))
-	
+
 	// Update emotion
 	if emotion, exists := es.emotions[emotionType]; exists {
 		emotion.Intensity = intensity
@@ -199,13 +199,13 @@ func (es *EmotionSystem) TriggerEmotion(emotionType EmotionType, intensity float
 	} else {
 		es.emotions[emotionType] = es.createEmotion(emotionType, intensity)
 	}
-	
+
 	// Record event
 	es.recordEmotionEvent(emotionType, intensity, trigger)
-	
+
 	// Update dimensional affect
 	es.updateDimensionalAffect()
-	
+
 	// Determine dominant emotion
 	es.updateDominantEmotion()
 }
@@ -214,23 +214,23 @@ func (es *EmotionSystem) TriggerEmotion(emotionType EmotionType, intensity float
 func (es *EmotionSystem) UpdateEmotions(deltaTime time.Duration) {
 	es.mu.Lock()
 	defer es.mu.Unlock()
-	
+
 	dt := deltaTime.Seconds()
-	
+
 	// Decay all emotions
 	for _, emotion := range es.emotions {
 		// Exponential decay
 		emotion.Intensity *= math.Exp(-es.decayRate * dt)
-		
+
 		// Floor at baseline
 		if emotion.Intensity < 0.1 {
 			emotion.Intensity = 0.1
 		}
 	}
-	
+
 	// Update dimensional affect
 	es.updateDimensionalAffect()
-	
+
 	// Update dominant emotion
 	es.updateDominantEmotion()
 }
@@ -245,9 +245,9 @@ func (es *EmotionSystem) updateDimensionalAffect() {
 	arousalSum += es.emotions[EmotionSurprise].Intensity * 1.0
 	arousalSum += es.emotions[EmotionInterest].Intensity * 0.6
 	arousalSum -= es.emotions[EmotionSadness].Intensity * 0.3
-	
+
 	es.arousal = math.Max(0.0, math.Min(1.0, arousalSum/5.0))
-	
+
 	// Valence (pleasantness)
 	valenceSum := 0.0
 	valenceSum += es.emotions[EmotionJoy].Intensity * 1.0
@@ -256,7 +256,7 @@ func (es *EmotionSystem) updateDimensionalAffect() {
 	valenceSum -= es.emotions[EmotionFear].Intensity * 0.9
 	valenceSum -= es.emotions[EmotionAnger].Intensity * 0.7
 	valenceSum -= es.emotions[EmotionDisgust].Intensity * 0.8
-	
+
 	es.valence = math.Max(-1.0, math.Min(1.0, valenceSum))
 }
 
@@ -264,16 +264,16 @@ func (es *EmotionSystem) updateDimensionalAffect() {
 func (es *EmotionSystem) updateDominantEmotion() {
 	maxIntensity := 0.0
 	dominant := EmotionInterest // Default
-	
+
 	for emotionType, emotion := range es.emotions {
 		if emotion.Intensity > maxIntensity {
 			maxIntensity = emotion.Intensity
 			dominant = emotionType
 		}
 	}
-	
+
 	es.dominantEmotion = dominant
-	
+
 	// Update blend
 	es.emotionBlend = make(map[EmotionType]float64)
 	for emotionType, emotion := range es.emotions {
@@ -287,7 +287,7 @@ func (es *EmotionSystem) updateDominantEmotion() {
 func (es *EmotionSystem) GetCognitiveEffects() CognitiveEffects {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	effects := CognitiveEffects{
 		AttentionScope:    1.0,
 		ProcessingDepth:   1.0,
@@ -295,7 +295,7 @@ func (es *EmotionSystem) GetCognitiveEffects() CognitiveEffects {
 		MemoryStrength:    1.0,
 		ExplorationBias:   0.0,
 	}
-	
+
 	// Weighted blend of all active emotions
 	totalWeight := 0.0
 	for emotionType, weight := range es.emotionBlend {
@@ -308,7 +308,7 @@ func (es *EmotionSystem) GetCognitiveEffects() CognitiveEffects {
 			effects.ExplorationBias += emotion.ExplorationBias * weight
 		}
 	}
-	
+
 	if totalWeight > 0 {
 		effects.AttentionScope /= (totalWeight + 1.0)
 		effects.ProcessingDepth /= (totalWeight + 1.0)
@@ -316,7 +316,7 @@ func (es *EmotionSystem) GetCognitiveEffects() CognitiveEffects {
 		effects.MemoryStrength /= (totalWeight + 1.0)
 		effects.ExplorationBias /= totalWeight
 	}
-	
+
 	return effects
 }
 
@@ -337,9 +337,9 @@ func (es *EmotionSystem) recordEmotionEvent(emotionType EmotionType, intensity f
 		Intensity: intensity,
 		Trigger:   trigger,
 	}
-	
+
 	es.emotionHistory = append(es.emotionHistory, event)
-	
+
 	// Keep last 100 events
 	if len(es.emotionHistory) > 100 {
 		es.emotionHistory = es.emotionHistory[1:]
@@ -350,7 +350,7 @@ func (es *EmotionSystem) recordEmotionEvent(emotionType EmotionType, intensity f
 func (es *EmotionSystem) GetEmotionalState() map[string]interface{} {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"dominant_emotion": es.dominantEmotion.String(),
 		"arousal":          es.arousal,
@@ -364,7 +364,7 @@ func (es *EmotionSystem) GetEmotionalState() map[string]interface{} {
 func (es *EmotionSystem) GetDominantEmotion() EmotionType {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	return es.dominantEmotion
 }
 
@@ -372,7 +372,7 @@ func (es *EmotionSystem) GetDominantEmotion() EmotionType {
 func (es *EmotionSystem) GetArousal() float64 {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	return es.arousal
 }
 
@@ -380,6 +380,6 @@ func (es *EmotionSystem) GetArousal() float64 {
 func (es *EmotionSystem) GetValence() float64 {
 	es.mu.RLock()
 	defer es.mu.RUnlock()
-	
+
 	return es.valence
 }

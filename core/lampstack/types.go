@@ -7,7 +7,7 @@ import (
 
 // Message represents a chat message
 type Message struct {
-	Role      string                 `json:"role"`       // "user", "assistant", "system"
+	Role      string                 `json:"role"` // "user", "assistant", "system"
 	Content   string                 `json:"content"`
 	Name      string                 `json:"name,omitempty"`
 	Timestamp time.Time              `json:"timestamp,omitempty"`
@@ -16,14 +16,14 @@ type Message struct {
 
 // GenerationRequest represents a request for text generation
 type GenerationRequest struct {
-	Prompt       string                 `json:"prompt"`
-	SystemPrompt string                 `json:"system_prompt,omitempty"`
-	MaxTokens    int                    `json:"max_tokens,omitempty"`
-	Temperature  float64                `json:"temperature,omitempty"`
-	TopP         float64                `json:"top_p,omitempty"`
-	StopSequences []string              `json:"stop_sequences,omitempty"`
-	UseCognition bool                   `json:"use_cognition"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Prompt        string                 `json:"prompt"`
+	SystemPrompt  string                 `json:"system_prompt,omitempty"`
+	MaxTokens     int                    `json:"max_tokens,omitempty"`
+	Temperature   float64                `json:"temperature,omitempty"`
+	TopP          float64                `json:"top_p,omitempty"`
+	StopSequences []string               `json:"stop_sequences,omitempty"`
+	UseCognition  bool                   `json:"use_cognition"`
+	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // GenerationResponse represents a generation response
@@ -50,12 +50,12 @@ type ChatResponse struct {
 
 // ThoughtResponse represents a cognitive thought
 type ThoughtResponse struct {
-	Thought       string          `json:"thought"`
-	ThoughtType   ThoughtType     `json:"thought_type"`
-	Confidence    float64         `json:"confidence"`
-	Associations  []string        `json:"associations,omitempty"`
-	CognitiveInfo *CognitiveInfo  `json:"cognitive_info,omitempty"`
-	Timestamp     time.Time       `json:"timestamp"`
+	Thought       string         `json:"thought"`
+	ThoughtType   ThoughtType    `json:"thought_type"`
+	Confidence    float64        `json:"confidence"`
+	Associations  []string       `json:"associations,omitempty"`
+	CognitiveInfo *CognitiveInfo `json:"cognitive_info,omitempty"`
+	Timestamp     time.Time      `json:"timestamp"`
 }
 
 // ThoughtType categorizes different types of thoughts
@@ -83,22 +83,22 @@ func (t ThoughtType) String() string {
 
 // ReflectionResponse represents a meta-cognitive reflection
 type ReflectionResponse struct {
-	Reflection    string         `json:"reflection"`
-	Insights      []string       `json:"insights,omitempty"`
+	Reflection    string             `json:"reflection"`
+	Insights      []string           `json:"insights,omitempty"`
 	WisdomGains   map[string]float64 `json:"wisdom_gains,omitempty"`
-	CognitiveInfo *CognitiveInfo `json:"cognitive_info,omitempty"`
-	Timestamp     time.Time      `json:"timestamp"`
+	CognitiveInfo *CognitiveInfo     `json:"cognitive_info,omitempty"`
+	Timestamp     time.Time          `json:"timestamp"`
 }
 
 // CognitiveInfo provides information about cognitive processing
 type CognitiveInfo struct {
-	ProcessingMode    string             `json:"processing_mode"`
-	CurrentPhase      int                `json:"current_phase"`
-	ActiveEngines     []string           `json:"active_engines"`
-	ResonanceLevel    float64            `json:"resonance_level"`
-	AwarenessLevel    float64            `json:"awareness_level"`
-	EmotionalState    *EmotionalState    `json:"emotional_state,omitempty"`
-	WisdomDimensions  map[string]float64 `json:"wisdom_dimensions,omitempty"`
+	ProcessingMode   string             `json:"processing_mode"`
+	CurrentPhase     int                `json:"current_phase"`
+	ActiveEngines    []string           `json:"active_engines"`
+	ResonanceLevel   float64            `json:"resonance_level"`
+	AwarenessLevel   float64            `json:"awareness_level"`
+	EmotionalState   *EmotionalState    `json:"emotional_state,omitempty"`
+	WisdomDimensions map[string]float64 `json:"wisdom_dimensions,omitempty"`
 }
 
 // EmotionalState represents the current emotional state
@@ -112,39 +112,39 @@ type EmotionalState struct {
 
 // CognitiveState represents the overall cognitive state
 type CognitiveState struct {
-	Phase            string         `json:"phase"`
-	Mode             string         `json:"mode"`
-	Awareness        float64        `json:"awareness"`
-	CognitiveLoad    float64        `json:"cognitive_load"`
-	Coherence        float64        `json:"coherence"`
-	EnergyLevel      float64        `json:"energy_level"`
-	EmotionalState   *EmotionalState `json:"emotional_state"`
-	ActiveProcesses  []string       `json:"active_processes"`
-	CurrentGoals     []string       `json:"current_goals"`
-	RecentThoughts   []string       `json:"recent_thoughts"`
-	Timestamp        time.Time      `json:"timestamp"`
+	Phase           string          `json:"phase"`
+	Mode            string          `json:"mode"`
+	Awareness       float64         `json:"awareness"`
+	CognitiveLoad   float64         `json:"cognitive_load"`
+	Coherence       float64         `json:"coherence"`
+	EnergyLevel     float64         `json:"energy_level"`
+	EmotionalState  *EmotionalState `json:"emotional_state"`
+	ActiveProcesses []string        `json:"active_processes"`
+	CurrentGoals    []string        `json:"current_goals"`
+	RecentThoughts  []string        `json:"recent_thoughts"`
+	Timestamp       time.Time       `json:"timestamp"`
 }
 
 // MemoryEntry represents a memory stored in the system
 type MemoryEntry struct {
-	ID          string                 `json:"id"`
-	Type        MemoryType             `json:"type"`
-	Content     string                 `json:"content"`
-	Embedding   []float64              `json:"embedding,omitempty"`
-	Importance  float64                `json:"importance"`
-	Associations []string              `json:"associations,omitempty"`
-	Tags        []string               `json:"tags,omitempty"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	CreatedAt   time.Time              `json:"created_at"`
-	AccessedAt  time.Time              `json:"accessed_at"`
-	AccessCount int                    `json:"access_count"`
+	ID           string                 `json:"id"`
+	Type         MemoryType             `json:"type"`
+	Content      string                 `json:"content"`
+	Embedding    []float64              `json:"embedding,omitempty"`
+	Importance   float64                `json:"importance"`
+	Associations []string               `json:"associations,omitempty"`
+	Tags         []string               `json:"tags,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	CreatedAt    time.Time              `json:"created_at"`
+	AccessedAt   time.Time              `json:"accessed_at"`
+	AccessCount  int                    `json:"access_count"`
 }
 
 // MemoryType categorizes different types of memories
 type MemoryType int
 
 const (
-	MemoryTypeEpisodic MemoryType = iota  // Specific experiences
+	MemoryTypeEpisodic   MemoryType = iota // Specific experiences
 	MemoryTypeSemantic                     // General knowledge
 	MemoryTypeProcedural                   // Skills and how-to
 	MemoryTypeWorking                      // Temporary/active

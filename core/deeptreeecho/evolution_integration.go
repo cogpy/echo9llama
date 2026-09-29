@@ -15,15 +15,15 @@ type EvolutionSystem struct {
 	mu sync.RWMutex
 
 	// Core components
-	optimizer        *EvolutionOptimizer
-	providerManager  *llm.ProviderManager
+	optimizer       *EvolutionOptimizer
+	providerManager *llm.ProviderManager
 
 	// Configuration
-	config           EvolutionSystemConfig
+	config EvolutionSystemConfig
 
 	// State
-	initialized      bool
-	running          bool
+	initialized bool
+	running     bool
 }
 
 // EvolutionSystemConfig configures the evolution system
@@ -194,10 +194,10 @@ func (es *EvolutionSystem) GetStatus() map[string]interface{} {
 	defer es.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"initialized":       es.initialized,
-		"running":           es.running,
-		"providers":         es.providerManager.ListProviders(),
-		"provider_metrics":  es.providerManager.GetMetrics(),
+		"initialized":      es.initialized,
+		"running":          es.running,
+		"providers":        es.providerManager.ListProviders(),
+		"provider_metrics": es.providerManager.GetMetrics(),
 	}
 
 	if es.optimizer != nil {
@@ -306,14 +306,9 @@ func (es *EvolutionSystem) RunDiagnostics(ctx context.Context) (*EvolutionDiagno
 	// Test scheduler
 	schedTest := DiagnosticTestResult{Name: "Echobeats Scheduler"}
 	if es.optimizer != nil && es.optimizer.scheduler != nil {
-		triads := es.optimizer.scheduler.GetTriadStates()
-		if len(triads) == 4 {
-			schedTest.Status = "pass"
-			schedTest.Message = "Scheduler with 4 triads operational"
-		} else {
-			schedTest.Status = "warn"
-			schedTest.Message = fmt.Sprintf("Scheduler has %d triads (expected 4)", len(triads))
-		}
+		// GetTriadStates returns a fixed-size [4]TriadState array.
+		schedTest.Status = "pass"
+		schedTest.Message = fmt.Sprintf("Scheduler with %d triads operational", len(es.optimizer.scheduler.GetTriadStates()))
 	} else {
 		schedTest.Status = "fail"
 		schedTest.Message = "Scheduler subsystem not available"

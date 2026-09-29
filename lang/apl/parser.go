@@ -700,21 +700,21 @@ func (pl *PatternLanguage) GeneratePatternMap() string {
 	// Architectural level
 	sb.WriteString("## ARCHITECTURAL PATTERNS (System Level)\n")
 	for _, pattern := range pl.GetPatternsByLevel(ArchitecturalLevel) {
-		sb.WriteString(fmt.Sprintf("- [%d] %s\n", pattern.Number, pattern.Name))
+		fmt.Fprintf(&sb, "- [%d] %s\n", pattern.Number, pattern.Name)
 	}
 	sb.WriteString("\n")
 
 	// Subsystem level
 	sb.WriteString("## SUBSYSTEM PATTERNS (Component Level)\n")
 	for _, pattern := range pl.GetPatternsByLevel(SubsystemLevel) {
-		sb.WriteString(fmt.Sprintf("- [%d] %s\n", pattern.Number, pattern.Name))
+		fmt.Fprintf(&sb, "- [%d] %s\n", pattern.Number, pattern.Name)
 	}
 	sb.WriteString("\n")
 
 	// Implementation level
 	sb.WriteString("## IMPLEMENTATION PATTERNS (Construction Level)\n")
 	for _, pattern := range pl.GetPatternsByLevel(ImplementationLevel) {
-		sb.WriteString(fmt.Sprintf("- [%d] %s\n", pattern.Number, pattern.Name))
+		fmt.Fprintf(&sb, "- [%d] %s\n", pattern.Number, pattern.Name)
 	}
 	sb.WriteString("\n")
 
@@ -722,7 +722,7 @@ func (pl *PatternLanguage) GeneratePatternMap() string {
 	sb.WriteString("## PATTERN DEPENDENCIES\n")
 	for patternNum, deps := range pl.Dependencies {
 		if len(deps) > 0 {
-			sb.WriteString(fmt.Sprintf("Pattern %d → %v\n", patternNum, deps))
+			fmt.Fprintf(&sb, "Pattern %d → %v\n", patternNum, deps)
 		}
 	}
 

@@ -13,56 +13,53 @@ import (
 // EventBusV2 provides an enhanced event-driven messaging system for Deep Tree Echo
 // This is inspired by watermill's architecture for event-driven applications
 type EventBusV2 struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Topic subscriptions
-	subscriptions   map[string][]*Subscription
-	subsLock        sync.RWMutex
+	subscriptions map[string][]*Subscription
+	subsLock      sync.RWMutex
 
 	// Message router
-	router          *MessageRouter
+	router *MessageRouter
 
 	// Message channels
-	publishCh       chan *EventMessage
-	
+	publishCh chan *EventMessage
+
 	// Metrics
-	totalPublished  uint64
-	totalDelivered  uint64
-	totalAcked      uint64
-	totalNacked     uint64
+	totalPublished uint64
+	totalDelivered uint64
+	totalAcked     uint64
+	totalNacked    uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // EventMessage is the enhanced message type for cognitive events
 type EventMessage struct {
-	UUID        string
-	Topic       string
-	Metadata    map[string]string
-	Payload     []byte
-	Timestamp   time.Time
-	Priority    float64
-	
+	UUID      string
+	Topic     string
+	Metadata  map[string]string
+	Payload   []byte
+	Timestamp time.Time
+	Priority  float64
+
 	// Acknowledgement channels
-	ack         chan struct{}
-	nack        chan struct{}
-	ackOnce     sync.Once
-	nackOnce    sync.Once
-	
-	// Context
-	ctx         context.Context
+	ack      chan struct{}
+	nack     chan struct{}
+	ackOnce  sync.Once
+	nackOnce sync.Once
 }
 
 // Subscription represents a topic subscription
 type Subscription struct {
-	ID          string
-	Topic       string
-	Handler     MessageHandler
-	Filter      MessageFilter
-	Active      bool
+	ID      string
+	Topic   string
+	Handler MessageHandler
+	Filter  MessageFilter
+	Active  bool
 }
 
 // MessageHandler processes a cognitive message
@@ -73,9 +70,9 @@ type MessageFilter func(msg *EventMessage) bool
 
 // MessageRouter routes messages between topics
 type MessageRouter struct {
-	mu          sync.RWMutex
-	routes      map[string][]string // source topic -> destination topics
-	transforms  map[string]MessageTransform
+	mu         sync.RWMutex
+	routes     map[string][]string // source topic -> destination topics
+	transforms map[string]MessageTransform
 }
 
 // MessageTransform transforms a message during routing
@@ -238,7 +235,6 @@ func NewEventMessage(topic string, payload interface{}) (*EventMessage, error) {
 		Priority:  0.5,
 		ack:       make(chan struct{}),
 		nack:      make(chan struct{}),
-		ctx:       context.Background(),
 	}, nil
 }
 
@@ -277,7 +273,6 @@ func (m *EventMessage) Copy() *EventMessage {
 		Priority:  m.Priority,
 		ack:       make(chan struct{}),
 		nack:      make(chan struct{}),
-		ctx:       m.ctx,
 	}
 	copy(newMsg.Payload, m.Payload)
 	for k, v := range m.Metadata {
@@ -440,21 +435,21 @@ func (eb *EventBusV2) ContributeToGestalt() map[string]interface{} {
 
 // Predefined cognitive topics
 const (
-	TopicPerception       = "cognitive.perception"
-	TopicAction           = "cognitive.action"
-	TopicSimulation       = "cognitive.simulation"
-	TopicEmergence        = "cognitive.emergence"
-	TopicWisdom           = "cognitive.wisdom"
-	TopicSkillLearning    = "cognitive.skill_learning"
-	TopicDiscussion       = "cognitive.discussion"
-	TopicGoalScheduled    = "cognitive.goal_scheduled"
-	TopicGoalCompleted    = "cognitive.goal_completed"
-	TopicMemoryStored     = "cognitive.memory_stored"
-	TopicMemoryRecalled   = "cognitive.memory_recalled"
-	TopicStateChange      = "cognitive.state_change"
-	TopicWakeEvent        = "cognitive.wake"
-	TopicRestEvent        = "cognitive.rest"
-	TopicSelfUpdate       = "cognitive.self_update"
+	TopicPerception     = "cognitive.perception"
+	TopicAction         = "cognitive.action"
+	TopicSimulation     = "cognitive.simulation"
+	TopicEmergence      = "cognitive.emergence"
+	TopicWisdom         = "cognitive.wisdom"
+	TopicSkillLearning  = "cognitive.skill_learning"
+	TopicDiscussion     = "cognitive.discussion"
+	TopicGoalScheduled  = "cognitive.goal_scheduled"
+	TopicGoalCompleted  = "cognitive.goal_completed"
+	TopicMemoryStored   = "cognitive.memory_stored"
+	TopicMemoryRecalled = "cognitive.memory_recalled"
+	TopicStateChange    = "cognitive.state_change"
+	TopicWakeEvent      = "cognitive.wake"
+	TopicRestEvent      = "cognitive.rest"
+	TopicSelfUpdate     = "cognitive.self_update"
 )
 
 // SetupCognitiveRoutes sets up default routing for cognitive events

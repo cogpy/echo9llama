@@ -76,7 +76,7 @@ func (m *CognitiveLoopMetrics) RecordStep(duration time.Duration) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.StepsProcessed++
-	
+
 	// Update running average
 	if m.AverageStepDuration == 0 {
 		m.AverageStepDuration = duration
@@ -113,26 +113,26 @@ func (m *CognitiveLoopMetrics) GetMetrics() (uint64, uint64, time.Duration) {
 // StepExecution records execution of a cognitive step
 // Unified definition to avoid redeclaration conflicts
 type StepExecution struct {
-	StepNumber      int                    `json:"step_number"`
-	PhaseType       CognitivePhaseType     `json:"phase_type"`
-	Mode            CognitiveMode          `json:"mode"`
-	Timestamp       time.Time              `json:"timestamp"`
-	StartTime       time.Time              `json:"start_time"`
-	Duration        time.Duration          `json:"duration"`
-	Success         bool                   `json:"success"`
-	Output          interface{}            `json:"output"`
-	Error           error                  `json:"error,omitempty"`
-	EngineID        int                    `json:"engine_id,omitempty"`
-	StateUpdates    map[string]interface{} `json:"state_updates,omitempty"`
+	StepNumber   int                    `json:"step_number"`
+	PhaseType    CognitivePhaseType     `json:"phase_type"`
+	Mode         CognitiveMode          `json:"mode"`
+	Timestamp    time.Time              `json:"timestamp"`
+	StartTime    time.Time              `json:"start_time"`
+	Duration     time.Duration          `json:"duration"`
+	Success      bool                   `json:"success"`
+	Output       interface{}            `json:"output"`
+	Error        error                  `json:"error,omitempty"`
+	EngineID     int                    `json:"engine_id,omitempty"`
+	StateUpdates map[string]interface{} `json:"state_updates,omitempty"`
 }
 
 // StepType categorizes the 12 steps
 type StepType int
 
 const (
-	StepRelevanceRealization StepType = iota  // Steps 1, 7
-	StepAffordanceInteraction                  // Steps 2-6
-	StepSalienceSimulation                     // Steps 8-12
+	StepRelevanceRealization  StepType = iota // Steps 1, 7
+	StepAffordanceInteraction                 // Steps 2-6
+	StepSalienceSimulation                    // Steps 8-12
 )
 
 func (s StepType) String() string {

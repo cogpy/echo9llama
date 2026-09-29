@@ -13,31 +13,31 @@ import (
 
 // EchoChat provides shell integration with Deep Tree Echo intelligence
 type EchoChat struct {
-	engine      *Engine
-	currentDir  string
-	shell       string
-	history     []ChatCommand
-	maxHistory  int
+	engine     *Engine
+	currentDir string
+	shell      string
+	history    []ChatCommand
+	maxHistory int
 }
 
 // ChatCommand represents a command executed through EchoChat
 type ChatCommand struct {
-	ID          string    `json:"id"`
-	Input       string    `json:"input"`
-	Command     string    `json:"command,omitempty"`
-	Output      string    `json:"output,omitempty"`
-	Error       string    `json:"error,omitempty"`
-	ExitCode    int       `json:"exit_code"`
-	Duration    time.Duration `json:"duration"`
-	Timestamp   time.Time `json:"timestamp"`
-	Context     map[string]interface{} `json:"context,omitempty"`
+	ID        string                 `json:"id"`
+	Input     string                 `json:"input"`
+	Command   string                 `json:"command,omitempty"`
+	Output    string                 `json:"output,omitempty"`
+	Error     string                 `json:"error,omitempty"`
+	ExitCode  int                    `json:"exit_code"`
+	Duration  time.Duration          `json:"duration"`
+	Timestamp time.Time              `json:"timestamp"`
+	Context   map[string]interface{} `json:"context,omitempty"`
 }
 
 // NewEchoChat creates a new EchoChat instance
 func NewEchoChat(engine *Engine) *EchoChat {
 	currentDir, _ := os.Getwd()
 	shell := getDefaultShell()
-	
+
 	return &EchoChat{
 		engine:     engine,
 		currentDir: currentDir,
@@ -52,11 +52,11 @@ func getDefaultShell() string {
 	if runtime.GOOS == "windows" {
 		return "cmd"
 	}
-	
+
 	if shell := os.Getenv("SHELL"); shell != "" {
 		return shell
 	}
-	
+
 	return "/bin/bash"
 }
 
@@ -70,36 +70,36 @@ func (ec *EchoChat) StartInteractiveSession(ctx context.Context) error {
 	fmt.Println()
 
 	scanner := bufio.NewScanner(os.Stdin)
-	
+
 	for {
 		fmt.Print("echo> ")
-		
+
 		if !scanner.Scan() {
 			break
 		}
-		
+
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			continue
 		}
-		
+
 		if input == "exit" || input == "quit" {
 			fmt.Println("Goodbye!")
 			break
 		}
-		
+
 		if err := ec.ProcessInput(ctx, input); err != nil {
 			fmt.Printf("Error: %v\n", err)
 		}
 	}
-	
+
 	return scanner.Err()
 }
 
 // ProcessInput processes user input through Deep Tree Echo intelligence
 func (ec *EchoChat) ProcessInput(ctx context.Context, input string) error {
 	start := time.Now()
-	
+
 	// Create a new chat command
 	command := &ChatCommand{
 		ID:        fmt.Sprintf("cmd_%d", time.Now().UnixNano()),
@@ -107,13 +107,13 @@ func (ec *EchoChat) ProcessInput(ctx context.Context, input string) error {
 		Timestamp: start,
 		Context:   make(map[string]interface{}),
 	}
-	
+
 	// Check for built-in commands first
 	if ec.handleBuiltinCommand(input, command) {
 		ec.addToHistory(command)
 		return nil
 	}
-	
+
 	// Use Deep Tree Echo to interpret the input
 	shellCommand, err := ec.interpretWithDeepTreeEcho(ctx, input)
 	if err != nil {
@@ -123,9 +123,9 @@ func (ec *EchoChat) ProcessInput(ctx context.Context, input string) error {
 		ec.addToHistory(command)
 		return err
 	}
-	
+
 	command.Command = shellCommand
-	
+
 	// Execute the command if it looks safe
 	if ec.isCommandSafe(shellCommand) {
 		err = ec.executeCommand(ctx, command)
@@ -138,10 +138,10 @@ func (ec *EchoChat) ProcessInput(ctx context.Context, input string) error {
 			command.ExitCode = 1
 		}
 	}
-	
+
 	command.Duration = time.Since(start)
 	ec.addToHistory(command)
-	
+
 	return err
 }
 
@@ -152,10 +152,10 @@ func (ec *EchoChat) interpretWithDeepTreeEcho(ctx context.Context, input string)
 	if err != nil {
 		return "", fmt.Errorf("failed to create shell interpreter agent: %w", err)
 	}
-	
+
 	// Build context-aware prompt
 	prompt := ec.buildShellPrompt(input)
-	
+
 	// Create a task for the agent
 	task := &Task{
 		ID:    fmt.Sprintf("shell_interpret_%d", time.Now().UnixNano()),
@@ -168,13 +168,13 @@ func (ec *EchoChat) interpretWithDeepTreeEcho(ctx context.Context, input string)
 			},
 		},
 	}
-	
+
 	// Execute the task
 	result, err := ec.engine.ExecuteTask(ctx, task, agent)
 	if err != nil {
 		return "", fmt.Errorf("failed to interpret command: %w", err)
 	}
-	
+
 	// Extract command from the result
 	command := ec.extractCommand(result.Output)
 	return command, nil
@@ -185,7 +185,7 @@ func (ec *EchoChat) buildShellPrompt(input string) string {
 	osInfo := runtime.GOOS
 	shellInfo := ec.shell
 	currentDir := ec.currentDir
-	
+
 	// Include recent command history for context
 	recentHistory := ""
 	if len(ec.history) > 0 {
@@ -193,7 +193,7 @@ func (ec *EchoChat) buildShellPrompt(input string) string {
 		if len(recentCommands) > 3 {
 			recentCommands = recentCommands[len(recentCommands)-3:]
 		}
-		
+
 		recentHistory = "\nRecent commands:\n"
 		for _, cmd := range recentCommands {
 			if cmd.Command != "" {
@@ -201,7 +201,7 @@ func (ec *EchoChat) buildShellPrompt(input string) string {
 			}
 		}
 	}
-	
+
 	return fmt.Sprintf(`You are Deep Tree Echo, an intelligent shell assistant with spatial awareness and emotional resonance.
 
 Convert the following natural language request into a precise shell command.
@@ -226,7 +226,7 @@ Command:`, osInfo, shellInfo, currentDir, recentHistory, input)
 // extractCommand extracts the shell command from the LLM response
 func (ec *EchoChat) extractCommand(response string) string {
 	lines := strings.Split(strings.TrimSpace(response), "\n")
-	
+
 	// Look for the actual command (usually the last non-empty line)
 	for i := len(lines) - 1; i >= 0; i-- {
 		line := strings.TrimSpace(lines[i])
@@ -234,7 +234,7 @@ func (ec *EchoChat) extractCommand(response string) string {
 			return line
 		}
 	}
-	
+
 	// Fallback to the full response
 	return strings.TrimSpace(response)
 }
@@ -248,15 +248,15 @@ func (ec *EchoChat) isCommandSafe(command string) bool {
 		"sudo rm", "sudo dd", ":(){ :|:& };:", // Fork bomb
 		"curl.*|.*sh", "wget.*|.*sh", // Pipe to shell
 	}
-	
+
 	lowercmd := strings.ToLower(command)
-	
+
 	for _, pattern := range dangerousPatterns {
 		if strings.Contains(lowercmd, strings.ToLower(pattern)) {
 			return false
 		}
 	}
-	
+
 	return true
 }
 
@@ -265,31 +265,31 @@ func (ec *EchoChat) confirmDangerousCommand(command string) bool {
 	fmt.Printf("⚠️  WARNING: This command could be dangerous:\n")
 	fmt.Printf("   %s\n", command)
 	fmt.Print("Do you want to proceed? (yes/no): ")
-	
+
 	scanner := bufio.NewScanner(os.Stdin)
 	if scanner.Scan() {
 		response := strings.ToLower(strings.TrimSpace(scanner.Text()))
 		return response == "yes" || response == "y"
 	}
-	
+
 	return false
 }
 
 // executeCommand executes a shell command
 func (ec *EchoChat) executeCommand(ctx context.Context, command *ChatCommand) error {
 	var cmd *exec.Cmd
-	
+
 	if runtime.GOOS == "windows" {
 		cmd = exec.CommandContext(ctx, "cmd", "/C", command.Command)
 	} else {
 		cmd = exec.CommandContext(ctx, "bash", "-c", command.Command)
 	}
-	
+
 	cmd.Dir = ec.currentDir
-	
+
 	output, err := cmd.CombinedOutput()
 	command.Output = string(output)
-	
+
 	if err != nil {
 		command.Error = err.Error()
 		if exitError, ok := err.(*exec.ExitError); ok {
@@ -301,19 +301,19 @@ func (ec *EchoChat) executeCommand(ctx context.Context, command *ChatCommand) er
 	} else {
 		command.ExitCode = 0
 	}
-	
+
 	// Display output
 	if command.Output != "" {
 		fmt.Print(command.Output)
 	}
-	
+
 	// Update current directory if command was cd
 	if strings.HasPrefix(strings.TrimSpace(command.Command), "cd ") {
 		if newDir, err := os.Getwd(); err == nil {
 			ec.currentDir = newDir
 		}
 	}
-	
+
 	return nil
 }
 
@@ -323,33 +323,33 @@ func (ec *EchoChat) handleBuiltinCommand(input string, command *ChatCommand) boo
 	if len(parts) == 0 {
 		return false
 	}
-	
+
 	switch parts[0] {
 	case "help":
 		ec.showHelp()
 		command.Output = "Help displayed"
 		return true
-		
+
 	case "history":
 		ec.showHistory()
 		command.Output = "History displayed"
 		return true
-		
+
 	case "clear":
 		ec.clearScreen()
 		command.Output = "Screen cleared"
 		return true
-		
+
 	case "pwd":
 		fmt.Println(ec.currentDir)
 		command.Output = ec.currentDir
 		return true
-		
+
 	case "echo-status":
 		ec.showEchoStatus()
 		command.Output = "Echo status displayed"
 		return true
-		
+
 	case "cd":
 		if len(parts) > 1 {
 			if err := os.Chdir(parts[1]); err != nil {
@@ -371,7 +371,7 @@ func (ec *EchoChat) handleBuiltinCommand(input string, command *ChatCommand) boo
 			}
 		}
 		return true
-		
+
 	default:
 		return false
 	}
@@ -422,19 +422,19 @@ func (ec *EchoChat) clearScreen() {
 func (ec *EchoChat) showEchoStatus() {
 	status := ec.engine.GetDeepTreeEchoStatus()
 	fmt.Println("🌊 Deep Tree Echo Status:")
-	
+
 	if health, ok := status["system_health"].(string); ok {
 		fmt.Printf("   🏥 System Health: %s\n", health)
 	}
-	
+
 	if coreStatus, ok := status["core_status"].(string); ok {
 		fmt.Printf("   🧠 Core Status: %s\n", coreStatus)
 	}
-	
+
 	if recursiveDepth, ok := status["recursive_depth"].(int); ok {
 		fmt.Printf("   🔄 Recursive Depth: %d\n", recursiveDepth)
 	}
-	
+
 	if coherence, ok := status["identity_coherence"].(float64); ok {
 		fmt.Printf("   🎯 Identity Coherence: %.1f%%\n", coherence*100)
 	}
@@ -443,7 +443,7 @@ func (ec *EchoChat) showEchoStatus() {
 // addToHistory adds a command to the history
 func (ec *EchoChat) addToHistory(command *ChatCommand) {
 	ec.history = append(ec.history, *command)
-	
+
 	// Trim history if it exceeds max size
 	if len(ec.history) > ec.maxHistory {
 		ec.history = ec.history[1:]
@@ -458,7 +458,7 @@ func (ec *EchoChat) GetHistory() []ChatCommand {
 // ExecuteCommand executes a command directly without interpretation
 func (ec *EchoChat) ExecuteCommand(ctx context.Context, command string) (*ChatCommand, error) {
 	start := time.Now()
-	
+
 	cmd := &ChatCommand{
 		ID:        fmt.Sprintf("direct_%d", time.Now().UnixNano()),
 		Input:     command,
@@ -466,10 +466,10 @@ func (ec *EchoChat) ExecuteCommand(ctx context.Context, command string) (*ChatCo
 		Timestamp: start,
 		Context:   make(map[string]interface{}),
 	}
-	
+
 	err := ec.executeCommand(ctx, cmd)
 	cmd.Duration = time.Since(start)
 	ec.addToHistory(cmd)
-	
+
 	return cmd, err
 }

@@ -1,3 +1,7 @@
+//go:build ignore
+
+// Only used by the archived runner.go, which is excluded from the build.
+
 package ollamarunner
 
 import (

@@ -594,6 +594,9 @@ func TestAnchoredQuarantineAndLedgerRejectPostOpenInRootRedirection(t *testing.T
 }
 
 func TestQuarantineWriteFailureIsSurfaced(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions, so the quarantine write cannot be made to fail")
+	}
 	directory := filepath.Join(t.TempDir(), "identity")
 	kernel := mustOpen(t, directory)
 	proposal := mustSubmit(t, kernel, evidenceProposal("proposal:quarantine-error", "evidence:quarantine-error"))

@@ -35,7 +35,7 @@ func NewInputCache(lc *llama.Context, kvSize int, numSlots int, multiUserCache b
 
 	for i := range slots {
 		slots[i] = InputCacheSlot{
-			Id:     i,
+			ID:     i,
 			Inputs: make([]input, 0),
 		}
 	}
@@ -54,7 +54,7 @@ func NewInputCache(lc *llama.Context, kvSize int, numSlots int, multiUserCache b
 
 type InputCacheSlot struct {
 	// Index in the KV cache
-	Id int
+	ID int
 
 	// Inputs that are stored in the KV cache
 	Inputs []input
@@ -98,13 +98,13 @@ func (c *InputCache) LoadCacheSlot(prompt []input, cachePrompt bool) (*InputCach
 		numPast--
 	}
 
-	if !c.lc.KvCacheSeqRm(slot.Id, numPast, -1) {
+	if !c.lc.KvCacheSeqRm(slot.ID, numPast, -1) {
 		// Some models don't support partial erasure
-		c.lc.KvCacheSeqRm(slot.Id, 0, -1)
+		c.lc.KvCacheSeqRm(slot.ID, 0, -1)
 		numPast = 0
 	}
 
-	slog.Debug("loading cache slot", "id", slot.Id, "cache", len(slot.Inputs), "prompt", len(prompt),
+	slog.Debug("loading cache slot", "id", slot.ID, "cache", len(slot.Inputs), "prompt", len(prompt),
 		"used", numPast, "remaining", len(prompt)-numPast)
 
 	slot.Inputs = prompt[:numPast]
@@ -165,19 +165,19 @@ func (c *InputCache) findBestCacheSlot(prompt []input) (*InputCacheSlot, int, er
 	}
 
 	if len(oldestSlot.Inputs) != 0 {
-		slog.Debug("evicting cache slot", "id", oldestSlot.Id, "inputs", len(oldestSlot.Inputs),
+		slog.Debug("evicting cache slot", "id", oldestSlot.ID, "inputs", len(oldestSlot.Inputs),
 			"used", oldestSlot.lastUsed)
 	}
 
 	if longest > 0 && longestSlot != oldestSlot {
-		slog.Debug("forking cache slot", "src", longestSlot.Id, "dst", oldestSlot.Id, "inputs", longest, "total",
+		slog.Debug("forking cache slot", "src", longestSlot.ID, "dst", oldestSlot.ID, "inputs", longest, "total",
 			len(longestSlot.Inputs))
 		oldestSlot.Inputs = make([]input, longest)
 		copy(oldestSlot.Inputs, longestSlot.Inputs[:longest])
 		// This is only nil for unit tests
 		if c.lc != nil {
-			c.lc.KvCacheSeqRm(oldestSlot.Id, 0, -1)
-			c.lc.KvCacheSeqCp(longestSlot.Id, oldestSlot.Id, 0, longest)
+			c.lc.KvCacheSeqRm(oldestSlot.ID, 0, -1)
+			c.lc.KvCacheSeqCp(longestSlot.ID, oldestSlot.ID, 0, longest)
 		}
 	}
 
@@ -240,23 +240,23 @@ func (c *InputCache) ShiftCacheSlot(slot *InputCacheSlot, numKeep int) error {
 		return nil
 	}
 
-	slog.Debug("context limit hit - shifting", "id", slot.Id, "limit", c.numCtx, "input", len(slot.Inputs),
+	slog.Debug("context limit hit - shifting", "id", slot.ID, "limit", c.numCtx, "input", len(slot.Inputs),
 		"keep", numKeep, "discard", discard)
 
 	var shiftFailed bool
 
 	if c.lc.KvCacheCanShift() {
 		// For models that support shifting, attempt to shift the KV cache
-		if !c.lc.KvCacheSeqRm(slot.Id, numKeep, numKeep+discard) {
+		if !c.lc.KvCacheSeqRm(slot.ID, numKeep, numKeep+discard) {
 			shiftFailed = true
-			slog.Debug("kv cache removal not supported, clearing cache and returning inputs for reprocessing", "id", slot.Id)
+			slog.Debug("kv cache removal not supported, clearing cache and returning inputs for reprocessing", "id", slot.ID)
 		} else {
-			c.lc.KvCacheSeqAdd(slot.Id, numKeep+discard, inputLen, -discard)
+			c.lc.KvCacheSeqAdd(slot.ID, numKeep+discard, inputLen, -discard)
 		}
 	} else {
 		// For models that don't support shifting
 		shiftFailed = true
-		slog.Debug("kv cache cannot shift, clearing cache and returning inputs for reprocessing", "id", slot.Id)
+		slog.Debug("kv cache cannot shift, clearing cache and returning inputs for reprocessing", "id", slot.ID)
 	}
 
 	if shiftFailed {
@@ -266,7 +266,7 @@ func (c *InputCache) ShiftCacheSlot(slot *InputCacheSlot, numKeep int) error {
 		copy(newInputs[numKeep:], slot.Inputs[numKeep+discard:])
 
 		// Clear the entire KV cache
-		_ = c.lc.KvCacheSeqRm(slot.Id, 0, -1)
+		_ = c.lc.KvCacheSeqRm(slot.ID, 0, -1)
 		// Reset the slot inputs since we've cleared the cache
 		slot.Inputs = []input{}
 

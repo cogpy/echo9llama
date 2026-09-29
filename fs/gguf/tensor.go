@@ -56,22 +56,22 @@ const (
 	TensorTypeQ5_1
 	TensorTypeQ8_0
 	TensorTypeQ8_1
-	TensorTypeQ2_K
-	TensorTypeQ3_K
-	TensorTypeQ4_K
-	TensorTypeQ5_K
-	TensorTypeQ6_K
-	TensorTypeQ8_K
+	TensorTypeQ2K
+	TensorTypeQ3K
+	TensorTypeQ4K
+	TensorTypeQ5K
+	TensorTypeQ6K
+	TensorTypeQ8K
 
 	// unexported // unquantizable by ollama
-	tensorTypeIQ2_XXS
-	tensorTypeIQ2_XS
-	tensorTypeIQ3_XXS
-	tensorTypeIQ1_S
-	tensorTypeIQ4_NL
-	tensorTypeIQ3_S
-	tensorTypeIQ2_S
-	tensorTypeIQ4_XS
+	tensorTypeIQ2XXS
+	tensorTypeIQ2XS
+	tensorTypeIQ3XXS
+	tensorTypeIQ1S
+	tensorTypeIQ4NL
+	tensorTypeIQ3S
+	tensorTypeIQ2S
+	tensorTypeIQ4XS
 
 	TensorTypeI8
 	TensorTypeI16
@@ -80,7 +80,7 @@ const (
 	TensorTypeF64
 
 	// unexported // unquantizable by ollama
-	tensorTypeIQ1_M
+	tensorTypeIQ1M
 
 	TensorTypeBF16
 
@@ -94,9 +94,9 @@ const (
 	tensorTypeTQ2_0
 
 	// unexported // unused in gguf
-	tensorTypeIQ4_NL_4_4
-	tensorTypeIQ4_NL_4_8
-	tensorTypeIQ4_NL_8_8
+	tensorTypeIQ4NL4x4
+	tensorTypeIQ4NL4x8
+	tensorTypeIQ4NL8x8
 )
 
 func (tt TensorType) NumBytes() float64 {
@@ -121,33 +121,33 @@ func (tt TensorType) typeSize() int64 {
 		return 2 + tt.blockSize()
 	case TensorTypeQ8_1:
 		return 2 + 2 + tt.blockSize()
-	case TensorTypeQ2_K:
+	case TensorTypeQ2K:
 		return tt.blockSize()/16 + tt.blockSize()/4 + 2 + 2
-	case TensorTypeQ3_K:
+	case TensorTypeQ3K:
 		return tt.blockSize()/8 + tt.blockSize()/4 + 12 + 2
-	case TensorTypeQ4_K:
+	case TensorTypeQ4K:
 		return 2 + 2 + 12 + tt.blockSize()/2
-	case TensorTypeQ5_K:
+	case TensorTypeQ5K:
 		return 2 + 2 + 12 + tt.blockSize()/8 + tt.blockSize()/2
-	case TensorTypeQ6_K:
+	case TensorTypeQ6K:
 		return tt.blockSize()/2 + tt.blockSize()/4 + tt.blockSize()/16 + 2
-	case TensorTypeQ8_K:
+	case TensorTypeQ8K:
 		return 4 + tt.blockSize() + 2*tt.blockSize()/16
-	case tensorTypeIQ2_XXS:
+	case tensorTypeIQ2XXS:
 		return 2 + 2*tt.blockSize()/8
-	case tensorTypeIQ2_XS:
+	case tensorTypeIQ2XS:
 		return 2 + 2*tt.blockSize()/8 + tt.blockSize()/32
-	case tensorTypeIQ3_XXS:
+	case tensorTypeIQ3XXS:
 		return 2 + tt.blockSize()/4 + tt.blockSize()/8
-	case tensorTypeIQ1_S:
+	case tensorTypeIQ1S:
 		return 2 + tt.blockSize()/8 + tt.blockSize()/16
-	case tensorTypeIQ4_NL:
+	case tensorTypeIQ4NL:
 		return 2 + tt.blockSize()/2
-	case tensorTypeIQ3_S:
+	case tensorTypeIQ3S:
 		return 2 + tt.blockSize()/4 + tt.blockSize()/8 + tt.blockSize()/32 + 4
-	case tensorTypeIQ2_S:
+	case tensorTypeIQ2S:
 		return 2 + tt.blockSize()/4 + tt.blockSize()/16
-	case tensorTypeIQ4_XS:
+	case tensorTypeIQ4XS:
 		return 2 + 2 + tt.blockSize()/2 + tt.blockSize()/64
 	case TensorTypeI8:
 		return 1
@@ -159,7 +159,7 @@ func (tt TensorType) typeSize() int64 {
 		return 8
 	case TensorTypeF64:
 		return 8
-	case tensorTypeIQ1_M:
+	case tensorTypeIQ1M:
 		return tt.blockSize()/8 + tt.blockSize()/16 + tt.blockSize()/32
 	case TensorTypeBF16:
 		return 2
@@ -185,7 +185,7 @@ func (tt TensorType) blockSize() int64 {
 		TensorTypeQ5_1,
 		TensorTypeQ8_0,
 		TensorTypeQ8_1,
-		tensorTypeIQ4_NL:
+		tensorTypeIQ4NL:
 		return 32
 	default:
 		return 256
@@ -214,33 +214,33 @@ func (tt TensorType) String() string {
 		return "q8_0"
 	case TensorTypeQ8_1:
 		return "q8_1"
-	case TensorTypeQ2_K:
+	case TensorTypeQ2K:
 		return "q2_k"
-	case TensorTypeQ3_K:
+	case TensorTypeQ3K:
 		return "q3_k"
-	case TensorTypeQ4_K:
+	case TensorTypeQ4K:
 		return "q4_k"
-	case TensorTypeQ5_K:
+	case TensorTypeQ5K:
 		return "q5_k"
-	case TensorTypeQ6_K:
+	case TensorTypeQ6K:
 		return "q6_k"
-	case TensorTypeQ8_K:
+	case TensorTypeQ8K:
 		return "q8_k"
-	case tensorTypeIQ2_XXS:
+	case tensorTypeIQ2XXS:
 		return "iq2_xxs"
-	case tensorTypeIQ2_XS:
+	case tensorTypeIQ2XS:
 		return "iq2_xs"
-	case tensorTypeIQ3_XXS:
+	case tensorTypeIQ3XXS:
 		return "iq3_xxs"
-	case tensorTypeIQ1_S:
+	case tensorTypeIQ1S:
 		return "iq1_s"
-	case tensorTypeIQ4_NL:
+	case tensorTypeIQ4NL:
 		return "iq4_nl"
-	case tensorTypeIQ3_S:
+	case tensorTypeIQ3S:
 		return "iq3_s"
-	case tensorTypeIQ2_S:
+	case tensorTypeIQ2S:
 		return "iq2_s"
-	case tensorTypeIQ4_XS:
+	case tensorTypeIQ4XS:
 		return "iq4_xs"
 	case TensorTypeI8:
 		return "i8"
@@ -252,7 +252,7 @@ func (tt TensorType) String() string {
 		return "i64"
 	case TensorTypeF64:
 		return "f64"
-	case tensorTypeIQ1_M:
+	case tensorTypeIQ1M:
 		return "iq1_m"
 	case TensorTypeBF16:
 		return "bf16"
@@ -266,11 +266,11 @@ func (tt TensorType) String() string {
 		return "tq1_0"
 	case tensorTypeTQ2_0:
 		return "tq2_0"
-	case tensorTypeIQ4_NL_4_4:
+	case tensorTypeIQ4NL4x4:
 		return "iq4_nl_4_4"
-	case tensorTypeIQ4_NL_4_8:
+	case tensorTypeIQ4NL4x8:
 		return "iq4_nl_4_8"
-	case tensorTypeIQ4_NL_8_8:
+	case tensorTypeIQ4NL8x8:
 		return "iq4_nl_8_8"
 	default:
 		return "unknown"

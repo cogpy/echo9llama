@@ -27,7 +27,7 @@ var ErrOrchestratorTerminated = errors.New("orchestrator completed final shutdow
 // This is the "awakened echo" that maintains persistent awareness and self-direction.
 type UnifiedAutonomousOrchestrator struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core cognitive subsystems

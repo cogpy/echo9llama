@@ -12,11 +12,11 @@ import (
 
 // PersistentMemory manages long-term memory storage and retrieval
 type PersistentMemory struct {
-	StoragePath     string
-	Memories        map[string]*MemoryRecord
-	MaxMemories     int
-	PruneThreshold  float64
-	mu              sync.RWMutex
+	StoragePath    string
+	Memories       map[string]*MemoryRecord
+	MaxMemories    int
+	PruneThreshold float64
+	mu             sync.RWMutex
 }
 
 // MemoryRecord represents a single persistent memory entry
@@ -42,7 +42,7 @@ func NewPersistentMemory(storagePath string) *PersistentMemory {
 	}
 
 	// Create storage directory if it doesn't exist
-	if err := os.MkdirAll(storagePath, 0755); err != nil {
+	if err := os.MkdirAll(storagePath, 0o755); err != nil {
 		log.Printf("⚠️  PersistentMemory: Failed to create storage directory: %v", err)
 	}
 
@@ -174,7 +174,7 @@ func (pm *PersistentMemory) Delete(id string) error {
 func (pm *PersistentMemory) pruneMemories() {
 	// Find the memory with the lowest score
 	var lowestID string
-	var lowestScore float64 = 1.0
+	lowestScore := 1.0
 
 	for id, record := range pm.Memories {
 		// Calculate score based on importance and recency
@@ -205,7 +205,7 @@ func (pm *PersistentMemory) Save() error {
 		return fmt.Errorf("failed to marshal memories: %v", err)
 	}
 
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
+	if err := os.WriteFile(filePath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write memories file: %v", err)
 	}
 
@@ -269,13 +269,13 @@ func (pm *PersistentMemory) GetStats() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_memories":      len(pm.Memories),
-		"memories_by_type":    typeCount,
-		"average_importance":  avgImportance,
-		"oldest_access":       oldestAccess.Format(time.RFC3339),
-		"newest_access":       newestAccess.Format(time.RFC3339),
-		"storage_path":        pm.StoragePath,
-		"max_memories":        pm.MaxMemories,
-		"prune_threshold":     pm.PruneThreshold,
+		"total_memories":     len(pm.Memories),
+		"memories_by_type":   typeCount,
+		"average_importance": avgImportance,
+		"oldest_access":      oldestAccess.Format(time.RFC3339),
+		"newest_access":      newestAccess.Format(time.RFC3339),
+		"storage_path":       pm.StoragePath,
+		"max_memories":       pm.MaxMemories,
+		"prune_threshold":    pm.PruneThreshold,
 	}
 }

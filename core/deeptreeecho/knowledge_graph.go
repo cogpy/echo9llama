@@ -12,31 +12,31 @@ import (
 // KnowledgeGraph provides a graph-based knowledge representation for Deep Tree Echo
 // This is inspired by Cayley's quad store architecture for storing and querying linked data
 type KnowledgeGraph struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Quad storage (Subject, Predicate, Object, Label)
-	quads           map[string]*Quad
-	quadsLock       sync.RWMutex
+	quads     map[string]*Quad
+	quadsLock sync.RWMutex
 
 	// Indexes for fast lookups
-	subjectIndex    map[string][]string // subject -> quad IDs
-	predicateIndex  map[string][]string // predicate -> quad IDs
-	objectIndex     map[string][]string // object -> quad IDs
-	labelIndex      map[string][]string // label -> quad IDs
+	subjectIndex   map[string][]string // subject -> quad IDs
+	predicateIndex map[string][]string // predicate -> quad IDs
+	objectIndex    map[string][]string // object -> quad IDs
+	labelIndex     map[string][]string // label -> quad IDs
 
 	// Node storage
-	nodes           map[string]*GraphNode
-	nodesLock       sync.RWMutex
+	nodes     map[string]*GraphNode
+	nodesLock sync.RWMutex
 
 	// Metrics
-	totalQuads      uint64
-	totalNodes      uint64
-	totalQueries    uint64
+	totalQuads   uint64
+	totalNodes   uint64
+	totalQueries uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // Quad represents a quad (Subject, Predicate, Object, Label) in the knowledge graph
@@ -84,10 +84,10 @@ type QueryStep struct {
 
 // QueryResult represents a result from a graph query
 type GraphQueryResult struct {
-	Quads   []*Quad
-	Nodes   []*GraphNode
-	Paths   [][]string
-	Count   int
+	Quads []*Quad
+	Nodes []*GraphNode
+	Paths [][]string
+	Count int
 }
 
 // NewKnowledgeGraph creates a new knowledge graph
@@ -456,10 +456,10 @@ func (kg *KnowledgeGraph) ContributeToGestalt() map[string]interface{} {
 	kg.quadsLock.RUnlock()
 
 	return map[string]interface{}{
-		"running":       kg.running,
-		"total_quads":   kg.totalQuads,
-		"total_nodes":   kg.totalNodes,
-		"label_stats":   labelStats,
+		"running":     kg.running,
+		"total_quads": kg.totalQuads,
+		"total_nodes": kg.totalNodes,
+		"label_stats": labelStats,
 	}
 }
 
@@ -471,12 +471,12 @@ func (kg *KnowledgeGraph) StoreKnowledge(entity, relation, value, context string
 // QueryKnowledge queries knowledge about an entity
 func (kg *KnowledgeGraph) QueryKnowledge(entity string) map[string][]string {
 	quads := kg.QueryBySubject(entity)
-	
+
 	knowledge := make(map[string][]string)
 	for _, quad := range quads {
 		knowledge[quad.Predicate] = append(knowledge[quad.Predicate], quad.Object)
 	}
-	
+
 	return knowledge
 }
 

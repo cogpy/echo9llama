@@ -19,7 +19,7 @@ type DgraphClient struct {
 	mu             sync.RWMutex
 	conn           *grpc.ClientConn
 	client         *dgo.Dgraph
-	ctx            context.Context
+	ctx            context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel         context.CancelFunc
 	endpoint       string
 	connected      bool
@@ -91,7 +91,7 @@ func (dc *DgraphClient) connect() error {
 	defer dc.mu.Unlock()
 
 	var lastErr error
-	for i := 0; i < dc.retryCount; i++ {
+	for i := range dc.retryCount {
 		dialCtx, cancel := context.WithTimeout(dc.ctx, dc.connectTimeout)
 		conn, err := grpc.DialContext(
 			dialCtx,

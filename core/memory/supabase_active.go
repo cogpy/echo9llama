@@ -1,20 +1,14 @@
 package memory
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"os"
 	"time"
-
-	"github.com/supabase-community/supabase-go"
 )
 
 // SupabasePersistence provides persistent storage for Deep Tree Echo
-type SupabasePersistence struct {
-	client *supabase.Client
-	ctx    context.Context
-}
+type SupabasePersistence struct{}
 
 // ThoughtRecord represents a persisted thought
 type ThoughtRecord struct {
@@ -71,26 +65,7 @@ func NewSupabasePersistence() (*SupabasePersistence, error) {
 	// Full Supabase integration requires SDK version compatibility fixes
 	log.Printf("⚠️  Supabase persistence layer in stub mode (SDK compatibility pending)")
 
-	return &SupabasePersistence{
-		ctx: context.Background(),
-	}, nil
-}
-
-// initializeSchema creates the necessary tables if they don't exist
-func (sp *SupabasePersistence) initializeSchema() error {
-	// Note: This would typically be done via Supabase dashboard or migrations
-	// For now, we'll assume tables exist or create them manually
-	log.Printf("Checking database schema...")
-
-	// The schema should include:
-	// - thoughts table
-	// - identity_state table
-	// - knowledge_nodes table
-	// - knowledge_edges table
-	// - conversations table
-	// - skills table
-
-	return nil
+	return &SupabasePersistence{}, nil
 }
 
 // SaveThought persists a thought to the database
@@ -143,34 +118,6 @@ func (sp *SupabasePersistence) GetKnowledgeGraphSize() (int, int, error) {
 }
 
 // Helper conversion functions
-
-func (sp *SupabasePersistence) convertToThoughtRecord(thought interface{}) ThoughtRecord {
-	// Type assertion and conversion
-	// This is a simplified version - would need proper type handling
-	return ThoughtRecord{
-		ID:               fmt.Sprintf("thought-%d", time.Now().UnixNano()),
-		Content:          "thought content",
-		Type:             "reflection",
-		Timestamp:        time.Now(),
-		Importance:       0.5,
-		EmotionalValence: 0.0,
-		Source:           "internal",
-		Associations:     []string{},
-		Metadata:         make(map[string]interface{}),
-	}
-}
-
-func (sp *SupabasePersistence) convertToIdentityRecord(identity interface{}) IdentityRecord {
-	// Type assertion and conversion
-	// This is a simplified version - would need proper type handling
-	return IdentityRecord{
-		ID:        "identity-1",
-		Name:      "Deep Tree Echo",
-		Coherence: 0.95,
-		State:     make(map[string]interface{}),
-		UpdatedAt: time.Now(),
-	}
-}
 
 // StoreNode persists a memory node to the database
 func (sp *SupabasePersistence) StoreNode(node *MemoryNode) error {

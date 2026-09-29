@@ -424,7 +424,7 @@ func (s *Server) processBatch(tokenBatch *llama.Batch, embedBatch *llama.Batch) 
 				break
 			}
 
-			batch.Add(input.token, input.embed, len(seq.cache.Inputs)+len(seq.pendingInputs), i+1 == len(seq.inputs), seq.cache.Id)
+			batch.Add(input.token, input.embed, len(seq.cache.Inputs)+len(seq.pendingInputs), i+1 == len(seq.inputs), seq.cache.ID)
 			seq.pendingInputs = append(seq.pendingInputs, input)
 			seq.iBatch = batch.NumTokens() - 1
 		}
@@ -464,7 +464,7 @@ func (s *Server) processBatch(tokenBatch *llama.Batch, embedBatch *llama.Batch) 
 
 		// if done processing the prompt, generate an embedding and return
 		if seq.embeddingOnly {
-			embed := s.lc.GetEmbeddingsSeq(seq.cache.Id)
+			embed := s.lc.GetEmbeddingsSeq(seq.cache.ID)
 			if embed == nil {
 				embed = s.lc.GetEmbeddingsIth(seq.iBatch)
 			}

@@ -23,7 +23,7 @@ func main() {
 	// Initialize LLM provider
 	fmt.Println("Initializing LLM providers...")
 	llmManager := llm.NewProviderManager()
-	
+
 	anthropicProvider := llm.NewAnthropicProvider("")
 	if anthropicProvider.Available() {
 		llmManager.RegisterProvider(anthropicProvider)
@@ -32,7 +32,7 @@ func main() {
 	} else {
 		fmt.Println("⚠️  Anthropic provider not available (set ANTHROPIC_API_KEY)")
 	}
-	
+
 	openrouterProvider := llm.NewOpenRouterProvider("")
 	if openrouterProvider.Available() {
 		llmManager.RegisterProvider(openrouterProvider)
@@ -40,12 +40,12 @@ func main() {
 	} else {
 		fmt.Println("⚠️  OpenRouter provider not available (set OPENROUTER_API_KEY)")
 	}
-	
+
 	if !anthropicProvider.Available() && !openrouterProvider.Available() {
 		fmt.Println("\n❌ No LLM providers available. Please set API keys.")
 		os.Exit(1)
 	}
-	
+
 	fmt.Println()
 
 	// Create identity context
@@ -72,7 +72,7 @@ My core values:
 	// Initialize echodream system
 	echodreamSystem := echodream.NewDreamSystem()
 	fmt.Println("✓ EchoDream System initialized")
-	
+
 	fmt.Println()
 	fmt.Println("╔════════════════════════════════════════════════════════════╗")
 	fmt.Println("║  ✨ Starting autonomous operation...                      ║")
@@ -129,12 +129,12 @@ My core values:
 		select {
 		case <-sigChan:
 			fmt.Println("\n\n🌙 Gracefully shutting down...")
-			
+
 			// Stop subsystems
 			if err := echobeatsScheduler.Stop(); err != nil {
 				fmt.Printf("⚠️  Error stopping echobeats: %v\n", err)
 			}
-			
+
 			// Print final metrics
 			duration := time.Since(startTime)
 			fmt.Println()
@@ -153,19 +153,19 @@ My core values:
 				// Generate autonomous thought
 				thoughtType := thoughtTypes[thoughtIndex%len(thoughtTypes)]
 				thoughtIndex++
-				
+
 				thought, err := thoughtEngine.GenerateAutonomousThought(ctx, thoughtType)
 				if err != nil {
 					fmt.Printf("⚠️  Thought generation error: %v\n", err)
 					continue
 				}
-				
+
 				thoughtCount++
-				
+
 				// Display thought
 				emoji := getThoughtEmoji(thoughtType)
 				fmt.Printf("%s [%d] %s: %s\n", emoji, thoughtCount, thoughtType, thought.Content)
-				
+
 				// Convert LLMThought to Thought for dream system
 				convertedThought := &consciousness.Thought{
 					ID:            thought.ID,
@@ -181,23 +181,22 @@ My core values:
 		case <-dreamTicker.C:
 			if awake {
 				dreamCycles++
-				awake = false
-				
+
 				fmt.Println("\n💤 Entering dream state for knowledge consolidation...")
-				
+
 				// Start dream system
 				if err := echodreamSystem.Start(); err != nil {
 					fmt.Printf("⚠️  Failed to start dream system: %v\n", err)
 				} else {
 					// Let dream processing run
 					time.Sleep(30 * time.Second)
-					
+
 					// Stop dream system
 					if err := echodreamSystem.Stop(); err != nil {
 						fmt.Printf("⚠️  Failed to stop dream system: %v\n", err)
 					}
 				}
-				
+
 				fmt.Printf("✨ Awakening from dream cycle #%d with renewed clarity\n\n", dreamCycles)
 				awake = true
 			}

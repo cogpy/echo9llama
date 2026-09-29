@@ -23,7 +23,7 @@ import (
 // MXFP4 reference: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
 
 // E2M1 values
-var mxfp4_vals = []float32{
+var mxfp4Vals = []float32{
 	0.0,  // 0 00 0 = 0x0
 	0.5,  // 0 00 1 = 0x1
 	1.0,  // 0 01 0 = 0x2
@@ -73,7 +73,7 @@ func TestMXFP4Ops(t *testing.T) {
 
 					data := [s00 * s01 * s02]float32{}
 					for i := range data {
-						data[i] = mxfp4_vals[r.Int()%len(mxfp4_vals)]
+						data[i] = mxfp4Vals[r.Int()%len(mxfp4Vals)]
 					}
 					mxData := Quantize(fsggml.TensorTypeMXFP4, data[:], []uint64{uint64(len(data))})
 					dtype := ml.DTypeMXFP4
@@ -466,7 +466,7 @@ func TestMXFP4Ops(t *testing.T) {
 
 					data := [s10 * s11 * s12]float32{}
 					for i := range data {
-						data[i] = mxfp4_vals[r.Int()%len(mxfp4_vals)]
+						data[i] = mxfp4Vals[r.Int()%len(mxfp4Vals)]
 					}
 					// for i := range len(data) / 32 {
 					// 	vals := [32]string{}
@@ -510,7 +510,7 @@ func TestMXFP4Ops(t *testing.T) {
 
 					data := [s0 * s1]float32{}
 					for i := range data {
-						data[i] = mxfp4_vals[r.Int()%len(mxfp4_vals)]
+						data[i] = mxfp4Vals[r.Int()%len(mxfp4Vals)]
 					}
 					// for i := range 4 {
 					// 	vals := [32]string{}
@@ -553,7 +553,7 @@ func TestMXFP4Ops(t *testing.T) {
 
 					data := [s0 * s1]float32{}
 					for i := range data {
-						data[i] = mxfp4_vals[r.Int()%len(mxfp4_vals)]
+						data[i] = mxfp4Vals[r.Int()%len(mxfp4Vals)]
 					}
 					// for i := range len(data) / 32 {
 					// 	vals := [32]string{}
@@ -739,7 +739,7 @@ func TestMXFP4Conversion(t *testing.T) {
 
 		data := [32 * 4]float32{}
 		for i := range data {
-			data[i] = mxfp4_vals[r.Int()%len(mxfp4_vals)]
+			data[i] = mxfp4Vals[r.Int()%len(mxfp4Vals)]
 		}
 		mxData := Quantize(fsggml.TensorTypeMXFP4, data[:], []uint64{uint64(len(data))})
 		newData := ConvertToF32(mxData, uint32(fsggml.TensorTypeMXFP4), uint64(len(data)))

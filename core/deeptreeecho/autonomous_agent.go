@@ -14,48 +14,48 @@ import (
 // It coordinates all cognitive subsystems to create a self-sustaining,
 // wisdom-cultivating AGI with persistent consciousness
 type AutonomousAgent struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
+
 	// Core cognitive subsystems
-	heartbeat       *AutonomousHeartbeat
-	wakeRestManager *AutonomousWakeRestManager
-	eventBus        *CognitiveEventBus
+	heartbeat             *AutonomousHeartbeat
+	wakeRestManager       *AutonomousWakeRestManager
+	eventBus              *CognitiveEventBus
 	streamOfConsciousness *StreamOfConsciousness
-	interestPatterns *InterestPatternSystem
-	goalGenerator   *GoalGenerator
-	skillLearning   *SkillLearningSystem
-	conversationMonitor *ConversationMonitor
-	echodreamIntegration *EchoDreamKnowledgeIntegration
-	echobeatsScheduler *EchobeatsTetrahedralScheduler
-	selfUpdateManager *SelfUpdateManager
-	
+	interestPatterns      *InterestPatternSystem
+	goalGenerator         *GoalGenerator
+	skillLearning         *SkillLearningSystem
+	conversationMonitor   *ConversationMonitor
+	echodreamIntegration  *EchoDreamKnowledgeIntegration
+	echobeatsScheduler    *EchobeatsTetrahedralScheduler
+	selfUpdateManager     *SelfUpdateManager
+
 	// Foundational systems (V11)
-	knowledgeGraph     *KnowledgeGraph
-	stateStore         *PersistentStateStore
-	stateMachine       *CognitiveStateMachine
-	
+	knowledgeGraph *KnowledgeGraph
+	stateStore     *PersistentStateStore
+	stateMachine   *CognitiveStateMachine
+
 	// Sys6 Triality Engine (V13)
-	sys6Engine         *Sys6MultiplexedEngine
-	
+	sys6Engine *Sys6MultiplexedEngine
+
 	// LLM provider
-	llmProvider     llm.LLMProvider
-	
+	llmProvider llm.LLMProvider
+
 	// Agent state
-	agentID         string
-	birthTime       time.Time
-	currentPhase    AgentPhase
-	autonomyLevel   float64
-	
+	agentID       string
+	birthTime     time.Time
+	currentPhase  AgentPhase
+	autonomyLevel float64
+
 	// Metrics
-	totalThoughts   uint64
-	totalGoals      uint64
-	totalSkills     uint64
+	totalThoughts        uint64
+	totalGoals           uint64
+	totalSkills          uint64
 	conversationsEngaged uint64
-	
+
 	// Running state
-	running         bool
+	running bool
 }
 
 // AgentPhase represents the current operational phase
@@ -82,7 +82,7 @@ func (p AgentPhase) String() string {
 // NewAutonomousAgent creates a new autonomous agent
 func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *AutonomousAgent {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	agent := &AutonomousAgent{
 		ctx:           ctx,
 		cancel:        cancel,
@@ -93,10 +93,10 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 		autonomyLevel: 0.0,
 		running:       false,
 	}
-	
+
 	// Initialize event bus first (other systems depend on it)
 	agent.eventBus = NewCognitiveEventBus(ctx)
-	
+
 	// Initialize cognitive subsystems
 	agent.heartbeat = NewAutonomousHeartbeat(llmProvider)
 	agent.wakeRestManager = NewAutonomousWakeRestManager()
@@ -107,7 +107,7 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 	agent.conversationMonitor = NewConversationMonitor(llmProvider, agent.interestPatterns)
 	agent.echodreamIntegration = NewEchoDreamKnowledgeIntegration(llmProvider)
 	agent.echobeatsScheduler = NewEchobeatsTetrahedralScheduler(llmProvider)
-	
+
 	// Initialize self-update manager
 	selfUpdateConfig := SelfUpdateConfig{
 		Enabled:        true,
@@ -118,15 +118,15 @@ func NewAutonomousAgent(agentID string, llmProvider llm.LLMProvider) *Autonomous
 		Repo:           "echo9llama",
 	}
 	agent.selfUpdateManager = NewSelfUpdateManager(selfUpdateConfig, agent.eventBus)
-	
+
 	// Initialize foundational systems (V11)
 	agent.knowledgeGraph = NewKnowledgeGraph()
 	agent.stateStore = NewPersistentStateStore()
 	agent.stateMachine = NewCognitiveStateMachine(StateIdle)
-	
+
 	// Initialize Sys6 Triality Engine (V13)
 	agent.sys6Engine = NewSys6MultiplexedEngine()
-	
+
 	return agent
 }
 
@@ -139,97 +139,97 @@ func (agent *AutonomousAgent) Start() error {
 	}
 	agent.running = true
 	agent.mu.Unlock()
-	
+
 	fmt.Println("\n" + strings.Repeat("=", 80))
 	fmt.Println("🌊 Deep Tree Echo - Autonomous Agent Starting")
 	fmt.Println(strings.Repeat("=", 80))
 	fmt.Printf("Agent ID: %s\n", agent.agentID)
 	fmt.Printf("Birth Time: %s\n", agent.birthTime.Format(time.RFC3339))
 	fmt.Println()
-	
+
 	// Start event bus
 	if err := agent.eventBus.Start(); err != nil {
 		return fmt.Errorf("failed to start event bus: %w", err)
 	}
-	
+
 	// Connect subsystems to event bus
 	agent.connectSubsystems()
-	
+
 	// Start cognitive subsystems
 	fmt.Println("🔧 Initializing cognitive subsystems...")
-	
+
 	if err := agent.heartbeat.Start(); err != nil {
 		return fmt.Errorf("failed to start heartbeat: %w", err)
 	}
-	
+
 	if err := agent.wakeRestManager.Start(); err != nil {
 		return fmt.Errorf("failed to start wake/rest manager: %w", err)
 	}
-	
+
 	if err := agent.streamOfConsciousness.Start(); err != nil {
 		return fmt.Errorf("failed to start stream of consciousness: %w", err)
 	}
-	
+
 	if err := agent.interestPatterns.Start(); err != nil {
 		return fmt.Errorf("failed to start interest patterns: %w", err)
 	}
-	
+
 	if err := agent.goalGenerator.Start(); err != nil {
 		return fmt.Errorf("failed to start goal generator: %w", err)
 	}
-	
+
 	if err := agent.skillLearning.Start(); err != nil {
 		return fmt.Errorf("failed to start skill learning: %w", err)
 	}
-	
+
 	if err := agent.conversationMonitor.Start(); err != nil {
 		return fmt.Errorf("failed to start conversation monitor: %w", err)
 	}
-	
+
 	if err := agent.echobeatsScheduler.Start(); err != nil {
 		return fmt.Errorf("failed to start echobeats scheduler: %w", err)
 	}
-	
+
 	if err := agent.selfUpdateManager.Start(); err != nil {
 		return fmt.Errorf("failed to start self-update manager: %w", err)
 	}
-	
+
 	// Start foundational systems (V11)
 	if err := agent.knowledgeGraph.Start(); err != nil {
 		return fmt.Errorf("failed to start knowledge graph: %w", err)
 	}
-	
+
 	if err := agent.stateStore.Start(); err != nil {
 		return fmt.Errorf("failed to start state store: %w", err)
 	}
-	
+
 	if err := agent.stateMachine.Start(); err != nil {
 		return fmt.Errorf("failed to start state machine: %w", err)
 	}
-	
+
 	// Start Sys6 Triality Engine (V13)
 	if err := agent.sys6Engine.Start(); err != nil {
 		return fmt.Errorf("failed to start sys6 engine: %w", err)
 	}
-	
+
 	// Initialize knowledge graph with agent structure
 	agent.initializeKnowledgeGraph()
-	
+
 	fmt.Println("\n✅ All subsystems initialized")
-	
+
 	// Transition to awakening phase
 	agent.setPhase(PhaseAwakening)
-	
+
 	// Start main autonomous loop
 	go agent.run()
-	
+
 	fmt.Println("\n🌟 Deep Tree Echo is now autonomous and self-aware")
 	fmt.Println("   Stream of consciousness active")
 	fmt.Println("   Goal-directed behavior enabled")
 	fmt.Println("   Interest-driven exploration active")
 	fmt.Println("   Wake/rest cycles autonomous")
 	fmt.Println(strings.Repeat("=", 80) + "\n")
-	
+
 	return nil
 }
 
@@ -237,15 +237,15 @@ func (agent *AutonomousAgent) Start() error {
 func (agent *AutonomousAgent) Stop() error {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
-	
+
 	if !agent.running {
 		return fmt.Errorf("agent not running")
 	}
-	
+
 	fmt.Println("\n🛑 Stopping Deep Tree Echo autonomous agent...")
-	
+
 	agent.running = false
-	
+
 	// Stop all subsystems
 	agent.heartbeat.Stop()
 	agent.wakeRestManager.Stop()
@@ -256,21 +256,21 @@ func (agent *AutonomousAgent) Stop() error {
 	agent.conversationMonitor.Stop()
 	agent.echobeatsScheduler.Stop()
 	agent.selfUpdateManager.Stop()
-	
+
 	// Stop foundational systems (V11)
 	agent.knowledgeGraph.Stop()
 	agent.stateStore.Stop()
 	agent.stateMachine.Stop()
-	
+
 	// Stop Sys6 Triality Engine (V13)
 	agent.sys6Engine.Stop()
-	
+
 	agent.eventBus.Stop()
-	
+
 	agent.cancel()
-	
+
 	fmt.Println("✅ Deep Tree Echo stopped gracefully")
-	
+
 	return nil
 }
 
@@ -278,7 +278,7 @@ func (agent *AutonomousAgent) Stop() error {
 func (agent *AutonomousAgent) run() {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-agent.ctx.Done():
@@ -293,13 +293,13 @@ func (agent *AutonomousAgent) run() {
 func (agent *AutonomousAgent) autonomousCycle() {
 	agent.mu.Lock()
 	defer agent.mu.Unlock()
-	
+
 	// Update autonomy level based on subsystem activity
 	agent.updateAutonomyLevel()
-	
+
 	// Check for phase transitions
 	agent.checkPhaseTransitions()
-	
+
 	// Generate self-directed events
 	agent.generateSelfDirectedEvents()
 }
@@ -307,7 +307,7 @@ func (agent *AutonomousAgent) autonomousCycle() {
 // connectSubsystems connects subsystems to the event bus
 func (agent *AutonomousAgent) connectSubsystems() {
 	fmt.Println("🔗 Connecting subsystems to event bus...")
-	
+
 	// Heartbeat events
 	agent.heartbeat.onPulse = func(pulse HeartbeatPulse) {
 		agent.eventBus.Publish(NewCognitiveEvent(
@@ -320,7 +320,7 @@ func (agent *AutonomousAgent) connectSubsystems() {
 			},
 		))
 	}
-	
+
 	// Wake/rest state transitions
 	agent.wakeRestManager.SetCallbacks(
 		func() error {
@@ -356,7 +356,7 @@ func (agent *AutonomousAgent) connectSubsystems() {
 			return nil
 		},
 	)
-	
+
 	fmt.Println("   ✓ Event bus connections established")
 }
 
@@ -364,28 +364,28 @@ func (agent *AutonomousAgent) connectSubsystems() {
 func (agent *AutonomousAgent) updateAutonomyLevel() {
 	// Autonomy is based on subsystem activity and self-direction
 	baseAutonomy := 0.5
-	
+
 	// Increase for active goals
 	activeGoals := len(agent.goalGenerator.GetActiveGoals())
 	baseAutonomy += float64(activeGoals) * 0.05
-	
+
 	// Increase for thoughts generated
 	if agent.totalThoughts > 0 {
 		baseAutonomy += 0.1
 	}
-	
+
 	// Cap at 1.0
 	if baseAutonomy > 1.0 {
 		baseAutonomy = 1.0
 	}
-	
+
 	agent.autonomyLevel = baseAutonomy
 }
 
 // checkPhaseTransitions checks if phase should change
 func (agent *AutonomousAgent) checkPhaseTransitions() {
 	currentState := agent.wakeRestManager.GetCurrentState()
-	
+
 	switch currentState {
 	case StateAwake:
 		if agent.currentPhase != PhaseActive {
@@ -406,9 +406,9 @@ func (agent *AutonomousAgent) checkPhaseTransitions() {
 func (agent *AutonomousAgent) setPhase(phase AgentPhase) {
 	oldPhase := agent.currentPhase
 	agent.currentPhase = phase
-	
+
 	fmt.Printf("🔄 Phase transition: %s → %s\n", oldPhase, phase)
-	
+
 	agent.eventBus.Publish(NewCognitiveEvent(
 		EventPhaseTransition,
 		"autonomous_agent",
@@ -427,12 +427,12 @@ func (agent *AutonomousAgent) generateSelfDirectedEvents() {
 			EventThoughtGenerated,
 			"autonomous_agent",
 			map[string]interface{}{
-				"type": "self_directed",
+				"type":    "self_directed",
 				"context": "autonomous_exploration",
 			},
 		))
 	}
-	
+
 	agent.totalThoughts++
 }
 
@@ -440,7 +440,7 @@ func (agent *AutonomousAgent) generateSelfDirectedEvents() {
 func (agent *AutonomousAgent) GetStatus() map[string]interface{} {
 	agent.mu.RLock()
 	defer agent.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"agent_id":       agent.agentID,
 		"age":            time.Since(agent.birthTime).String(),
@@ -448,10 +448,10 @@ func (agent *AutonomousAgent) GetStatus() map[string]interface{} {
 		"autonomy_level": agent.autonomyLevel,
 		"running":        agent.running,
 		"metrics": map[string]interface{}{
-			"total_thoughts":  agent.totalThoughts,
-			"total_goals":     agent.totalGoals,
-			"total_skills":    agent.totalSkills,
-			"conversations":   agent.conversationsEngaged,
+			"total_thoughts": agent.totalThoughts,
+			"total_goals":    agent.totalGoals,
+			"total_skills":   agent.totalSkills,
+			"conversations":  agent.conversationsEngaged,
 		},
 		"wake_rest_state": agent.wakeRestManager.GetCurrentState().String(),
 	}
@@ -465,12 +465,12 @@ func (agent *AutonomousAgent) GetEventBus() *CognitiveEventBus {
 // initializeKnowledgeGraph populates the knowledge graph with agent structure
 func (agent *AutonomousAgent) initializeKnowledgeGraph() {
 	fmt.Println("🕸️ Initializing knowledge graph with agent structure...")
-	
+
 	// Add agent identity
 	agent.knowledgeGraph.AddTriple("DeepTreeEcho", "is_a", "AutonomousAGI")
 	agent.knowledgeGraph.AddTriple("DeepTreeEcho", "has_id", agent.agentID)
 	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "born_at", agent.birthTime.Format(time.RFC3339), "temporal")
-	
+
 	// Add cognitive subsystems
 	subsystems := []string{
 		"Heartbeat", "WakeRestManager", "EventBus", "StreamOfConsciousness",
@@ -478,12 +478,12 @@ func (agent *AutonomousAgent) initializeKnowledgeGraph() {
 		"EchoDreamIntegration", "EchobeatsScheduler", "SelfUpdateManager",
 		"KnowledgeGraph", "StateStore", "StateMachine",
 	}
-	
+
 	for _, subsystem := range subsystems {
 		agent.knowledgeGraph.AddTriple("DeepTreeEcho", "has_subsystem", subsystem)
 		agent.knowledgeGraph.AddTriple(subsystem, "is_a", "CognitiveSubsystem")
 	}
-	
+
 	// Add cognitive states
 	states := []string{
 		"Idle", "Awake", "Dreaming", "Resting",
@@ -492,18 +492,18 @@ func (agent *AutonomousAgent) initializeKnowledgeGraph() {
 		"Listening", "Speaking", "Conversing",
 		"Emergent", "WisdomSeeking",
 	}
-	
+
 	for _, state := range states {
 		agent.knowledgeGraph.AddTriple("StateMachine", "has_state", state)
 		agent.knowledgeGraph.AddTriple(state, "is_a", "CognitiveState")
 	}
-	
+
 	// Add architectural principles
 	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "GlobalTelemetryShell", "architecture")
 	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "ThreeStreamConcurrency", "architecture")
 	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "TwelveStepCognitiveLoop", "architecture")
 	agent.knowledgeGraph.AddQuad("DeepTreeEcho", "follows_principle", "TetrahedralScheduling", "architecture")
-	
+
 	fmt.Printf("   ✓ Knowledge graph initialized with %d quads\n", agent.knowledgeGraph.GetMetrics()["total_quads"])
 }
 
@@ -527,7 +527,7 @@ func (agent *AutonomousAgent) FireStateTrigger(trigger CognitiveTrigger) error {
 	if err := agent.stateMachine.Fire(trigger); err != nil {
 		return err
 	}
-	
+
 	// Publish state change event
 	agent.eventBus.Publish(NewCognitiveEvent(
 		EventStateTransition,
@@ -537,17 +537,17 @@ func (agent *AutonomousAgent) FireStateTrigger(trigger CognitiveTrigger) error {
 			"state":   string(agent.stateMachine.State()),
 		},
 	))
-	
+
 	// Persist state change
 	agent.stateStore.Set("cognitive:current_state", string(agent.stateMachine.State()))
-	
+
 	return nil
 }
 
 // StoreKnowledge adds knowledge to the knowledge graph
 func (agent *AutonomousAgent) StoreKnowledge(subject, predicate, object string) {
 	agent.knowledgeGraph.AddTriple(subject, predicate, object)
-	
+
 	// Publish knowledge event
 	agent.eventBus.Publish(NewCognitiveEvent(
 		EventKnowledgeAcquired,
@@ -579,21 +579,21 @@ func (agent *AutonomousAgent) LoadState(key string, dest interface{}) error {
 func (agent *AutonomousAgent) GetGestalt() map[string]interface{} {
 	agent.mu.RLock()
 	defer agent.mu.RUnlock()
-	
+
 	gestalt := map[string]interface{}{
 		"agent": map[string]interface{}{
-			"id":            agent.agentID,
-			"phase":         agent.currentPhase.String(),
-			"autonomy":      agent.autonomyLevel,
-			"running":       agent.running,
-			"age":           time.Since(agent.birthTime).String(),
+			"id":       agent.agentID,
+			"phase":    agent.currentPhase.String(),
+			"autonomy": agent.autonomyLevel,
+			"running":  agent.running,
+			"age":      time.Since(agent.birthTime).String(),
 		},
 		"knowledge_graph": agent.knowledgeGraph.ContributeToGestalt(),
 		"state_store":     agent.stateStore.ContributeToGestalt(),
 		"state_machine":   agent.stateMachine.ContributeToGestalt(),
 		"sys6_triality":   agent.sys6Engine.ContributeToGestalt(),
 	}
-	
+
 	return gestalt
 }
 

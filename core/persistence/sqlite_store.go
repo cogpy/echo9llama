@@ -3,6 +3,7 @@ package persistence
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,9 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 )
+
+// ErrStateNotFound is returned by GetState when no value is stored under the key.
+var ErrStateNotFound = errors.New("state key not found")
 
 // SQLiteStore provides persistent storage for the autonomous system
 type SQLiteStore struct {
@@ -508,7 +512,7 @@ func (s *SQLiteStore) GetState(key string, target interface{}) error {
 	var valueJSON string
 	err := s.db.QueryRow(query, key).Scan(&valueJSON)
 	if err == sql.ErrNoRows {
-		return fmt.Errorf("state key not found: %s", key)
+		return fmt.Errorf("%w: %s", ErrStateNotFound, key)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to query state: %w", err)

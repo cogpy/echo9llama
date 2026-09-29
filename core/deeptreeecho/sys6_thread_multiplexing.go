@@ -48,8 +48,12 @@ type TriadicPermutation struct {
 // P(1,2)→P(1,3)→P(1,4)→P(2,3)→P(2,4)→P(3,4)
 func GetDyadicPermutations() []DyadicPermutation {
 	return []DyadicPermutation{
-		{1, 2}, {1, 3}, {1, 4},
-		{2, 3}, {2, 4}, {3, 4},
+		{1, 2},
+		{1, 3},
+		{1, 4},
+		{2, 3},
+		{2, 4},
+		{3, 4},
 	}
 }
 
@@ -171,7 +175,7 @@ func (es *Sys6EntangledState) GetAccessLog() []Sys6EntangledAccess {
 // of the four particular sets with entangled concurrency
 type Sys6ThreadMultiplexer struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Permutation cycles
@@ -220,12 +224,12 @@ func NewSys6ThreadMultiplexer(ctx context.Context) *Sys6ThreadMultiplexer {
 	}
 
 	// Initialize particular states
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		tm.particularStates[i] = NewSys6EntangledState(0.5)
 	}
 
 	// Initialize workers
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		tm.workers[i] = &Sys6ThreadWorker{
 			id:    i + 1,
 			state: tm.particularStates[i],
@@ -457,7 +461,7 @@ func (tm *Sys6ThreadMultiplexer) SetParticularState(setID int, value interface{}
 // Sys6MultiplexedEngine combines the triality engine with thread multiplexing
 type Sys6MultiplexedEngine struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core engines
@@ -569,7 +573,7 @@ func (s6m *Sys6MultiplexedEngine) onStageChange(stage TransformationStage) {
 
 	// Update integration vector
 	s6m.mu.Lock()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		s6m.integrationVector[i] = result[i]
 	}
 	s6m.integrationVector[3] = input

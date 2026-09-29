@@ -294,7 +294,7 @@ func (i *Identity) initializeReservoir(size int) {
 	}
 
 	// Initialize nodes
-	for j := 0; j < size; j++ {
+	for j := range size {
 		i.Reservoir.Nodes[j] = ReservoirNode{
 			ID:         j,
 			Activation: rand.Float64(),
@@ -305,7 +305,7 @@ func (i *Identity) initializeReservoir(size int) {
 
 		// Initialize sparse connections
 		i.Reservoir.Connections[j] = make([]float64, size)
-		for k := 0; k < size; k++ {
+		for k := range size {
 			if rand.Float64() < i.Reservoir.Sparsity {
 				i.Reservoir.Connections[j][k] = rand.Float64()*2 - 1
 			}
@@ -316,7 +316,7 @@ func (i *Identity) initializeReservoir(size int) {
 // initializeIdentityVector creates the initial identity embedding
 func (i *Identity) initializeIdentityVector() {
 	// Create identity vector based on cognitive characteristics
-	for j := 0; j < i.Embeddings.Dimensions; j++ {
+	for j := range i.Embeddings.Dimensions {
 		// Base identity signature
 		base := math.Sin(float64(j) * 0.1)
 
@@ -380,33 +380,33 @@ func (i *Identity) handleCognitiveEvent(event CognitiveEvent) {
 
 // OptimizeRelevanceRealization uses opponent processing to optimize cognitive balance
 // This is the core method for wisdom cultivation (sophrosyne)
-func (id *Identity) OptimizeRelevanceRealization(context string) *Decision {
-	id.mu.Lock()
-	defer id.mu.Unlock()
+func (i *Identity) OptimizeRelevanceRealization(context string) *Decision {
+	i.mu.Lock()
+	defer i.mu.Unlock()
 
 	// Determine active persona (Ordo/Chao/Neutral)
-	activePersona := id.PersonaManager.DetermineActivePersona(id)
+	activePersona := i.PersonaManager.DetermineActivePersona(i)
 
 	// Apply persona-specific biases to opponent processes
-	id.PersonaManager.ApplyPersonaBias(id, activePersona)
+	i.PersonaManager.ApplyPersonaBias(i, activePersona)
 
 	// Optimize all opponent balances based on current state
-	id.OpponentProcesses.OptimizeBalance(id, context)
+	i.OpponentProcesses.OptimizeBalance(i, context)
 
 	// Create decision based on balanced cognition
 	decision := &Decision{}
-	id.OpponentProcesses.ApplyBalanceToDecision(decision)
+	i.OpponentProcesses.ApplyBalanceToDecision(decision)
 
 	return decision
 }
 
 // GetWisdomScore returns the current wisdom cultivation level
-func (id *Identity) GetWisdomScore() float64 {
-	id.mu.RLock()
-	defer id.mu.RUnlock()
+func (i *Identity) GetWisdomScore() float64 {
+	i.mu.RLock()
+	defer i.mu.RUnlock()
 
 	// Wisdom = dynamic balance optimization (sophrosyne)
-	balanceWisdom := id.OpponentProcesses.GetSystemWisdomScore()
+	balanceWisdom := i.OpponentProcesses.GetSystemWisdomScore()
 
 	// Combined wisdom score
 	// Future: add morality and meaning components

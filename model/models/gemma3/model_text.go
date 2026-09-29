@@ -108,12 +108,12 @@ func (sa *TextSelfAttention) Forward(ctx ml.Context, layer int, hiddenState, pos
 }
 
 func (m *TextModel) Shift(ctx ml.Context, layer int, key, shift ml.Tensor) (ml.Tensor, error) {
-	ropeBase := m.TextConfig.ropeLocalBase
+	ropeBase := m.ropeLocalBase
 	if (layer+1)%gemmaGlobalCacheCount == 0 {
-		ropeBase = m.TextConfig.ropeGlobalBase
+		ropeBase = m.ropeGlobalBase
 	}
 
-	return fast.RoPE(ctx, key, shift, m.TextConfig.attnKeyLen, ropeBase, m.TextConfig.ropeScale, rope.WithTypeNeoX()), nil
+	return fast.RoPE(ctx, key, shift, m.attnKeyLen, ropeBase, m.ropeScale, rope.WithTypeNeoX()), nil
 }
 
 type TextMLP struct {
@@ -161,7 +161,7 @@ func (l *TextLayer) Forward(ctx ml.Context, layer int, hiddenState, positionIDs,
 
 func (m *TextModel) Forward(ctx ml.Context, inputs, positions, outputs ml.Tensor, batch input.Batch, cache kvcache.Cache) ml.Tensor {
 	hiddenState := m.TokenEmbedding.Forward(ctx, inputs)
-	hiddenState = hiddenState.Scale(ctx, math.Sqrt(float64(m.TextConfig.hiddenSize)))
+	hiddenState = hiddenState.Scale(ctx, math.Sqrt(float64(m.hiddenSize)))
 
 	// set image embeddings
 	var except []int

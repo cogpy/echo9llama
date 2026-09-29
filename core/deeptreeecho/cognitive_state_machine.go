@@ -12,19 +12,19 @@ import (
 // CognitiveStateMachine provides a finite state machine for managing cognitive states
 // This is inspired by the Stateless FSM library for managing state transitions
 type CognitiveStateMachine struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Current state
-	currentState    CognitiveState
-	stateArgs       []interface{}
+	currentState CognitiveState
+	stateArgs    []interface{}
 
 	// State configuration
-	stateConfigs    map[CognitiveState]*StateConfiguration
+	stateConfigs map[CognitiveState]*StateConfiguration
 
 	// Trigger configuration
-	triggerConfigs  map[CognitiveTrigger]*TriggerConfiguration
+	triggerConfigs map[CognitiveTrigger]*TriggerConfiguration
 
 	// Event handlers
 	onTransitioning []TransitionHandler
@@ -32,14 +32,14 @@ type CognitiveStateMachine struct {
 	onUnhandled     UnhandledTriggerHandler
 
 	// Transition history
-	history         []*StateTransition
-	historyLimit    int
+	history      []*StateTransition
+	historyLimit int
 
 	// Metrics
 	totalTransitions uint64
 
 	// Running state
-	running         bool
+	running bool
 }
 
 // CognitiveState represents a cognitive state
@@ -51,57 +51,57 @@ type CognitiveTrigger string
 // Cognitive states for Deep Tree Echo
 const (
 	// Primary consciousness states
-	StateIdle           CognitiveState = "idle"
-	StateCogAwake       CognitiveState = "awake"
-	StateCogDreaming    CognitiveState = "dreaming"
-	StateCogResting     CognitiveState = "resting"
+	StateIdle        CognitiveState = "idle"
+	StateCogAwake    CognitiveState = "awake"
+	StateCogDreaming CognitiveState = "dreaming"
+	StateCogResting  CognitiveState = "resting"
 
 	// Cognitive processing states
-	StatePerceiving     CognitiveState = "perceiving"
-	StateThinking       CognitiveState = "thinking"
-	StateActing         CognitiveState = "acting"
-	StateSimulating     CognitiveState = "simulating"
-	StateReflecting     CognitiveState = "reflecting"
+	StatePerceiving CognitiveState = "perceiving"
+	StateThinking   CognitiveState = "thinking"
+	StateActing     CognitiveState = "acting"
+	StateSimulating CognitiveState = "simulating"
+	StateReflecting CognitiveState = "reflecting"
 
 	// Learning states
-	StateLearning       CognitiveState = "learning"
-	StatePracticing     CognitiveState = "practicing"
-	StateIntegrating    CognitiveState = "integrating"
+	StateLearning    CognitiveState = "learning"
+	StatePracticing  CognitiveState = "practicing"
+	StateIntegrating CognitiveState = "integrating"
 
 	// Social states
-	StateListening      CognitiveState = "listening"
-	StateSpeaking       CognitiveState = "speaking"
-	StateConversing     CognitiveState = "conversing"
+	StateListening  CognitiveState = "listening"
+	StateSpeaking   CognitiveState = "speaking"
+	StateConversing CognitiveState = "conversing"
 
 	// Meta states
-	StateEmergent       CognitiveState = "emergent"
-	StateWisdomSeeking  CognitiveState = "wisdom_seeking"
+	StateEmergent      CognitiveState = "emergent"
+	StateWisdomSeeking CognitiveState = "wisdom_seeking"
 )
 
 // Cognitive triggers
 const (
-	TriggerWake         CognitiveTrigger = "wake"
-	TriggerSleep        CognitiveTrigger = "sleep"
-	TriggerDream        CognitiveTrigger = "dream"
-	TriggerRest         CognitiveTrigger = "rest"
+	TriggerWake  CognitiveTrigger = "wake"
+	TriggerSleep CognitiveTrigger = "sleep"
+	TriggerDream CognitiveTrigger = "dream"
+	TriggerRest  CognitiveTrigger = "rest"
 
-	TriggerPerceive     CognitiveTrigger = "perceive"
-	TriggerThink        CognitiveTrigger = "think"
-	TriggerAct          CognitiveTrigger = "act"
-	TriggerSimulate     CognitiveTrigger = "simulate"
-	TriggerReflect      CognitiveTrigger = "reflect"
+	TriggerPerceive CognitiveTrigger = "perceive"
+	TriggerThink    CognitiveTrigger = "think"
+	TriggerAct      CognitiveTrigger = "act"
+	TriggerSimulate CognitiveTrigger = "simulate"
+	TriggerReflect  CognitiveTrigger = "reflect"
 
-	TriggerLearn        CognitiveTrigger = "learn"
-	TriggerPractice     CognitiveTrigger = "practice"
-	TriggerIntegrate    CognitiveTrigger = "integrate"
+	TriggerLearn     CognitiveTrigger = "learn"
+	TriggerPractice  CognitiveTrigger = "practice"
+	TriggerIntegrate CognitiveTrigger = "integrate"
 
-	TriggerListen       CognitiveTrigger = "listen"
-	TriggerSpeak        CognitiveTrigger = "speak"
-	TriggerConverse     CognitiveTrigger = "converse"
+	TriggerListen   CognitiveTrigger = "listen"
+	TriggerSpeak    CognitiveTrigger = "speak"
+	TriggerConverse CognitiveTrigger = "converse"
 
-	TriggerEmerge       CognitiveTrigger = "emerge"
-	TriggerSeekWisdom   CognitiveTrigger = "seek_wisdom"
-	TriggerComplete     CognitiveTrigger = "complete"
+	TriggerEmerge     CognitiveTrigger = "emerge"
+	TriggerSeekWisdom CognitiveTrigger = "seek_wisdom"
+	TriggerComplete   CognitiveTrigger = "complete"
 )
 
 // StateConfiguration holds configuration for a state
@@ -125,8 +125,8 @@ type TransitionConfig struct {
 
 // TriggerConfiguration holds configuration for a trigger
 type TriggerConfiguration struct {
-	Trigger     CognitiveTrigger
-	Parameters  []string
+	Trigger    CognitiveTrigger
+	Parameters []string
 }
 
 // StateTransition represents a state transition
@@ -576,10 +576,10 @@ func (csm *CognitiveStateMachine) ContributeToGestalt() map[string]interface{} {
 	}
 
 	gestalt := map[string]interface{}{
-		"running":           csm.running,
-		"current_state":     csm.currentState,
+		"running":            csm.running,
+		"current_state":      csm.currentState,
 		"permitted_triggers": csm.PermittedTriggers(),
-		"total_transitions": csm.totalTransitions,
+		"total_transitions":  csm.totalTransitions,
 	}
 
 	if lastTransition != nil {

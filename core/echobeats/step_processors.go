@@ -15,22 +15,22 @@ type PerceptionProcessor struct{}
 func (p *PerceptionProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
 	// Perceive current state from attention and working memory
 	perceptions := make([]string, 0)
-	
+
 	// Scan attention focus
 	if len(state.Attention) > 0 {
 		perceptions = append(perceptions, fmt.Sprintf("Attending to: %v", state.Attention))
 	}
-	
+
 	// Scan active goals
 	if len(state.ActiveGoals) > 0 {
 		perceptions = append(perceptions, fmt.Sprintf("Active goals: %d", len(state.ActiveGoals)))
 	}
-	
+
 	// Scan emotional state
 	if len(state.EmotionalTone) > 0 {
 		perceptions = append(perceptions, "Emotional state detected")
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  perceptions,
@@ -56,14 +56,14 @@ type MemoryActivationProcessor struct{}
 func (p *MemoryActivationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
 	// Activate memories based on current attention and relevance
 	activatedMemories := make([]string, 0)
-	
+
 	// Simulate memory activation based on relevance scores
 	for topic, score := range state.RelevanceScores {
 		if score > 0.5 {
 			activatedMemories = append(activatedMemories, topic)
 		}
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  activatedMemories,
@@ -89,22 +89,22 @@ type ActionGenerationProcessor struct{}
 func (p *ActionGenerationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
 	// Generate possible actions based on goals and context
 	actions := make([]string, 0)
-	
+
 	if len(state.ActiveGoals) > 0 {
 		actions = append(actions, "Pursue active goal")
 	}
-	
+
 	if state.CognitiveLoad < 0.5 {
 		actions = append(actions, "Explore new topic")
 	}
-	
+
 	if len(state.PendingActions) > 0 {
 		actions = append(actions, "Complete pending action")
 	}
-	
+
 	// Always have option to reflect
 	actions = append(actions, "Reflect on current state")
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  actions,
@@ -130,14 +130,14 @@ type ActionExecutionProcessor struct{}
 func (p *ActionExecutionProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
 	// Select and execute an action
 	var selectedAction string
-	
+
 	if actions, ok := state.WorkingMemory["available_actions"].([]string); ok && len(actions) > 0 {
 		// Select action (simplified - could use more sophisticated selection)
 		selectedAction = actions[rand.Intn(len(actions))]
 	} else {
 		selectedAction = "Default action"
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  selectedAction,
@@ -168,7 +168,7 @@ func (p *RelevanceRealizationProcessor) Process(ctx context.Context, state *Cogn
 	// Assess outcomes and adjust priorities
 	relevanceShift := 0.0
 	insights := make([]string, 0)
-	
+
 	if p.phase == "present_commitment" {
 		// Assess immediate outcomes
 		if action, ok := state.WorkingMemory["last_action"].(string); ok {
@@ -180,7 +180,7 @@ func (p *RelevanceRealizationProcessor) Process(ctx context.Context, state *Cogn
 		insights = append(insights, "Committing to next cycle direction")
 		relevanceShift = 0.2
 	}
-	
+
 	// Update relevance scores
 	for key := range state.RelevanceScores {
 		state.RelevanceScores[key] += relevanceShift
@@ -188,11 +188,11 @@ func (p *RelevanceRealizationProcessor) Process(ctx context.Context, state *Cogn
 			state.RelevanceScores[key] = 1.0
 		}
 	}
-	
+
 	return &StepResult{
-		Success:        true,
-		Output:         p.phase,
-		StateUpdates:   map[string]interface{}{
+		Success: true,
+		Output:  p.phase,
+		StateUpdates: map[string]interface{}{
 			"relevance_phase": p.phase,
 		},
 		RelevanceShift: relevanceShift,
@@ -224,7 +224,7 @@ func (p *ScenarioSimulationProcessor) Process(ctx context.Context, state *Cognit
 		"Explore alternative approach",
 		"Consolidate recent learning",
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  scenarios,
@@ -249,14 +249,14 @@ type OutcomeEvaluationProcessor struct{}
 func (p *OutcomeEvaluationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
 	// Evaluate outcomes of simulated scenarios
 	evaluations := make(map[string]float64)
-	
+
 	if scenarios, ok := state.WorkingMemory["simulated_scenarios"].([]string); ok {
 		for _, scenario := range scenarios {
 			// Simplified evaluation
 			evaluations[scenario] = 0.5 + rand.Float64()*0.5
 		}
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  evaluations,
@@ -284,7 +284,7 @@ func (p *ModelUpdateProcessor) Process(ctx context.Context, state *CognitiveStat
 		"Updated action-outcome model",
 		"Refined goal priorities",
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  updates,
@@ -313,7 +313,7 @@ func (p *LearningConsolidationProcessor) Process(ctx context.Context, state *Cog
 		"Pattern recognition strengthened",
 		"Skill refinement applied",
 	}
-	
+
 	return &StepResult{
 		Success: true,
 		Output:  consolidations,
@@ -340,15 +340,15 @@ func (p *InsightGenerationProcessor) Process(ctx context.Context, state *Cogniti
 	insights := []string{
 		fmt.Sprintf("Cycle %d insight: Cognitive patterns emerging", state.CycleNumber),
 	}
-	
+
 	// Add insight based on cognitive load
 	if state.CognitiveLoad > 0.7 {
 		insights = append(insights, "High cognitive load - consider rest cycle")
 	}
-	
+
 	return &StepResult{
-		Success:  true,
-		Output:   insights,
+		Success: true,
+		Output:  insights,
 		StateUpdates: map[string]interface{}{
 			"latest_insights": insights,
 		},
@@ -375,20 +375,20 @@ func (p *MetaCognitiveProcessor) Process(ctx context.Context, state *CognitiveSt
 	metaInsights := []string{
 		fmt.Sprintf("Cycle %d complete - cognitive process functioning", state.CycleNumber),
 	}
-	
+
 	// Assess cognitive efficiency
 	if state.CognitiveLoad > 0.8 {
 		metaInsights = append(metaInsights, "Meta: Consider optimizing cognitive strategies")
 	}
-	
+
 	// Assess goal progress
 	if len(state.ActiveGoals) == 0 {
 		metaInsights = append(metaInsights, "Meta: No active goals - generate new objectives")
 	}
-	
+
 	return &StepResult{
-		Success:  true,
-		Output:   metaInsights,
+		Success: true,
+		Output:  metaInsights,
 		StateUpdates: map[string]interface{}{
 			"meta_insights":    metaInsights,
 			"meta_cycle_count": state.CycleNumber,

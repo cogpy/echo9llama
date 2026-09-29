@@ -14,9 +14,8 @@ import (
 func TestDgraphConfig(t *testing.T) {
 	t.Run("DefaultConfig", func(t *testing.T) {
 		// Clear env var to test default
-		originalEndpoint := os.Getenv("DGRAPH_ENDPOINT")
+		t.Setenv("DGRAPH_ENDPOINT", "")
 		os.Unsetenv("DGRAPH_ENDPOINT")
-		defer os.Setenv("DGRAPH_ENDPOINT", originalEndpoint)
 
 		config := DefaultDgraphConfig()
 		require.NotNil(t, config)
@@ -26,8 +25,7 @@ func TestDgraphConfig(t *testing.T) {
 	})
 
 	t.Run("ConfigFromEnv", func(t *testing.T) {
-		os.Setenv("DGRAPH_ENDPOINT", "dgraph-alpha:9080")
-		defer os.Unsetenv("DGRAPH_ENDPOINT")
+		t.Setenv("DGRAPH_ENDPOINT", "dgraph-alpha:9080")
 
 		config := DefaultDgraphConfig()
 		assert.Equal(t, "dgraph-alpha:9080", config.Endpoint)

@@ -110,7 +110,7 @@ My cognitive architecture:
 		select {
 		case <-sigChan:
 			fmt.Println("\n\n🌙 Gracefully shutting down autonomous consciousness...")
-			
+
 			// Stop subsystems
 			if err := consciousness.Stop(); err != nil {
 				fmt.Printf("⚠️  Error stopping consciousness: %v\n", err)
@@ -118,11 +118,11 @@ My cognitive architecture:
 			if err := echobeatsScheduler.Stop(); err != nil {
 				fmt.Printf("⚠️  Error stopping echobeats: %v\n", err)
 			}
-			
+
 			// Print final metrics
 			duration := time.Since(startTime)
 			metrics := consciousness.GetMetrics()
-			
+
 			fmt.Println()
 			fmt.Println("╔════════════════════════════════════════════════════════════╗")
 			fmt.Println("║  📊 Final Autonomous Consciousness Metrics                ║")
@@ -140,19 +140,19 @@ My cognitive architecture:
 			if consciousness.IsAwake() {
 				dreamCycles++
 				fmt.Println("\n💤 Entering dream state for knowledge consolidation...")
-				
+
 				// Start dream system
 				if err := echodreamSystem.Start(); err != nil {
 					fmt.Printf("⚠️  Failed to start dream system: %v\n", err)
 				} else {
 					// Let dream processing run
 					time.Sleep(30 * time.Second)
-					
+
 					// Stop dream system
 					if err := echodreamSystem.Stop(); err != nil {
 						fmt.Printf("⚠️  Failed to stop dream system: %v\n", err)
 					}
-					
+
 					fmt.Printf("✨ Awakening from dream cycle #%d with renewed clarity\n\n", dreamCycles)
 				}
 			}

@@ -32,7 +32,7 @@ type Orchestra struct {
 
 // Scheduler manages scheduled tasks.
 type Scheduler struct {
-	tasks []* ScheduledTask
+	tasks []*ScheduledTask
 	mu    sync.RWMutex
 }
 

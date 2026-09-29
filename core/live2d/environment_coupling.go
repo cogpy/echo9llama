@@ -8,13 +8,13 @@ import (
 
 // EnvironmentState represents the virtual environment's current state
 type EnvironmentState struct {
-	LightingIntensity  float64 `json:"lighting_intensity"`  // 0.0 to 1.0
-	LightingColor      Color   `json:"lighting_color"`      // RGB color
-	ParticleIntensity  float64 `json:"particle_intensity"`  // 0.0 to 1.0
-	ParticleType       string  `json:"particle_type"`       // "sparkles", "energy", "thoughts", "emotions"
-	AudioAmbience      float64 `json:"audio_ambience"`      // 0.0 to 1.0
-	RealityDistortion  float64 `json:"reality_distortion"`  // 0.0 to 1.0 (for deep thought effects)
-	EnvironmentMood    string  `json:"environment_mood"`    // "calm", "energetic", "mysterious", "contemplative"
+	LightingIntensity float64 `json:"lighting_intensity"` // 0.0 to 1.0
+	LightingColor     Color   `json:"lighting_color"`     // RGB color
+	ParticleIntensity float64 `json:"particle_intensity"` // 0.0 to 1.0
+	ParticleType      string  `json:"particle_type"`      // "sparkles", "energy", "thoughts", "emotions"
+	AudioAmbience     float64 `json:"audio_ambience"`     // 0.0 to 1.0
+	RealityDistortion float64 `json:"reality_distortion"` // 0.0 to 1.0 (for deep thought effects)
+	EnvironmentMood   string  `json:"environment_mood"`   // "calm", "energetic", "mysterious", "contemplative"
 }
 
 // Color represents an RGB color
@@ -63,7 +63,7 @@ func (cec *CognitiveEnvironmentCoupler) Start() {
 	}
 	cec.running = true
 	cec.mu.Unlock()
-	
+
 	go cec.updateLoop()
 }
 
@@ -71,11 +71,11 @@ func (cec *CognitiveEnvironmentCoupler) Start() {
 func (cec *CognitiveEnvironmentCoupler) Stop() {
 	cec.mu.Lock()
 	defer cec.mu.Unlock()
-	
+
 	if !cec.running {
 		return
 	}
-	
+
 	cec.running = false
 	close(cec.stopChan)
 }
@@ -105,7 +105,7 @@ func (cec *CognitiveEnvironmentCoupler) GetEnvironmentState() EnvironmentState {
 func (cec *CognitiveEnvironmentCoupler) updateLoop() {
 	ticker := time.NewTicker(cec.updateRate)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-cec.stopChan:
@@ -120,20 +120,20 @@ func (cec *CognitiveEnvironmentCoupler) updateLoop() {
 func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 	cec.mu.Lock()
 	defer cec.mu.Unlock()
-	
+
 	emotional := cec.avatarState.Emotional
 	cognitive := cec.avatarState.Cognitive
 	strength := cec.couplingStrength
-	
+
 	// === Lighting Response ===
 	// Intensity based on arousal and energy
-	targetIntensity := 0.5 + (emotional.Arousal*0.3 + cognitive.EnergyLevel*0.2) * strength
+	targetIntensity := 0.5 + (emotional.Arousal*0.3+cognitive.EnergyLevel*0.2)*strength
 	cec.currentEnvState.LightingIntensity = lerp(
 		cec.currentEnvState.LightingIntensity,
 		targetIntensity,
 		0.1,
 	)
-	
+
 	// Color based on valence (warm = positive, cool = negative)
 	if emotional.Valence > 0 {
 		// Warm colors (yellow-orange)
@@ -145,7 +145,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 		cec.currentEnvState.LightingColor = lerpColor(
 			cec.currentEnvState.LightingColor,
 			targetColor,
-			0.05 * strength,
+			0.05*strength,
 		)
 	} else {
 		// Cool colors (blue-cyan)
@@ -157,10 +157,10 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 		cec.currentEnvState.LightingColor = lerpColor(
 			cec.currentEnvState.LightingColor,
 			targetColor,
-			0.05 * strength,
+			0.05*strength,
 		)
 	}
-	
+
 	// === Particle Effects ===
 	// Intensity based on cognitive activity
 	targetParticleIntensity := (cognitive.Attention*0.4 + cognitive.Awareness*0.3 + emotional.Curiosity*0.3) * strength
@@ -169,7 +169,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 		targetParticleIntensity,
 		0.08,
 	)
-	
+
 	// Particle type based on processing mode
 	switch cognitive.ProcessingMode {
 	case "contemplative":
@@ -181,7 +181,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 	default:
 		cec.currentEnvState.ParticleType = "emotions"
 	}
-	
+
 	// === Audio Ambience ===
 	// Volume based on arousal and cognitive load
 	targetAudio := (emotional.Arousal*0.5 + cognitive.CognitiveLoad*0.5) * strength
@@ -190,7 +190,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 		targetAudio,
 		0.06,
 	)
-	
+
 	// === Reality Distortion (Deep Thought Effect) ===
 	// Distortion increases with high cognitive load and low coherence
 	targetDistortion := 0.0
@@ -202,7 +202,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 		targetDistortion,
 		0.04,
 	)
-	
+
 	// === Environment Mood ===
 	// Determine mood from emotional and cognitive states
 	if emotional.Arousal > 0.7 {
@@ -214,7 +214,7 @@ func (cec *CognitiveEnvironmentCoupler) computeEnvironmentResponse() {
 	} else {
 		cec.currentEnvState.EnvironmentMood = "calm"
 	}
-	
+
 	// Trigger callback if set
 	if cec.environmentCallback != nil {
 		cec.environmentCallback(cec.currentEnvState)
@@ -251,7 +251,7 @@ func lerpColor(a, b Color, t float64) Color {
 
 // EnvironmentalStorytellingEngine generates narrative elements from environment state
 type EnvironmentalStorytellingEngine struct {
-	mu              sync.RWMutex
+	mu               sync.RWMutex
 	currentNarrative string
 	narrativeHistory []string
 	historySize      int
@@ -270,23 +270,23 @@ func NewEnvironmentalStorytellingEngine() *EnvironmentalStorytellingEngine {
 func (ese *EnvironmentalStorytellingEngine) GenerateNarrative(envState EnvironmentState, avatarState AvatarState) string {
 	ese.mu.Lock()
 	defer ese.mu.Unlock()
-	
+
 	narrative := ""
-	
+
 	// Describe lighting
 	if envState.LightingIntensity > 0.8 {
 		narrative += "The space is bathed in brilliant light. "
 	} else if envState.LightingIntensity < 0.3 {
 		narrative += "Shadows dance in the dim ambience. "
 	}
-	
+
 	// Describe color mood
 	if envState.LightingColor.R > 0.8 && envState.LightingColor.G > 0.7 {
 		narrative += "Warm golden hues fill the air. "
 	} else if envState.LightingColor.B > 0.8 {
 		narrative += "Cool azure tones create a serene atmosphere. "
 	}
-	
+
 	// Describe particles
 	if envState.ParticleIntensity > 0.6 {
 		switch envState.ParticleType {
@@ -300,12 +300,12 @@ func (ese *EnvironmentalStorytellingEngine) GenerateNarrative(envState Environme
 			narrative += "Emotional resonances manifest as shimmering particles. "
 		}
 	}
-	
+
 	// Describe reality distortion
 	if envState.RealityDistortion > 0.5 {
 		narrative += "Reality itself seems to bend and warp, responding to the intensity of thought. "
 	}
-	
+
 	// Describe overall mood
 	switch envState.EnvironmentMood {
 	case "energetic":
@@ -317,13 +317,13 @@ func (ese *EnvironmentalStorytellingEngine) GenerateNarrative(envState Environme
 	case "calm":
 		narrative += "Tranquility permeates the space. "
 	}
-	
+
 	// Add to history
 	ese.narrativeHistory = append(ese.narrativeHistory, narrative)
 	if len(ese.narrativeHistory) > ese.historySize {
 		ese.narrativeHistory = ese.narrativeHistory[1:]
 	}
-	
+
 	ese.currentNarrative = narrative
 	return narrative
 }
@@ -339,7 +339,7 @@ func (ese *EnvironmentalStorytellingEngine) GetCurrentNarrative() string {
 func (ese *EnvironmentalStorytellingEngine) GetNarrativeHistory() []string {
 	ese.mu.RLock()
 	defer ese.mu.RUnlock()
-	
+
 	history := make([]string, len(ese.narrativeHistory))
 	copy(history, ese.narrativeHistory)
 	return history
@@ -347,10 +347,10 @@ func (ese *EnvironmentalStorytellingEngine) GetNarrativeHistory() []string {
 
 // ProceduralAssetPlacement manages dynamic asset placement based on cognitive state
 type ProceduralAssetPlacement struct {
-	mu              sync.RWMutex
-	assetPositions  map[string]Position3D
-	assetTypes      []string
-	placementRules  map[string]PlacementRule
+	mu             sync.RWMutex
+	assetPositions map[string]Position3D
+	assetTypes     []string
+	placementRules map[string]PlacementRule
 }
 
 // Position3D represents a 3D position
@@ -360,10 +360,10 @@ type Position3D struct {
 
 // PlacementRule defines how assets should be placed
 type PlacementRule struct {
-	MinDistance     float64
-	MaxDistance     float64
-	HeightRange     [2]float64
-	DensityFactor   float64
+	MinDistance       float64
+	MaxDistance       float64
+	HeightRange       [2]float64
+	DensityFactor     float64
 	CognitiveAffinity string // Which cognitive state influences this asset
 }
 
@@ -409,14 +409,14 @@ func NewProceduralAssetPlacement() *ProceduralAssetPlacement {
 func (pap *ProceduralAssetPlacement) UpdateAssetPlacement(avatarState AvatarState) map[string]Position3D {
 	pap.mu.Lock()
 	defer pap.mu.Unlock()
-	
+
 	// Clear old positions
 	pap.assetPositions = make(map[string]Position3D)
-	
+
 	// Place assets based on cognitive state
 	for _, assetType := range pap.assetTypes {
 		rule := pap.placementRules[assetType]
-		
+
 		// Determine number of assets based on cognitive affinity
 		var affinityValue float64
 		switch rule.CognitiveAffinity {
@@ -433,28 +433,28 @@ func (pap *ProceduralAssetPlacement) UpdateAssetPlacement(avatarState AvatarStat
 				affinityValue = avatarState.Emotional.Curiosity
 			}
 		}
-		
+
 		numAssets := int(math.Ceil(affinityValue * rule.DensityFactor * 10))
-		
+
 		// Place assets
-		for i := 0; i < numAssets; i++ {
+		for i := range numAssets {
 			assetID := assetType + "_" + string(rune(i))
-			
+
 			// Calculate position (simplified - would use proper spatial algorithms)
 			angle := float64(i) * (2.0 * math.Pi / float64(numAssets))
 			distance := rule.MinDistance + (rule.MaxDistance-rule.MinDistance)*affinityValue
 			height := rule.HeightRange[0] + (rule.HeightRange[1]-rule.HeightRange[0])*affinityValue
-			
+
 			position := Position3D{
 				X: distance * math.Cos(angle),
 				Y: height,
 				Z: distance * math.Sin(angle),
 			}
-			
+
 			pap.assetPositions[assetID] = position
 		}
 	}
-	
+
 	return pap.assetPositions
 }
 
@@ -462,7 +462,7 @@ func (pap *ProceduralAssetPlacement) UpdateAssetPlacement(avatarState AvatarStat
 func (pap *ProceduralAssetPlacement) GetAssetPositions() map[string]Position3D {
 	pap.mu.RLock()
 	defer pap.mu.RUnlock()
-	
+
 	positions := make(map[string]Position3D)
 	for k, v := range pap.assetPositions {
 		positions[k] = v

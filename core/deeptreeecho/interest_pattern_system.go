@@ -307,8 +307,8 @@ func (ips *InterestPatternSystem) GetTopInterests(limit int) []InterestVector {
 	}
 
 	// Sort by strength (simple bubble sort for small lists)
-	for i := 0; i < len(interests)-1; i++ {
-		for j := 0; j < len(interests)-i-1; j++ {
+	for i := range len(interests) - 1 {
+		for j := range len(interests) - i - 1 {
 			if interests[j].Strength < interests[j+1].Strength {
 				interests[j], interests[j+1] = interests[j+1], interests[j]
 			}

@@ -34,8 +34,8 @@ type EchobeatsGoalScheduler struct {
 	cycleCount   uint64
 
 	// Goal queue
-	goals       []*EchoGoal
-	activeGoal  *EchoGoal
+	goals          []*EchoGoal
+	activeGoal     *EchoGoal
 	completedGoals []*EchoGoal
 
 	// Event bus integration
@@ -49,7 +49,7 @@ type EchobeatsGoalScheduler struct {
 
 	// Running state
 	running bool
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel  context.CancelFunc
 }
 

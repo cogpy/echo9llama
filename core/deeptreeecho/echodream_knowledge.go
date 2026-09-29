@@ -23,10 +23,10 @@ type EchodreamKnowledgeIntegrator struct {
 	mu sync.RWMutex
 
 	// Knowledge stores
-	EpisodicMemories  []*EpisodicMemoryV2
-	SemanticPatterns  []*SemanticPattern
-	EmergentInsights  []*EmergentInsightV2
-	DreamLog          []*DreamEntry
+	EpisodicMemories []*EpisodicMemoryV2
+	SemanticPatterns []*SemanticPattern
+	EmergentInsights []*EmergentInsightV2
+	DreamLog         []*DreamEntry
 
 	// Integration state
 	ConsolidationCount uint64
@@ -40,9 +40,6 @@ type EchodreamKnowledgeIntegrator struct {
 	// DreamGen API configuration (optional)
 	DgenAPIKey  string
 	DgenEnabled bool
-
-	// Running state
-	running bool
 }
 
 // EpisodicMemoryV2 represents a specific experience/interaction (v2 with consolidation tracking)
@@ -243,7 +240,7 @@ func (eki *EchodreamKnowledgeIntegrator) synthesizePatterns() int {
 	count := 0
 
 	// Random cross-pollination of patterns (dream-like association)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		idx1 := rand.Intn(len(eki.SemanticPatterns))
 		idx2 := rand.Intn(len(eki.SemanticPatterns))
 		if idx1 == idx2 {

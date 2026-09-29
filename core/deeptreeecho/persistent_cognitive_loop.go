@@ -31,7 +31,7 @@ type PersistentCognitiveLoop struct {
 	mu sync.RWMutex
 
 	// Context
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core systems
@@ -40,21 +40,19 @@ type PersistentCognitiveLoop struct {
 	eventBus      *CognitiveEventBusV3
 	goalScheduler *EchobeatsGoalScheduler
 	dreamSystem   *EchodreamKnowledgeIntegrator
-	wisdomEngine  *WisdomSynthesis
 	llmProvider   llm.LLMProvider
 
 	// Autonomous thought state
 	thoughtStream     []AutonomousThought
 	currentFocus      string
-	currentMood       string
 	internalMonologue []string
 	maxMonologue      int
 
 	// Echobeats phase tracking
-	currentStep   int
-	currentTriad  int
-	phaseEngines  [3]*LoopPhaseEngine
-	cycleCount    uint64
+	currentStep  int
+	currentTriad int
+	phaseEngines [3]*LoopPhaseEngine
+	cycleCount   uint64
 
 	// Wake/rest state
 	wakeState       WakeRestState
@@ -65,18 +63,14 @@ type PersistentCognitiveLoop struct {
 	cognitiveDebt   float64 // Accumulated fatigue
 
 	// Discussion monitoring
-	pendingMessages   []PendingMessage
+	pendingMessages     []PendingMessage
 	activeConversations map[string]*ActiveConversation
 
-	// Skill practice
-	skillPracticeQueue []string
-	lastPractice       time.Time
-
 	// Timing configuration
-	mainTickInterval    time.Duration
-	thoughtInterval     time.Duration
-	wisdomInterval      time.Duration
-	introspectInterval  time.Duration
+	mainTickInterval   time.Duration
+	thoughtInterval    time.Duration
+	wisdomInterval     time.Duration
+	introspectInterval time.Duration
 
 	// Metrics
 	totalTicks          uint64
@@ -130,12 +124,12 @@ type LoopConversationMsg struct {
 
 // PersistentLoopConfig configures the cognitive loop
 type PersistentLoopConfig struct {
-	MainTickInterval    time.Duration
-	ThoughtInterval     time.Duration
-	WisdomInterval      time.Duration
-	IntrospectInterval  time.Duration
-	MaxWakeDuration     time.Duration
-	MinRestDuration     time.Duration
+	MainTickInterval   time.Duration
+	ThoughtInterval    time.Duration
+	WisdomInterval     time.Duration
+	IntrospectInterval time.Duration
+	MaxWakeDuration    time.Duration
+	MinRestDuration    time.Duration
 }
 
 // DefaultPersistentLoopConfig returns sensible defaults
@@ -713,7 +707,7 @@ func (pcl *PersistentCognitiveLoop) evaluatePendingMessages() {
 	// Process messages in order of urgency * interest
 	engaged := []int{}
 	for i, msg := range pcl.pendingMessages {
-		score := msg.Interest * 0.6 + msg.Urgency * 0.4
+		score := msg.Interest*0.6 + msg.Urgency*0.4
 
 		// Engagement threshold depends on current state
 		threshold := 0.4

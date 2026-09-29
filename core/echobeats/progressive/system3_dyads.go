@@ -21,8 +21,8 @@ type System3Dyads struct {
 	mu sync.RWMutex
 
 	// The two orthogonal dyadic channels
-	universalDyad   *UniversalDyad
-	particularDyad  *ParticularDyad
+	universalDyad  *UniversalDyad
+	particularDyad *ParticularDyad
 
 	// Grounding in System 2
 	bootstrap *System2Bootstrap

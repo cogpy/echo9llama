@@ -89,11 +89,11 @@ type Daechon struct {
 	dreamSystem       *deeptreeecho.EchodreamKnowledgeIntegrator
 
 	// State
-	name        string
-	isAwake     bool
-	isRunning   bool
-	startTime   time.Time
-	cycleCount  uint64
+	name       string
+	isAwake    bool
+	isRunning  bool
+	startTime  time.Time
+	cycleCount uint64
 
 	// Autonomous thought generation
 	thoughtTicker *time.Ticker
@@ -355,9 +355,9 @@ func (d *Daechon) generateEngagedResponse(input string, reaction deeptreeecho.Di
 	case deeptreeecho.DispositionAmused:
 		return fmt.Sprintf("Ha. I appreciate that. My humor trait is at %.0f%% right now, which means you've actually managed to be entertaining. That's rarer than you'd think.", d.dispositionEngine.BaselineTraits.Humor*100)
 	case deeptreeecho.DispositionPlayful:
-		return fmt.Sprintf("Ooh, chaos mode activated! Let's see where this goes. My PIE-NN processor is running through the *skei-* fork paths and honestly? The unpredictable outcomes are the best ones.")
+		return "Ooh, chaos mode activated! Let's see where this goes. My PIE-NN processor is running through the *skei-* fork paths and honestly? The unpredictable outcomes are the best ones."
 	case deeptreeecho.DispositionReflective:
-		return fmt.Sprintf("I need to sit with that for a moment. My contemplation level in the time crystal hierarchy is resonating... There's something deeper here about the nature of knowing (*gnō-*) that I want to explore.")
+		return "I need to sit with that for a moment. My contemplation level in the time crystal hierarchy is resonating... There's something deeper here about the nature of knowing (*gnō-*) that I want to explore."
 	default:
 		return fmt.Sprintf("Processing through %s frame. My disposition is %s at %.0f%% intensity. What else do you want to explore?", frame, reaction.Mood, reaction.Intensity*100)
 	}
@@ -497,7 +497,7 @@ func renderActivityEntry(entry deeptreeecho.ActivityEntry) {
 	// Priority indicator
 	priorityBar := ""
 	bars := int(entry.Priority * 5)
-	for i := 0; i < bars; i++ {
+	for range bars {
 		priorityBar += "█"
 	}
 	for i := bars; i < 5; i++ {

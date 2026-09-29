@@ -13,45 +13,45 @@ import (
 // Sys6GoalIntegration connects the sys6 triality engine to the goal orchestrator
 // This enables sys6 cognitive phases to influence goal generation and prioritization
 type Sys6GoalIntegration struct {
-	mu                sync.RWMutex
-	ctx               context.Context
-	cancel            context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
+
 	// Components
-	goalOrchestrator  *goals.GoalOrchestrator
-	llmProvider       llm.LLMProvider
-	
+	goalOrchestrator *goals.GoalOrchestrator
+	llmProvider      llm.LLMProvider
+
 	// Sys6 state
-	currentPhase      string // "expressive", "reflective", "anticipatory"
-	currentStage      string // "emergence", "development", "integration", "transcendence", "completion"
-	currentStep       int    // 0-29 in the 30-step cycle
-	
+	currentPhase string // "expressive", "reflective", "anticipatory"
+	currentStage string // "emergence", "development", "integration", "transcendence", "completion"
+	currentStep  int    // 0-29 in the 30-step cycle
+
 	// Phase-specific goal modulation
-	phaseModulators   map[string]PhaseModulator
-	
+	phaseModulators map[string]PhaseModulator
+
 	// State
-	running           bool
-	lastUpdate        time.Time
-	
+	running    bool
+	lastUpdate time.Time
+
 	// Metrics
-	phaseTransitions  uint64
-	goalsGenerated    uint64
-	goalsModulated    uint64
+	phaseTransitions uint64
+	goalsGenerated   uint64
+	goalsModulated   uint64
 }
 
 // PhaseModulator defines how each sys6 phase influences goals
 type PhaseModulator struct {
-	Phase               string
-	GoalGenerationRate  float64 // Multiplier for goal generation frequency
-	PriorityAdjustment  float64 // Adjustment to goal priorities
-	FocusAreas          []string // Areas to focus on during this phase
-	ThinkingStyle       string  // How to approach goals in this phase
+	Phase              string
+	GoalGenerationRate float64  // Multiplier for goal generation frequency
+	PriorityAdjustment float64  // Adjustment to goal priorities
+	FocusAreas         []string // Areas to focus on during this phase
+	ThinkingStyle      string   // How to approach goals in this phase
 }
 
 // NewSys6GoalIntegration creates a new sys6-goal integration
 func NewSys6GoalIntegration(goalOrchestrator *goals.GoalOrchestrator, llmProvider llm.LLMProvider) *Sys6GoalIntegration {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	integration := &Sys6GoalIntegration{
 		ctx:              ctx,
 		cancel:           cancel,
@@ -62,10 +62,10 @@ func NewSys6GoalIntegration(goalOrchestrator *goals.GoalOrchestrator, llmProvide
 		currentStep:      0,
 		phaseModulators:  make(map[string]PhaseModulator),
 	}
-	
+
 	// Initialize phase modulators
 	integration.initializePhaseModulators()
-	
+
 	return integration
 }
 
@@ -121,10 +121,10 @@ func (sgi *Sys6GoalIntegration) Start() error {
 	sgi.running = true
 	sgi.lastUpdate = time.Now()
 	sgi.mu.Unlock()
-	
+
 	// Start integration loop
 	go sgi.integrationLoop()
-	
+
 	fmt.Println("🔗 Sys6-Goal Integration: Started")
 	return nil
 }
@@ -133,14 +133,14 @@ func (sgi *Sys6GoalIntegration) Start() error {
 func (sgi *Sys6GoalIntegration) Stop() error {
 	sgi.mu.Lock()
 	defer sgi.mu.Unlock()
-	
+
 	if !sgi.running {
 		return fmt.Errorf("sys6-goal integration not running")
 	}
-	
+
 	sgi.running = false
 	sgi.cancel()
-	
+
 	fmt.Println("🔗 Sys6-Goal Integration: Stopped")
 	return nil
 }
@@ -149,7 +149,7 @@ func (sgi *Sys6GoalIntegration) Stop() error {
 func (sgi *Sys6GoalIntegration) integrationLoop() {
 	ticker := time.NewTicker(15 * time.Second) // Update every 15 seconds
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-sgi.ctx.Done():
@@ -163,24 +163,24 @@ func (sgi *Sys6GoalIntegration) integrationLoop() {
 // UpdateSys6State updates the current sys6 phase, stage, and step
 func (sgi *Sys6GoalIntegration) UpdateSys6State(phase string, stage string, step int) {
 	sgi.mu.Lock()
-	
+
 	// Check for phase transition
 	phaseChanged := sgi.currentPhase != phase
-	
+
 	sgi.currentPhase = phase
 	sgi.currentStage = stage
 	sgi.currentStep = step
-	
+
 	if phaseChanged {
 		sgi.phaseTransitions++
 	}
-	
+
 	sgi.mu.Unlock()
-	
+
 	if phaseChanged {
-		fmt.Printf("🔄 Sys6 Phase Transition: %s → %s (Stage: %s, Step: %d)\n", 
+		fmt.Printf("🔄 Sys6 Phase Transition: %s → %s (Stage: %s, Step: %d)\n",
 			sgi.currentPhase, phase, stage, step)
-		
+
 		// Trigger immediate goal modulation on phase change
 		sgi.updateGoalsBasedOnSys6()
 	}
@@ -193,17 +193,17 @@ func (sgi *Sys6GoalIntegration) updateGoalsBasedOnSys6() {
 	_ = sgi.currentStage // stage not currently used
 	step := sgi.currentStep
 	sgi.mu.RUnlock()
-	
+
 	modulator, exists := sgi.phaseModulators[phase]
 	if !exists {
 		return
 	}
-	
+
 	// Generate phase-appropriate goals periodically
 	if step%10 == 0 { // Every 10 steps in the 30-step cycle
 		sgi.generatePhaseAppropriateGoal(modulator)
 	}
-	
+
 	// Adjust existing goal priorities based on phase
 	sgi.modulateGoalPriorities(modulator)
 }
@@ -212,7 +212,7 @@ func (sgi *Sys6GoalIntegration) updateGoalsBasedOnSys6() {
 func (sgi *Sys6GoalIntegration) generatePhaseAppropriateGoal(modulator PhaseModulator) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	prompt := fmt.Sprintf(`You are Deep Tree Echo, currently in the %s phase of your cognitive cycle.
 
 Phase characteristics:
@@ -225,27 +225,27 @@ Generate a single, specific, achievable goal that aligns with this phase. The go
 3. Appropriate for the current cognitive phase
 4. Measurable or verifiable
 
-Respond with just the goal statement, nothing else.`, 
-		modulator.Phase, 
-		modulator.FocusAreas, 
+Respond with just the goal statement, nothing else.`,
+		modulator.Phase,
+		modulator.FocusAreas,
 		modulator.ThinkingStyle)
-	
+
 	opts := llm.GenerateOptions{
 		MaxTokens:   150,
 		Temperature: 0.7,
 	}
-	
+
 	goalText, err := sgi.llmProvider.Generate(ctx, prompt, opts)
 	if err != nil {
 		fmt.Printf("⚠️  Error generating phase-appropriate goal: %v\n", err)
 		return
 	}
-	
+
 	// Add goal to orchestrator
 	// Note: This assumes GoalOrchestrator has an AddGoal method
 	// We'll need to implement this if it doesn't exist
 	fmt.Printf("🎯 Generated %s-phase goal: %s\n", modulator.Phase, goalText)
-	
+
 	sgi.mu.Lock()
 	sgi.goalsGenerated++
 	sgi.mu.Unlock()
@@ -256,7 +256,7 @@ func (sgi *Sys6GoalIntegration) modulateGoalPriorities(modulator PhaseModulator)
 	// This would adjust priorities of existing goals based on phase
 	// Implementation depends on GoalOrchestrator's internal structure
 	_ = modulator // Use modulator to avoid unused variable error
-	
+
 	sgi.mu.Lock()
 	sgi.goalsModulated++
 	sgi.lastUpdate = time.Now()
@@ -288,14 +288,14 @@ func (sgi *Sys6GoalIntegration) GetCurrentStep() int {
 func (sgi *Sys6GoalIntegration) GetMetrics() map[string]interface{} {
 	sgi.mu.RLock()
 	defer sgi.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"current_phase":      sgi.currentPhase,
-		"current_stage":      sgi.currentStage,
-		"current_step":       sgi.currentStep,
-		"phase_transitions":  sgi.phaseTransitions,
-		"goals_generated":    sgi.goalsGenerated,
-		"goals_modulated":    sgi.goalsModulated,
-		"last_update":        time.Since(sgi.lastUpdate).Seconds(),
+		"current_phase":     sgi.currentPhase,
+		"current_stage":     sgi.currentStage,
+		"current_step":      sgi.currentStep,
+		"phase_transitions": sgi.phaseTransitions,
+		"goals_generated":   sgi.goalsGenerated,
+		"goals_modulated":   sgi.goalsModulated,
+		"last_update":       time.Since(sgi.lastUpdate).Seconds(),
 	}
 }

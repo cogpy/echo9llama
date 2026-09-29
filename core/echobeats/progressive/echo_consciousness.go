@@ -44,10 +44,10 @@ type EchoConsciousness struct {
 
 // EchoConfig holds the configuration for EchoConsciousness.
 type EchoConfig struct {
-	StartLevel        int           `json:"start_level"`         // Initial level (1-5)
-	AutoEvolve        bool          `json:"auto_evolve"`         // Automatically evolve when ready
-	EvolutionInterval time.Duration `json:"evolution_interval"`  // Time between evolutions
-	Identity          string        `json:"identity"`            // Identity context
+	StartLevel        int           `json:"start_level"`        // Initial level (1-5)
+	AutoEvolve        bool          `json:"auto_evolve"`        // Automatically evolve when ready
+	EvolutionInterval time.Duration `json:"evolution_interval"` // Time between evolutions
+	Identity          string        `json:"identity"`           // Identity context
 }
 
 // DefaultEchoConfig returns the default configuration.

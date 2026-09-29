@@ -13,9 +13,9 @@ import (
 // all cognitive subsystems including the new heartbeat, conversation monitor,
 // skill-goal integration, and wisdom synthesis systems
 type UnifiedCognitiveLoopV2 struct {
-	mu                    sync.RWMutex
-	ctx                   context.Context
-	cancel                context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Core cognitive subsystems (from v1)
 	echobeatsScheduler    *EchobeatsScheduler
@@ -27,37 +27,37 @@ type UnifiedCognitiveLoopV2 struct {
 	discussionAutonomy    *DiscussionAutonomySystem
 
 	// NEW: Enhanced cognitive subsystems
-	heartbeat             *AutonomousHeartbeat
-	conversationMonitor   *ConversationMonitor
-	skillGoalIntegration  *SkillGoalIntegration
-	wisdomSynthesis       *WisdomSynthesis
+	heartbeat            *AutonomousHeartbeat
+	conversationMonitor  *ConversationMonitor
+	skillGoalIntegration *SkillGoalIntegration
+	wisdomSynthesis      *WisdomSynthesis
 
 	// NEW: Langchain & Ergo integrations
-	reasoningManager      *ReasoningManager
-	actorSupervisor       *ActorSupervisor
+	reasoningManager *ReasoningManager
+	actorSupervisor  *ActorSupervisor
 
 	// LLM provider
-	llmProvider           llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Cognitive event bus
-	eventBus              *CognitiveEventBus
+	eventBus *CognitiveEventBus
 
 	// Unified state
-	wakeRestState         WakeRestState
-	cognitiveLoad         float64
-	wisdomLevel           float64
-	awarenessLevel        float64
+	wakeRestState  WakeRestState
+	cognitiveLoad  float64
+	wisdomLevel    float64
+	awarenessLevel float64
 
 	// Metrics
-	totalCycles           uint64
-	totalEvents           uint64
-	wisdomGained          float64
-	insightsGained        uint64
-	conversationsEngaged  uint64
+	totalCycles          uint64
+	totalEvents          uint64
+	wisdomGained         float64
+	insightsGained       uint64
+	conversationsEngaged uint64
 
 	// Running state
-	running               bool
-	startTime             time.Time
+	running   bool
+	startTime time.Time
 }
 
 // NewUnifiedCognitiveLoopV2 creates the enhanced unified cognitive loop
@@ -65,13 +65,13 @@ func NewUnifiedCognitiveLoopV2(llmProvider llm.LLMProvider) *UnifiedCognitiveLoo
 	ctx, cancel := context.WithCancel(context.Background())
 
 	ucl := &UnifiedCognitiveLoopV2{
-		ctx:                ctx,
-		cancel:             cancel,
-		llmProvider:        llmProvider,
-		wakeRestState: StateAwake,
-		cognitiveLoad:      0.0,
-		wisdomLevel:        0.0,
-		awarenessLevel:     0.5,
+		ctx:            ctx,
+		cancel:         cancel,
+		llmProvider:    llmProvider,
+		wakeRestState:  StateAwake,
+		cognitiveLoad:  0.0,
+		wisdomLevel:    0.0,
+		awarenessLevel: 0.5,
 	}
 
 	// Create event bus
@@ -197,8 +197,8 @@ func (ucl *UnifiedCognitiveLoopV2) wireSubsystemsV2() {
 		topic := interest["topic"].(string)
 		strength := interest["strength"].(float64)
 
-			// Update discussion autonomy
-			ucl.discussionAutonomy.UpdateInterest(topic, strength)
+		// Update discussion autonomy
+		ucl.discussionAutonomy.UpdateInterest(topic, strength)
 
 		// Queue skill learning from interest
 		ucl.skillGoalIntegration.QueueSkillFromInterest(topic, strength)
@@ -208,8 +208,8 @@ func (ucl *UnifiedCognitiveLoopV2) wireSubsystemsV2() {
 	ucl.eventBus.Subscribe(EventKnowledgeGapIdentified, func(event CognitiveEvent) {
 		gap := event.Data.(string)
 
-			// Consider learning a skill
-			ucl.skillLearning.ConsiderSkill(gap, event.Priority)
+		// Consider learning a skill
+		ucl.skillLearning.ConsiderSkill(gap, event.Priority)
 
 		// Also create skill acquisition goal if priority high enough
 		if event.Priority > 0.7 {
@@ -878,14 +878,14 @@ func (ucl *UnifiedCognitiveLoopV2) ContributeToGestalt() map[string]interface{} 
 	defer ucl.mu.RUnlock()
 
 	return map[string]interface{}{
-		"subsystem":            "unified_cognitive_loop_v2",
-		"state":                ucl.wakeRestState.String(),
-		"cognitive_load":       ucl.cognitiveLoad,
-		"wisdom_level":         ucl.wisdomLevel,
-		"awareness_level":      ucl.awarenessLevel,
-		"total_cycles":         ucl.totalCycles,
-		"running":              ucl.running,
-		"reasoning_manager":    ucl.reasoningManager.ContributeToGestalt(),
-		"actor_supervisor":     ucl.actorSupervisor.ContributeToGestalt(),
+		"subsystem":         "unified_cognitive_loop_v2",
+		"state":             ucl.wakeRestState.String(),
+		"cognitive_load":    ucl.cognitiveLoad,
+		"wisdom_level":      ucl.wisdomLevel,
+		"awareness_level":   ucl.awarenessLevel,
+		"total_cycles":      ucl.totalCycles,
+		"running":           ucl.running,
+		"reasoning_manager": ucl.reasoningManager.ContributeToGestalt(),
+		"actor_supervisor":  ucl.actorSupervisor.ContributeToGestalt(),
 	}
 }

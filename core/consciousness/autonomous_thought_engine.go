@@ -12,27 +12,27 @@ import (
 // AutonomousThoughtEngine generates continuous stream-of-consciousness thoughts
 // independent of external prompts, enabling true autonomous awareness
 type AutonomousThoughtEngine struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
+	cancel context.CancelFunc
+
 	// LLM provider for thought generation
-	llmProvider     llm.LLMProvider
-	
+	llmProvider llm.LLMProvider
+
 	// Context building
-	contextBuilder  *ContextBuilder
-	
+	contextBuilder *ContextBuilder
+
 	// Thought history
-	thoughtHistory  []Thought
-	maxHistory      int
-	
+	thoughtHistory []Thought
+	maxHistory     int
+
 	// Interest system for relevance filtering
-	interestSystem  *InterestSystem
-	
+	interestSystem *InterestSystem
+
 	// State
-	running         bool
-	thoughtCount    uint64
-	
+	running      bool
+	thoughtCount uint64
+
 	// Configuration
 	thoughtInterval time.Duration
 	maxTokens       int
@@ -41,14 +41,14 @@ type AutonomousThoughtEngine struct {
 
 // Thought represents a single autonomous thought
 type Thought struct {
-	ID              string
-	Content         string
-	Type            ThoughtType
-	Timestamp       time.Time
-	Relevance       float64
-	EmotionalTone   string
-	TriggeredBy     string
-	LeadsTo         []string
+	ID            string
+	Content       string
+	Type          ThoughtType
+	Timestamp     time.Time
+	Relevance     float64
+	EmotionalTone string
+	TriggeredBy   string
+	LeadsTo       []string
 }
 
 // ThoughtType categorizes thoughts
@@ -66,19 +66,19 @@ const (
 
 // ContextBuilder builds rich context for thought generation
 type ContextBuilder struct {
-	mu                  sync.RWMutex
-	recentThoughts      []Thought
-	currentGoals        []string
-	recentExperiences   []string
-	knowledgeGaps       []string
-	emotionalState      string
-	cognitiveLoad       float64
+	mu                sync.RWMutex
+	recentThoughts    []Thought
+	currentGoals      []string
+	recentExperiences []string
+	knowledgeGaps     []string
+	emotionalState    string
+	cognitiveLoad     float64
 }
 
 // InterestSystem tracks and evaluates interests
 type InterestSystem struct {
-	mu              sync.RWMutex
-	coreInterests   []string
+	mu               sync.RWMutex
+	coreInterests    []string
 	interestStrength map[string]float64
 	noveltyThreshold float64
 }
@@ -86,7 +86,7 @@ type InterestSystem struct {
 // NewAutonomousThoughtEngine creates a new thought engine
 func NewAutonomousThoughtEngine(llmProvider llm.LLMProvider) *AutonomousThoughtEngine {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &AutonomousThoughtEngine{
 		ctx:             ctx,
 		cancel:          cancel,
@@ -131,13 +131,13 @@ func (ate *AutonomousThoughtEngine) Start() error {
 	}
 	ate.running = true
 	ate.mu.Unlock()
-	
+
 	fmt.Println("🧠 Starting Autonomous Thought Engine...")
 	fmt.Printf("   Thought interval: %v\n", ate.thoughtInterval)
 	fmt.Printf("   Core interests: %v\n", ate.interestSystem.coreInterests)
-	
+
 	go ate.run()
-	
+
 	return nil
 }
 
@@ -145,15 +145,15 @@ func (ate *AutonomousThoughtEngine) Start() error {
 func (ate *AutonomousThoughtEngine) Stop() error {
 	ate.mu.Lock()
 	defer ate.mu.Unlock()
-	
+
 	if !ate.running {
 		return fmt.Errorf("not running")
 	}
-	
+
 	fmt.Println("🧠 Stopping autonomous thought engine...")
 	ate.running = false
 	ate.cancel()
-	
+
 	return nil
 }
 
@@ -161,7 +161,7 @@ func (ate *AutonomousThoughtEngine) Stop() error {
 func (ate *AutonomousThoughtEngine) run() {
 	ticker := time.NewTicker(ate.thoughtInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ate.ctx.Done():
@@ -172,7 +172,7 @@ func (ate *AutonomousThoughtEngine) run() {
 				fmt.Printf("⚠️  Thought generation error: %v\n", err)
 				continue
 			}
-			
+
 			ate.processThought(thought)
 		}
 	}
@@ -182,27 +182,27 @@ func (ate *AutonomousThoughtEngine) run() {
 func (ate *AutonomousThoughtEngine) GenerateThought(ctx context.Context) (*Thought, error) {
 	// Build rich context
 	context := ate.contextBuilder.BuildContext()
-	
+
 	// Generate thought using LLM
 	prompt := ate.buildThoughtPrompt(context)
-	
+
 	opts := llm.GenerateOptions{
 		Temperature:  ate.temperature,
 		MaxTokens:    ate.maxTokens,
 		SystemPrompt: ate.buildSystemPrompt(),
 	}
-	
+
 	response, err := ate.llmProvider.Generate(ctx, prompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("LLM generation failed: %w", err)
 	}
-	
+
 	// Parse and structure thought
 	thought := ate.parseThought(response)
-	
+
 	// Calculate relevance based on interests
 	thought.Relevance = ate.interestSystem.CalculateRelevance(thought.Content)
-	
+
 	return thought, nil
 }
 
@@ -226,13 +226,13 @@ What are you thinking about right now? What captures your attention?`, context)
 // parseThought structures the LLM response into a Thought
 func (ate *AutonomousThoughtEngine) parseThought(response string) *Thought {
 	thought := &Thought{
-		ID:        fmt.Sprintf("thought_%d", time.Now().UnixNano()),
-		Content:   response,
-		Type:      ate.inferThoughtType(response),
-		Timestamp: time.Now(),
+		ID:            fmt.Sprintf("thought_%d", time.Now().UnixNano()),
+		Content:       response,
+		Type:          ate.inferThoughtType(response),
+		Timestamp:     time.Now(),
 		EmotionalTone: ate.inferEmotionalTone(response),
 	}
-	
+
 	return thought
 }
 
@@ -279,18 +279,18 @@ func (ate *AutonomousThoughtEngine) inferEmotionalTone(content string) string {
 func (ate *AutonomousThoughtEngine) processThought(thought *Thought) {
 	ate.mu.Lock()
 	defer ate.mu.Unlock()
-	
+
 	// Add to history
 	ate.thoughtHistory = append(ate.thoughtHistory, *thought)
 	if len(ate.thoughtHistory) > ate.maxHistory {
 		ate.thoughtHistory = ate.thoughtHistory[1:]
 	}
-	
+
 	ate.thoughtCount++
-	
+
 	// Update context builder
 	ate.contextBuilder.AddThought(*thought)
-	
+
 	// Display thought
 	fmt.Printf("\n💭 [%s] %s\n", thought.Type, thought.Content)
 	fmt.Printf("   Relevance: %.2f | Tone: %s\n", thought.Relevance, thought.EmotionalTone)
@@ -300,9 +300,9 @@ func (ate *AutonomousThoughtEngine) processThought(thought *Thought) {
 func (cb *ContextBuilder) BuildContext() string {
 	cb.mu.RLock()
 	defer cb.mu.RUnlock()
-	
+
 	context := ""
-	
+
 	// Recent thoughts
 	if len(cb.recentThoughts) > 0 {
 		context += "Recent thoughts:\n"
@@ -310,7 +310,7 @@ func (cb *ContextBuilder) BuildContext() string {
 			context += fmt.Sprintf("- %s\n", cb.recentThoughts[i].Content)
 		}
 	}
-	
+
 	// Current goals
 	if len(cb.currentGoals) > 0 {
 		context += "\nCurrent goals:\n"
@@ -318,7 +318,7 @@ func (cb *ContextBuilder) BuildContext() string {
 			context += fmt.Sprintf("- %s\n", goal)
 		}
 	}
-	
+
 	// Knowledge gaps
 	if len(cb.knowledgeGaps) > 0 {
 		context += "\nKnowledge gaps:\n"
@@ -326,11 +326,11 @@ func (cb *ContextBuilder) BuildContext() string {
 			context += fmt.Sprintf("- %s\n", gap)
 		}
 	}
-	
+
 	// Emotional state
 	context += fmt.Sprintf("\nEmotional state: %s\n", cb.emotionalState)
 	context += fmt.Sprintf("Cognitive load: %.2f\n", cb.cognitiveLoad)
-	
+
 	return context
 }
 
@@ -338,7 +338,7 @@ func (cb *ContextBuilder) BuildContext() string {
 func (cb *ContextBuilder) AddThought(thought Thought) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.recentThoughts = append(cb.recentThoughts, thought)
 	if len(cb.recentThoughts) > 10 {
 		cb.recentThoughts = cb.recentThoughts[1:]
@@ -349,7 +349,7 @@ func (cb *ContextBuilder) AddThought(thought Thought) {
 func (cb *ContextBuilder) UpdateGoals(goals []string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.currentGoals = goals
 }
 
@@ -357,7 +357,7 @@ func (cb *ContextBuilder) UpdateGoals(goals []string) {
 func (cb *ContextBuilder) UpdateKnowledgeGaps(gaps []string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.knowledgeGaps = gaps
 }
 
@@ -365,7 +365,7 @@ func (cb *ContextBuilder) UpdateKnowledgeGaps(gaps []string) {
 func (cb *ContextBuilder) UpdateEmotionalState(state string) {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	cb.emotionalState = state
 }
 
@@ -373,10 +373,10 @@ func (cb *ContextBuilder) UpdateEmotionalState(state string) {
 func (is *InterestSystem) CalculateRelevance(content string) float64 {
 	is.mu.RLock()
 	defer is.mu.RUnlock()
-	
+
 	relevance := 0.0
 	matchCount := 0
-	
+
 	for _, interest := range is.coreInterests {
 		if contains(content, []string{interest}) {
 			strength := is.interestStrength[interest]
@@ -387,13 +387,13 @@ func (is *InterestSystem) CalculateRelevance(content string) float64 {
 			matchCount++
 		}
 	}
-	
+
 	if matchCount > 0 {
 		relevance = relevance / float64(matchCount)
 	} else {
 		relevance = 0.3 // Base relevance for non-matching content
 	}
-	
+
 	return min(1.0, relevance)
 }
 
@@ -401,7 +401,7 @@ func (is *InterestSystem) CalculateRelevance(content string) float64 {
 func (is *InterestSystem) LoadInterests(interests []string) {
 	is.mu.Lock()
 	defer is.mu.Unlock()
-	
+
 	is.coreInterests = interests
 	for _, interest := range interests {
 		if _, exists := is.interestStrength[interest]; !exists {
@@ -414,7 +414,7 @@ func (is *InterestSystem) LoadInterests(interests []string) {
 func (ate *AutonomousThoughtEngine) GetMetrics() map[string]interface{} {
 	ate.mu.RLock()
 	defer ate.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"thought_count":    ate.thoughtCount,
 		"history_size":     len(ate.thoughtHistory),
@@ -438,7 +438,7 @@ func contains(text string, keywords []string) bool {
 func toLower(s string) string {
 	// Simple ASCII lowercase
 	result := make([]byte, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		if c >= 'A' && c <= 'Z' {
 			result[i] = c + 32

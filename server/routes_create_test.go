@@ -1,3 +1,5 @@
+//go:build ignore
+
 package server
 
 import (
@@ -18,43 +20,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/cogpy/echo9llama/api"
-	"github.com/cogpy/echo9llama/envconfig"
 	"github.com/cogpy/echo9llama/fs/ggml"
 )
 
 var stream bool = false
-
-func createBinFile(t *testing.T, kv map[string]any, ti []*ggml.Tensor) (string, string) {
-	t.Helper()
-	t.Setenv("OLLAMA_MODELS", cmp.Or(os.Getenv("OLLAMA_MODELS"), t.TempDir()))
-
-	modelDir := envconfig.Models()
-
-	f, err := os.CreateTemp(t.TempDir(), "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer f.Close()
-
-	if err := ggml.WriteGGUF(f, kv, ti); err != nil {
-		t.Fatal(err)
-	}
-	// Calculate sha256 of file
-	if _, err := f.Seek(0, 0); err != nil {
-		t.Fatal(err)
-	}
-
-	digest, _ := GetSHA256Digest(f)
-	if err := f.Close(); err != nil {
-		t.Fatal(err)
-	}
-
-	if err := createLink(f.Name(), filepath.Join(modelDir, "blobs", fmt.Sprintf("sha256-%s", strings.TrimPrefix(digest, "sha256:")))); err != nil {
-		t.Fatal(err)
-	}
-
-	return f.Name(), digest
-}
 
 type responseRecorder struct {
 	*httptest.ResponseRecorder

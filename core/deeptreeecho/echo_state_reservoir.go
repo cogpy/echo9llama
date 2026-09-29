@@ -33,33 +33,33 @@ func (pt PersonaType) String() string {
 // Based on Echo State Networks for multi-timescale temporal processing
 type EchoStateReservoir struct {
 	mu sync.RWMutex
-	
+
 	// Reservoir parameters (persona-specific)
 	spectralRadius float64 // Controls memory vs. responsiveness
 	inputScaling   float64 // Input influence strength
 	leakRate       float64 // State update speed
-	
+
 	// Reservoir structure
-	size            int         // Number of reservoir neurons
-	reservoirState  []float64   // Current internal state
-	weights         [][]float64 // Fixed random internal weights
-	inputWeights    [][]float64 // Input-to-reservoir weights
-	
+	size           int         // Number of reservoir neurons
+	reservoirState []float64   // Current internal state
+	weights        [][]float64 // Fixed random internal weights
+	inputWeights   [][]float64 // Input-to-reservoir weights
+
 	// Hierarchy
 	level           int
 	parentReservoir *EchoStateReservoir
 	childReservoirs []*EchoStateReservoir
-	
+
 	// Persona
 	persona PersonaType
-	
+
 	// History
 	stateHistory [][]float64
 	maxHistory   int
-	
+
 	// Metrics
-	echoProperty    float64 // Measure of echo state property
-	complexity      float64 // State space complexity
+	echoProperty float64 // Measure of echo state property
+	complexity   float64 // State space complexity
 }
 
 // PersonaConfig defines reservoir parameters for each persona
@@ -98,11 +98,11 @@ func GetPersonaConfig(persona PersonaType) PersonaConfig {
 			Description:    "Edge of chaos, flexible memory, transformation-seeking",
 		},
 	}
-	
+
 	if config, exists := configs[persona]; exists {
 		return config
 	}
-	
+
 	// Default to contemplative
 	return configs[PersonaContemplativeScholar]
 }
@@ -110,7 +110,7 @@ func GetPersonaConfig(persona PersonaType) PersonaConfig {
 // NewEchoStateReservoir creates a new echo state reservoir with persona configuration
 func NewEchoStateReservoir(size int, persona PersonaType, level int) *EchoStateReservoir {
 	config := GetPersonaConfig(persona)
-	
+
 	esr := &EchoStateReservoir{
 		spectralRadius:  config.SpectralRadius,
 		inputScaling:    config.InputScaling,
@@ -123,10 +123,10 @@ func NewEchoStateReservoir(size int, persona PersonaType, level int) *EchoStateR
 		stateHistory:    make([][]float64, 0),
 		maxHistory:      100,
 	}
-	
+
 	// Initialize reservoir weights
 	esr.initializeWeights()
-	
+
 	return esr
 }
 
@@ -140,10 +140,10 @@ func (esr *EchoStateReservoir) initializeWeights() {
 			esr.weights[i][j] = (rand.Float64()*2.0 - 1.0) * 0.5
 		}
 	}
-	
+
 	// Scale to desired spectral radius
 	esr.scaleToSpectralRadius()
-	
+
 	// Initialize input weights (will be set when input dimension is known)
 	esr.inputWeights = make([][]float64, 0)
 }
@@ -153,7 +153,7 @@ func (esr *EchoStateReservoir) scaleToSpectralRadius() {
 	// Simplified: scale by target spectral radius
 	// In full implementation, would compute actual spectral radius and scale
 	scale := esr.spectralRadius / 1.0 // Assuming initial spectral radius ~1.0
-	
+
 	for i := range esr.weights {
 		for j := range esr.weights[i] {
 			esr.weights[i][j] *= scale
@@ -165,46 +165,46 @@ func (esr *EchoStateReservoir) scaleToSpectralRadius() {
 func (esr *EchoStateReservoir) Update(input []float64) []float64 {
 	esr.mu.Lock()
 	defer esr.mu.Unlock()
-	
+
 	// Ensure input weights are initialized
 	if len(esr.inputWeights) == 0 {
 		esr.initializeInputWeights(len(input))
 	}
-	
+
 	// Compute new state
 	newState := make([]float64, esr.size)
-	
-	for i := 0; i < esr.size; i++ {
+
+	for i := range esr.size {
 		// Input contribution
 		inputSum := 0.0
-		for j := 0; j < len(input); j++ {
+		for j := range input {
 			if j < len(esr.inputWeights[i]) {
 				inputSum += esr.inputWeights[i][j] * input[j]
 			}
 		}
 		inputSum *= esr.inputScaling
-		
+
 		// Reservoir contribution
 		reservoirSum := 0.0
-		for j := 0; j < esr.size; j++ {
+		for j := range esr.size {
 			reservoirSum += esr.weights[i][j] * esr.reservoirState[j]
 		}
-		
+
 		// Leaky integration
 		// x(t+1) = (1-α)x(t) + α·tanh(W_in·u(t) + W·x(t))
 		newState[i] = (1.0-esr.leakRate)*esr.reservoirState[i] +
 			esr.leakRate*math.Tanh(inputSum+reservoirSum)
 	}
-	
+
 	// Update state
 	esr.reservoirState = newState
-	
+
 	// Record in history
 	esr.recordState(newState)
-	
+
 	// Update metrics
 	esr.updateMetrics()
-	
+
 	return newState
 }
 
@@ -224,9 +224,9 @@ func (esr *EchoStateReservoir) recordState(state []float64) {
 	// Copy state
 	stateCopy := make([]float64, len(state))
 	copy(stateCopy, state)
-	
+
 	esr.stateHistory = append(esr.stateHistory, stateCopy)
-	
+
 	// Keep last maxHistory states
 	if len(esr.stateHistory) > esr.maxHistory {
 		esr.stateHistory = esr.stateHistory[1:]
@@ -237,7 +237,7 @@ func (esr *EchoStateReservoir) recordState(state []float64) {
 func (esr *EchoStateReservoir) updateMetrics() {
 	// Echo property: measure of fading memory
 	esr.echoProperty = esr.calculateEchoProperty()
-	
+
 	// Complexity: diversity of states
 	esr.complexity = esr.calculateComplexity()
 }
@@ -247,24 +247,24 @@ func (esr *EchoStateReservoir) calculateEchoProperty() float64 {
 	if len(esr.stateHistory) < 2 {
 		return 1.0
 	}
-	
+
 	// Measure state change rate
 	recent := esr.stateHistory[len(esr.stateHistory)-1]
 	previous := esr.stateHistory[len(esr.stateHistory)-2]
-	
+
 	changeSum := 0.0
 	for i := range recent {
 		diff := recent[i] - previous[i]
 		changeSum += diff * diff
 	}
-	
+
 	// Echo property is good when changes are moderate (not too stable, not too chaotic)
 	change := math.Sqrt(changeSum / float64(len(recent)))
-	
+
 	// Optimal change rate around 0.1-0.3
 	optimal := 0.2
 	echoProperty := 1.0 - math.Abs(change-optimal)/optimal
-	
+
 	return math.Max(0.0, math.Min(1.0, echoProperty))
 }
 
@@ -273,7 +273,7 @@ func (esr *EchoStateReservoir) calculateComplexity() float64 {
 	if len(esr.stateHistory) < 10 {
 		return 0.5
 	}
-	
+
 	// Calculate variance across history
 	means := make([]float64, esr.size)
 	for _, state := range esr.stateHistory {
@@ -281,11 +281,11 @@ func (esr *EchoStateReservoir) calculateComplexity() float64 {
 			means[i] += val
 		}
 	}
-	
+
 	for i := range means {
 		means[i] /= float64(len(esr.stateHistory))
 	}
-	
+
 	variances := make([]float64, esr.size)
 	for _, state := range esr.stateHistory {
 		for i, val := range state {
@@ -293,17 +293,17 @@ func (esr *EchoStateReservoir) calculateComplexity() float64 {
 			variances[i] += diff * diff
 		}
 	}
-	
+
 	avgVariance := 0.0
 	for i := range variances {
 		variances[i] /= float64(len(esr.stateHistory))
 		avgVariance += variances[i]
 	}
 	avgVariance /= float64(len(variances))
-	
+
 	// Normalize to 0-1 range
 	complexity := math.Min(avgVariance*2.0, 1.0)
-	
+
 	return complexity
 }
 
@@ -311,7 +311,7 @@ func (esr *EchoStateReservoir) calculateComplexity() float64 {
 func (esr *EchoStateReservoir) GetState() []float64 {
 	esr.mu.RLock()
 	defer esr.mu.RUnlock()
-	
+
 	state := make([]float64, len(esr.reservoirState))
 	copy(state, esr.reservoirState)
 	return state
@@ -321,11 +321,11 @@ func (esr *EchoStateReservoir) GetState() []float64 {
 func (esr *EchoStateReservoir) Reset() {
 	esr.mu.Lock()
 	defer esr.mu.Unlock()
-	
+
 	for i := range esr.reservoirState {
 		esr.reservoirState[i] = 0.0
 	}
-	
+
 	esr.stateHistory = make([][]float64, 0)
 }
 
@@ -333,7 +333,7 @@ func (esr *EchoStateReservoir) Reset() {
 func (esr *EchoStateReservoir) AddChild(child *EchoStateReservoir) {
 	esr.mu.Lock()
 	defer esr.mu.Unlock()
-	
+
 	child.parentReservoir = esr
 	child.level = esr.level + 1
 	esr.childReservoirs = append(esr.childReservoirs, child)
@@ -343,10 +343,10 @@ func (esr *EchoStateReservoir) AddChild(child *EchoStateReservoir) {
 func (esr *EchoStateReservoir) ProcessHierarchical(input []float64) map[int][]float64 {
 	// Process at this level
 	state := esr.Update(input)
-	
+
 	results := make(map[int][]float64)
 	results[esr.level] = state
-	
+
 	// Process children with this level's state as input
 	for _, child := range esr.childReservoirs {
 		childResults := child.ProcessHierarchical(state)
@@ -354,7 +354,7 @@ func (esr *EchoStateReservoir) ProcessHierarchical(input []float64) map[int][]fl
 			results[level] = childState
 		}
 	}
-	
+
 	return results
 }
 
@@ -362,18 +362,18 @@ func (esr *EchoStateReservoir) ProcessHierarchical(input []float64) map[int][]fl
 func (esr *EchoStateReservoir) GetMetrics() map[string]interface{} {
 	esr.mu.RLock()
 	defer esr.mu.RUnlock()
-	
+
 	return map[string]interface{}{
-		"persona":          esr.persona.String(),
-		"spectral_radius":  esr.spectralRadius,
-		"input_scaling":    esr.inputScaling,
-		"leak_rate":        esr.leakRate,
-		"size":             esr.size,
-		"level":            esr.level,
-		"echo_property":    esr.echoProperty,
-		"complexity":       esr.complexity,
-		"history_size":     len(esr.stateHistory),
-		"child_count":      len(esr.childReservoirs),
+		"persona":         esr.persona.String(),
+		"spectral_radius": esr.spectralRadius,
+		"input_scaling":   esr.inputScaling,
+		"leak_rate":       esr.leakRate,
+		"size":            esr.size,
+		"level":           esr.level,
+		"echo_property":   esr.echoProperty,
+		"complexity":      esr.complexity,
+		"history_size":    len(esr.stateHistory),
+		"child_count":     len(esr.childReservoirs),
 	}
 }
 
@@ -394,7 +394,7 @@ func NewHierarchicalReservoirSystem(
 	hrs := &HierarchicalReservoirSystem{
 		allLevels: make(map[int][]*EchoStateReservoir),
 	}
-	
+
 	// Create root
 	if len(levelsConfig) > 0 {
 		hrs.root = NewEchoStateReservoir(
@@ -403,7 +403,7 @@ func NewHierarchicalReservoirSystem(
 			0,
 		)
 		hrs.allLevels[0] = []*EchoStateReservoir{hrs.root}
-		
+
 		// Create children
 		parent := hrs.root
 		for i := 1; i < len(levelsConfig); i++ {
@@ -417,7 +417,7 @@ func NewHierarchicalReservoirSystem(
 			parent = child
 		}
 	}
-	
+
 	return hrs
 }
 
@@ -426,7 +426,7 @@ func (hrs *HierarchicalReservoirSystem) Process(input []float64) map[int][]float
 	if hrs.root == nil {
 		return make(map[int][]float64)
 	}
-	
+
 	return hrs.root.ProcessHierarchical(input)
 }
 
@@ -434,9 +434,9 @@ func (hrs *HierarchicalReservoirSystem) Process(input []float64) map[int][]float
 func (hrs *HierarchicalReservoirSystem) GetSystemMetrics() map[string]interface{} {
 	hrs.mu.RLock()
 	defer hrs.mu.RUnlock()
-	
+
 	levelMetrics := make(map[int]interface{})
-	
+
 	for level, reservoirs := range hrs.allLevels {
 		metrics := make([]map[string]interface{}, len(reservoirs))
 		for i, reservoir := range reservoirs {
@@ -444,7 +444,7 @@ func (hrs *HierarchicalReservoirSystem) GetSystemMetrics() map[string]interface{
 		}
 		levelMetrics[level] = metrics
 	}
-	
+
 	return map[string]interface{}{
 		"total_levels":  len(hrs.allLevels),
 		"level_metrics": levelMetrics,

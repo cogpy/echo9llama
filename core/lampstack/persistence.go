@@ -14,15 +14,15 @@ import (
 type JSONPersistence struct {
 	mu sync.RWMutex
 
-	config    *Config
-	dataDir   string
-	state     map[string]interface{}
-	dirty     map[string]bool
-	autoSave  bool
-	closed    bool
+	config   *Config
+	dataDir  string
+	state    map[string]interface{}
+	dirty    map[string]bool
+	autoSave bool
+	closed   bool
 
 	// Auto-save control
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 }
 
@@ -41,7 +41,7 @@ func NewJSONPersistence(config *Config) *JSONPersistence {
 	}
 
 	// Ensure data directory exists
-	if err := os.MkdirAll(p.dataDir, 0755); err != nil {
+	if err := os.MkdirAll(p.dataDir, 0o755); err != nil {
 		fmt.Printf("   ⚠️  Failed to create data directory: %v\n", err)
 	}
 
@@ -305,7 +305,7 @@ func (p *JSONPersistence) writeFile(key string, value interface{}) error {
 
 	// Write to temp file first, then rename (atomic)
 	tempPath := filePath + ".tmp"
-	if err := os.WriteFile(tempPath, data, 0644); err != nil {
+	if err := os.WriteFile(tempPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write temp file: %w", err)
 	}
 
@@ -341,7 +341,7 @@ func (p *JSONPersistence) autoSaveLoop(interval time.Duration) {
 // sanitizeFilename removes/replaces characters that are invalid in filenames
 func sanitizeFilename(s string) string {
 	result := make([]byte, 0, len(s))
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		c := s[i]
 		switch c {
 		case '/', '\\', ':', '*', '?', '"', '<', '>', '|':
@@ -355,12 +355,12 @@ func sanitizeFilename(s string) string {
 
 // StateSnapshot represents a complete snapshot of the system state
 type StateSnapshot struct {
-	Version      string                 `json:"version"`
-	Timestamp    time.Time              `json:"timestamp"`
-	CognitiveState *CognitiveState       `json:"cognitive_state,omitempty"`
-	Memories     []*MemoryEntry         `json:"memories,omitempty"`
-	Metrics      *StackMetrics          `json:"metrics,omitempty"`
-	Custom       map[string]interface{} `json:"custom,omitempty"`
+	Version        string                 `json:"version"`
+	Timestamp      time.Time              `json:"timestamp"`
+	CognitiveState *CognitiveState        `json:"cognitive_state,omitempty"`
+	Memories       []*MemoryEntry         `json:"memories,omitempty"`
+	Metrics        *StackMetrics          `json:"metrics,omitempty"`
+	Custom         map[string]interface{} `json:"custom,omitempty"`
 }
 
 // CreateSnapshot creates a complete state snapshot
@@ -480,7 +480,7 @@ func (p *JSONPersistence) PruneSnapshots(ctx context.Context, keep int) error {
 	}
 
 	// Sort by timestamp descending
-	for i := 0; i < len(infos)-1; i++ {
+	for i := range len(infos) - 1 {
 		for j := i + 1; j < len(infos); j++ {
 			if infos[j].timestamp > infos[i].timestamp {
 				infos[i], infos[j] = infos[j], infos[i]

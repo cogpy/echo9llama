@@ -337,9 +337,10 @@ func (pcs *PersistentConsciousnessState) UpdateWakeRestState(
 	pcs.state.TotalWakeTime = int64(wakeTime.Seconds())
 	pcs.state.TotalRestTime = int64(restTime.Seconds())
 
-	if state == "Awake" {
+	switch state {
+	case "Awake":
 		pcs.state.LastAwake = time.Now()
-	} else if state == "Resting" || state == "Dreaming" {
+	case "Resting", "Dreaming":
 		pcs.state.LastRest = time.Now()
 	}
 }

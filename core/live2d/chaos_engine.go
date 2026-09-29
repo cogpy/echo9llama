@@ -10,17 +10,17 @@ import (
 // ChaoticAttractor implements Lorenz attractor for hyper-chaotic behavior
 // This creates unpredictable yet coherent avatar movements
 type ChaoticAttractor struct {
-	mu    sync.RWMutex
+	mu      sync.RWMutex
 	X, Y, Z float64
-	
+
 	// Lorenz attractor parameters
 	Sigma float64 // Prandtl number (typically 10)
 	Rho   float64 // Rayleigh number (typically 28)
 	Beta  float64 // Geometric factor (typically 8/3)
-	
+
 	// Time step for integration
 	DeltaT float64
-	
+
 	// Scaling factors for output
 	XScale, YScale, ZScale float64
 }
@@ -45,28 +45,28 @@ func NewChaoticAttractor() *ChaoticAttractor {
 func (ca *ChaoticAttractor) Step() {
 	ca.mu.Lock()
 	defer ca.mu.Unlock()
-	
+
 	// RK4 integration for smooth, accurate chaotic dynamics
 	k1x, k1y, k1z := ca.derivatives(ca.X, ca.Y, ca.Z)
-	
+
 	k2x, k2y, k2z := ca.derivatives(
 		ca.X+0.5*ca.DeltaT*k1x,
 		ca.Y+0.5*ca.DeltaT*k1y,
 		ca.Z+0.5*ca.DeltaT*k1z,
 	)
-	
+
 	k3x, k3y, k3z := ca.derivatives(
 		ca.X+0.5*ca.DeltaT*k2x,
 		ca.Y+0.5*ca.DeltaT*k2y,
 		ca.Z+0.5*ca.DeltaT*k2z,
 	)
-	
+
 	k4x, k4y, k4z := ca.derivatives(
 		ca.X+ca.DeltaT*k3x,
 		ca.Y+ca.DeltaT*k3y,
 		ca.Z+ca.DeltaT*k3z,
 	)
-	
+
 	ca.X += (ca.DeltaT / 6.0) * (k1x + 2*k2x + 2*k3x + k4x)
 	ca.Y += (ca.DeltaT / 6.0) * (k1y + 2*k2y + 2*k3y + k4y)
 	ca.Z += (ca.DeltaT / 6.0) * (k1z + 2*k2z + 2*k3z + k4z)
@@ -84,20 +84,20 @@ func (ca *ChaoticAttractor) derivatives(x, y, z float64) (float64, float64, floa
 func (ca *ChaoticAttractor) GetScaledValues() (float64, float64, float64) {
 	ca.mu.RLock()
 	defer ca.mu.RUnlock()
-	
+
 	return ca.X * ca.XScale, ca.Y * ca.YScale, ca.Z * ca.ZScale
 }
 
 // FractalPattern generates fractal-based parameter modulation
 type FractalPattern struct {
-	mu           sync.RWMutex
-	Depth        int       // Recursion depth
-	Frequency    float64   // Base frequency
-	Amplitude    float64   // Base amplitude
-	Lacunarity   float64   // Frequency multiplier per octave
-	Persistence  float64   // Amplitude multiplier per octave
-	Time         float64   // Current time
-	TimeScale    float64   // Time progression rate
+	mu          sync.RWMutex
+	Depth       int     // Recursion depth
+	Frequency   float64 // Base frequency
+	Amplitude   float64 // Base amplitude
+	Lacunarity  float64 // Frequency multiplier per octave
+	Persistence float64 // Amplitude multiplier per octave
+	Time        float64 // Current time
+	TimeScale   float64 // Time progression rate
 }
 
 // NewFractalPattern creates a new fractal pattern generator
@@ -124,36 +124,36 @@ func (fp *FractalPattern) Update(deltaTime float64) {
 func (fp *FractalPattern) Sample() float64 {
 	fp.mu.RLock()
 	defer fp.mu.RUnlock()
-	
+
 	total := 0.0
 	frequency := fp.Frequency
 	amplitude := fp.Amplitude
 	maxValue := 0.0
-	
-	for i := 0; i < fp.Depth; i++ {
+
+	for range fp.Depth {
 		total += amplitude * math.Sin(2*math.Pi*frequency*fp.Time)
 		maxValue += amplitude
-		
+
 		frequency *= fp.Lacunarity
 		amplitude *= fp.Persistence
 	}
-	
+
 	// Normalize to [-1, 1]
 	if maxValue > 0 {
 		total /= maxValue
 	}
-	
+
 	return total
 }
 
 // QuantumFluctuator implements quantum-inspired random fluctuations
 type QuantumFluctuator struct {
-	mu              sync.RWMutex
-	Intensity       float64 // Fluctuation intensity (0.0 to 1.0)
-	CoherenceTime   float64 // Time constant for coherence decay
-	LastValue       float64
-	LastUpdateTime  time.Time
-	RandomSource    *rand.Rand
+	mu             sync.RWMutex
+	Intensity      float64 // Fluctuation intensity (0.0 to 1.0)
+	CoherenceTime  float64 // Time constant for coherence decay
+	LastValue      float64
+	LastUpdateTime time.Time
+	RandomSource   *rand.Rand
 }
 
 // NewQuantumFluctuator creates a new quantum fluctuator
@@ -171,20 +171,20 @@ func NewQuantumFluctuator(intensity float64) *QuantumFluctuator {
 func (qf *QuantumFluctuator) Sample() float64 {
 	qf.mu.Lock()
 	defer qf.mu.Unlock()
-	
+
 	now := time.Now()
 	elapsed := now.Sub(qf.LastUpdateTime).Seconds()
-	
+
 	// Coherence decay factor
 	coherence := math.Exp(-elapsed / qf.CoherenceTime)
-	
+
 	// Generate new random component
 	newRandom := qf.RandomSource.NormFloat64() * qf.Intensity
-	
+
 	// Blend with previous value for temporal coherence
 	qf.LastValue = coherence*qf.LastValue + (1-coherence)*newRandom
 	qf.LastUpdateTime = now
-	
+
 	return qf.LastValue
 }
 
@@ -199,15 +199,15 @@ type HyperChaoticState struct {
 
 // DeepTreeEchoMapper implements hyper-chaotic parameter mapping
 type DeepTreeEchoMapper struct {
-	mu              sync.RWMutex
-	attractor       *ChaoticAttractor
-	fractal         *FractalPattern
-	quantum         *QuantumFluctuator
-	baseline        ParameterMapper
-	intensity       float64
-	running         bool
-	stopChan        chan struct{}
-	updateRate      time.Duration
+	mu         sync.RWMutex
+	attractor  *ChaoticAttractor
+	fractal    *FractalPattern
+	quantum    *QuantumFluctuator
+	baseline   ParameterMapper
+	intensity  float64
+	running    bool
+	stopChan   chan struct{}
+	updateRate time.Duration
 }
 
 // NewDeepTreeEchoMapper creates a new hyper-chaotic parameter mapper
@@ -233,7 +233,7 @@ func (dtem *DeepTreeEchoMapper) Start() {
 	}
 	dtem.running = true
 	dtem.mu.Unlock()
-	
+
 	go dtem.updateLoop()
 }
 
@@ -241,11 +241,11 @@ func (dtem *DeepTreeEchoMapper) Start() {
 func (dtem *DeepTreeEchoMapper) Stop() {
 	dtem.mu.Lock()
 	defer dtem.mu.Unlock()
-	
+
 	if !dtem.running {
 		return
 	}
-	
+
 	dtem.running = false
 	close(dtem.stopChan)
 }
@@ -254,7 +254,7 @@ func (dtem *DeepTreeEchoMapper) Stop() {
 func (dtem *DeepTreeEchoMapper) updateLoop() {
 	ticker := time.NewTicker(dtem.updateRate)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-dtem.stopChan:
@@ -270,7 +270,7 @@ func (dtem *DeepTreeEchoMapper) updateLoop() {
 func (dtem *DeepTreeEchoMapper) MapEmotionalState(state EmotionalState) []ModelParameter {
 	// Get baseline parameters
 	baseParams := dtem.baseline.MapEmotionalState(state)
-	
+
 	// Apply chaotic modulation
 	return dtem.applyChaoticModulation(baseParams)
 }
@@ -279,7 +279,7 @@ func (dtem *DeepTreeEchoMapper) MapEmotionalState(state EmotionalState) []ModelP
 func (dtem *DeepTreeEchoMapper) MapCognitiveState(state CognitiveState) []ModelParameter {
 	// Get baseline parameters
 	baseParams := dtem.baseline.MapCognitiveState(state)
-	
+
 	// Apply chaotic modulation
 	return dtem.applyChaoticModulation(baseParams)
 }
@@ -288,7 +288,7 @@ func (dtem *DeepTreeEchoMapper) MapCognitiveState(state CognitiveState) []ModelP
 func (dtem *DeepTreeEchoMapper) MapCombinedState(state AvatarState) []ModelParameter {
 	// Get baseline parameters
 	baseParams := dtem.baseline.MapCombinedState(state)
-	
+
 	// Apply chaotic modulation
 	return dtem.applyChaoticModulation(baseParams)
 }
@@ -298,21 +298,21 @@ func (dtem *DeepTreeEchoMapper) applyChaoticModulation(params []ModelParameter) 
 	dtem.mu.RLock()
 	intensity := dtem.intensity
 	dtem.mu.RUnlock()
-	
+
 	if intensity < 0.01 {
 		return params // No modulation
 	}
-	
+
 	// Get chaotic values
 	chaoticX, chaoticY, chaoticZ := dtem.attractor.GetScaledValues()
 	fractalValue := dtem.fractal.Sample()
 	quantumValue := dtem.quantum.Sample()
-	
+
 	// Apply modulation to parameters
 	modulated := make([]ModelParameter, len(params))
 	for i, param := range params {
 		modulated[i] = param
-		
+
 		// Different parameters get different chaotic influences
 		switch param.ID {
 		case StandardParameterNames.EyeBallX:
@@ -332,11 +332,11 @@ func (dtem *DeepTreeEchoMapper) applyChaoticModulation(params []ModelParameter) 
 			// Subtle quantum fluctuation on all other parameters
 			modulated[i].Value += quantumValue * intensity * 0.05
 		}
-		
+
 		// Clamp to valid range
 		modulated[i].Value = clamp(modulated[i].Value, param.Min, param.Max)
 	}
-	
+
 	return modulated
 }
 
@@ -356,24 +356,24 @@ func (dtem *DeepTreeEchoMapper) GetIntensity() float64 {
 
 // EmergentBehaviorEngine coordinates multiple chaotic systems for emergent effects
 type EmergentBehaviorEngine struct {
-	mu              sync.RWMutex
-	mappers         []*DeepTreeEchoMapper
+	mu               sync.RWMutex
+	mappers          []*DeepTreeEchoMapper
 	couplingStrength float64
-	emergenceLevel  float64
+	emergenceLevel   float64
 }
 
 // NewEmergentBehaviorEngine creates a new emergence engine
 func NewEmergentBehaviorEngine(numMappers int, couplingStrength float64) *EmergentBehaviorEngine {
 	mappers := make([]*DeepTreeEchoMapper, numMappers)
-	for i := 0; i < numMappers; i++ {
+	for i := range numMappers {
 		baseline := NewDefaultParameterMapper()
 		mappers[i] = NewDeepTreeEchoMapper(baseline, 0.3)
 	}
-	
+
 	return &EmergentBehaviorEngine{
-		mappers:         mappers,
+		mappers:          mappers,
 		couplingStrength: couplingStrength,
-		emergenceLevel:  0.0,
+		emergenceLevel:   0.0,
 	}
 }
 
@@ -381,7 +381,7 @@ func NewEmergentBehaviorEngine(numMappers int, couplingStrength float64) *Emerge
 func (ebe *EmergentBehaviorEngine) Start() {
 	ebe.mu.Lock()
 	defer ebe.mu.Unlock()
-	
+
 	for _, mapper := range ebe.mappers {
 		mapper.Start()
 	}
@@ -391,7 +391,7 @@ func (ebe *EmergentBehaviorEngine) Start() {
 func (ebe *EmergentBehaviorEngine) Stop() {
 	ebe.mu.Lock()
 	defer ebe.mu.Unlock()
-	
+
 	for _, mapper := range ebe.mappers {
 		mapper.Stop()
 	}
@@ -401,37 +401,37 @@ func (ebe *EmergentBehaviorEngine) Stop() {
 func (ebe *EmergentBehaviorEngine) ComputeEmergence() float64 {
 	ebe.mu.Lock()
 	defer ebe.mu.Unlock()
-	
+
 	if len(ebe.mappers) < 2 {
 		return 0.0
 	}
-	
+
 	// Measure synchronization between chaotic systems
 	totalSync := 0.0
 	comparisons := 0
-	
-	for i := 0; i < len(ebe.mappers)-1; i++ {
+
+	for i := range len(ebe.mappers) - 1 {
 		for j := i + 1; j < len(ebe.mappers); j++ {
 			x1, y1, z1 := ebe.mappers[i].attractor.GetScaledValues()
 			x2, y2, z2 := ebe.mappers[j].attractor.GetScaledValues()
-			
+
 			// Compute distance in phase space
 			dist := math.Sqrt(
 				(x1-x2)*(x1-x2) +
-				(y1-y2)*(y1-y2) +
-				(z1-z2)*(z1-z2),
+					(y1-y2)*(y1-y2) +
+					(z1-z2)*(z1-z2),
 			)
-			
+
 			// Convert to synchronization measure (inverse of distance)
 			sync := 1.0 / (1.0 + dist)
 			totalSync += sync
 			comparisons++
 		}
 	}
-	
+
 	if comparisons > 0 {
 		ebe.emergenceLevel = totalSync / float64(comparisons)
 	}
-	
+
 	return ebe.emergenceLevel
 }

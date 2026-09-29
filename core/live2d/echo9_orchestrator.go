@@ -11,14 +11,14 @@ type Echo9AvatarOrchestrator struct {
 	mu sync.RWMutex
 
 	// State collectors
-	reservoirState    ReservoirVisualizationState
-	echoBeatsPhase    EchoBeatPhase
-	wisdomMetrics     WisdomMetrics
-	aarState          AARState
-	emotionalState    EmotionalDynamics
-	thoughtActivity   ThoughtVisualizationState
-	providerStatus    ProviderStatus
-	goalSystemState   GoalSystemState
+	reservoirState  ReservoirVisualizationState
+	echoBeatsPhase  EchoBeatPhase
+	wisdomMetrics   WisdomMetrics
+	aarState        AARState
+	emotionalState  EmotionalDynamics
+	thoughtActivity ThoughtVisualizationState
+	providerStatus  ProviderStatus
+	goalSystemState GoalSystemState
 
 	// Ontogenetic evolution
 	ontogeneticProfile *OntogeneticProfile
@@ -30,12 +30,11 @@ type Echo9AvatarOrchestrator struct {
 	stateHistory       *CircularBuffer
 
 	// Performance
-	updateInterval    time.Duration
-	lastUpdate        time.Time
-	diffCalculator    *StateDiffCalculator
-	
+	updateInterval time.Duration
+	diffCalculator *StateDiffCalculator
+
 	// Context
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 }
 
@@ -54,9 +53,9 @@ type UnifiedAvatarState struct {
 	GoalState         GoalSystemState
 
 	// Meta-information
-	Timestamp      time.Time
-	Confidence     float64
-	EvolutionStage OntogeneticStage
+	Timestamp       time.Time
+	Confidence      float64
+	EvolutionStage  OntogeneticStage
 	ActiveArchetype CognitiveArchetype
 }
 
@@ -73,39 +72,39 @@ type ReservoirVisualizationState struct {
 
 // EchoBeatPhase represents position in 12-step cognitive cycle
 type EchoBeatPhase struct {
-	Step            int
-	Phase           string // "affordance", "reorientation", "salience"
-	PhaseProgress   float64
-	CycleStartTime  time.Time
-	TimeInStep      time.Duration
+	Step           int
+	Phase          string // "affordance", "reorientation", "salience"
+	PhaseProgress  float64
+	CycleStartTime time.Time
+	TimeInStep     time.Duration
 }
 
 // WisdomMetrics represents 7-dimensional wisdom cultivation
 type WisdomMetrics struct {
-	KnowledgeDepth      float64
-	KnowledgeBreadth    float64
-	IntegrationLevel    float64
+	KnowledgeDepth       float64
+	KnowledgeBreadth     float64
+	IntegrationLevel     float64
 	PracticalApplication float64
-	ReflectiveInsight   float64
+	ReflectiveInsight    float64
 	EthicalConsideration float64
-	TemporalPerspective float64
-	Overall             float64
+	TemporalPerspective  float64
+	Overall              float64
 }
 
 // WisdomBaseline represents wisdom influence on baseline state
 type WisdomBaseline struct {
-	BaselineEmotion   EmotionalState
-	BaselineCognitive CognitiveState
+	BaselineEmotion    EmotionalState
+	BaselineCognitive  CognitiveState
 	WisdomCoefficients map[string]float64
 }
 
 // AARState represents Awareness-Attention-Reflection core
 type AARState struct {
-	Awareness   float64
-	Attention   float64
-	Reflection  float64
-	Coherence   float64
-	Relevance   float64
+	Awareness    float64
+	Attention    float64
+	Reflection   float64
+	Coherence    float64
+	Relevance    float64
 	Optimization float64
 }
 
@@ -143,9 +142,9 @@ type ProviderStatus struct {
 
 // GoalSystemState represents active goals
 type GoalSystemState struct {
-	ActiveGoals   int
+	ActiveGoals     int
 	HighestPriority float64
-	Progress      float64
+	Progress        float64
 }
 
 // OntogeneticStage represents developmental stage
@@ -335,11 +334,11 @@ func (o *Echo9AvatarOrchestrator) calculateWisdomBaseline(wisdom WisdomMetrics) 
 
 	// Calculate wisdom coefficients for parameter mapping
 	coefficients := map[string]float64{
-		"eye_wisdom":         wisdom.KnowledgeDepth,
-		"expression_harmony": wisdom.IntegrationLevel,
+		"eye_wisdom":          wisdom.KnowledgeDepth,
+		"expression_harmony":  wisdom.IntegrationLevel,
 		"contemplative_depth": wisdom.ReflectiveInsight,
-		"serene_presence":    wisdom.EthicalConsideration,
-		"temporal_vision":    wisdom.TemporalPerspective,
+		"serene_presence":     wisdom.EthicalConsideration,
+		"temporal_vision":     wisdom.TemporalPerspective,
 	}
 
 	return WisdomBaseline{
@@ -427,7 +426,7 @@ func (o *Echo9AvatarOrchestrator) calculateHistoryConsistency() float64 {
 
 		// Calculate emotional variance
 		emotionalDiff := abs(state1.Emotional.Valence-state2.Emotional.Valence) +
-			abs(state1.Emotional.Arousal - state2.Emotional.Arousal)
+			abs(state1.Emotional.Arousal-state2.Emotional.Arousal)
 
 		variance += emotionalDiff
 	}

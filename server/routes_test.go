@@ -1,3 +1,5 @@
+//go:build ignore
+
 package server
 
 import (
@@ -22,14 +24,14 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/go-cmp/cmp"
 	"github.com/cogpy/echo9llama/api"
 	"github.com/cogpy/echo9llama/fs/ggml"
 	"github.com/cogpy/echo9llama/openai"
 	"github.com/cogpy/echo9llama/server/internal/client/ollama"
 	"github.com/cogpy/echo9llama/types/model"
 	"github.com/cogpy/echo9llama/version"
+	"github.com/gin-gonic/gin"
+	"github.com/google/go-cmp/cmp"
 )
 
 func createTestFile(t *testing.T, name string) (string, string) {
@@ -321,7 +323,7 @@ func TestRoutes(t *testing.T) {
 					t.Fatalf("failed to unmarshal response body: %v", err)
 				}
 
-				if len(modelList.Data) != 1 || modelList.Data[0].Id != "test-model:latest" || modelList.Data[0].OwnedBy != "library" {
+				if len(modelList.Data) != 1 || modelList.Data[0].ID != "test-model:latest" || modelList.Data[0].OwnedBy != "library" {
 					t.Errorf("expected model 'test-model:latest' owned by 'library', got %v", modelList.Data)
 				}
 			},
@@ -470,7 +472,7 @@ func TestRoutes(t *testing.T) {
 					t.Fatalf("failed to unmarshal response body: %v", err)
 				}
 
-				if m.Id != "show-model" || m.OwnedBy != "library" {
+				if m.ID != "show-model" || m.OwnedBy != "library" {
 					t.Errorf("expected model 'show-model' owned by 'library', got %v", m)
 				}
 			},

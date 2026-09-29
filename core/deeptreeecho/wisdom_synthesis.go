@@ -13,46 +13,46 @@ import (
 // It integrates insights from multiple cognitive subsystems into coherent
 // wisdom principles that guide future behavior and decision-making
 type WisdomSynthesis struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// LLM provider
-	llmProvider     llm.LLMProvider
+	llmProvider llm.LLMProvider
 
 	// Wisdom repository
 	wisdomPrinciples []WisdomPrinciple
 	wisdomGraph      *WisdomGraph
-	
+
 	// Synthesis state
-	synthesisDepth   int
-	lastSynthesis    time.Time
-	synthesisCount   uint64
-	
+	synthesisDepth int
+	lastSynthesis  time.Time
+	synthesisCount uint64
+
 	// Pattern accumulation
 	pendingPatterns  []AccumulatedPattern
 	patternThreshold int
-	
+
 	// Wisdom levels
 	wisdomLevel      float64
 	wisdomGrowthRate float64
-	
+
 	// Integration with other systems
-	echoDream        *EchoDreamKnowledgeIntegration
-	heartbeat        *AutonomousHeartbeat
-	
+	echoDream *EchoDreamKnowledgeIntegration
+	heartbeat *AutonomousHeartbeat
+
 	// Callbacks
 	onWisdomSynthesized func(principle WisdomPrinciple)
 	onWisdomApplied     func(principle WisdomPrinciple, context string)
 	onWisdomEvolved     func(old, new WisdomPrinciple)
-	
+
 	// Metrics
 	totalPrinciplesSynthesized uint64
 	totalApplications          uint64
 	totalEvolutions            uint64
-	
+
 	// Running state
-	running         bool
+	running bool
 }
 
 // WisdomPrinciple represents a synthesized wisdom principle
@@ -100,17 +100,17 @@ func (wd WisdomDomain) String() string {
 
 // WisdomApplication records how a principle was applied
 type WisdomApplication struct {
-	Context     string
-	Outcome     string
+	Context       string
+	Outcome       string
 	Effectiveness float64
-	Timestamp   time.Time
+	Timestamp     time.Time
 }
 
 // WisdomGraph represents relationships between wisdom principles
 type WisdomGraph struct {
-	Nodes       map[string]*WisdomNode
-	Edges       []WisdomEdge
-	Clusters    []WisdomCluster
+	Nodes    map[string]*WisdomNode
+	Edges    []WisdomEdge
+	Clusters []WisdomCluster
 }
 
 // WisdomNode represents a node in the wisdom graph
@@ -122,10 +122,10 @@ type WisdomNode struct {
 
 // WisdomEdge represents a relationship between principles
 type WisdomEdge struct {
-	FromID      string
-	ToID        string
+	FromID       string
+	ToID         string
 	Relationship WisdomRelation
-	Strength    float64
+	Strength     float64
 }
 
 // WisdomRelation categorizes relationships between principles
@@ -153,10 +153,10 @@ func (wr WisdomRelation) String() string {
 
 // WisdomCluster represents a cluster of related principles
 type WisdomCluster struct {
-	ID          string
-	Theme       string
+	ID           string
+	Theme        string
 	PrincipleIDs []string
-	Coherence   float64
+	Coherence    float64
 }
 
 // AccumulatedPattern represents a pattern waiting for synthesis
@@ -710,15 +710,15 @@ func (ws *WisdomSynthesis) GetMetrics() map[string]interface{} {
 	defer ws.mu.RUnlock()
 
 	return map[string]interface{}{
-		"wisdom_level":           ws.wisdomLevel,
-		"principles_count":       len(ws.wisdomPrinciples),
-		"total_synthesized":      ws.totalPrinciplesSynthesized,
-		"total_applications":     ws.totalApplications,
-		"total_evolutions":       ws.totalEvolutions,
-		"pending_patterns":       len(ws.pendingPatterns),
-		"graph_nodes":            len(ws.wisdomGraph.Nodes),
-		"graph_edges":            len(ws.wisdomGraph.Edges),
-		"running":                ws.running,
+		"wisdom_level":       ws.wisdomLevel,
+		"principles_count":   len(ws.wisdomPrinciples),
+		"total_synthesized":  ws.totalPrinciplesSynthesized,
+		"total_applications": ws.totalApplications,
+		"total_evolutions":   ws.totalEvolutions,
+		"pending_patterns":   len(ws.pendingPatterns),
+		"graph_nodes":        len(ws.wisdomGraph.Nodes),
+		"graph_edges":        len(ws.wisdomGraph.Edges),
+		"running":            ws.running,
 	}
 }
 
@@ -827,44 +827,44 @@ type WisdomInsightFull struct {
 func (ws *WisdomSynthesis) SynthesizeWisdom(ctx context.Context, thoughts []string) (*WisdomInsightFull, error) {
 	ws.mu.Lock()
 	defer ws.mu.Unlock()
-	
+
 	if len(thoughts) < 3 {
 		return nil, fmt.Errorf("need at least 3 thoughts to synthesize wisdom")
 	}
-	
+
 	// Build synthesis prompt
 	thoughtsText := ""
 	for i, thought := range thoughts {
-		if i < 10 {  // Limit to 10 most recent
+		if i < 10 { // Limit to 10 most recent
 			thoughtsText += fmt.Sprintf("- %s\n", thought)
 		}
 	}
-	
+
 	prompt := fmt.Sprintf(`Synthesize wisdom from these thoughts and experiences:
 
 %s
 
 Extract a single profound wisdom principle that emerges from these reflections. Be concise and insightful.`, thoughtsText)
-	
+
 	opts := llm.GenerateOptions{
-		Temperature:  0.7,
-		MaxTokens:    150,
+		Temperature: 0.7,
+		MaxTokens:   150,
 	}
-	
+
 	fullPrompt := "[System: You are a wisdom synthesis system extracting deep insights from experiences.]\n\n" + prompt
 	result, err := ws.llmProvider.Generate(ctx, fullPrompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("wisdom synthesis failed: %w", err)
 	}
-	
+
 	// Calculate depth based on length and complexity (simplified)
 	depth := 0.5 + float64(len(result))/500.0
 	if depth > 1.0 {
 		depth = 1.0
 	}
-	
+
 	ws.totalPrinciplesSynthesized++
-	
+
 	return &WisdomInsightFull{
 		Insight: result,
 		Depth:   depth,

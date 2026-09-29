@@ -12,8 +12,8 @@ import (
 
 // AutonomousLearningEngine drives self-directed learning through curiosity
 type AutonomousLearningEngine struct {
-	mu sync.RWMutex
-	ctx    context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// LLM provider for generating learning content
@@ -29,22 +29,22 @@ type AutonomousLearningEngine struct {
 	completedSessions []LearningSession
 
 	// Knowledge base (simplified)
-	learnedConcepts   map[string]*LearnedConcept
-	connections       []KnowledgeConnection
+	learnedConcepts map[string]*LearnedConcept
+	connections     []KnowledgeConnection
 
 	// Configuration
-	learningInterval  time.Duration
-	maxGaps           int
-	explorationRatio  float64  // Balance between filling gaps and exploring new areas
+	learningInterval time.Duration
+	maxGaps          int
+	explorationRatio float64 // Balance between filling gaps and exploring new areas
 
 	// Metrics
-	totalSessions     uint64
-	conceptsLearned   uint64
-	connectionsMade   uint64
-	insightsGained    uint64
+	totalSessions   uint64
+	conceptsLearned uint64
+	connectionsMade uint64
+	insightsGained  uint64
 
 	// Running state
-	running           bool
+	running bool
 }
 
 // KnowledgeGap represents something we don't know but want to learn
@@ -53,9 +53,9 @@ type KnowledgeGap struct {
 	Topic        string
 	Domain       string
 	Description  string
-	Importance   float64    // How important is this gap?
-	Curiosity    float64    // How curious are we about this?
-	RelatedTo    []string   // Related topics we already know
+	Importance   float64  // How important is this gap?
+	Curiosity    float64  // How curious are we about this?
+	RelatedTo    []string // Related topics we already know
 	DiscoveredAt time.Time
 	Status       GapStatus
 	ResolvedAt   *time.Time
@@ -82,46 +82,46 @@ type LearningGoal struct {
 	Description    string
 	Domain         string
 	TargetConcepts []string
-	Progress       float64  // 0.0 - 1.0
-	Priority       int      // 1-10
+	Progress       float64 // 0.0 - 1.0
+	Priority       int     // 1-10
 	CreatedAt      time.Time
 	DueDate        *time.Time
-	Status         string   // "active", "completed", "paused"
+	Status         string // "active", "completed", "paused"
 }
 
 // LearningSession represents an active learning session
 type LearningSession struct {
-	ID             string
-	Gap            *KnowledgeGap
-	Goal           *LearningGoal
-	StartedAt      time.Time
-	EndedAt        *time.Time
+	ID              string
+	Gap             *KnowledgeGap
+	Goal            *LearningGoal
+	StartedAt       time.Time
+	EndedAt         *time.Time
 	ConceptsLearned []LearnedConcept
-	Insights       []string
-	Questions      []string  // New questions generated during learning
-	Quality        float64   // Learning quality score
+	Insights        []string
+	Questions       []string // New questions generated during learning
+	Quality         float64  // Learning quality score
 }
 
 // LearnedConcept represents something we've learned
 type LearnedConcept struct {
-	ID           string
-	Name         string
-	Domain       string
-	Description  string
-	Confidence   float64    // How confident are we in this knowledge?
-	Source       string     // Where did we learn this?
-	LearnedAt    time.Time
-	LastRecalled time.Time
-	TimesRecalled int
+	ID              string
+	Name            string
+	Domain          string
+	Description     string
+	Confidence      float64 // How confident are we in this knowledge?
+	Source          string  // Where did we learn this?
+	LearnedAt       time.Time
+	LastRecalled    time.Time
+	TimesRecalled   int
 	RelatedConcepts []string
 }
 
 // KnowledgeConnection represents a connection between concepts
 type KnowledgeConnection struct {
-	FromConcept string
-	ToConcept   string
-	Relationship string  // "is-a", "has-a", "relates-to", "contradicts", etc.
-	Strength    float64
+	FromConcept  string
+	ToConcept    string
+	Relationship string // "is-a", "has-a", "relates-to", "contradicts", etc.
+	Strength     float64
 	DiscoveredAt time.Time
 }
 
@@ -130,18 +130,18 @@ func NewAutonomousLearningEngine(llmProvider llm.LLMProvider, interestTracker *c
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &AutonomousLearningEngine{
-		ctx:              ctx,
-		cancel:           cancel,
-		llmProvider:      llmProvider,
-		interestTracker:  interestTracker,
-		knowledgeGaps:    make(map[string]*KnowledgeGap),
-		learningGoals:    make([]LearningGoal, 0),
+		ctx:               ctx,
+		cancel:            cancel,
+		llmProvider:       llmProvider,
+		interestTracker:   interestTracker,
+		knowledgeGaps:     make(map[string]*KnowledgeGap),
+		learningGoals:     make([]LearningGoal, 0),
 		completedSessions: make([]LearningSession, 0),
-		learnedConcepts:  make(map[string]*LearnedConcept),
-		connections:      make([]KnowledgeConnection, 0),
-		learningInterval: 2 * time.Minute,
-		maxGaps:          20,
-		explorationRatio: 0.3,  // 30% exploration, 70% gap-filling
+		learnedConcepts:   make(map[string]*LearnedConcept),
+		connections:       make([]KnowledgeConnection, 0),
+		learningInterval:  2 * time.Minute,
+		maxGaps:           20,
+		explorationRatio:  0.3, // 30% exploration, 70% gap-filling
 	}
 }
 
@@ -255,12 +255,12 @@ func (ale *AutonomousLearningEngine) startLearningSession(gap *KnowledgeGap) {
 	gap.Status = GapInProgress
 
 	session := LearningSession{
-		ID:             fmt.Sprintf("session_%d", time.Now().UnixNano()),
-		Gap:            gap,
-		StartedAt:      time.Now(),
+		ID:              fmt.Sprintf("session_%d", time.Now().UnixNano()),
+		Gap:             gap,
+		StartedAt:       time.Now(),
 		ConceptsLearned: make([]LearnedConcept, 0),
-		Insights:       make([]string, 0),
-		Questions:      make([]string, 0),
+		Insights:        make([]string, 0),
+		Questions:       make([]string, 0),
 	}
 
 	ale.activeLearning = &session
@@ -305,14 +305,14 @@ Respond in an educational, reflective manner as if explaining to yourself.`,
 
 	// Create learned concept
 	concept := LearnedConcept{
-		ID:          fmt.Sprintf("concept_%d", time.Now().UnixNano()),
-		Name:        gap.Topic,
-		Domain:      gap.Domain,
-		Description: content,
-		Confidence:  0.7,
-		Source:      "autonomous_learning",
-		LearnedAt:   time.Now(),
-		LastRecalled: time.Now(),
+		ID:            fmt.Sprintf("concept_%d", time.Now().UnixNano()),
+		Name:          gap.Topic,
+		Domain:        gap.Domain,
+		Description:   content,
+		Confidence:    0.7,
+		Source:        "autonomous_learning",
+		LearnedAt:     time.Now(),
+		LastRecalled:  time.Now(),
 		TimesRecalled: 1,
 	}
 

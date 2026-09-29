@@ -36,11 +36,11 @@ type FeatherlessChatMessage struct {
 
 // ChatCompletionRequest represents a request to the chat completion API
 type ChatCompletionRequest struct {
-	Model       string        `json:"model"`
+	Model       string                   `json:"model"`
 	Messages    []FeatherlessChatMessage `json:"messages"`
-	Temperature float64       `json:"temperature,omitempty"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
-	Stream      bool          `json:"stream,omitempty"`
+	Temperature float64                  `json:"temperature,omitempty"`
+	MaxTokens   int                      `json:"max_tokens,omitempty"`
+	Stream      bool                     `json:"stream,omitempty"`
 }
 
 // ChatCompletionResponse represents the response from the chat completion API
@@ -91,7 +91,7 @@ func NewFeatherlessClient(config FeatherlessConfig) (*FeatherlessClient, error) 
 			apiKey = os.Getenv("FEARLESS")
 		}
 		if apiKey == "" {
-			return nil, fmt.Errorf("Featherless API key not provided and not found in environment")
+			return nil, fmt.Errorf("featherless API key not provided and not found in environment")
 		}
 	}
 
@@ -229,7 +229,7 @@ func (fc *FeatherlessClient) ChatCompletionStream(ctx context.Context, messages 
 
 			data := leftover + string(buf[:n])
 			lines := strings.Split(data, "\n")
-			
+
 			// Keep the last incomplete line as leftover
 			if !strings.HasSuffix(data, "\n") {
 				leftover = lines[len(lines)-1]
@@ -246,7 +246,7 @@ func (fc *FeatherlessClient) ChatCompletionStream(ctx context.Context, messages 
 
 				if strings.HasPrefix(line, "data: ") {
 					jsonStr := strings.TrimPrefix(line, "data: ")
-					
+
 					var chunk FeatherlessStreamChunk
 					if err := json.Unmarshal([]byte(jsonStr), &chunk); err != nil {
 						// Skip malformed chunks

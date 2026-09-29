@@ -14,23 +14,23 @@ import (
 // It integrates stream-of-consciousness, echobeats, and echodream into a unified
 // cognitive evolution system
 type EvolutionOptimizer struct {
-	mu sync.RWMutex
-	ctx context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Core subsystems
-	consciousness      *StreamOfConsciousness
-	scheduler          *EchobeatsScheduler
-	dreamIntegration   *EchoDreamKnowledgeIntegration
+	consciousness    *StreamOfConsciousness
+	scheduler        *EchobeatsScheduler
+	dreamIntegration *EchoDreamKnowledgeIntegration
 
 	// LLM provider
 	llmProvider llm.LLMProvider
 
 	// Evolution state
-	generation         uint64
-	fitnessScore       float64
-	evolutionVelocity  float64
-	adaptationRate     float64
+	generation        uint64
+	fitnessScore      float64
+	evolutionVelocity float64
+	adaptationRate    float64
 
 	// Evolutionary metrics
 	wisdomDepth        float64
@@ -39,28 +39,28 @@ type EvolutionOptimizer struct {
 	emergenceIndex     float64
 
 	// Genetic memory - traits that persist across generations
-	geneticTraits      map[string]GeneticTrait
+	geneticTraits map[string]GeneticTrait
 
 	// Evolution history
-	evolutionHistory   []EvolutionSnapshot
+	evolutionHistory []EvolutionSnapshot
 
 	// Fitness landscape
-	fitnessLandscape   *FitnessLandscape
+	fitnessLandscape *FitnessLandscape
 
 	// Running state
-	running            bool
-	evolutionCycle     time.Duration
+	running        bool
+	evolutionCycle time.Duration
 }
 
 // GeneticTrait represents an evolved characteristic
 type GeneticTrait struct {
-	Name           string    `json:"name"`
-	Value          float64   `json:"value"`
-	Mutability     float64   `json:"mutability"`
-	Expression     float64   `json:"expression"`
-	Generation     uint64    `json:"generation"`
-	LastMutation   time.Time `json:"last_mutation"`
-	FitnessImpact  float64   `json:"fitness_impact"`
+	Name          string    `json:"name"`
+	Value         float64   `json:"value"`
+	Mutability    float64   `json:"mutability"`
+	Expression    float64   `json:"expression"`
+	Generation    uint64    `json:"generation"`
+	LastMutation  time.Time `json:"last_mutation"`
+	FitnessImpact float64   `json:"fitness_impact"`
 }
 
 // EvolutionSnapshot captures evolutionary state at a point in time
@@ -77,19 +77,19 @@ type EvolutionSnapshot struct {
 
 // FitnessLandscape models the evolutionary fitness space
 type FitnessLandscape struct {
-	Dimensions      int                `json:"dimensions"`
-	Peaks           []FitnessPeak      `json:"peaks"`
-	CurrentPosition []float64          `json:"current_position"`
-	Gradient        []float64          `json:"gradient"`
-	LocalOptima     bool               `json:"local_optima"`
+	Dimensions      int           `json:"dimensions"`
+	Peaks           []FitnessPeak `json:"peaks"`
+	CurrentPosition []float64     `json:"current_position"`
+	Gradient        []float64     `json:"gradient"`
+	LocalOptima     bool          `json:"local_optima"`
 }
 
 // FitnessPeak represents a fitness peak in the landscape
 type FitnessPeak struct {
-	Position    []float64 `json:"position"`
-	Height      float64   `json:"height"`
-	Breadth     float64   `json:"breadth"`
-	Discovered  time.Time `json:"discovered"`
+	Position   []float64 `json:"position"`
+	Height     float64   `json:"height"`
+	Breadth    float64   `json:"breadth"`
+	Discovered time.Time `json:"discovered"`
 }
 
 // EvolutionConfig configures the evolution optimizer
@@ -119,20 +119,20 @@ func NewEvolutionOptimizer(llmProvider llm.LLMProvider, config EvolutionConfig) 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	eo := &EvolutionOptimizer{
-		ctx:              ctx,
-		cancel:           cancel,
-		llmProvider:      llmProvider,
-		generation:       0,
-		fitnessScore:     0.5,
-		evolutionVelocity: 0.0,
-		adaptationRate:   config.InitialAdaptationRate,
-		wisdomDepth:      0.0,
-		patternComplexity: 0.0,
+		ctx:                ctx,
+		cancel:             cancel,
+		llmProvider:        llmProvider,
+		generation:         0,
+		fitnessScore:       0.5,
+		evolutionVelocity:  0.0,
+		adaptationRate:     config.InitialAdaptationRate,
+		wisdomDepth:        0.0,
+		patternComplexity:  0.0,
 		coherenceStability: 0.5,
-		emergenceIndex:   0.0,
-		geneticTraits:    make(map[string]GeneticTrait),
-		evolutionHistory: make([]EvolutionSnapshot, 0),
-		evolutionCycle:   config.EvolutionCycle,
+		emergenceIndex:     0.0,
+		geneticTraits:      make(map[string]GeneticTrait),
+		evolutionHistory:   make([]EvolutionSnapshot, 0),
+		evolutionCycle:     config.EvolutionCycle,
 	}
 
 	// Initialize core subsystems
@@ -397,8 +397,10 @@ func (eo *EvolutionOptimizer) computeFitnessGradient() {
 	previous := eo.evolutionHistory[len(eo.evolutionHistory)-2]
 
 	// Compute gradient for each dimension
-	traitNames := []string{"curiosity_drive", "wisdom_accumulation", "pattern_recognition",
-		"coherence_maintenance", "adaptive_learning"}
+	traitNames := []string{
+		"curiosity_drive", "wisdom_accumulation", "pattern_recognition",
+		"coherence_maintenance", "adaptive_learning",
+	}
 
 	for i, name := range traitNames {
 		if i < len(eo.fitnessLandscape.Gradient) {
@@ -436,8 +438,10 @@ func (eo *EvolutionOptimizer) applyEvolutionaryPressure() {
 	}
 
 	// Update trait expressions based on gradient
-	traitNames := []string{"curiosity_drive", "wisdom_accumulation", "pattern_recognition",
-		"coherence_maintenance", "adaptive_learning"}
+	traitNames := []string{
+		"curiosity_drive", "wisdom_accumulation", "pattern_recognition",
+		"coherence_maintenance", "adaptive_learning",
+	}
 
 	for i, name := range traitNames {
 		if trait, ok := eo.geneticTraits[name]; ok {
@@ -527,10 +531,7 @@ func (eo *EvolutionOptimizer) triggerDreamConsolidation() {
 	thoughts := eo.consciousness.GetThoughtsForConsolidation()
 
 	// Add to dream integration
-	for _, thought := range thoughts {
-		eo.dreamIntegration.episodicMemories = append(
-			eo.dreamIntegration.episodicMemories, thought)
-	}
+	eo.dreamIntegration.episodicMemories = append(eo.dreamIntegration.episodicMemories, thoughts...)
 
 	// Run consolidation
 	if err := eo.dreamIntegration.ConsolidateKnowledge(eo.ctx); err != nil {

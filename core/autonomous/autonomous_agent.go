@@ -23,7 +23,7 @@ import (
 // Integrates all subsystems for fully autonomous operation
 type AutonomousAgent struct {
 	mu     sync.RWMutex
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Core subsystems
@@ -38,9 +38,7 @@ type AutonomousAgent struct {
 	coherenceTracker *echoself.CoherenceTracker
 
 	// Iteration 014 enhancements
-	executionLoop    *AutonomousExecutionLoop
-	sleepWakeMachine interface{} // *echodream.SleepWakeStateMachine
-	sys6Integration  interface{} // *deeptreeecho.Sys6CognitiveIntegration
+	executionLoop *AutonomousExecutionLoop
 
 	// LLM provider
 	llmProvider llm.LLMProvider

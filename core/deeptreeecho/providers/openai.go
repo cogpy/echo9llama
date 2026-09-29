@@ -18,9 +18,9 @@ import (
 
 // OpenAIProvider implements ModelProvider for OpenAI API
 type OpenAIProvider struct {
-	apiKey   string
-	baseURL  string
-	client   *http.Client
+	apiKey  string
+	baseURL string
+	client  *http.Client
 }
 
 // NewOpenAIProvider creates a new OpenAI provider
@@ -37,12 +37,12 @@ func (p *OpenAIProvider) Generate(ctx context.Context, prompt string, options de
 	if !p.IsAvailable() {
 		return "", fmt.Errorf("OpenAI API key not configured")
 	}
-	
+
 	// Use chat completions API for generation
 	messages := []deeptreeecho.ChatMessage{
 		{Role: "user", Content: prompt},
 	}
-	
+
 	return p.Chat(ctx, messages, deeptreeecho.ChatOptions{GenerateOptions: options})
 }
 
@@ -51,11 +51,11 @@ func (p *OpenAIProvider) GenerateStream(ctx context.Context, prompt string, opti
 	if !p.IsAvailable() {
 		return nil, fmt.Errorf("OpenAI API key not configured")
 	}
-	
+
 	messages := []deeptreeecho.ChatMessage{
 		{Role: "user", Content: prompt},
 	}
-	
+
 	return p.ChatStream(ctx, messages, deeptreeecho.ChatOptions{GenerateOptions: options})
 }
 
@@ -64,18 +64,18 @@ func (p *OpenAIProvider) Chat(ctx context.Context, messages []deeptreeecho.ChatM
 	if !p.IsAvailable() {
 		return "", fmt.Errorf("OpenAI API key not configured")
 	}
-	
+
 	// Prepare request
 	model := options.Model
 	if model == "" {
 		model = "gpt-3.5-turbo"
 	}
-	
+
 	requestBody := map[string]interface{}{
 		"model":    model,
 		"messages": messages,
 	}
-	
+
 	// Add options
 	if options.Temperature > 0 {
 		requestBody["temperature"] = options.Temperature
@@ -95,39 +95,39 @@ func (p *OpenAIProvider) Chat(ctx context.Context, messages []deeptreeecho.ChatM
 	if len(options.StopSequences) > 0 {
 		requestBody["stop"] = options.StopSequences
 	}
-	
+
 	// Marshal request
 	jsonBody, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/chat/completions", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return "", err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	
+
 	// Send request
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	// Read response
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("OpenAI API error: %s", string(body))
 	}
-	
+
 	// Parse response
 	var response struct {
 		Choices []struct {
@@ -139,19 +139,19 @@ func (p *OpenAIProvider) Chat(ctx context.Context, messages []deeptreeecho.ChatM
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	
+
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", err
 	}
-	
+
 	if response.Error.Message != "" {
 		return "", fmt.Errorf("OpenAI API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Choices) == 0 {
 		return "", fmt.Errorf("no response from OpenAI")
 	}
-	
+
 	return response.Choices[0].Message.Content, nil
 }
 
@@ -160,24 +160,24 @@ func (p *OpenAIProvider) ChatStream(ctx context.Context, messages []deeptreeecho
 	if !p.IsAvailable() {
 		return nil, fmt.Errorf("OpenAI API key not configured")
 	}
-	
+
 	ch := make(chan string, 100)
-	
+
 	go func() {
 		defer close(ch)
-		
+
 		// Prepare request
 		model := options.Model
 		if model == "" {
 			model = "gpt-3.5-turbo"
 		}
-		
+
 		requestBody := map[string]interface{}{
 			"model":    model,
 			"messages": messages,
 			"stream":   true,
 		}
-		
+
 		// Add options
 		if options.Temperature > 0 {
 			requestBody["temperature"] = options.Temperature
@@ -185,24 +185,24 @@ func (p *OpenAIProvider) ChatStream(ctx context.Context, messages []deeptreeecho
 		if options.MaxTokens > 0 {
 			requestBody["max_tokens"] = options.MaxTokens
 		}
-		
+
 		// Marshal request
 		jsonBody, err := json.Marshal(requestBody)
 		if err != nil {
 			ch <- fmt.Sprintf("Error: %v", err)
 			return
 		}
-		
+
 		// Create request
 		req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/chat/completions", bytes.NewBuffer(jsonBody))
 		if err != nil {
 			ch <- fmt.Sprintf("Error: %v", err)
 			return
 		}
-		
+
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+p.apiKey)
-		
+
 		// Send request
 		resp, err := p.client.Do(req)
 		if err != nil {
@@ -210,17 +210,17 @@ func (p *OpenAIProvider) ChatStream(ctx context.Context, messages []deeptreeecho
 			return
 		}
 		defer resp.Body.Close()
-		
+
 		if resp.StatusCode != http.StatusOK {
 			body, _ := io.ReadAll(resp.Body)
 			ch <- fmt.Sprintf("Error: %s", string(body))
 			return
 		}
-		
+
 		// Read streaming response
 		reader := resp.Body
 		decoder := json.NewDecoder(reader)
-		
+
 		for {
 			var chunk map[string]interface{}
 			if err := decoder.Decode(&chunk); err == io.EOF {
@@ -228,7 +228,7 @@ func (p *OpenAIProvider) ChatStream(ctx context.Context, messages []deeptreeecho
 			} else if err != nil {
 				continue // Skip malformed chunks
 			}
-			
+
 			// Extract content from chunk
 			if choices, ok := chunk["choices"].([]interface{}); ok && len(choices) > 0 {
 				if choice, ok := choices[0].(map[string]interface{}); ok {
@@ -241,7 +241,7 @@ func (p *OpenAIProvider) ChatStream(ctx context.Context, messages []deeptreeecho
 			}
 		}
 	}()
-	
+
 	return ch, nil
 }
 
@@ -250,40 +250,40 @@ func (p *OpenAIProvider) Embeddings(ctx context.Context, text string) ([]float64
 	if !p.IsAvailable() {
 		return nil, fmt.Errorf("OpenAI API key not configured")
 	}
-	
+
 	requestBody := map[string]interface{}{
 		"model": "text-embedding-ada-002",
 		"input": text,
 	}
-	
+
 	jsonBody, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", p.baseURL+"/embeddings", bytes.NewBuffer(jsonBody))
 	if err != nil {
 		return nil, err
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+p.apiKey)
-	
+
 	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("OpenAI API error: %s", string(body))
 	}
-	
+
 	var response struct {
 		Data []struct {
 			Embedding []float64 `json:"embedding"`
@@ -292,19 +292,19 @@ func (p *OpenAIProvider) Embeddings(ctx context.Context, text string) ([]float64
 			Message string `json:"message"`
 		} `json:"error"`
 	}
-	
+
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, err
 	}
-	
+
 	if response.Error.Message != "" {
 		return nil, fmt.Errorf("OpenAI API error: %s", response.Error.Message)
 	}
-	
+
 	if len(response.Data) == 0 {
 		return nil, fmt.Errorf("no embeddings returned")
 	}
-	
+
 	return response.Data[0].Embedding, nil
 }
 

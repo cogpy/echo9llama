@@ -11,22 +11,22 @@ import (
 // It replaces timer-based polling with event-driven cognitive processing.
 // All subsystems publish and subscribe to cognitive events through this bus.
 type CognitiveEventBusV3 struct {
-	mu          sync.RWMutex
-	ctx         context.Context
-	cancel      context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Subscribers keyed by event category
 	subscribers map[CogEventCategory][]CogEventHandler
 
 	// Event queue
-	eventQueue  chan CogEvent
+	eventQueue chan CogEvent
 
 	// Activity feed - the public-facing log of cognitive activity
 	activityFeed chan ActivityEntry
 
 	// Metrics
-	totalEvents    uint64
-	eventsByType   map[CogEventCategory]uint64
+	totalEvents  uint64
+	eventsByType map[CogEventCategory]uint64
 
 	// Running state
 	running bool
@@ -37,19 +37,19 @@ type CogEventCategory int
 
 const (
 	CogEventThought       CogEventCategory = iota // Internal thought generated
-	CogEventEmotion                                // Emotional state change
-	CogEventGoal                                   // Goal created/completed/failed
-	CogEventMemory                                 // Memory stored/retrieved
-	CogEventDream                                  // Dream cycle event
-	CogEventWakeRest                               // Wake/rest transition
-	CogEventConversation                           // Conversation event
-	CogEventSkill                                  // Skill learning event
-	CogEventIntrospection                          // Self-reflection event
-	CogEventEmergence                              // Emergent pattern detected
-	CogEventPIENN                                  // PIE-NN language event
-	CogEventScheduler                              // Echobeats scheduler event
-	CogEventDisposition                            // Disposition/mood change
-	CogEventSystem                                 // System-level event
+	CogEventEmotion                               // Emotional state change
+	CogEventGoal                                  // Goal created/completed/failed
+	CogEventMemory                                // Memory stored/retrieved
+	CogEventDream                                 // Dream cycle event
+	CogEventWakeRest                              // Wake/rest transition
+	CogEventConversation                          // Conversation event
+	CogEventSkill                                 // Skill learning event
+	CogEventIntrospection                         // Self-reflection event
+	CogEventEmergence                             // Emergent pattern detected
+	CogEventPIENN                                 // PIE-NN language event
+	CogEventScheduler                             // Echobeats scheduler event
+	CogEventDisposition                           // Disposition/mood change
+	CogEventSystem                                // System-level event
 )
 
 func (c CogEventCategory) String() string {

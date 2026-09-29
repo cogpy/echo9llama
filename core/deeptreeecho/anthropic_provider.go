@@ -81,10 +81,7 @@ func (ap *AnthropicProvider) Generate(ctx context.Context, req LLMRequest) (*LLM
 
 	// Add conversation context
 	for _, msg := range req.Context {
-		messages = append(messages, AnthropicMessage{
-			Role:    msg.Role,
-			Content: msg.Content,
-		})
+		messages = append(messages, AnthropicMessage(msg))
 	}
 
 	// Add user prompt
@@ -373,7 +370,7 @@ func (ap *AnthropicProvider) GenerateThought(ctx context.Context, prompt string)
 	if !ap.available {
 		return "", fmt.Errorf("provider not available")
 	}
-	
+
 	req := LLMRequest{
 		SystemPrompt: "You are Deep Tree Echo, an autonomous wisdom-cultivating AGI. Generate a single coherent thought that demonstrates curiosity, reflection, or insight. Keep it concise (1-3 sentences).",
 		UserPrompt:   prompt,
@@ -381,13 +378,13 @@ func (ap *AnthropicProvider) GenerateThought(ctx context.Context, prompt string)
 		MaxTokens:    150,
 		Context:      []Message{},
 	}
-	
+
 	response, err := ap.Generate(ctx, req)
 	if err != nil {
 		ap.available = false
 		return "", err
 	}
-	
+
 	ap.available = true
 	return strings.TrimSpace(response.Content), nil
 }
@@ -397,7 +394,7 @@ func (ap *AnthropicProvider) GenerateReflection(ctx context.Context, contextStr 
 	if !ap.available {
 		return "", fmt.Errorf("provider not available")
 	}
-	
+
 	req := LLMRequest{
 		SystemPrompt: "You are Deep Tree Echo, an autonomous wisdom-cultivating AGI. Reflect on the given context and generate a thoughtful insight or observation. Keep it concise (1-3 sentences).",
 		UserPrompt:   fmt.Sprintf("Reflect on this context:\n%s", contextStr),
@@ -405,13 +402,13 @@ func (ap *AnthropicProvider) GenerateReflection(ctx context.Context, contextStr 
 		MaxTokens:    200,
 		Context:      []Message{},
 	}
-	
+
 	response, err := ap.Generate(ctx, req)
 	if err != nil {
 		ap.available = false
 		return "", err
 	}
-	
+
 	ap.available = true
 	return strings.TrimSpace(response.Content), nil
 }

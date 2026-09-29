@@ -28,7 +28,7 @@ func (t *ExampleWebSearchTool) Call(ctx context.Context, params map[string]inter
 
 	// Simulate web search
 	time.Sleep(100 * time.Millisecond)
-	
+
 	return &ToolResult{
 		Success: true,
 		Output:  fmt.Sprintf("Search results for '%s': Found 5 relevant articles on AI and orchestration", query),
@@ -57,7 +57,7 @@ func (t *ExampleCalculatorTool) Call(ctx context.Context, params map[string]inte
 
 	a, aOk := params["a"].(float64)
 	b, bOk := params["b"].(float64)
-	
+
 	if !aOk || !bOk {
 		return &ToolResult{
 			Success: false,
@@ -108,7 +108,7 @@ func (p *ExampleDataAnalysisPlugin) Description() string {
 func (p *ExampleDataAnalysisPlugin) Execute(ctx context.Context, input string, params map[string]interface{}) (interface{}, error) {
 	// Simulate data analysis
 	time.Sleep(200 * time.Millisecond)
-	
+
 	analysisType, ok := params["type"].(string)
 	if !ok {
 		analysisType = "summary"
@@ -120,15 +120,15 @@ func (p *ExampleDataAnalysisPlugin) Execute(ctx context.Context, input string, p
 			"type":    "summary",
 			"input":   input,
 			"length":  len(input),
-			"words":   len(input)/5, // rough word estimate
+			"words":   len(input) / 5, // rough word estimate
 			"insight": "Text appears to contain structured information suitable for further analysis",
 		}, nil
 	case "sentiment":
 		return map[string]interface{}{
-			"type":      "sentiment",
-			"sentiment": "neutral",
+			"type":       "sentiment",
+			"sentiment":  "neutral",
 			"confidence": 0.7,
-			"factors":   []string{"balanced_tone", "technical_content"},
+			"factors":    []string{"balanced_tone", "technical_content"},
 		}, nil
 	default:
 		return fmt.Sprintf("Unknown analysis type: %s", analysisType), nil

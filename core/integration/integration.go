@@ -24,8 +24,8 @@ import (
 // IntegratedDeepTreeEcho represents the fully integrated Deep Tree Echo system
 // with all layers connected and synchronized.
 type IntegratedDeepTreeEcho struct {
-	mu sync.RWMutex
-	ctx context.Context
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 
 	// Integration hub - central coordinator
@@ -42,19 +42,19 @@ type IntegratedDeepTreeEcho struct {
 
 	// Lifecycle state
 	initialized bool
-	started bool
-	startTime time.Time
+	started     bool
+	startTime   time.Time
 
 	// Lifecycle hooks
 	onStartHooks []func() error
-	onStopHooks []func() error
+	onStopHooks  []func() error
 }
 
 // IntegrationConfig holds configuration for the integrated system
 type IntegrationConfig struct {
 	// Identity
-	SystemName string
-	AgentID string
+	SystemName  string
+	AgentID     string
 	SessionName string
 
 	// LLM Configuration
@@ -68,11 +68,11 @@ type IntegrationConfig struct {
 
 	// Features
 	EnableOrchestration bool
-	EnableBridge bool
-	EnableAutoRecovery bool
+	EnableBridge        bool
+	EnableAutoRecovery  bool
 
 	// Timing
-	StartupTimeout time.Duration
+	StartupTimeout  time.Duration
 	ShutdownTimeout time.Duration
 }
 
@@ -80,17 +80,17 @@ type IntegrationConfig struct {
 func DefaultIntegrationConfig(llmProvider llm.LLMProvider) IntegrationConfig {
 	ts := time.Now().Unix()
 	return IntegrationConfig{
-		SystemName: "DeepTreeEcho",
-		AgentID: fmt.Sprintf("dte-%d", ts),
-		SessionName: fmt.Sprintf("dte-session-%d", ts),
-		LLMProvider: llmProvider,
-		HubConfig: DefaultHubConfig(),
-		BridgeConfig: DefaultBridgeConfig(),
+		SystemName:          "DeepTreeEcho",
+		AgentID:             fmt.Sprintf("dte-%d", ts),
+		SessionName:         fmt.Sprintf("dte-session-%d", ts),
+		LLMProvider:         llmProvider,
+		HubConfig:           DefaultHubConfig(),
+		BridgeConfig:        DefaultBridgeConfig(),
 		EnableOrchestration: true,
-		EnableBridge: true,
-		EnableAutoRecovery: true,
-		StartupTimeout: 60 * time.Second,
-		ShutdownTimeout: 30 * time.Second,
+		EnableBridge:        true,
+		EnableAutoRecovery:  true,
+		StartupTimeout:      60 * time.Second,
+		ShutdownTimeout:     30 * time.Second,
 	}
 }
 
@@ -108,11 +108,11 @@ func NewIntegratedDeepTreeEcho(config IntegrationConfig) (*IntegratedDeepTreeEch
 	hubConfig.SessionName = config.SessionName
 
 	integrated := &IntegratedDeepTreeEcho{
-		ctx: ctx,
-		cancel: cancel,
-		config: config,
+		ctx:          ctx,
+		cancel:       cancel,
+		config:       config,
 		onStartHooks: make([]func() error, 0),
-		onStopHooks: make([]func() error, 0),
+		onStopHooks:  make([]func() error, 0),
 	}
 
 	// Initialize hub
@@ -329,10 +329,10 @@ func (i *IntegratedDeepTreeEcho) GetStatus() map[string]interface{} {
 	defer i.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"initialized": i.initialized,
-		"started": i.started,
-		"system_name": i.config.SystemName,
-		"agent_id": i.config.AgentID,
+		"initialized":  i.initialized,
+		"started":      i.started,
+		"system_name":  i.config.SystemName,
+		"agent_id":     i.config.AgentID,
 		"session_name": i.config.SessionName,
 	}
 
@@ -344,7 +344,7 @@ func (i *IntegratedDeepTreeEcho) GetStatus() map[string]interface{} {
 	if i.hub != nil {
 		hubStatus := i.hub.GetStatus()
 		status["hub"] = map[string]interface{}{
-			"running": hubStatus.Running,
+			"running":      hubStatus.Running,
 			"total_events": hubStatus.Metrics.TotalEvents,
 			"total_cycles": hubStatus.Metrics.TotalCycles,
 		}
@@ -354,7 +354,7 @@ func (i *IntegratedDeepTreeEcho) GetStatus() map[string]interface{} {
 	if i.orchestration != nil {
 		status["orchestration"] = map[string]interface{}{
 			"system_health": string(i.orchestration.SystemHealth),
-			"core_status": string(i.orchestration.CoreStatus),
+			"core_status":   string(i.orchestration.CoreStatus),
 			"thought_count": i.orchestration.ThoughtCount,
 			"evolution_stage": func() string {
 				if i.orchestration.EvolutionTimeline != nil {

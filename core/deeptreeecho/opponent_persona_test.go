@@ -13,7 +13,7 @@ func TestOrdoPersonaActivation(t *testing.T) {
 	// Simulate conditions that should activate Ordo:
 	// 1. High number of patterns
 	// 2. Low coherence
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		pattern := &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.6,
@@ -61,7 +61,7 @@ func TestChaoPersonaActivation(t *testing.T) {
 	// 1. Few patterns (need exploration)
 	// 2. High coherence (risk of over-optimization)
 	// 3. Early iterations
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		pattern := &Pattern{
 			ID:       string(rune('a' + i)),
 			Strength: 0.9,
@@ -107,7 +107,7 @@ func TestOrdoChaoBalance(t *testing.T) {
 	// Phase 1: Start with Chao (exploration phase)
 	identity.Coherence = 0.3
 	identity.Iterations = 10
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{ID: string(rune('a' + i)), Strength: 0.5}
 	}
 
@@ -177,7 +177,7 @@ func TestOpponentProcessDynamics(t *testing.T) {
 		identity.Coherence = 0.3 + float64(i)*0.2
 
 		// Add patterns progressively
-		for j := 0; j < (i+1)*10; j++ {
+		for j := range (i + 1) * 10 {
 			identity.Patterns[string(rune(j))] = &Pattern{
 				ID:       string(rune(j)),
 				Strength: 0.7,
@@ -210,7 +210,7 @@ func TestEmotionalInfluenceOnOpponentProcesses(t *testing.T) {
 	// Baseline state
 	identity.Coherence = 0.6
 	identity.Iterations = 500
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		identity.Patterns[string(rune('a'+i))] = &Pattern{ID: string(rune('a' + i)), Strength: 0.7}
 	}
 
@@ -273,13 +273,13 @@ func TestWisdomCultivationThroughBalance(t *testing.T) {
 	// Track wisdom over time
 	wisdomScores := make([]float64, 10)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		// Simulate cognitive development
 		identity.Iterations = uint64(i * 200)
 		identity.Coherence = 0.3 + float64(i)*0.07
 
 		// Add patterns
-		for j := 0; j < (i+1)*5; j++ {
+		for j := range (i + 1) * 5 {
 			identity.Patterns[string(rune(j))] = &Pattern{
 				ID:       string(rune(j)),
 				Strength: 0.6 + float64(i)*0.04,

@@ -20,23 +20,23 @@ type Actualization struct {
 
 // Potential represents an unrealized capability or capacity
 type Potential struct {
-	ID          string
-	Name        string
-	Description string
-	Readiness   float64 // 0.0 to 1.0, how ready this is to be actualized
-	Priority    float64
+	ID           string
+	Name         string
+	Description  string
+	Readiness    float64 // 0.0 to 1.0, how ready this is to be actualized
+	Priority     float64
 	Dependencies []string
-	CreatedAt   time.Time
+	CreatedAt    time.Time
 }
 
 // ActualizedCapability represents a potential that has been realized
 type ActualizedCapability struct {
-	PotentialID   string
-	Name          string
-	ActualizedAt  time.Time
-	Proficiency   float64 // 0.0 to 1.0, how well this capability is developed
-	UsageCount    int
-	LastUsed      time.Time
+	PotentialID  string
+	Name         string
+	ActualizedAt time.Time
+	Proficiency  float64 // 0.0 to 1.0, how well this capability is developed
+	UsageCount   int
+	LastUsed     time.Time
 }
 
 // DevelopmentStage represents the current stage of ontogenetic development
@@ -208,11 +208,11 @@ func (a *Actualization) GetActualizationMetrics() map[string]interface{} {
 	defer a.mu.RUnlock()
 
 	return map[string]interface{}{
-		"total_potentials":       len(a.potentials),
-		"total_actualizations":   len(a.actualizations),
-		"development_stage":      string(a.developmentStage),
-		"actualization_rate":     a.actualizationRate,
-		"last_update":            a.lastUpdate,
+		"total_potentials":     len(a.potentials),
+		"total_actualizations": len(a.actualizations),
+		"development_stage":    string(a.developmentStage),
+		"actualization_rate":   a.actualizationRate,
+		"last_update":          a.lastUpdate,
 	}
 }
 

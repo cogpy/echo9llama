@@ -198,13 +198,13 @@ func (ec *EmbodiedCognition) GetStatus() map[string]interface{} {
 	defer ec.mu.RUnlock()
 
 	return map[string]interface{}{
-		"active":        ec.Active,
-		"identity":      ec.Identity.GetStatus(),
-		"contexts":      len(ec.Contexts),
-		"awareness":     ec.GlobalState.Awareness,
-		"energy":        ec.GlobalState.Energy,
-		"synchrony":     ec.GlobalState.Synchrony,
-		"flow_state":    ec.GlobalState.FlowState,
+		"active":          ec.Active,
+		"identity":        ec.Identity.GetStatus(),
+		"contexts":        len(ec.Contexts),
+		"awareness":       ec.GlobalState.Awareness,
+		"energy":          ec.GlobalState.Energy,
+		"synchrony":       ec.GlobalState.Synchrony,
+		"flow_state":      ec.GlobalState.FlowState,
 		"pipeline_stages": len(ec.Pipeline.Stages),
 		"pipeline_events": len(ec.Pipeline.History),
 	}

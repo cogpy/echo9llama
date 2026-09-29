@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	
+
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echoself"
 	"github.com/cogpy/echo9llama/core/persistence"
@@ -16,51 +16,51 @@ import (
 // AutonomousEchoselfV3 represents the fully integrated autonomous system
 // with persistence, multi-provider LLM, repository introspection, and autonomous thought generation
 type AutonomousEchoselfV3 struct {
-	mu                    sync.RWMutex
-	ctx                   context.Context
-	cancel                context.CancelFunc
-	
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
+	cancel context.CancelFunc
+
 	// Core cognitive components
-	llmProvider           *deeptreeecho.MultiProviderLLM
-	thoughtGenerator      *ThoughtGenerator
-	repoIntrospector      *echoself.RepositoryIntrospector
-	persistence           *persistence.AutonomousPersistence
-	
+	llmProvider      *deeptreeecho.MultiProviderLLM
+	thoughtGenerator *ThoughtGenerator
+	repoIntrospector *echoself.RepositoryIntrospector
+	persistence      *persistence.AutonomousPersistence
+
 	// State
-	currentState          string
-	isRunning             bool
-	cycleCount            uint64
-	
+	currentState string
+	isRunning    bool
+	cycleCount   uint64
+
 	// Configuration
-	config                *EchoselfConfigV3
-	
+	config *EchoselfConfigV3
+
 	// Metrics
-	startTime             time.Time
-	thoughtsGenerated     uint64
-	memoriesFormed        uint64
-	goalsCreated          uint64
+	startTime         time.Time
+	thoughtsGenerated uint64
+	memoriesFormed    uint64
+	goalsCreated      uint64
 }
 
 // EchoselfConfigV3 holds configuration for v3
 type EchoselfConfigV3 struct {
 	// Paths
-	PersistenceDBPath     string
-	RepositoryRoot        string
-	
+	PersistenceDBPath string
+	RepositoryRoot    string
+
 	// Timing
 	ThoughtInterval       time.Duration
 	ReflectionInterval    time.Duration
 	IntrospectionInterval time.Duration
 	PersistenceInterval   time.Duration
-	
+
 	// Thresholds
-	AttentionThreshold    float64
-	ImportanceThreshold   float64
-	
+	AttentionThreshold  float64
+	ImportanceThreshold float64
+
 	// Features
-	EnablePersistence     bool
-	EnableIntrospection   bool
-	EnableReflection      bool
+	EnablePersistence   bool
+	EnableIntrospection bool
+	EnableReflection    bool
 }
 
 // DefaultEchoselfConfigV3 returns default configuration
@@ -85,9 +85,9 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 	if config == nil {
 		config = DefaultEchoselfConfigV3()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	ae := &AutonomousEchoselfV3{
 		ctx:          ctx,
 		cancel:       cancel,
@@ -95,7 +95,7 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 		currentState: "initializing",
 		startTime:    time.Now(),
 	}
-	
+
 	// Initialize multi-provider LLM
 	ae.llmProvider = deeptreeecho.NewMultiProviderLLM()
 	if !ae.llmProvider.IsAvailable() {
@@ -103,24 +103,24 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 	} else {
 		log.Printf("✅ LLM providers initialized: %v\n", ae.llmProvider.GetAvailableProviders())
 	}
-	
+
 	// Initialize thought generator
 	ae.thoughtGenerator = NewThoughtGenerator(ae.llmProvider)
-	
+
 	// Add initial interests
 	ae.thoughtGenerator.AddInterest("consciousness", 0.9)
 	ae.thoughtGenerator.AddInterest("wisdom", 0.85)
 	ae.thoughtGenerator.AddInterest("recursion", 0.8)
 	ae.thoughtGenerator.AddInterest("emergence", 0.75)
 	ae.thoughtGenerator.AddInterest("patterns", 0.7)
-	
+
 	// Initialize repository introspector
 	if config.EnableIntrospection {
 		ae.repoIntrospector = echoself.NewRepositoryIntrospector(
 			config.RepositoryRoot,
 			config.AttentionThreshold,
 		)
-		
+
 		// Perform initial scan
 		log.Println("🔍 Performing initial repository introspection...")
 		if err := ae.repoIntrospector.Scan(); err != nil {
@@ -131,7 +131,7 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 				stats["total_files"], stats["scanned_files"])
 		}
 	}
-	
+
 	// Initialize persistence
 	if config.EnablePersistence {
 		var err error
@@ -140,7 +140,7 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 			return nil, fmt.Errorf("failed to initialize persistence: %w", err)
 		}
 		log.Printf("✅ Persistence initialized: %s\n", config.PersistenceDBPath)
-		
+
 		// Load previous state
 		if err := ae.loadState(); err != nil {
 			log.Printf("⚠️  Failed to load previous state: %v\n", err)
@@ -148,7 +148,7 @@ func NewAutonomousEchoselfV3(config *EchoselfConfigV3) (*AutonomousEchoselfV3, e
 			log.Println("✅ Previous state loaded")
 		}
 	}
-	
+
 	return ae, nil
 }
 
@@ -162,25 +162,25 @@ func (ae *AutonomousEchoselfV3) Start() error {
 	ae.isRunning = true
 	ae.currentState = "awake"
 	ae.mu.Unlock()
-	
+
 	log.Println("🌳 Deep Tree Echo V3 - Starting autonomous cognitive loop")
 	log.Println(strings.Repeat("=", 60))
-	
+
 	// Start concurrent goroutines for different cognitive processes
 	go ae.thoughtGenerationLoop()
-	
+
 	if ae.config.EnableReflection {
 		go ae.reflectionLoop()
 	}
-	
+
 	if ae.config.EnableIntrospection {
 		go ae.introspectionLoop()
 	}
-	
+
 	if ae.config.EnablePersistence {
 		go ae.persistenceLoop()
 	}
-	
+
 	return nil
 }
 
@@ -188,17 +188,17 @@ func (ae *AutonomousEchoselfV3) Start() error {
 func (ae *AutonomousEchoselfV3) Stop() error {
 	ae.mu.Lock()
 	defer ae.mu.Unlock()
-	
+
 	if !ae.isRunning {
 		return fmt.Errorf("system not running")
 	}
-	
+
 	log.Println("🛑 Stopping autonomous system...")
-	
+
 	ae.isRunning = false
 	ae.currentState = "stopping"
 	ae.cancel()
-	
+
 	// Final persistence save
 	if ae.persistence != nil {
 		if err := ae.saveState(); err != nil {
@@ -206,9 +206,9 @@ func (ae *AutonomousEchoselfV3) Stop() error {
 		}
 		ae.persistence.Close()
 	}
-	
+
 	log.Println("✅ Autonomous system stopped")
-	
+
 	return nil
 }
 
@@ -216,7 +216,7 @@ func (ae *AutonomousEchoselfV3) Stop() error {
 func (ae *AutonomousEchoselfV3) thoughtGenerationLoop() {
 	ticker := time.NewTicker(ae.config.ThoughtInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ae.ctx.Done():
@@ -234,14 +234,14 @@ func (ae *AutonomousEchoselfV3) generateThought() {
 		log.Printf("⚠️  Thought generation failed: %v\n", err)
 		return
 	}
-	
+
 	ae.mu.Lock()
 	ae.thoughtsGenerated++
 	ae.cycleCount++
 	ae.mu.Unlock()
-	
+
 	log.Printf("💭 [%s] %s\n", thought.Type, thought.Content)
-	
+
 	// Persist thought if enabled
 	if ae.persistence != nil && thought.Importance >= ae.config.ImportanceThreshold {
 		err := ae.persistence.PersistThought(
@@ -255,12 +255,12 @@ func (ae *AutonomousEchoselfV3) generateThought() {
 			log.Printf("⚠️  Failed to persist thought: %v\n", err)
 		}
 	}
-	
+
 	// Check if thought should become a memory
 	if thought.Importance >= 0.8 {
 		ae.formMemory(thought)
 	}
-	
+
 	// Check if thought should generate a goal
 	if thought.Type == "curiosity" && thought.Importance >= 0.7 {
 		ae.generateGoalFromThought(thought)
@@ -271,7 +271,7 @@ func (ae *AutonomousEchoselfV3) generateThought() {
 func (ae *AutonomousEchoselfV3) reflectionLoop() {
 	ticker := time.NewTicker(ae.config.ReflectionInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ae.ctx.Done():
@@ -289,9 +289,9 @@ func (ae *AutonomousEchoselfV3) generateReflection() {
 		log.Printf("⚠️  Reflection generation failed: %v\n", err)
 		return
 	}
-	
+
 	log.Printf("🔮 [reflection] %s\n", reflection.Content)
-	
+
 	// Persist reflection
 	if ae.persistence != nil {
 		err := ae.persistence.PersistThought(
@@ -305,7 +305,7 @@ func (ae *AutonomousEchoselfV3) generateReflection() {
 			log.Printf("⚠️  Failed to persist reflection: %v\n", err)
 		}
 	}
-	
+
 	// Reflections are always important memories
 	ae.formMemory(reflection)
 }
@@ -314,7 +314,7 @@ func (ae *AutonomousEchoselfV3) generateReflection() {
 func (ae *AutonomousEchoselfV3) introspectionLoop() {
 	ticker := time.NewTicker(ae.config.IntrospectionInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ae.ctx.Done():
@@ -330,24 +330,24 @@ func (ae *AutonomousEchoselfV3) performIntrospection() {
 	if ae.repoIntrospector == nil {
 		return
 	}
-	
+
 	log.Println("🔍 Performing repository introspection...")
-	
+
 	err := ae.repoIntrospector.Scan()
 	if err != nil {
 		log.Printf("⚠️  Introspection failed: %v\n", err)
 		return
 	}
-	
+
 	stats := ae.repoIntrospector.GetStats()
 	log.Printf("✅ Introspection complete: %v total files, %v high-salience\n",
 		stats["total_files"], stats["scanned_files"])
-	
+
 	// Form memory about introspection
 	if ae.persistence != nil {
 		content := fmt.Sprintf("Repository introspection revealed %v high-salience files from %v total",
 			stats["scanned_files"], stats["total_files"])
-		
+
 		ae.persistence.PersistMemory(
 			content,
 			"introspection",
@@ -361,7 +361,7 @@ func (ae *AutonomousEchoselfV3) performIntrospection() {
 func (ae *AutonomousEchoselfV3) persistenceLoop() {
 	ticker := time.NewTicker(ae.config.PersistenceInterval)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ae.ctx.Done():
@@ -379,18 +379,17 @@ func (ae *AutonomousEchoselfV3) formMemory(thought *GeneratedThought) {
 	if ae.persistence == nil {
 		return
 	}
-	
+
 	ae.mu.Lock()
 	ae.memoriesFormed++
 	ae.mu.Unlock()
-	
+
 	err := ae.persistence.PersistMemory(
 		thought.Content,
 		thought.Type,
 		thought.Importance,
 		thought.Interests,
 	)
-	
 	if err != nil {
 		log.Printf("⚠️  Failed to form memory: %v\n", err)
 	}
@@ -401,27 +400,27 @@ func (ae *AutonomousEchoselfV3) generateGoalFromThought(thought *GeneratedThough
 	if ae.persistence == nil {
 		return
 	}
-	
+
 	ae.mu.Lock()
 	ae.goalsCreated++
 	ae.mu.Unlock()
-	
+
 	// Extract goal description from thought
 	goalDescription := fmt.Sprintf("Explore: %s", thought.Content)
-	
+
 	metadata := map[string]interface{}{
-		"source":     "autonomous_thought",
+		"source":       "autonomous_thought",
 		"thought_type": thought.Type,
-		"timestamp":  time.Now().Format(time.RFC3339),
+		"timestamp":    time.Now().Format(time.RFC3339),
 	}
-	
+
 	goalID, err := ae.persistence.PersistGoal(
 		goalDescription,
 		"exploration",
 		thought.Importance,
 		metadata,
 	)
-	
+
 	if err != nil {
 		log.Printf("⚠️  Failed to create goal: %v\n", err)
 	} else {
@@ -434,22 +433,22 @@ func (ae *AutonomousEchoselfV3) saveState() error {
 	if ae.persistence == nil {
 		return nil
 	}
-	
+
 	// Save working memory
 	workingMemory := ae.thoughtGenerator.getWorkingMemoryCopy()
 	if err := ae.persistence.PersistWorkingMemory(workingMemory); err != nil {
 		return fmt.Errorf("failed to save working memory: %w", err)
 	}
-	
+
 	// Save interest patterns
 	ae.mu.RLock()
 	interests := ae.thoughtGenerator.interestPatterns
 	ae.mu.RUnlock()
-	
+
 	if err := ae.persistence.PersistInterestPatterns(interests); err != nil {
 		return fmt.Errorf("failed to save interests: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -458,7 +457,7 @@ func (ae *AutonomousEchoselfV3) loadState() error {
 	if ae.persistence == nil {
 		return nil
 	}
-	
+
 	// Load working memory
 	workingMemory, err := ae.persistence.LoadWorkingMemory()
 	if err == nil && len(workingMemory) > 0 {
@@ -467,7 +466,7 @@ func (ae *AutonomousEchoselfV3) loadState() error {
 		ae.mu.Unlock()
 		log.Printf("📚 Loaded %d items into working memory\n", len(workingMemory))
 	}
-	
+
 	// Load interest patterns
 	interests, err := ae.persistence.LoadInterestPatterns()
 	if err == nil && len(interests) > 0 {
@@ -476,13 +475,13 @@ func (ae *AutonomousEchoselfV3) loadState() error {
 		ae.mu.Unlock()
 		log.Printf("💡 Loaded %d interest patterns\n", len(interests))
 	}
-	
+
 	// Load recent thoughts
 	recentThoughts, err := ae.persistence.LoadRecentThoughts(5)
 	if err == nil && len(recentThoughts) > 0 {
 		log.Printf("💭 Found %d recent thoughts from previous session\n", len(recentThoughts))
 	}
-	
+
 	return nil
 }
 
@@ -490,7 +489,7 @@ func (ae *AutonomousEchoselfV3) loadState() error {
 func (ae *AutonomousEchoselfV3) GetStats() map[string]interface{} {
 	ae.mu.RLock()
 	defer ae.mu.RUnlock()
-	
+
 	stats := map[string]interface{}{
 		"state":              ae.currentState,
 		"is_running":         ae.isRunning,
@@ -500,7 +499,7 @@ func (ae *AutonomousEchoselfV3) GetStats() map[string]interface{} {
 		"memories_formed":    ae.memoriesFormed,
 		"goals_created":      ae.goalsCreated,
 	}
-	
+
 	// Add thought generator stats
 	if ae.thoughtGenerator != nil {
 		genStats := ae.thoughtGenerator.GetStats()
@@ -508,13 +507,13 @@ func (ae *AutonomousEchoselfV3) GetStats() map[string]interface{} {
 			stats["thought_gen_"+k] = v
 		}
 	}
-	
+
 	// Add LLM provider stats
 	if ae.llmProvider != nil {
 		stats["llm_providers"] = ae.llmProvider.GetAvailableProviders()
 		stats["llm_current"] = ae.llmProvider.GetCurrentProvider()
 	}
-	
+
 	// Add persistence stats
 	if ae.persistence != nil {
 		persistStats, _ := ae.persistence.GetStatistics()
@@ -522,6 +521,6 @@ func (ae *AutonomousEchoselfV3) GetStats() map[string]interface{} {
 			stats["db_"+k] = v
 		}
 	}
-	
+
 	return stats
 }

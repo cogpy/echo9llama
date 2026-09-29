@@ -67,8 +67,8 @@ type SharedContext struct {
 
 // Ontology represents the semantic structure.
 type Ontology struct {
-	Concepts   map[string]*Concept
-	Relations  map[string]*Relation
+	Concepts  map[string]*Concept
+	Relations map[string]*Relation
 }
 
 // Concept represents a semantic concept.

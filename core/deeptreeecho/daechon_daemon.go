@@ -45,21 +45,21 @@ type DaechonDaemon struct {
 	WisdomDepth   float64
 
 	// Activity feed
-	activityFeed    []ActivityEntry
-	activityChan    chan ActivityEntry
-	maxFeedEntries  int
+	activityFeed   []ActivityEntry
+	activityChan   chan ActivityEntry
+	maxFeedEntries int
 
 	// Persistent state
-	stateDir        string
-	lastStateSave   time.Time
+	stateDir          string
+	lastStateSave     time.Time
 	stateSaveInterval time.Duration
 
 	// HTTP server for remote interaction
-	httpServer      *http.Server
-	httpPort        int
+	httpServer *http.Server
+	httpPort   int
 
 	// Lifecycle
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel context.CancelFunc
 
 	// Metrics
@@ -145,7 +145,7 @@ func (d *DaechonDaemon) Start() error {
 	d.mu.Unlock()
 
 	// Ensure state directory exists
-	if err := os.MkdirAll(d.stateDir, 0755); err != nil {
+	if err := os.MkdirAll(d.stateDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create state dir: %w", err)
 	}
 
@@ -245,20 +245,20 @@ func (d *DaechonDaemon) GetStatus() map[string]interface{} {
 	uptime := time.Since(d.UptimeStart)
 
 	return map[string]interface{}{
-		"name":               d.Name,
-		"session_id":         d.SessionID,
-		"is_awake":           d.IsAwake,
-		"is_running":         d.IsRunning,
-		"uptime":             uptime.String(),
-		"cognitive_load":     fmt.Sprintf("%.2f", d.CognitiveLoad),
-		"wisdom_depth":       fmt.Sprintf("%.4f", d.WisdomDepth),
-		"total_cycles":       d.TotalCycles,
-		"total_thoughts":     d.TotalThoughts,
+		"name":                d.Name,
+		"session_id":          d.SessionID,
+		"is_awake":            d.IsAwake,
+		"is_running":          d.IsRunning,
+		"uptime":              uptime.String(),
+		"cognitive_load":      fmt.Sprintf("%.2f", d.CognitiveLoad),
+		"wisdom_depth":        fmt.Sprintf("%.4f", d.WisdomDepth),
+		"total_cycles":        d.TotalCycles,
+		"total_thoughts":      d.TotalThoughts,
 		"total_conversations": d.TotalConversations,
-		"total_dreams":       d.TotalDreams,
-		"activity_feed_size": len(d.activityFeed),
-		"disposition":        d.DispositionEngine.CurrentMood.String(),
-		"mood_intensity":     fmt.Sprintf("%.2f", d.DispositionEngine.MoodIntensity),
+		"total_dreams":        d.TotalDreams,
+		"activity_feed_size":  len(d.activityFeed),
+		"disposition":         d.DispositionEngine.CurrentMood.String(),
+		"mood_intensity":      fmt.Sprintf("%.2f", d.DispositionEngine.MoodIntensity),
 	}
 }
 
@@ -342,7 +342,7 @@ func (d *DaechonDaemon) persistState() {
 	}
 
 	statePath := filepath.Join(d.stateDir, "daechon_state.json")
-	os.WriteFile(statePath, data, 0644)
+	os.WriteFile(statePath, data, 0o644)
 	d.lastStateSave = time.Now()
 }
 

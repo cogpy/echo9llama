@@ -1,4 +1,3 @@
-
 package temporal
 
 import (
@@ -8,28 +7,28 @@ import (
 
 // TemporalField maintains temporal coherence across distributed components
 type TemporalField struct {
-	mu                sync.RWMutex
-	coherenceLevel    float64
-	stateHistory      []StateSnapshot
-	syncProtocols     map[string]SyncProtocol
-	lastSyncTime      time.Time
-	fieldID           string
+	mu             sync.RWMutex
+	coherenceLevel float64
+	stateHistory   []StateSnapshot
+	syncProtocols  map[string]SyncProtocol
+	lastSyncTime   time.Time
+	fieldID        string
 }
 
 // StateSnapshot captures system state at a specific time
 type StateSnapshot struct {
-	Timestamp    time.Time
-	StateHash    string
-	ComponentIDs []string
+	Timestamp      time.Time
+	StateHash      string
+	ComponentIDs   []string
 	CoherenceScore float64
 }
 
 // SyncProtocol defines synchronization behavior
 type SyncProtocol struct {
-	Name           string
-	Frequency      time.Duration
-	ValidatorFunc  CoherenceValidator
-	Priority       int
+	Name          string
+	Frequency     time.Duration
+	ValidatorFunc CoherenceValidator
+	Priority      int
 }
 
 // CoherenceValidator checks temporal consistency
@@ -53,13 +52,13 @@ func NewTemporalField(fieldID string) *TemporalField {
 func (tf *TemporalField) UpdateState(componentIDs []string, stateHash string) error {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
-	
+
 	snapshot := StateSnapshot{
 		Timestamp:    time.Now(),
 		StateHash:    stateHash,
 		ComponentIDs: componentIDs,
 	}
-	
+
 	// Calculate coherence with previous state
 	if len(tf.stateHistory) > 0 {
 		previous := tf.stateHistory[len(tf.stateHistory)-1]
@@ -70,10 +69,10 @@ func (tf *TemporalField) UpdateState(componentIDs []string, stateHash string) er
 	} else {
 		snapshot.CoherenceScore = 1.0
 	}
-	
+
 	tf.stateHistory = append(tf.stateHistory, snapshot)
 	tf.coherenceLevel = snapshot.CoherenceScore
-	
+
 	return nil
 }
 
@@ -88,7 +87,7 @@ func (tf *TemporalField) GetCoherenceLevel() float64 {
 func (tf *TemporalField) SynchronizeComponents() error {
 	tf.mu.Lock()
 	defer tf.mu.Unlock()
-	
+
 	// Execute all sync protocols
 	for _, protocol := range tf.syncProtocols {
 		if time.Since(tf.lastSyncTime) >= protocol.Frequency {
@@ -96,6 +95,6 @@ func (tf *TemporalField) SynchronizeComponents() error {
 			tf.lastSyncTime = time.Now()
 		}
 	}
-	
+
 	return nil
 }

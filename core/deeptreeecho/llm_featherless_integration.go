@@ -2,6 +2,7 @@ package deeptreeecho
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -69,7 +70,7 @@ func (fli *FeatherlessLLMIntegration) IsEnabled() bool {
 // GenerateThought generates a thought using Featherless API
 func (fli *FeatherlessLLMIntegration) GenerateThought(prompt string) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -86,7 +87,7 @@ func (fli *FeatherlessLLMIntegration) GenerateThought(prompt string) (string, er
 // GenerateThoughtStreaming generates a thought using streaming
 func (fli *FeatherlessLLMIntegration) GenerateThoughtStreaming(prompt string, onChunk func(string)) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -122,7 +123,7 @@ func (fli *FeatherlessLLMIntegration) GenerateThoughtStreaming(prompt string, on
 // GenerateReflection generates a reflective thought about recent experiences
 func (fli *FeatherlessLLMIntegration) GenerateReflection(recentThoughts []string) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	thoughtSummary := strings.Join(recentThoughts, "\n- ")
@@ -139,7 +140,7 @@ Generate a brief reflective thought that integrates these experiences and reveal
 // GenerateGoalOrientedThought generates a thought oriented toward a specific goal
 func (fli *FeatherlessLLMIntegration) GenerateGoalOrientedThought(goal string, context string) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	prompt := fmt.Sprintf(`Current goal: %s
@@ -154,7 +155,7 @@ Generate a thought that moves toward achieving this goal. Consider what action, 
 // GenerateAssociativeThought generates a thought by associating with a focus
 func (fli *FeatherlessLLMIntegration) GenerateAssociativeThought(focus string) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	prompt := fmt.Sprintf(`Current focus: %s
@@ -167,7 +168,7 @@ Generate an associative thought - what does this bring to mind? What connections
 // GenerateDialogueResponse generates a response in a discussion
 func (fli *FeatherlessLLMIntegration) GenerateDialogueResponse(conversationHistory []FeatherlessChatMessage) (string, error) {
 	if !fli.enabled {
-		return "", fmt.Errorf("Featherless integration not enabled")
+		return "", errors.New("featherless integration not enabled")
 	}
 
 	// Add system prompt at the beginning

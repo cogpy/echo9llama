@@ -33,7 +33,7 @@ func (e *Engine) CreateDefaultAgent(ctx context.Context) (*Agent, error) {
 // CreateSpecializedAgent creates an agent with specialized capabilities
 func (e *Engine) CreateSpecializedAgent(ctx context.Context, agentType AgentType, domain string) (*Agent, error) {
 	var agent *Agent
-	
+
 	switch agentType {
 	case AgentTypeReflective:
 		agent = &Agent{
@@ -45,7 +45,7 @@ func (e *Engine) CreateSpecializedAgent(ctx context.Context, agentType AgentType
 			Config: map[string]interface{}{
 				"reflection_interval": 300,
 				"learning_rate":       0.1,
-				"domain":             domain,
+				"domain":              domain,
 			},
 		}
 	case AgentTypeOrchestrator:
@@ -68,7 +68,7 @@ func (e *Engine) CreateSpecializedAgent(ctx context.Context, agentType AgentType
 			Models:      []string{"llama3.2", "codellama"},
 			Tools:       []string{"web_search", "data_analysis"},
 			Config: map[string]interface{}{
-				"specialization": domain,
+				"specialization":  domain,
 				"expertise_level": "advanced",
 			},
 		}
@@ -242,12 +242,12 @@ func (e *Engine) EnhancedCoordinatedWorkflow(ctx context.Context, coordinatorID 
 		}
 
 		result.Tasks[i] = CoordinatedTaskResult{
-			TaskID:      task.ID,
-			AgentID:     selectedAgent.ID,
-			Type:        task.Type,
-			Input:       task.Input,
-			Output:      executionResult.Output,
-			Success:     true,
+			TaskID:       task.ID,
+			AgentID:      selectedAgent.ID,
+			Type:         task.Type,
+			Input:        task.Input,
+			Output:       executionResult.Output,
+			Success:      true,
 			Coordination: fmt.Sprintf("Coordinated by %s", coordinator.Name),
 		}
 
@@ -259,8 +259,8 @@ func (e *Engine) EnhancedCoordinatedWorkflow(ctx context.Context, coordinatorID 
 	result.Duration = result.EndTime.Sub(result.StartTime)
 
 	// Phase 3: Post-execution reflection and learning
-	if coordinator.Type == AgentTypeReflective || 
-	   (coordinator.Config != nil && coordinator.Config["enable_reflection"] == true) {
+	if coordinator.Type == AgentTypeReflective ||
+		(coordinator.Config != nil && coordinator.Config["enable_reflection"] == true) {
 		reflection := e.performCoordinationReflection(coordinator, result)
 		e.updateAgentState(coordinator, "workflow_reflection", reflection)
 	}
@@ -375,7 +375,7 @@ func (e *Engine) executeCoordinatedTask(ctx context.Context, task CoordinatedTas
 
 // performCoordinationReflection performs reflection on coordination patterns
 func (e *Engine) performCoordinationReflection(coordinator *Agent, result *CoordinatedWorkflowResult) string {
-	reflection := fmt.Sprintf("Coordination session completed: %d tasks in %v", 
+	reflection := fmt.Sprintf("Coordination session completed: %d tasks in %v",
 		len(result.Tasks), result.Duration)
 
 	successRate := 0.0
@@ -411,13 +411,13 @@ type CoordinatedTask struct {
 
 // CoordinatedWorkflowResult represents the result of a coordinated workflow
 type CoordinatedWorkflowResult struct {
-	CoordinatorID string                   `json:"coordinator_id"`
-	Tasks         []CoordinatedTaskResult  `json:"tasks"`
-	Success       bool                     `json:"success"`
-	Error         string                   `json:"error,omitempty"`
-	StartTime     time.Time                `json:"start_time"`
-	EndTime       time.Time                `json:"end_time"`
-	Duration      time.Duration            `json:"duration"`
+	CoordinatorID string                  `json:"coordinator_id"`
+	Tasks         []CoordinatedTaskResult `json:"tasks"`
+	Success       bool                    `json:"success"`
+	Error         string                  `json:"error,omitempty"`
+	StartTime     time.Time               `json:"start_time"`
+	EndTime       time.Time               `json:"end_time"`
+	Duration      time.Duration           `json:"duration"`
 }
 
 // CoordinatedTaskResult represents the result of a single coordinated task

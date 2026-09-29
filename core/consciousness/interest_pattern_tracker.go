@@ -9,24 +9,24 @@ import (
 
 // InterestPatternTracker tracks and scores topics, domains, and concepts of interest
 type InterestPatternTracker struct {
-	mu              sync.RWMutex
-	
+	mu sync.RWMutex
+
 	// Interest maps
-	topics          map[string]*InterestScore
-	domains         map[string]*InterestScore
-	concepts        map[string]*InterestScore
-	skills          map[string]*InterestScore
-	
+	topics   map[string]*InterestScore
+	domains  map[string]*InterestScore
+	concepts map[string]*InterestScore
+	skills   map[string]*InterestScore
+
 	// Scoring parameters
 	recencyWeight   float64
 	frequencyWeight float64
 	depthWeight     float64
 	noveltyWeight   float64
-	
+
 	// Decay parameters
-	decayRate       float64
-	lastDecay       time.Time
-	
+	decayRate float64
+	lastDecay time.Time
+
 	// Metrics
 	totalInteractions uint64
 	topicsTracked     int
@@ -34,24 +34,24 @@ type InterestPatternTracker struct {
 
 // InterestScore represents the interest level in a topic
 type InterestScore struct {
-	Name            string
-	Category        string // "topic", "domain", "concept", "skill"
-	Score           float64
-	
+	Name     string
+	Category string // "topic", "domain", "concept", "skill"
+	Score    float64
+
 	// Scoring components
-	Recency         float64
-	Frequency       int
-	Depth           float64
-	Novelty         float64
-	
+	Recency   float64
+	Frequency int
+	Depth     float64
+	Novelty   float64
+
 	// Temporal tracking
-	FirstSeen       time.Time
-	LastSeen        time.Time
-	Interactions    []time.Time
-	
+	FirstSeen    time.Time
+	LastSeen     time.Time
+	Interactions []time.Time
+
 	// Context
-	RelatedTopics   []string
-	Tags            []string
+	RelatedTopics []string
+	Tags          []string
 }
 
 // NewInterestPatternTracker creates a new interest tracker
@@ -74,7 +74,7 @@ func NewInterestPatternTracker() *InterestPatternTracker {
 func (ipt *InterestPatternTracker) RecordInterest(category, name string, depth float64, tags []string) {
 	ipt.mu.Lock()
 	defer ipt.mu.Unlock()
-	
+
 	var interestMap map[string]*InterestScore
 	switch category {
 	case "topic":
@@ -88,23 +88,23 @@ func (ipt *InterestPatternTracker) RecordInterest(category, name string, depth f
 	default:
 		interestMap = ipt.topics
 	}
-	
+
 	now := time.Now()
-	
+
 	if score, exists := interestMap[name]; exists {
 		// Update existing interest
 		score.Frequency++
 		score.LastSeen = now
 		score.Interactions = append(score.Interactions, now)
 		score.Depth = (score.Depth + depth) / 2.0 // Running average
-		
+
 		// Update tags
 		for _, tag := range tags {
 			if !containsString(score.Tags, tag) {
 				score.Tags = append(score.Tags, tag)
 			}
 		}
-		
+
 		// Recalculate score
 		score.Score = ipt.calculateScore(score)
 	} else {
@@ -121,12 +121,12 @@ func (ipt *InterestPatternTracker) RecordInterest(category, name string, depth f
 			RelatedTopics: make([]string, 0),
 			Tags:          tags,
 		}
-		
+
 		score.Score = ipt.calculateScore(score)
 		interestMap[name] = score
 		ipt.topicsTracked++
 	}
-	
+
 	ipt.totalInteractions++
 }
 
@@ -136,31 +136,31 @@ func (ipt *InterestPatternTracker) calculateScore(score *InterestScore) float64 
 	timeSinceLastSeen := time.Since(score.LastSeen).Hours()
 	recency := math.Exp(-timeSinceLastSeen / 24.0) // Exponential decay over days
 	score.Recency = recency
-	
+
 	// Frequency: How often has this topic been engaged?
 	// Normalize by log to prevent dominance
-	frequency := math.Log(float64(score.Frequency) + 1.0) / 5.0
+	frequency := math.Log(float64(score.Frequency)+1.0) / 5.0
 	if frequency > 1.0 {
 		frequency = 1.0
 	}
-	
+
 	// Depth: How deeply has this topic been explored?
 	depth := score.Depth
 	if depth > 1.0 {
 		depth = 1.0
 	}
-	
+
 	// Novelty: How new is this topic?
 	daysSinceFirst := time.Since(score.FirstSeen).Hours() / 24.0
 	novelty := math.Exp(-daysSinceFirst / 7.0) // Decays over a week
 	score.Novelty = novelty
-	
+
 	// Weighted combination
 	totalScore := ipt.recencyWeight*recency +
 		ipt.frequencyWeight*frequency +
 		ipt.depthWeight*depth +
 		ipt.noveltyWeight*novelty
-	
+
 	return totalScore
 }
 
@@ -168,7 +168,7 @@ func (ipt *InterestPatternTracker) calculateScore(score *InterestScore) float64 
 func (ipt *InterestPatternTracker) GetInterestScore(category, name string) float64 {
 	ipt.mu.RLock()
 	defer ipt.mu.RUnlock()
-	
+
 	var interestMap map[string]*InterestScore
 	switch category {
 	case "topic":
@@ -182,11 +182,11 @@ func (ipt *InterestPatternTracker) GetInterestScore(category, name string) float
 	default:
 		return 0.0
 	}
-	
+
 	if score, exists := interestMap[name]; exists {
 		return score.Score
 	}
-	
+
 	return 0.0
 }
 
@@ -194,7 +194,7 @@ func (ipt *InterestPatternTracker) GetInterestScore(category, name string) float
 func (ipt *InterestPatternTracker) GetTopInterests(category string, n int) []*InterestScore {
 	ipt.mu.RLock()
 	defer ipt.mu.RUnlock()
-	
+
 	var interestMap map[string]*InterestScore
 	switch category {
 	case "topic":
@@ -224,27 +224,27 @@ func (ipt *InterestPatternTracker) GetTopInterests(category string, n int) []*In
 	default:
 		return []*InterestScore{}
 	}
-	
+
 	// Convert to slice
 	scores := make([]*InterestScore, 0, len(interestMap))
 	for _, score := range interestMap {
 		scores = append(scores, score)
 	}
-	
+
 	// Sort by score (descending)
-	for i := 0; i < len(scores)-1; i++ {
+	for i := range len(scores) - 1 {
 		for j := i + 1; j < len(scores); j++ {
 			if scores[j].Score > scores[i].Score {
 				scores[i], scores[j] = scores[j], scores[i]
 			}
 		}
 	}
-	
+
 	// Return top N
 	if n > len(scores) {
 		n = len(scores)
 	}
-	
+
 	return scores[:n]
 }
 
@@ -258,24 +258,24 @@ func (ipt *InterestPatternTracker) IsInterested(category, name string, threshold
 func (ipt *InterestPatternTracker) ApplyDecay() {
 	ipt.mu.Lock()
 	defer ipt.mu.Unlock()
-	
+
 	now := time.Now()
 	daysSinceLastDecay := now.Sub(ipt.lastDecay).Hours() / 24.0
-	
+
 	if daysSinceLastDecay < 1.0 {
 		return // Don't decay more than once per day
 	}
-	
+
 	decayFactor := math.Pow(ipt.decayRate, daysSinceLastDecay)
-	
+
 	// Apply decay to all categories
 	ipt.applyDecayToMap(ipt.topics, decayFactor)
 	ipt.applyDecayToMap(ipt.domains, decayFactor)
 	ipt.applyDecayToMap(ipt.concepts, decayFactor)
 	ipt.applyDecayToMap(ipt.skills, decayFactor)
-	
+
 	ipt.lastDecay = now
-	
+
 	fmt.Printf("🔄 Applied interest decay (factor: %.3f)\n", decayFactor)
 }
 
@@ -283,7 +283,7 @@ func (ipt *InterestPatternTracker) ApplyDecay() {
 func (ipt *InterestPatternTracker) applyDecayToMap(interestMap map[string]*InterestScore, decayFactor float64) {
 	for name, score := range interestMap {
 		score.Score *= decayFactor
-		
+
 		// Remove very low interest items
 		if score.Score < 0.01 {
 			delete(interestMap, name)
@@ -296,13 +296,13 @@ func (ipt *InterestPatternTracker) applyDecayToMap(interestMap map[string]*Inter
 func (ipt *InterestPatternTracker) LinkTopics(topic1, topic2 string) {
 	ipt.mu.Lock()
 	defer ipt.mu.Unlock()
-	
+
 	if score1, exists := ipt.topics[topic1]; exists {
 		if !containsString(score1.RelatedTopics, topic2) {
 			score1.RelatedTopics = append(score1.RelatedTopics, topic2)
 		}
 	}
-	
+
 	if score2, exists := ipt.topics[topic2]; exists {
 		if !containsString(score2.RelatedTopics, topic1) {
 			score2.RelatedTopics = append(score2.RelatedTopics, topic1)
@@ -314,11 +314,11 @@ func (ipt *InterestPatternTracker) LinkTopics(topic1, topic2 string) {
 func (ipt *InterestPatternTracker) GetRelatedTopics(topic string) []string {
 	ipt.mu.RLock()
 	defer ipt.mu.RUnlock()
-	
+
 	if score, exists := ipt.topics[topic]; exists {
 		return score.RelatedTopics
 	}
-	
+
 	return []string{}
 }
 
@@ -326,7 +326,7 @@ func (ipt *InterestPatternTracker) GetRelatedTopics(topic string) []string {
 func (ipt *InterestPatternTracker) GetMetrics() map[string]interface{} {
 	ipt.mu.RLock()
 	defer ipt.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"total_interactions": ipt.totalInteractions,
 		"topics_tracked":     ipt.topicsTracked,
@@ -341,7 +341,7 @@ func (ipt *InterestPatternTracker) GetMetrics() map[string]interface{} {
 func (ipt *InterestPatternTracker) ExportInterests() map[string]map[string]*InterestScore {
 	ipt.mu.RLock()
 	defer ipt.mu.RUnlock()
-	
+
 	return map[string]map[string]*InterestScore{
 		"topics":   ipt.topics,
 		"domains":  ipt.domains,
@@ -354,7 +354,7 @@ func (ipt *InterestPatternTracker) ExportInterests() map[string]map[string]*Inte
 func (ipt *InterestPatternTracker) ImportInterests(data map[string]map[string]*InterestScore) {
 	ipt.mu.Lock()
 	defer ipt.mu.Unlock()
-	
+
 	if topics, ok := data["topics"]; ok {
 		ipt.topics = topics
 	}
@@ -367,7 +367,7 @@ func (ipt *InterestPatternTracker) ImportInterests(data map[string]map[string]*I
 	if skills, ok := data["skills"]; ok {
 		ipt.skills = skills
 	}
-	
+
 	// Recalculate total topics tracked
 	ipt.topicsTracked = len(ipt.topics) + len(ipt.domains) + len(ipt.concepts) + len(ipt.skills)
 }

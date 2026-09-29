@@ -25,19 +25,19 @@ type Agent struct {
 type AgentType string
 
 const (
-	AgentTypeGeneral     AgentType = "general"     // General purpose agent
-	AgentTypeSpecialist  AgentType = "specialist"  // Specialized for specific domains
+	AgentTypeGeneral      AgentType = "general"      // General purpose agent
+	AgentTypeSpecialist   AgentType = "specialist"   // Specialized for specific domains
 	AgentTypeOrchestrator AgentType = "orchestrator" // Coordinates other agents
-	AgentTypeReflective  AgentType = "reflective"  // Self-analyzing and improving
+	AgentTypeReflective   AgentType = "reflective"   // Self-analyzing and improving
 )
 
 // AgentState maintains persistent state and memory for agents
 type AgentState struct {
-	Memory         map[string]interface{} `json:"memory,omitempty"`
-	Context        []ContextItem          `json:"context,omitempty"`
-	Goals          []string               `json:"goals,omitempty"`
-	Capabilities   []string               `json:"capabilities,omitempty"`
-	LastInteraction time.Time             `json:"last_interaction"`
+	Memory          map[string]interface{} `json:"memory,omitempty"`
+	Context         []ContextItem          `json:"context,omitempty"`
+	Goals           []string               `json:"goals,omitempty"`
+	Capabilities    []string               `json:"capabilities,omitempty"`
+	LastInteraction time.Time              `json:"last_interaction"`
 }
 
 // ContextItem represents a piece of contextual information in agent memory
@@ -77,9 +77,9 @@ const (
 	TaskTypeChat     = "chat"
 	TaskTypeEmbed    = "embed"
 	TaskTypeCustom   = "custom"
-	TaskTypeTool     = "tool"     // Call external tools
-	TaskTypeReflect  = "reflect"  // Self-reflection and analysis
-	TaskTypePlugin   = "plugin"   // Custom plugin execution
+	TaskTypeTool     = "tool"    // Call external tools
+	TaskTypeReflect  = "reflect" // Self-reflection and analysis
+	TaskTypePlugin   = "plugin"  // Custom plugin execution
 )
 
 // ToolCall represents a call to an external tool
@@ -117,12 +117,12 @@ type Tool interface {
 
 // OrchestrationRequest represents a request to orchestrate multiple tasks
 type OrchestrationRequest struct {
-	AgentID     string                 `json:"agent_id"`
-	Tasks       []TaskRequest          `json:"tasks"`
-	Sequential  bool                   `json:"sequential"`
-	Parameters  map[string]interface{} `json:"parameters,omitempty"`
-	Stream      *bool                  `json:"stream,omitempty"`
-	KeepAlive   *api.Duration          `json:"keep_alive,omitempty"`
+	AgentID    string                 `json:"agent_id"`
+	Tasks      []TaskRequest          `json:"tasks"`
+	Sequential bool                   `json:"sequential"`
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+	Stream     *bool                  `json:"stream,omitempty"`
+	KeepAlive  *api.Duration          `json:"keep_alive,omitempty"`
 }
 
 // TaskRequest represents a single task within an orchestration request
@@ -135,20 +135,20 @@ type TaskRequest struct {
 
 // OrchestrationResponse represents the response from an orchestration request
 type OrchestrationResponse struct {
-	ID        string `json:"id"`
-	AgentID   string `json:"agent_id"`
-	Status    string `json:"status"`
-	Tasks     []Task `json:"tasks"`
+	ID        string       `json:"id"`
+	AgentID   string       `json:"agent_id"`
+	Status    string       `json:"status"`
+	Tasks     []Task       `json:"tasks"`
 	Results   []TaskResult `json:"results,omitempty"`
-	Error     string `json:"error,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Error     string       `json:"error,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
 }
 
 // TaskResult represents the result of a completed task
 type TaskResult struct {
-	TaskID    string `json:"task_id"`
-	Output    string `json:"output"`
-	ModelUsed string `json:"model_used,omitempty"`
+	TaskID    string      `json:"task_id"`
+	Output    string      `json:"output"`
+	ModelUsed string      `json:"model_used,omitempty"`
 	Metrics   TaskMetrics `json:"metrics,omitempty"`
 }
 
@@ -200,12 +200,12 @@ type Message struct {
 type MessageType string
 
 const (
-	MessageTypeRequest     MessageType = "request"     // Request for action or information
-	MessageTypeResponse    MessageType = "response"    // Response to a request
+	MessageTypeRequest      MessageType = "request"      // Request for action or information
+	MessageTypeResponse     MessageType = "response"     // Response to a request
 	MessageTypeNotification MessageType = "notification" // Informational update
-	MessageTypeTask        MessageType = "task"        // Task delegation
-	MessageTypeReflection  MessageType = "reflection"  // Shared reflection or insight
-	MessageTypeBroadcast   MessageType = "broadcast"   // Message to all agents
+	MessageTypeTask         MessageType = "task"         // Task delegation
+	MessageTypeReflection   MessageType = "reflection"   // Shared reflection or insight
+	MessageTypeBroadcast    MessageType = "broadcast"    // Message to all agents
 )
 
 // Conversation represents a conversation between agents
@@ -241,44 +241,44 @@ type ConversationManager interface {
 
 // ConversationWorkflow represents a structured multi-agent conversation workflow
 type ConversationWorkflow struct {
-	ID           string                   `json:"id"`
-	Name         string                   `json:"name"`
-	Description  string                   `json:"description"`
-	Participants []string                 `json:"participants"` // Agent IDs
-	Steps        []ConversationStep       `json:"steps"`
-	Status       ConversationStatus       `json:"status"`
+	ID           string                      `json:"id"`
+	Name         string                      `json:"name"`
+	Description  string                      `json:"description"`
+	Participants []string                    `json:"participants"` // Agent IDs
+	Steps        []ConversationStep          `json:"steps"`
+	Status       ConversationStatus          `json:"status"`
 	Result       *ConversationWorkflowResult `json:"result,omitempty"`
-	CreatedAt    time.Time                `json:"created_at"`
+	CreatedAt    time.Time                   `json:"created_at"`
 }
 
 // ConversationStep represents a step in a conversation workflow
 type ConversationStep struct {
-	ID             string                 `json:"id"`
-	Name           string                 `json:"name"`
-	FromAgentID    string                 `json:"from_agent_id"`
-	ToAgentID      string                 `json:"to_agent_id"`
-	MessageTemplate string                `json:"message_template"`
-	ExpectedResponse string               `json:"expected_response,omitempty"`
-	Timeout         time.Duration          `json:"timeout,omitempty"`
-	Parameters      map[string]interface{} `json:"parameters,omitempty"`
+	ID               string                 `json:"id"`
+	Name             string                 `json:"name"`
+	FromAgentID      string                 `json:"from_agent_id"`
+	ToAgentID        string                 `json:"to_agent_id"`
+	MessageTemplate  string                 `json:"message_template"`
+	ExpectedResponse string                 `json:"expected_response,omitempty"`
+	Timeout          time.Duration          `json:"timeout,omitempty"`
+	Parameters       map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // ConversationWorkflowResult represents the result of a conversation workflow
 type ConversationWorkflowResult struct {
-	Success        bool                        `json:"success"`
-	StepResults    []ConversationStepResult    `json:"step_results"`
-	FinalOutcome   string                      `json:"final_outcome"`
-	Insights       []string                    `json:"insights,omitempty"`
-	Duration       time.Duration               `json:"duration"`
-	Error          string                      `json:"error,omitempty"`
+	Success      bool                     `json:"success"`
+	StepResults  []ConversationStepResult `json:"step_results"`
+	FinalOutcome string                   `json:"final_outcome"`
+	Insights     []string                 `json:"insights,omitempty"`
+	Duration     time.Duration            `json:"duration"`
+	Error        string                   `json:"error,omitempty"`
 }
 
 // ConversationStepResult represents the result of a conversation step
 type ConversationStepResult struct {
-	StepID       string        `json:"step_id"`
-	Message      *Message      `json:"message"`
-	Response     *Message      `json:"response,omitempty"`
-	Success      bool          `json:"success"`
-	Duration     time.Duration `json:"duration"`
-	Error        string        `json:"error,omitempty"`
+	StepID   string        `json:"step_id"`
+	Message  *Message      `json:"message"`
+	Response *Message      `json:"response,omitempty"`
+	Success  bool          `json:"success"`
+	Duration time.Duration `json:"duration"`
+	Error    string        `json:"error,omitempty"`
 }

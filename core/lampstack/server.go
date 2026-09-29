@@ -15,9 +15,9 @@ import (
 type Server struct {
 	mu sync.RWMutex
 
-	stack   *Stack
-	config  *ServerConfig
-	echo    *echo.Echo
+	stack  *Stack
+	config *ServerConfig
+	echo   *echo.Echo
 
 	// State
 	running   bool
@@ -26,13 +26,13 @@ type Server struct {
 
 // ServerConfig holds server configuration
 type ServerConfig struct {
-	Address         string        `json:"address"`
-	ReadTimeout     time.Duration `json:"read_timeout"`
-	WriteTimeout    time.Duration `json:"write_timeout"`
-	EnableCORS      bool          `json:"enable_cors"`
-	EnableMetrics   bool          `json:"enable_metrics"`
-	EnableLogging   bool          `json:"enable_logging"`
-	EnableRecover   bool          `json:"enable_recover"`
+	Address       string        `json:"address"`
+	ReadTimeout   time.Duration `json:"read_timeout"`
+	WriteTimeout  time.Duration `json:"write_timeout"`
+	EnableCORS    bool          `json:"enable_cors"`
+	EnableMetrics bool          `json:"enable_metrics"`
+	EnableLogging bool          `json:"enable_logging"`
+	EnableRecover bool          `json:"enable_recover"`
 }
 
 // DefaultServerConfig returns default server configuration

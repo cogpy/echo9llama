@@ -40,7 +40,7 @@ type EchoIntegration struct {
 	startTime            time.Time
 
 	// Channels
-	ctx    context.Context
+	ctx    context.Context //nolint:containedctx // lifecycle context created with cancel in the constructor; stops background goroutines
 	cancel context.CancelFunc
 }
 
@@ -316,8 +316,8 @@ Express genuine reflective insight.`, contextStr, e.formatRecentThoughts())
 
 	// Calculate wisdom gains
 	wisdomGains := map[string]float64{
-		"knowledge_depth":   0.02 + float64(len(insights))*0.01,
-		"integration_level": 0.03,
+		"knowledge_depth":    0.02 + float64(len(insights))*0.01,
+		"integration_level":  0.03,
 		"reflective_insight": 0.05,
 	}
 
@@ -356,17 +356,17 @@ func (e *EchoIntegration) GetMetrics() map[string]interface{} {
 	defer e.mu.RUnlock()
 
 	return map[string]interface{}{
-		"running":              e.running,
-		"mode":                 e.currentMode,
-		"phase":                e.currentPhase,
-		"awareness":            e.awareness,
-		"cognitive_load":       e.cognitiveLoad,
-		"coherence":            e.coherence,
-		"energy_level":         e.energyLevel,
-		"thoughts_generated":   e.thoughtsGenerated,
+		"running":               e.running,
+		"mode":                  e.currentMode,
+		"phase":                 e.currentPhase,
+		"awareness":             e.awareness,
+		"cognitive_load":        e.cognitiveLoad,
+		"coherence":             e.coherence,
+		"energy_level":          e.energyLevel,
+		"thoughts_generated":    e.thoughtsGenerated,
 		"reflections_generated": e.reflectionsGenerated,
-		"cycle_count":          e.cycleCount,
-		"uptime":               time.Since(e.startTime).String(),
+		"cycle_count":           e.cycleCount,
+		"uptime":                time.Since(e.startTime).String(),
 	}
 }
 
@@ -516,12 +516,12 @@ func (e *EchoIntegration) buildCognitiveInfo() *CognitiveInfo {
 	defer e.mu.RUnlock()
 
 	return &CognitiveInfo{
-		ProcessingMode:   e.currentMode,
-		CurrentPhase:     e.currentPhase,
-		ActiveEngines:    e.activeEngines,
-		ResonanceLevel:   e.coherence,
-		AwarenessLevel:   e.awareness,
-		EmotionalState:   e.emotionalState,
+		ProcessingMode: e.currentMode,
+		CurrentPhase:   e.currentPhase,
+		ActiveEngines:  e.activeEngines,
+		ResonanceLevel: e.coherence,
+		AwarenessLevel: e.awareness,
+		EmotionalState: e.emotionalState,
 		WisdomDimensions: map[string]float64{
 			"knowledge_depth":       0.65,
 			"knowledge_breadth":     0.60,

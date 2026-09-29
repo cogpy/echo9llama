@@ -12,56 +12,56 @@ import (
 // CognitiveScheduler provides advanced scheduling for Deep Tree Echo cognitive cycles
 // This is inspired by gocron's architecture for flexible job scheduling
 type CognitiveScheduler struct {
-	mu              sync.RWMutex
-	ctx             context.Context
-	cancel          context.CancelFunc
+	mu     sync.RWMutex
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 
 	// Scheduled jobs
-	jobs            map[uuid.UUID]*CognitiveJob
-	jobsLock        sync.RWMutex
+	jobs     map[uuid.UUID]*CognitiveJob
+	jobsLock sync.RWMutex
 
 	// Job channels
-	newJobCh        chan *CognitiveJob
-	removeJobCh     chan uuid.UUID
-	runJobCh        chan uuid.UUID
+	newJobCh    chan *CognitiveJob
+	removeJobCh chan uuid.UUID
+	runJobCh    chan uuid.UUID
 
 	// Configuration
-	location        *time.Location
-	defaultTimeout  time.Duration
+	location       *time.Location
+	defaultTimeout time.Duration
 
 	// Metrics
 	totalJobsRun    uint64
 	totalJobsFailed uint64
 
 	// Running state
-	running         bool
-	started         bool
+	running bool
+	started bool
 }
 
 // CognitiveJob represents a scheduled cognitive task
 type CognitiveJob struct {
-	ID              uuid.UUID
-	Name            string
-	Description     string
-	Definition      JobDefinition
-	Task            func(ctx context.Context) error
-	Tags            []string
-	Priority        float64
-	
+	ID          uuid.UUID
+	Name        string
+	Description string
+	Definition  JobDefinition
+	Task        func(ctx context.Context) error
+	Tags        []string
+	Priority    float64
+
 	// Scheduling state
-	NextRun         time.Time
-	LastRun         time.Time
-	RunCount        uint64
-	FailCount       uint64
-	
+	NextRun   time.Time
+	LastRun   time.Time
+	RunCount  uint64
+	FailCount uint64
+
 	// Job options
-	Timeout         time.Duration
-	MaxRetries      int
-	RetryDelay      time.Duration
-	
+	Timeout    time.Duration
+	MaxRetries int
+	RetryDelay time.Duration
+
 	// Context
-	ctx             context.Context
-	cancel          context.CancelFunc
+	ctx    context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
+	cancel context.CancelFunc
 }
 
 // JobDefinition defines when a job should run
@@ -90,11 +90,11 @@ func (d DurationJobDefinition) String() string {
 type CronJobDefinition struct {
 	Expression string
 	// Simplified cron fields (minute, hour, day, month, weekday)
-	Minute     int
-	Hour       int
-	Day        int
-	Month      int
-	Weekday    int
+	Minute  int
+	Hour    int
+	Day     int
+	Month   int
+	Weekday int
 }
 
 func (c CronJobDefinition) NextRun(lastRun time.Time, now time.Time) time.Time {
@@ -317,18 +317,18 @@ func (cs *CognitiveScheduler) NewJob(name string, definition JobDefinition, task
 	ctx, cancel := context.WithCancel(cs.ctx)
 
 	job := &CognitiveJob{
-		ID:          uuid.New(),
-		Name:        name,
-		Definition:  definition,
-		Task:        task,
-		Tags:        []string{},
-		Priority:    0.5,
-		NextRun:     definition.NextRun(time.Time{}, time.Now()),
-		Timeout:     cs.defaultTimeout,
-		MaxRetries:  3,
-		RetryDelay:  time.Second,
-		ctx:         ctx,
-		cancel:      cancel,
+		ID:         uuid.New(),
+		Name:       name,
+		Definition: definition,
+		Task:       task,
+		Tags:       []string{},
+		Priority:   0.5,
+		NextRun:    definition.NextRun(time.Time{}, time.Now()),
+		Timeout:    cs.defaultTimeout,
+		MaxRetries: 3,
+		RetryDelay: time.Second,
+		ctx:        ctx,
+		cancel:     cancel,
 	}
 
 	// Apply options
@@ -428,9 +428,9 @@ func (cs *CognitiveScheduler) GetMetrics() map[string]interface{} {
 	cs.jobsLock.RUnlock()
 
 	return map[string]interface{}{
-		"running":          cs.running,
-		"job_count":        jobCount,
-		"total_jobs_run":   cs.totalJobsRun,
+		"running":           cs.running,
+		"job_count":         jobCount,
+		"total_jobs_run":    cs.totalJobsRun,
 		"total_jobs_failed": cs.totalJobsFailed,
 	}
 }

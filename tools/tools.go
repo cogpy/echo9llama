@@ -12,9 +12,9 @@ import (
 type toolsState int
 
 const (
-	toolsState_LookingForTag toolsState = iota
-	toolsState_ToolCalling
-	toolsState_Done
+	toolsStateLookingForTag toolsState = iota
+	toolsStateToolCalling
+	toolsStateDone
 )
 
 type Parser struct {
@@ -46,13 +46,13 @@ func NewParserWithTag(tools []api.Tool, tag string) *Parser {
 // Add processes a string input to parse tool calls and content that
 // should be sent back to the user.
 func (p *Parser) Add(s string) (calls []api.ToolCall, content string) {
-	if p.state == toolsState_Done {
+	if p.state == toolsStateDone {
 		return nil, s
 	}
 
 	p.buffer = append(p.buffer, s...)
 
-	if p.state == toolsState_LookingForTag {
+	if p.state == toolsStateLookingForTag {
 		i, found := p.findTag()
 		if i == -1 {
 			content = string(p.buffer)
@@ -67,7 +67,7 @@ func (p *Parser) Add(s string) (calls []api.ToolCall, content string) {
 		// whitespace character is { or [
 		if p.tag == "{" || p.tag == "[" {
 			if strings.TrimSpace(content) != "" {
-				p.state = toolsState_Done
+				p.state = toolsStateDone
 				return nil, content + string(p.buffer)
 			}
 		}
@@ -76,7 +76,7 @@ func (p *Parser) Add(s string) (calls []api.ToolCall, content string) {
 			return nil, content
 		}
 
-		p.state = toolsState_ToolCalling
+		p.state = toolsStateToolCalling
 	}
 
 	for {
@@ -89,7 +89,7 @@ func (p *Parser) Add(s string) (calls []api.ToolCall, content string) {
 	}
 
 	if p.done() {
-		p.state = toolsState_Done
+		p.state = toolsStateDone
 		content = string(p.buffer)
 		p.buffer = []byte{}
 	}
@@ -225,7 +225,7 @@ func findArguments(buffer []byte) (map[string]any, int) {
 	}
 
 	var braces int
-	var start int = -1
+	start := -1
 
 	for i, c := range buffer {
 		if c == '{' {

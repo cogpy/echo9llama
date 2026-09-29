@@ -1,3 +1,5 @@
+//go:build examples
+
 package main
 
 import (
@@ -10,7 +12,8 @@ import (
 
 func main() {
 	fmt.Println("🌊 Relevance Realization Ennead - Demo")
-	fmt.Println("=======================================\n")
+	fmt.Println("=======================================")
+	fmt.Println()
 
 	// Create the relevance realization engine
 	ctx := context.Background()
@@ -166,7 +169,7 @@ func displayMetrics(engine *relevance.Engine) {
 
 func repeat(s string, count int) string {
 	result := ""
-	for i := 0; i < count; i++ {
+	for range count {
 		result += s
 	}
 	return result
