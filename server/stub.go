@@ -245,19 +245,13 @@ func (r *echoRuntime) handleChat(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	parts := make([]string, 0, len(in.Messages))
-	for _, msg := range in.Messages {
-		content := strings.TrimSpace(msg.Content)
-		if content != "" {
-			parts = append(parts, fmt.Sprintf("%s: %s", msg.Role, content))
-		}
-	}
-	if len(parts) == 0 {
+	prompt, system := buildChat(in.Messages, r.embodiment)
+	if prompt == "" && system == "" {
 		writeError(w, http.StatusBadRequest, fmt.Errorf("at least one non-empty message is required"))
 		return
 	}
 
-	response, err := r.generate(req.Context(), strings.Join(parts, "\n"), "")
+	response, err := r.generate(req.Context(), prompt, system)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err)
 		return
@@ -270,6 +264,33 @@ func (r *echoRuntime) handleChat(w http.ResponseWriter, req *http.Request) {
 		"done":       true,
 	}
 	writeStreamingAwareJSON(w, in.Stream, payload)
+}
+
+// buildChat flattens the conversation into a prompt and picks the system
+// prompt: the caller's system messages when present, otherwise the embodied
+// prompt from the latest GTAngelEcho frame, so chat speaks from the avatar's
+// current state once frames are flowing.
+func buildChat(msgs []chatMessage, hub *embodiment.Hub) (prompt, system string) {
+	parts := make([]string, 0, len(msgs))
+	var systems []string
+	for _, msg := range msgs {
+		content := strings.TrimSpace(msg.Content)
+		if content == "" {
+			continue
+		}
+		if msg.Role == "system" {
+			systems = append(systems, content)
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%s: %s", msg.Role, content))
+	}
+	system = strings.Join(systems, "\n")
+	if system == "" && hub != nil {
+		if last, ok := hub.Last(); ok {
+			system = last.SystemPrompt
+		}
+	}
+	return strings.Join(parts, "\n"), system
 }
 
 func (r *echoRuntime) handleEchoStatus(w http.ResponseWriter, req *http.Request) {
