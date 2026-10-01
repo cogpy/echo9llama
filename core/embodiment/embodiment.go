@@ -21,6 +21,10 @@ import (
 // Contract identifies the wire format shared with archecho-desk.
 const Contract = "dte.embodiment/v1"
 
+// ValenceTolerance is how far below the attractor's valence a flowing avatar
+// may sit before the hub still suggests a rewarding event.
+const ValenceTolerance = 0.2
+
 // Attractor is the affect point (valence, arousal, flow) the reflection steers toward.
 var Attractor = [3]float64{0.6, 0.6, 0.8}
 
@@ -174,6 +178,9 @@ func steer(e [3]float64) (quadrant, event string) {
 		return "bored", "CLUTCH_MOMENT"
 	case flow < 0.5:
 		return "engaged", "FLOW_STATE"
+	case Attractor[0]-v > ValenceTolerance:
+		// In flow but joyless: reward lifts valence toward the attractor.
+		return "flow", "EPIC_PLAY"
 	default:
 		return "flow", ""
 	}
