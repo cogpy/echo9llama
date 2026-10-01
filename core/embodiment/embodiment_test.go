@@ -67,6 +67,7 @@ func TestSteerQuadrants(t *testing.T) {
 		{[3]float64{0.5, 0.1, 0}, "bored", "CLUTCH_MOMENT"},
 		{[3]float64{0.5, 0.5, 0.2}, "engaged", "FLOW_STATE"},
 		{[3]float64{0.5, 0.5, 0.9}, "flow", ""},
+		{[3]float64{0.1, 0.5, 0.9}, "flow", "EPIC_PLAY"},
 	} {
 		if q, ev := steer(c.e); q != c.q || ev != c.ev {
 			t.Errorf("steer(%v) = %s/%q, want %s/%q", c.e, q, ev, c.q, c.ev)
