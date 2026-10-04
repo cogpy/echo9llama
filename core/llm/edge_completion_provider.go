@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -26,6 +27,27 @@ type EdgeCompletionProvider struct {
 	fallback   LLMProvider
 	lastError  string
 	lastSource string
+
+	// gate is shared by every priority view of this provider: it allows one
+	// in-flight remote completion, so a busy single-slot edge server never
+	// queues background work in front of a foreground request.
+	gate chan struct{}
+	// background views skip the remote model when the gate is taken and use
+	// the deterministic fallback for that call instead of queueing.
+	background bool
+}
+
+// errEdgeBusy reports that a background call found the edge model in use.
+var errEdgeBusy = errors.New("edge model busy with a foreground request")
+
+// Background returns a view of the provider that shares its endpoint and gate
+// but never waits for the edge model: when another completion is in flight it
+// answers from the deterministic fallback. Use it for autonomous loops so
+// interactive requests (chat) are not stuck behind them.
+func (p *EdgeCompletionProvider) Background() *EdgeCompletionProvider {
+	bg := *p
+	bg.background = true
+	return &bg
 }
 
 type EdgeCompletionStatus struct {
@@ -57,6 +79,7 @@ func NewEdgeCompletionProviderFromEnv(fallback LLMProvider) *EdgeCompletionProvi
 		modelName:  modelName,
 		fallback:   fallback,
 		lastSource: "deterministic-fallback",
+		gate:       make(chan struct{}, 1),
 		client: &http.Client{
 			Timeout: 45 * time.Second,
 		},
@@ -126,6 +149,22 @@ func (p *EdgeCompletionProvider) Status() EdgeCompletionStatus {
 }
 
 func (p *EdgeCompletionProvider) generateRemote(ctx context.Context, prompt string, opts GenerateOptions) (string, error) {
+	if p.gate != nil {
+		if p.background {
+			select {
+			case p.gate <- struct{}{}:
+			default:
+				return "", errEdgeBusy
+			}
+		} else {
+			select {
+			case p.gate <- struct{}{}:
+			case <-ctx.Done():
+				return "", ctx.Err()
+			}
+		}
+		defer func() { <-p.gate }()
+	}
 	payload := map[string]any{
 		"prompt":      buildEdgePrompt(prompt, opts.SystemPrompt),
 		"model":       p.modelName,
@@ -133,7 +172,7 @@ func (p *EdgeCompletionProvider) generateRemote(ctx context.Context, prompt stri
 		"max_tokens":  normalizeMaxTokens(opts.MaxTokens),
 		"temperature": opts.Temperature,
 		"top_p":       opts.TopP,
-		"stop":        opts.Stop,
+		"stop":        edgeStops(opts.Stop),
 		"stream":      false,
 	}
 	body, err := json.Marshal(payload)
@@ -161,6 +200,17 @@ func (p *EdgeCompletionProvider) generateRemote(ctx context.Context, prompt stri
 		return "", err
 	}
 	return extractCompletion(decoded), nil
+}
+
+// defaultEdgeStops end a completion at the next conversational turn marker, so
+// small models do not invent further "User:" turns after answering.
+var defaultEdgeStops = []string{"\nUser:", "\nuser:", "\nEcho:"}
+
+func edgeStops(stop []string) []string {
+	if len(stop) > 0 {
+		return stop
+	}
+	return defaultEdgeStops
 }
 
 func buildEdgePrompt(prompt, system string) string {
