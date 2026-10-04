@@ -107,7 +107,9 @@ func newEchoRuntime() (*echoRuntime, error) {
 	config.MainLoopInterval = 2 * time.Second
 	config.StateUpdateInterval = 500 * time.Millisecond
 
-	hub := integration.NewDeepTreeEchoHub(provider, config)
+	// The autonomous hub runs on the background view so its thinking loop never
+	// queues in front of interactive chat on a single-slot edge model.
+	hub := integration.NewDeepTreeEchoHub(provider.Background(), config)
 	if err := hub.Start(); err != nil {
 		return nil, fmt.Errorf("failed to start Deep Tree Echo hub: %w", err)
 	}
