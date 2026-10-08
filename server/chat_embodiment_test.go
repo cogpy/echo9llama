@@ -11,7 +11,7 @@ func TestBuildChatUsesEmbodiedPromptWhenNoSystemMessage(t *testing.T) {
 	msgs := []chatMessage{{Role: "user", Content: "how do you feel?"}}
 
 	prompt, system := buildChat(msgs, hub)
-	if prompt != "user: how do you feel?" || system != "" {
+	if prompt != "User: how do you feel?" || system != "" {
 		t.Fatalf("before any frame: prompt=%q system=%q", prompt, system)
 	}
 
@@ -25,11 +25,23 @@ func TestBuildChatUsesEmbodiedPromptWhenNoSystemMessage(t *testing.T) {
 
 	withSystem := append([]chatMessage{{Role: "system", Content: "be brief"}}, msgs...)
 	prompt, system = buildChat(withSystem, hub)
-	if system != "be brief" || prompt != "user: how do you feel?" {
+	if system != "be brief" || prompt != "User: how do you feel?" {
 		t.Fatalf("caller system not honoured: prompt=%q system=%q", prompt, system)
 	}
 
 	if _, system = buildChat(msgs, nil); system != "" {
 		t.Fatalf("nil hub: system = %q", system)
+	}
+}
+
+func TestBuildChatLabelsTurnsForTheEdgePrompt(t *testing.T) {
+	prompt, _ := buildChat([]chatMessage{
+		{Role: "user", Content: "hi"},
+		{Role: "assistant", Content: "hello"},
+		{Role: "user", Content: "how is the match?"},
+	}, nil)
+	want := "User: hi\nEcho: hello\nUser: how is the match?"
+	if prompt != want {
+		t.Fatalf("prompt = %q, want %q", prompt, want)
 	}
 }

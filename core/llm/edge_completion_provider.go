@@ -204,7 +204,9 @@ func (p *EdgeCompletionProvider) generateRemote(ctx context.Context, prompt stri
 
 // defaultEdgeStops end a completion at the next conversational turn marker, so
 // small models do not invent further "User:" turns after answering.
-var defaultEdgeStops = []string{"\nUser:", "\nuser:", "\nEcho:"}
+// The bare markers catch small models that start the next turn mid-line
+// ("...time? Echo: A great day...").
+var defaultEdgeStops = []string{"\nUser:", "\nuser:", "\nEcho:", "User:", "Echo:"}
 
 func edgeStops(stop []string) []string {
 	if len(stop) > 0 {
@@ -214,10 +216,24 @@ func edgeStops(stop []string) []string {
 }
 
 func buildEdgePrompt(prompt, system string) string {
-	if strings.TrimSpace(system) == "" {
+	system = strings.TrimSpace(system)
+	if isTranscript(prompt) {
+		// Already a "User:"/"Echo:" transcript (chat): don't wrap it in another
+		// User turn; just cue Echo's reply.
+		if system == "" {
+			return prompt + "\nEcho:"
+		}
+		return system + "\n\n" + prompt + "\nEcho:"
+	}
+	if system == "" {
 		return prompt
 	}
-	return strings.TrimSpace(system) + "\n\nUser: " + prompt + "\nEcho:"
+	return system + "\n\nUser: " + prompt + "\nEcho:"
+}
+
+// isTranscript reports whether prompt is already a turn-labelled transcript.
+func isTranscript(prompt string) bool {
+	return strings.HasPrefix(prompt, "User: ") || strings.HasPrefix(prompt, "Echo: ")
 }
 
 func normalizeMaxTokens(maxTokens int) int {
