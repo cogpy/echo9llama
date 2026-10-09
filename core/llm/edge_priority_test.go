@@ -74,3 +74,17 @@ func TestEdgeStopsDefaultToTurnMarkers(t *testing.T) {
 		t.Fatalf("caller stops not honoured: %q", got)
 	}
 }
+
+func TestBuildEdgePromptDoesNotDoubleWrapTranscripts(t *testing.T) {
+	cases := []struct{ prompt, system, want string }{
+		{"User: hi", "be Lucy", "be Lucy\n\nUser: hi\nEcho:"},
+		{"User: hi", "", "User: hi\nEcho:"},
+		{"plain thought", "be Lucy", "be Lucy\n\nUser: plain thought\nEcho:"},
+		{"plain thought", "", "plain thought"},
+	}
+	for _, c := range cases {
+		if got := buildEdgePrompt(c.prompt, c.system); got != c.want {
+			t.Errorf("buildEdgePrompt(%q, %q) = %q, want %q", c.prompt, c.system, got, c.want)
+		}
+	}
+}

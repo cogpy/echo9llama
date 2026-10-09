@@ -284,7 +284,7 @@ func buildChat(msgs []chatMessage, hub *embodiment.Hub) (prompt, system string) 
 			systems = append(systems, content)
 			continue
 		}
-		parts = append(parts, fmt.Sprintf("%s: %s", msg.Role, content))
+		parts = append(parts, chatTurnLabel(msg.Role)+": "+content)
 	}
 	system = strings.Join(systems, "\n")
 	if system == "" && hub != nil {
@@ -293,6 +293,21 @@ func buildChat(msgs []chatMessage, hub *embodiment.Hub) (prompt, system string) 
 		}
 	}
 	return strings.Join(parts, "\n"), system
+}
+
+// chatTurnLabel names a conversation turn the way the edge prompt does
+// ("User:" / "Echo:"), so the model sees one consistent transcript instead of
+// "User: user: ..." and does not echo lowercase role prefixes back.
+func chatTurnLabel(role string) string {
+	switch strings.ToLower(strings.TrimSpace(role)) {
+	case "assistant", "echo":
+		return "Echo"
+	case "", "user":
+		return "User"
+	default:
+		r := strings.TrimSpace(role)
+		return strings.ToUpper(r[:1]) + r[1:]
+	}
 }
 
 func (r *echoRuntime) handleEchoStatus(w http.ResponseWriter, req *http.Request) {
