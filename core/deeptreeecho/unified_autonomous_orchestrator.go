@@ -14,6 +14,7 @@ import (
 	"github.com/cogpy/echo9llama/core/coreself"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
+	"github.com/cogpy/echo9llama/core/metacognition"
 	"github.com/cogpy/echo9llama/core/persistence"
 	"github.com/cogpy/echo9llama/core/tools"
 )
@@ -76,6 +77,21 @@ type UnifiedAutonomousOrchestrator struct {
 	replayMu                  sync.Mutex
 	cognitiveEvidenceReplayed bool
 	cognitiveReplaySequence   int64
+
+	// Bounded E4 reflection state; inference never holds the state/status lock.
+	reflectionMu                 sync.Mutex
+	reflectionStatusMu           sync.RWMutex
+	reflectionSequence           int64
+	reflectionRecords            []metacognition.Evidence
+	reflectionReport             metacognition.Report
+	reflectionProposed           uint64
+	reflectionErrors             uint64
+	reflectionTelemetry          ReflectionStatus
+	lastReflectionDigest         string
+	reflectionCounterSequence    int64
+	reflectionQuarantined        uint64
+	reflectionErrorSequence      int64
+	reflectionQuarantineSequence int64
 
 	// Metrics
 	totalCycles   uint64
@@ -262,6 +278,7 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 				[]string{"goal", "completed"},
 			)
 		})
+		uao.echobeatsScheduler.SetOnReflection(uao.runEvidenceReflection)
 		fmt.Println("   ✓ Echobeats Scheduler initialized")
 	}
 
@@ -774,6 +791,9 @@ func (uao *UnifiedAutonomousOrchestrator) replayCognitiveEvidence(ctx context.Co
 			if err := uao.projectEnactionEvents([]persistence.StoredCognitiveEvent{event}); err != nil {
 				return err
 			}
+			if err := uao.replayReflectionSource(ctx, event); err != nil {
+				return fmt.Errorf("replay metacognitive source %s: %w", event.EventID, err)
+			}
 			uao.cognitiveReplaySequence = event.Sequence
 			after = event.Sequence
 		}
@@ -790,6 +810,15 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 			continue
 		}
 		switch event.EventType {
+		case persistence.EventTypeReflectionProposed:
+			if err := uao.projectReflection(uao.ctx, event); err != nil {
+				if errors.Is(err, persistence.ErrInvalidCognitiveEvent) {
+					return err
+				}
+				if err := uao.quarantineReflectionSource(uao.ctx, event); err != nil {
+					return err
+				}
+			}
 		case persistence.EventTypeGoalProgressed:
 			var payload struct {
 				Delta       float64 `json:"delta"`
@@ -894,12 +923,13 @@ func (uao *UnifiedAutonomousOrchestrator) reviewAndUpdateGoals() {
 
 // synthesizeWisdom performs wisdom synthesis from accumulated knowledge
 func (uao *UnifiedAutonomousOrchestrator) synthesizeWisdom() {
-	uao.mu.Lock()
-	defer uao.mu.Unlock()
-
+	uao.mu.RLock()
 	if !uao.isAwake || uao.wisdomSynthesis == nil {
+		uao.mu.RUnlock()
 		return
 	}
+	synthesis := uao.wisdomSynthesis
+	uao.mu.RUnlock()
 
 	fmt.Println("🌟 Synthesizing wisdom from experiences...")
 
@@ -914,18 +944,17 @@ func (uao *UnifiedAutonomousOrchestrator) synthesizeWisdom() {
 
 	// Synthesize wisdom
 	if len(recentThoughts) > 5 {
-		wisdom, err := uao.wisdomSynthesis.SynthesizeWisdom(uao.ctx, recentThoughts)
+		wisdom, err := synthesis.SynthesizeWisdom(uao.ctx, recentThoughts)
 		if err == nil && wisdom != nil {
-			uao.wisdomDepth += wisdom.Depth
-			uao.totalWisdom++
 			uao.ingestDreamExperienceOnce(
 				fmt.Sprintf("waking-wisdom:%d", time.Now().UnixNano()),
-				wisdom.Insight,
-				wisdom.Depth,
-				[]string{"wisdom", "waking-reflection"},
+				"Proposed waking insight (unvalidated): "+wisdom.Insight,
+				0.4,
+				[]string{"hypothesis", "waking-reflection"},
 			)
-			fmt.Printf("   ✨ Wisdom synthesized: %s (depth: %.2f)\n",
-				truncate(wisdom.Insight, 80), wisdom.Depth)
+			fmt.Printf("   Proposed waking insight: %s\n", truncate(wisdom.Insight, 80))
+		} else if err != nil {
+			fmt.Println("Waking insight synthesis failed; no wisdom awarded")
 		}
 	}
 }
@@ -1241,10 +1270,9 @@ func (uao *UnifiedAutonomousOrchestrator) integrateDreamWisdom() (integrated, re
 			uao.streamOfConsciousness.AddInterest(insight.Insight, insight.Depth)
 		}
 
-		uao.mu.Lock()
-		uao.wisdomDepth += insight.Depth
-		uao.totalWisdom++
-		uao.mu.Unlock()
+		// EchoDream recurrence/depth is an attention heuristic, not an
+		// independent evaluation. Integration may guide curiosity but cannot
+		// increase verified wisdom or competence counters.
 		integrated++
 	}
 	return integrated, reinforced
@@ -1562,6 +1590,7 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	uao.experienceMu.Lock()
 	status.ExperienceLedgerSize = len(uao.experienceOrder)
 	uao.experienceMu.Unlock()
+	status.Reflection = uao.reflectionStatus()
 	return status
 }
 
@@ -1598,6 +1627,7 @@ type OrchestratorStatus struct {
 	CoreSelfEnabled      bool
 	CoreSelfReady        bool
 	CoreSelf             coreself.Status
+	Reflection           ReflectionStatus
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

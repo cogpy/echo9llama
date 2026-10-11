@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 	"time"
@@ -14,10 +15,12 @@ import (
 // EchobeatsScheduler implements the 12-step 3-phase cognitive loop
 // with three logical inference engines on a sequential cadence for goal-directed scheduling.
 type EchobeatsScheduler struct {
-	mu     sync.RWMutex
-	stepMu sync.Mutex      // Serializes pause requests with active steps.
-	ctx    context.Context //nolint:containedctx // Scheduler owns this lifecycle context from Start through Stop.
-	cancel context.CancelFunc
+	mu          sync.RWMutex
+	stepMu      sync.Mutex      // Serializes pause requests with active steps.
+	lifecycleMu sync.Mutex      // Serializes Start/Stop so an old loop cannot overlap a restart.
+	ctx         context.Context //nolint:containedctx // Scheduler owns this lifecycle context from Start through Stop.
+	cancel      context.CancelFunc
+	runDone     chan struct{}
 
 	// Three logical inference engines on a sequential cadence
 	engine1 *InferenceEngine
@@ -52,6 +55,7 @@ type EchobeatsScheduler struct {
 	onGoalAchieved      func(goal ScheduledGoal)
 	onEmergenceDetected func(pattern string, strength float64)
 	onAffordance        func(step int) (summary string, verified bool)
+	onReflection        func(step int) error
 
 	// Metrics
 	totalSteps      uint64
@@ -103,6 +107,10 @@ const (
 	TaskGoalPursuit
 	TaskMemoryIntegration
 )
+
+// inferenceEngineTaskHistoryLimit bounds retained task evidence per engine.
+// The current task is stored separately and is not part of this retention budget.
+const inferenceEngineTaskHistoryLimit = 100
 
 func (tt TaskType) String() string {
 	return [...]string{
@@ -257,18 +265,44 @@ func (sched *EchobeatsScheduler) initializeTriads() {
 func newInferenceEngine(id int) *InferenceEngine {
 	return &InferenceEngine{
 		ID:          id,
-		taskHistory: make([]CognitiveTask, 0),
+		taskHistory: make([]CognitiveTask, 0, inferenceEngineTaskHistoryLimit),
 		performance: 0.5,
 	}
 }
 
+// appendBoundedTaskHistory appends a completed task while retaining only the
+// most recent bounded history. Callers must hold the engine mutex.
+func appendBoundedTaskHistory(history []CognitiveTask, task CognitiveTask) []CognitiveTask {
+	history = append(history, task)
+	if overflow := len(history) - inferenceEngineTaskHistoryLimit; overflow > 0 {
+		copy(history, history[overflow:])
+		clear(history[len(history)-overflow:])
+		history = history[:inferenceEngineTaskHistoryLimit]
+	}
+	return history
+}
+
+func (engine *InferenceEngine) performanceSnapshot() float64 {
+	engine.mu.RLock()
+	defer engine.mu.RUnlock()
+	return engine.performance
+}
+
 // Start begins the 12-step cognitive loop
 func (sched *EchobeatsScheduler) Start() error {
+	sched.lifecycleMu.Lock()
+	defer sched.lifecycleMu.Unlock()
+
 	sched.mu.Lock()
 	if sched.running {
 		sched.mu.Unlock()
 		return fmt.Errorf("already running")
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	runDone := make(chan struct{})
+	sched.ctx = ctx
+	sched.cancel = cancel
+	sched.runDone = runDone
 	sched.running = true
 	sched.mu.Unlock()
 
@@ -277,35 +311,50 @@ func (sched *EchobeatsScheduler) Start() error {
 	fmt.Println("   Phases: Expressive (1-4) → Reflective (5-8) → Anticipatory (9-12)")
 	fmt.Println("   Pattern: 7 Expressive + 5 Reflective Steps")
 
-	go sched.run()
+	go sched.run(ctx, runDone)
 
 	return nil
 }
 
 // Stop gracefully stops the scheduler
 func (sched *EchobeatsScheduler) Stop() error {
-	sched.mu.Lock()
-	defer sched.mu.Unlock()
+	sched.lifecycleMu.Lock()
+	defer sched.lifecycleMu.Unlock()
 
+	sched.mu.Lock()
 	if !sched.running {
+		sched.mu.Unlock()
 		return fmt.Errorf("not running")
 	}
 
 	fmt.Println("🎵 Stopping echobeats scheduler...")
 	sched.running = false
-	sched.cancel()
+	cancel := sched.cancel
+	runDone := sched.runDone
+	sched.mu.Unlock()
+
+	// Cancel first so a provider that honors the scheduler context can finish.
+	// Then use stepMu as a barrier before waiting for the loop to exit.
+	cancel()
+	sched.stepMu.Lock()
+	//nolint:staticcheck // SA2001: intentional quiescence barrier for in-flight steps.
+	sched.stepMu.Unlock()
+	if runDone != nil {
+		<-runDone
+	}
 
 	return nil
 }
 
 // run executes the 12-step cognitive loop
-func (sched *EchobeatsScheduler) run() {
+func (sched *EchobeatsScheduler) run(ctx context.Context, done chan<- struct{}) {
+	defer close(done)
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-sched.ctx.Done():
+		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			sched.executeStep()
@@ -321,7 +370,7 @@ func (sched *EchobeatsScheduler) executeStep() {
 	defer sched.stepMu.Unlock()
 
 	sched.mu.RLock()
-	if sched.paused {
+	if sched.paused || sched.ctx.Err() != nil {
 		sched.mu.RUnlock()
 		return
 	}
@@ -344,7 +393,14 @@ func (sched *EchobeatsScheduler) executeStep() {
 		// Pivotal Relevance Realization - Orient Present Commitment
 		sched.relevanceRealization("Given what I've learned, what should I commit to next?")
 
-	case 8, 9, 10, 11, 12:
+	case 8:
+		// The canonical evidence-grounded metacognition hook runs while this
+		// step remains quiescent, but never while sched.mu is held.
+		if !sched.runReflection(step) {
+			sched.salienceSimulation(step - 7)
+		}
+
+	case 9, 10, 11, 12:
 		// Virtual Salience Simulation - Anticipate Future Potential (5 steps)
 		sched.salienceSimulation(step - 7)
 	}
@@ -370,6 +426,24 @@ func (sched *EchobeatsScheduler) executeStep() {
 	}
 
 	sched.mu.Unlock()
+}
+
+// runReflection invokes the evidence-grounded metacognition hook for the
+// reflective pivot. executeStep calls this with stepMu held, but sched.mu is
+// deliberately released before user code runs.
+func (sched *EchobeatsScheduler) runReflection(step int) bool {
+	sched.mu.RLock()
+	callback := sched.onReflection
+	sched.mu.RUnlock()
+	if callback == nil {
+		return false
+	}
+	if err := callback(step); err != nil {
+		fmt.Printf("   ! Reflection callback failed at step %d: %v\n", step, err)
+	}
+	// Installing a reflection hook replaces this pivot's generic salience
+	// call; no second inference is admitted even on missing/invalid evidence.
+	return true
 }
 
 // relevanceRealization performs pivotal relevance realization
@@ -410,7 +484,8 @@ func (sched *EchobeatsScheduler) relevanceRealization(question string) {
 	fullPrompt := "[System: You are performing relevance realization. Be concise and focused.]\n\n" + question
 	result, err := sched.llmProvider.Generate(sched.ctx, fullPrompt, opts)
 	if err != nil {
-		result = "Unable to determine relevance at this time."
+		fmt.Printf("      ! relevance generation failed: %v\n", err)
+		result = fmt.Sprintf("generation failed: %v", err)
 	}
 
 	now := time.Now()
@@ -420,13 +495,15 @@ func (sched *EchobeatsScheduler) relevanceRealization(question string) {
 	sched.attachTaskRoute(task)
 
 	sched.engine1.mu.Lock()
-	sched.engine1.taskHistory = append(sched.engine1.taskHistory, *task)
+	sched.engine1.taskHistory = appendBoundedTaskHistory(sched.engine1.taskHistory, *task)
 	sched.engine1.currentTask = nil
 	sched.engine1.mu.Unlock()
 
-	sched.mu.Lock()
-	sched.presentCommitment = result
-	sched.mu.Unlock()
+	if task.Success {
+		sched.mu.Lock()
+		sched.presentCommitment = result
+		sched.mu.Unlock()
+	}
 
 	fmt.Printf("      → %s\n", truncate(result, 70))
 }
@@ -472,7 +549,7 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 		task.Result = result
 		task.Success = verified
 		engine.mu.Lock()
-		engine.taskHistory = append(engine.taskHistory, *task)
+		engine.taskHistory = appendBoundedTaskHistory(engine.taskHistory, *task)
 		engine.currentTask = nil
 		if verified {
 			engine.performance = engine.performance*0.9 + 0.1
@@ -514,7 +591,8 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 
 	result, err := sched.llmProvider.Generate(sched.ctx, prompt, opts)
 	if err != nil {
-		result = fmt.Sprintf("Action step %d in progress", stepNum-1)
+		fmt.Printf("      ! affordance generation failed: %v\n", err)
+		result = fmt.Sprintf("generation failed: %v", err)
 	}
 
 	now := time.Now()
@@ -524,16 +602,18 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 	sched.attachTaskRoute(task)
 
 	engine.mu.Lock()
-	engine.taskHistory = append(engine.taskHistory, *task)
+	engine.taskHistory = appendBoundedTaskHistory(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
 
-	sched.mu.Lock()
-	sched.pastPerformance = append(sched.pastPerformance, result)
-	if len(sched.pastPerformance) > 10 {
-		sched.pastPerformance = sched.pastPerformance[1:]
+	if task.Success {
+		sched.mu.Lock()
+		sched.pastPerformance = append(sched.pastPerformance, result)
+		if len(sched.pastPerformance) > 10 {
+			sched.pastPerformance = sched.pastPerformance[1:]
+		}
+		sched.mu.Unlock()
 	}
-	sched.mu.Unlock()
 
 	fmt.Printf("      [Engine %d] → %s\n", engineID, truncate(result, 60))
 }
@@ -589,7 +669,8 @@ func (sched *EchobeatsScheduler) salienceSimulation(stepNum int) {
 
 	result, err := sched.llmProvider.Generate(sched.ctx, prompt, opts)
 	if err != nil {
-		result = fmt.Sprintf("Future scenario %d under consideration", stepNum)
+		fmt.Printf("      ! salience generation failed: %v\n", err)
+		result = fmt.Sprintf("generation failed: %v", err)
 	}
 
 	now := time.Now()
@@ -599,16 +680,18 @@ func (sched *EchobeatsScheduler) salienceSimulation(stepNum int) {
 	sched.attachTaskRoute(task)
 
 	engine.mu.Lock()
-	engine.taskHistory = append(engine.taskHistory, *task)
+	engine.taskHistory = appendBoundedTaskHistory(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
 
-	sched.mu.Lock()
-	sched.futureAnticipation = append(sched.futureAnticipation, result)
-	if len(sched.futureAnticipation) > 10 {
-		sched.futureAnticipation = sched.futureAnticipation[1:]
+	if task.Success {
+		sched.mu.Lock()
+		sched.futureAnticipation = append(sched.futureAnticipation, result)
+		if len(sched.futureAnticipation) > 10 {
+			sched.futureAnticipation = sched.futureAnticipation[1:]
+		}
+		sched.mu.Unlock()
 	}
-	sched.mu.Unlock()
 
 	fmt.Printf("      [Engine %d] → %s\n", engineID, truncate(result, 60))
 }
@@ -638,18 +721,24 @@ func (sched *EchobeatsScheduler) attachTaskRoute(task *CognitiveTask) {
 // GetMetrics returns scheduler metrics
 func (sched *EchobeatsScheduler) GetMetrics() map[string]interface{} {
 	sched.mu.RLock()
-	defer sched.mu.RUnlock()
+	currentStep := sched.currentStep
+	currentPhase := sched.currentPhase.String()
+	cycleCount := sched.cycleCount
+	totalSteps := sched.totalSteps
+	totalCycles := sched.totalCycles
+	presentCommitment := sched.presentCommitment
+	sched.mu.RUnlock()
 
 	return map[string]interface{}{
-		"current_step":        sched.currentStep,
-		"current_phase":       sched.currentPhase.String(),
-		"cycle_count":         sched.cycleCount,
-		"total_steps":         sched.totalSteps,
-		"total_cycles":        sched.totalCycles,
-		"engine1_performance": sched.engine1.performance,
-		"engine2_performance": sched.engine2.performance,
-		"engine3_performance": sched.engine3.performance,
-		"present_commitment":  sched.presentCommitment,
+		"current_step":        currentStep,
+		"current_phase":       currentPhase,
+		"cycle_count":         cycleCount,
+		"total_steps":         totalSteps,
+		"total_cycles":        totalCycles,
+		"engine1_performance": sched.engine1.performanceSnapshot(),
+		"engine2_performance": sched.engine2.performanceSnapshot(),
+		"engine3_performance": sched.engine3.performanceSnapshot(),
+		"present_commitment":  presentCommitment,
 	}
 }
 
@@ -714,6 +803,40 @@ func (sched *EchobeatsScheduler) AddGoal(description string, priority float64) s
 	return goal.ID
 }
 
+// EnsureGoal idempotently records a pending explicit-ID goal for durable
+// replay. It returns false only for invalid input; a pre-existing valid ID is
+// already ensured and returns true without changing its progress or state.
+func (sched *EchobeatsScheduler) EnsureGoal(goalID, description string, priority float64) bool {
+	if strings.TrimSpace(goalID) == "" || strings.TrimSpace(description) == "" ||
+		math.IsNaN(priority) || math.IsInf(priority, 0) || priority < 0 || priority > 1 {
+		return false
+	}
+
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	for i := range sched.goalQueue {
+		if sched.goalQueue[i].ID == goalID {
+			return true
+		}
+	}
+	if sched.priorityMatrix == nil {
+		sched.priorityMatrix = make(map[string]float64)
+	}
+
+	now := time.Now()
+	sched.goalQueue = append(sched.goalQueue, ScheduledGoal{
+		ID:          goalID,
+		Description: description,
+		Priority:    priority,
+		Status:      GoalPending,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	})
+	sched.priorityMatrix[goalID] = priority
+	sched.sortGoalsByPriority()
+	return true
+}
+
 // sortGoalsByPriority sorts the goal queue by priority (highest first)
 func (sched *EchobeatsScheduler) sortGoalsByPriority() {
 	for i := range len(sched.goalQueue) - 1 {
@@ -732,12 +855,7 @@ func (sched *EchobeatsScheduler) GetActiveGoal() *ScheduledGoal {
 
 	for i := range sched.goalQueue {
 		if sched.goalQueue[i].Status == GoalActive || sched.goalQueue[i].Status == GoalPending {
-			goal := sched.goalQueue[i]
-			if goal.Deadline != nil {
-				deadline := *goal.Deadline
-				goal.Deadline = &deadline
-			}
-			goal.Dependencies = append([]string(nil), goal.Dependencies...)
+			goal := cloneScheduledGoal(sched.goalQueue[i])
 			return &goal
 		}
 	}
@@ -747,7 +865,8 @@ func (sched *EchobeatsScheduler) GetActiveGoal() *ScheduledGoal {
 // UpdateGoalProgress updates the progress of a goal
 func (sched *EchobeatsScheduler) UpdateGoalProgress(goalID string, progress float64) {
 	sched.mu.Lock()
-	defer sched.mu.Unlock()
+	var callback func(ScheduledGoal)
+	var achievedGoal *ScheduledGoal
 
 	for i := range sched.goalQueue {
 		if sched.goalQueue[i].ID == goalID {
@@ -755,19 +874,24 @@ func (sched *EchobeatsScheduler) UpdateGoalProgress(goalID string, progress floa
 			sched.goalQueue[i].UpdatedAt = time.Now()
 
 			if progress >= 1.0 {
-				sched.goalQueue[i].Status = GoalCompleted
-				sched.goalsCompleted++
-				fmt.Printf("✅ Goal completed: %s\n", sched.goalQueue[i].Description)
-
-				// Trigger callback if set
-				if sched.onGoalAchieved != nil {
-					sched.onGoalAchieved(sched.goalQueue[i])
+				if sched.goalQueue[i].Status != GoalCompleted {
+					sched.goalQueue[i].Status = GoalCompleted
+					sched.goalsCompleted++
+					fmt.Printf("✅ Goal completed: %s\n", sched.goalQueue[i].Description)
+					goal := cloneScheduledGoal(sched.goalQueue[i])
+					achievedGoal = &goal
+					callback = sched.onGoalAchieved
 				}
 			} else if progress > 0 {
 				sched.goalQueue[i].Status = GoalActive
 			}
 			break
 		}
+	}
+	sched.mu.Unlock()
+
+	if callback != nil && achievedGoal != nil {
+		callback(*achievedGoal)
 	}
 }
 
@@ -873,7 +997,6 @@ func (sched *EchobeatsScheduler) GetTriadStates() [4]TriadState {
 // DetectEmergence checks for emergence patterns across triads
 func (sched *EchobeatsScheduler) DetectEmergence() (bool, string, float64) {
 	sched.mu.Lock()
-	defer sched.mu.Unlock()
 
 	// Calculate average triad coherence
 	totalCoherence := 0.0
@@ -895,15 +1018,15 @@ func (sched *EchobeatsScheduler) DetectEmergence() (bool, string, float64) {
 	if emergenceStrength > 0.7 {
 		pattern := "cross-triad-synchronization"
 		sched.emergenceEvents++
-
-		// Trigger callback if set
-		if sched.onEmergenceDetected != nil {
-			sched.onEmergenceDetected(pattern, emergenceStrength)
+		callback := sched.onEmergenceDetected
+		sched.mu.Unlock()
+		if callback != nil {
+			callback(pattern, emergenceStrength)
 		}
-
 		return true, pattern, emergenceStrength
 	}
 
+	sched.mu.Unlock()
 	return false, "", 0.0
 }
 
@@ -934,6 +1057,14 @@ func (sched *EchobeatsScheduler) SetOnAffordance(callback func(step int) (string
 	sched.mu.Lock()
 	defer sched.mu.Unlock()
 	sched.onAffordance = callback
+}
+
+// SetOnReflection binds evidence-grounded metacognition to the reflective
+// pivot at step 8. Callback errors are logged and do not become cognitive output.
+func (sched *EchobeatsScheduler) SetOnReflection(callback func(step int) error) {
+	sched.mu.Lock()
+	defer sched.mu.Unlock()
+	sched.onReflection = callback
 }
 
 // RotatePhase advances the phase rotation for tetrahedral synchronization
@@ -979,15 +1110,25 @@ func (sched *EchobeatsScheduler) GetGoalQueue() []ScheduledGoal {
 	defer sched.mu.RUnlock()
 
 	queue := make([]ScheduledGoal, len(sched.goalQueue))
-	copy(queue, sched.goalQueue)
+	for i, goal := range sched.goalQueue {
+		queue[i] = cloneScheduledGoal(goal)
+	}
 	return queue
+}
+
+func cloneScheduledGoal(goal ScheduledGoal) ScheduledGoal {
+	copy := goal
+	if goal.Deadline != nil {
+		deadline := *goal.Deadline
+		copy.Deadline = &deadline
+	}
+	copy.Dependencies = append([]string(nil), goal.Dependencies...)
+	return copy
 }
 
 // GetCompleteCycleMetrics returns metrics for the current/last cycle
 func (sched *EchobeatsScheduler) GetCompleteCycleMetrics() CycleMetrics {
 	sched.mu.RLock()
-	defer sched.mu.RUnlock()
-
 	// Count active goals that advanced
 	goalsAdvanced := 0
 	for _, goal := range sched.goalQueue {
@@ -1004,16 +1145,18 @@ func (sched *EchobeatsScheduler) GetCompleteCycleMetrics() CycleMetrics {
 		triadCoherence[i] = triad.Coherence
 	}
 	emergenceLevel := totalCoherence / 4.0
+	cycleCount := sched.cycleCount
+	sched.mu.RUnlock()
 
 	return CycleMetrics{
-		CycleNumber:    sched.cycleCount,
+		CycleNumber:    cycleCount,
 		StepsCompleted: 12,
 		GoalsAdvanced:  goalsAdvanced,
 		EmergenceLevel: emergenceLevel,
 		EnginePerformance: [3]float64{
-			sched.engine1.performance,
-			sched.engine2.performance,
-			sched.engine3.performance,
+			sched.engine1.performanceSnapshot(),
+			sched.engine2.performanceSnapshot(),
+			sched.engine3.performanceSnapshot(),
 		},
 		TriadCoherence: triadCoherence,
 		Timestamp:      time.Now(),

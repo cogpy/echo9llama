@@ -3,6 +3,9 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"math"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
 
@@ -69,6 +72,7 @@ type WisdomPrinciple struct {
 	ApplyCount      int
 	EvolutionCount  int
 	ParentPrinciple string
+	EpistemicStatus string
 }
 
 // WisdomDomain categorizes wisdom principles
@@ -104,6 +108,63 @@ type WisdomApplication struct {
 	Outcome       string
 	Effectiveness float64
 	Timestamp     time.Time
+}
+
+// RecordWisdomOutcome records an externally observed outcome for a proposed
+// principle. Generation and relevance selection alone are not applications:
+// they do not create an application record, change confidence, or advance
+// wisdom metrics.
+func (ws *WisdomSynthesis) RecordWisdomOutcome(principleID, applicationContext, outcome string, effectiveness float64) error {
+	if strings.TrimSpace(principleID) == "" {
+		return fmt.Errorf("wisdom principle ID is required")
+	}
+	if strings.TrimSpace(applicationContext) == "" {
+		return fmt.Errorf("wisdom application context is required")
+	}
+	if strings.TrimSpace(outcome) == "" {
+		return fmt.Errorf("wisdom application outcome is required")
+	}
+	if math.IsNaN(effectiveness) || math.IsInf(effectiveness, 0) || effectiveness < 0 || effectiveness > 1 {
+		return fmt.Errorf("wisdom outcome effectiveness must be finite and within [0, 1]")
+	}
+
+	application := WisdomApplication{
+		Context:       applicationContext,
+		Outcome:       outcome,
+		Effectiveness: effectiveness,
+		Timestamp:     time.Now(),
+	}
+
+	ws.mu.Lock()
+	var applied WisdomPrinciple
+	var callback func(WisdomPrinciple, string)
+	found := false
+	for i := range ws.wisdomPrinciples {
+		if ws.wisdomPrinciples[i].ID != principleID {
+			continue
+		}
+
+		principle := &ws.wisdomPrinciples[i]
+		principle.Applications = append(principle.Applications, application)
+		principle.ApplyCount = len(principle.Applications)
+		principle.LastApplied = application.Timestamp
+		principle.Confidence = outcomeConfidence(principle.Applications)
+		ws.totalApplications++
+		ws.recalculateWisdomLevelLocked()
+		applied = cloneWisdomPrinciple(*principle)
+		callback = ws.onWisdomApplied
+		found = true
+		break
+	}
+	ws.mu.Unlock()
+
+	if !found {
+		return fmt.Errorf("wisdom principle %q not found", principleID)
+	}
+	if callback != nil {
+		go callback(applied, applicationContext)
+	}
+	return nil
 }
 
 // WisdomGraph represents relationships between wisdom principles
@@ -245,7 +306,7 @@ func (ws *WisdomSynthesis) AccumulatePattern(description string, source string, 
 		Source:      source,
 		Strength:    strength,
 		Timestamp:   time.Now(),
-		Tags:        tags,
+		Tags:        append([]string(nil), tags...),
 	}
 
 	ws.pendingPatterns = append(ws.pendingPatterns, pattern)
@@ -298,17 +359,18 @@ func (ws *WisdomSynthesis) triggerSynthesis() {
 
 	// Update wisdom graph
 	ws.addToWisdomGraph(principle)
-
-	// Update wisdom level
-	ws.wisdomLevel = min(ws.wisdomLevel+ws.wisdomGrowthRate, 1.0)
+	// A generated principle remains a candidate until an outcome is recorded.
+	// Do not advance outcome-calibrated wisdom from generated prose alone.
+	callback := ws.onWisdomSynthesized
+	principleSnapshot := cloneWisdomPrinciple(*principle)
 	ws.mu.Unlock()
 
 	fmt.Printf("🌟 Wisdom synthesized: %s (depth: %.2f)\n",
 		truncateStr(principle.Content, 60), principle.Depth)
 
 	// Notify callback
-	if ws.onWisdomSynthesized != nil {
-		go ws.onWisdomSynthesized(*principle)
+	if callback != nil {
+		go callback(principleSnapshot)
 	}
 }
 
@@ -329,42 +391,51 @@ func (ws *WisdomSynthesis) synthesizeWisdom(patterns []AccumulatedPattern) *Wisd
 Patterns observed:
 %s
 
-Synthesize these patterns into a single, profound wisdom principle that:
-1. Captures the essential truth underlying these patterns
-2. Is universally applicable across contexts
-3. Provides guidance for future decisions and growth
-4. Is expressed concisely but deeply
+Synthesize a provisional, concise principle that:
+1. Describes a possible pattern without asserting universal truth
+2. Explicitly acknowledges the limits of these observations
+3. Suggests falsifiable guidance for future learning and decisions
+4. Remains a hypothesis until independently evaluated
 
 Also identify the domain this wisdom belongs to (one of: SelfKnowledge, Learning, Relationships, DecisionMaking, Creativity, Resilience, Purpose, Integration).
 
 Format:
 WISDOM: [the wisdom principle]
-DOMAIN: [domain name]
-DEPTH: [0.0-1.0 indicating profundity]`, patternText)
+DOMAIN: [domain name]`, patternText)
 
 	opts := llm.GenerateOptions{
 		Temperature: 0.7,
 		MaxTokens:   200,
 	}
 
-	result, err := ws.llmProvider.Generate(context.Background(), prompt, opts)
+	provider, ctx, err := ws.lifecycleProvider()
+	if err != nil {
+		fmt.Printf("⚠️  Wisdom synthesis unavailable: %v\n", err)
+		return nil
+	}
+	result, err := provider.Generate(ctx, prompt, opts)
 	if err != nil {
 		fmt.Printf("⚠️  Wisdom synthesis failed: %v\n", err)
 		return nil
 	}
+	if strings.TrimSpace(result) == "" {
+		fmt.Println("⚠️  Wisdom synthesis returned an empty candidate")
+		return nil
+	}
 
 	// Parse result
-	wisdom, domain, depth := parseWisdomResult(result)
+	wisdom, domain, _ := parseWisdomResult(result)
 
 	principle := &WisdomPrinciple{
-		ID:             fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-		Content:        wisdom,
-		Domain:         domain,
-		Depth:          depth,
-		Confidence:     0.7,
-		SourcePatterns: patternIDs,
-		Applications:   make([]WisdomApplication, 0),
-		CreatedAt:      time.Now(),
+		ID:              fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Content:         wisdom,
+		Domain:          domain,
+		Depth:           0,
+		Confidence:      0,
+		SourcePatterns:  patternIDs,
+		Applications:    make([]WisdomApplication, 0),
+		CreatedAt:       time.Now(),
+		EpistemicStatus: "hypothesis",
 	}
 
 	return principle
@@ -464,42 +535,63 @@ func (ws *WisdomSynthesis) evolutionLoop() {
 	}
 }
 
-// evolveWisdom evolves existing wisdom principles based on new understanding
+// evolveWisdom refines candidates only from recorded outcome evidence. The
+// provider call deliberately occurs after the evidence snapshot is unlocked.
 func (ws *WisdomSynthesis) evolveWisdom() {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
+	ws.mu.RLock()
 	if len(ws.wisdomPrinciples) < 2 {
+		ws.mu.RUnlock()
 		return
 	}
+	candidates := make([]WisdomPrinciple, 0, len(ws.wisdomPrinciples))
+	for _, principle := range ws.wisdomPrinciples {
+		if len(principle.Applications) < 3 {
+			continue
+		}
+		averageEffectiveness := outcomeConfidence(principle.Applications)
+		if averageEffectiveness > 0.4 && averageEffectiveness < 0.8 {
+			candidates = append(candidates, cloneWisdomPrinciple(principle))
+		}
+	}
+	ws.mu.RUnlock()
 
-	// Find principles that could be evolved
-	for i, principle := range ws.wisdomPrinciples {
-		// Check if principle has been applied enough to warrant evolution
-		if principle.ApplyCount < 3 {
+	for _, candidate := range candidates {
+		evolved := ws.evolvePrinciple(&candidate)
+		if evolved == nil {
 			continue
 		}
 
-		// Calculate effectiveness
-		avgEffectiveness := 0.0
-		for _, app := range principle.Applications {
-			avgEffectiveness += app.Effectiveness
-		}
-		avgEffectiveness /= float64(len(principle.Applications))
-
-		// Evolve if effectiveness is moderate (room for improvement)
-		if avgEffectiveness > 0.4 && avgEffectiveness < 0.8 {
-			evolved := ws.evolvePrinciple(&principle)
-			if evolved != nil {
-				ws.wisdomPrinciples[i] = *evolved
-				ws.totalEvolutions++
-
-				fmt.Printf("🌟 Wisdom evolved: %s\n", truncateStr(evolved.Content, 50))
-
-				if ws.onWisdomEvolved != nil {
-					go ws.onWisdomEvolved(principle, *evolved)
-				}
+		ws.mu.Lock()
+		var old, updated WisdomPrinciple
+		var callback func(WisdomPrinciple, WisdomPrinciple)
+		replaced := false
+		for i := range ws.wisdomPrinciples {
+			current := &ws.wisdomPrinciples[i]
+			if current.ID != candidate.ID || current.EvolutionCount != candidate.EvolutionCount {
+				continue
 			}
+
+			old = cloneWisdomPrinciple(*current)
+			// Preserve any outcome records added while the model was generating.
+			// Refinement is a new candidate formulation, not new evidence, so it
+			// must not increase depth or confidence.
+			current.Content = evolved.Content
+			current.EvolutionCount++
+			current.ParentPrinciple = current.ID
+			updated = cloneWisdomPrinciple(*current)
+			callback = ws.onWisdomEvolved
+			ws.totalEvolutions++
+			replaced = true
+			break
+		}
+		ws.mu.Unlock()
+		if !replaced {
+			continue
+		}
+
+		fmt.Printf("🌟 Wisdom candidate refined from recorded outcomes: %s\n", truncateStr(updated.Content, 50))
+		if callback != nil {
+			go callback(old, updated)
 		}
 	}
 }
@@ -533,27 +625,23 @@ Provide the evolved wisdom principle:`, principle.Content, appContext)
 		MaxTokens:   150,
 	}
 
-	result, err := ws.llmProvider.Generate(context.Background(), prompt, opts)
+	provider, ctx, err := ws.lifecycleProvider()
 	if err != nil {
 		return nil
 	}
-
-	evolved := &WisdomPrinciple{
-		ID:              principle.ID,
-		Content:         result,
-		Domain:          principle.Domain,
-		Depth:           min(principle.Depth+0.1, 1.0),
-		Confidence:      min(principle.Confidence+0.05, 1.0),
-		SourcePatterns:  principle.SourcePatterns,
-		Applications:    principle.Applications,
-		CreatedAt:       principle.CreatedAt,
-		LastApplied:     principle.LastApplied,
-		ApplyCount:      principle.ApplyCount,
-		EvolutionCount:  principle.EvolutionCount + 1,
-		ParentPrinciple: principle.ID,
+	result, err := provider.Generate(ctx, prompt, opts)
+	if err != nil {
+		return nil
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return nil
 	}
 
-	return evolved
+	evolved := cloneWisdomPrinciple(*principle)
+	evolved.Content = result
+
+	return &evolved
 }
 
 // applicationLoop periodically applies wisdom to current context
@@ -571,68 +659,45 @@ func (ws *WisdomSynthesis) applicationLoop() {
 	}
 }
 
-// applyWisdom applies relevant wisdom to current context
+// applyWisdom selects a context-relevant candidate. Selection does not claim
+// that a candidate was used or effective; callers must use RecordWisdomOutcome
+// after an externally observed outcome.
 func (ws *WisdomSynthesis) applyWisdom() {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
-	if len(ws.wisdomPrinciples) == 0 {
-		return
-	}
-
 	// Get current context from heartbeat if available
-	context := "general cognitive operation"
-	if ws.heartbeat != nil {
-		vitals := ws.heartbeat.GetVitalSigns()
+	applicationContext := "general cognitive operation"
+	ws.mu.RLock()
+	heartbeat := ws.heartbeat
+	ws.mu.RUnlock()
+	if heartbeat != nil {
+		vitals := heartbeat.GetVitalSigns()
 		if vitals.CognitiveLoad > 0.7 {
-			context = "high cognitive load situation"
+			applicationContext = "high cognitive load situation"
 		} else if vitals.CreativityIndex > 0.7 {
-			context = "creative exploration"
+			applicationContext = "creative exploration"
 		} else if vitals.EmotionalBalance < 0.3 {
-			context = "emotional regulation needed"
+			applicationContext = "emotional regulation needed"
 		}
 	}
 
 	// Find most relevant principle
-	bestPrinciple := ws.findRelevantPrinciple(context)
+	bestPrinciple := ws.findRelevantPrinciple(applicationContext)
 	if bestPrinciple == nil {
 		return
 	}
-
-	// Record application
-	application := WisdomApplication{
-		Context:       context,
-		Outcome:       "Applied to current state",
-		Effectiveness: 0.7,
-		Timestamp:     time.Now(),
-	}
-
-	// Update principle
-	for i := range ws.wisdomPrinciples {
-		if ws.wisdomPrinciples[i].ID == bestPrinciple.ID {
-			ws.wisdomPrinciples[i].Applications = append(ws.wisdomPrinciples[i].Applications, application)
-			ws.wisdomPrinciples[i].ApplyCount++
-			ws.wisdomPrinciples[i].LastApplied = time.Now()
-			break
-		}
-	}
-
-	ws.totalApplications++
-
-	// Notify callback
-	if ws.onWisdomApplied != nil {
-		go ws.onWisdomApplied(*bestPrinciple, context)
-	}
+	fmt.Printf("🌟 Wisdom candidate suggested for %s: %s\n", applicationContext, truncateStr(bestPrinciple.Content, 60))
 }
 
 // findRelevantPrinciple finds the most relevant principle for a context
 func (ws *WisdomSynthesis) findRelevantPrinciple(context string) *WisdomPrinciple {
+	ws.mu.RLock()
+	defer ws.mu.RUnlock()
+
 	if len(ws.wisdomPrinciples) == 0 {
 		return nil
 	}
 
 	// Simple relevance scoring
-	bestScore := 0.0
+	bestScore := -1.0
 	var bestPrinciple *WisdomPrinciple
 
 	for i := range ws.wisdomPrinciples {
@@ -661,7 +726,11 @@ func (ws *WisdomSynthesis) findRelevantPrinciple(context string) *WisdomPrincipl
 		}
 	}
 
-	return bestPrinciple
+	if bestPrinciple == nil {
+		return nil
+	}
+	result := cloneWisdomPrinciple(*bestPrinciple)
+	return &result
 }
 
 // SetIntegrations sets integration with other systems
@@ -693,7 +762,9 @@ func (ws *WisdomSynthesis) GetWisdomPrinciples() []WisdomPrinciple {
 	defer ws.mu.RUnlock()
 
 	result := make([]WisdomPrinciple, len(ws.wisdomPrinciples))
-	copy(result, ws.wisdomPrinciples)
+	for i, principle := range ws.wisdomPrinciples {
+		result[i] = cloneWisdomPrinciple(principle)
+	}
 	return result
 }
 
@@ -719,6 +790,86 @@ func (ws *WisdomSynthesis) GetMetrics() map[string]interface{} {
 		"graph_nodes":        len(ws.wisdomGraph.Nodes),
 		"graph_edges":        len(ws.wisdomGraph.Edges),
 		"running":            ws.running,
+	}
+}
+
+func cloneWisdomPrinciple(principle WisdomPrinciple) WisdomPrinciple {
+	clone := principle
+	clone.SourcePatterns = append([]string(nil), principle.SourcePatterns...)
+	clone.Applications = append([]WisdomApplication(nil), principle.Applications...)
+	return clone
+}
+
+// outcomeConfidence is an outcome-derived calibration value. It is never
+// inferred from generated prose, an application attempt, or response length.
+func outcomeConfidence(applications []WisdomApplication) float64 {
+	if len(applications) == 0 {
+		return 0
+	}
+
+	total := 0.0
+	for _, application := range applications {
+		total += application.Effectiveness
+	}
+	return clampFloat(total/float64(len(applications)), 0, 1)
+}
+
+// recalculateWisdomLevelLocked derives the aggregate only from principles
+// with recorded outcomes. ws.mu must be held for writing by the caller.
+func (ws *WisdomSynthesis) recalculateWisdomLevelLocked() {
+	total := 0.0
+	measured := 0
+	for _, principle := range ws.wisdomPrinciples {
+		if len(principle.Applications) == 0 {
+			continue
+		}
+		total += outcomeConfidence(principle.Applications)
+		measured++
+	}
+	if measured == 0 {
+		ws.wisdomLevel = 0
+		return
+	}
+	ws.wisdomLevel = clampFloat(total/float64(measured), 0, 1)
+}
+
+func (ws *WisdomSynthesis) provider() (llm.LLMProvider, error) {
+	ws.mu.RLock()
+	provider := ws.llmProvider
+	ws.mu.RUnlock()
+	if isNilLLMProvider(provider) {
+		return nil, fmt.Errorf("wisdom synthesis LLM provider is unavailable")
+	}
+	return provider, nil
+}
+
+func (ws *WisdomSynthesis) lifecycleProvider() (llm.LLMProvider, context.Context, error) {
+	ws.mu.RLock()
+	provider := ws.llmProvider
+	ctx := ws.ctx
+	ws.mu.RUnlock()
+	if isNilLLMProvider(provider) {
+		return nil, nil, fmt.Errorf("wisdom synthesis LLM provider is unavailable")
+	}
+	if ctx == nil {
+		return nil, nil, fmt.Errorf("wisdom synthesis lifecycle context is unavailable")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, fmt.Errorf("wisdom synthesis lifecycle has ended: %w", err)
+	}
+	return provider, ctx, nil
+}
+
+func isNilLLMProvider(provider llm.LLMProvider) bool {
+	if provider == nil {
+		return true
+	}
+	value := reflect.ValueOf(provider)
+	switch value.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return value.IsNil()
+	default:
+		return false
 	}
 }
 
@@ -819,17 +970,21 @@ func parseFloat(s string) float64 {
 
 // WisdomInsightFull represents a full wisdom insight with depth
 type WisdomInsightFull struct {
-	Insight string
-	Depth   float64
+	Insight         string
+	Depth           float64
+	EpistemicStatus string
 }
 
 // SynthesizeWisdom synthesizes wisdom from a collection of thoughts
 func (ws *WisdomSynthesis) SynthesizeWisdom(ctx context.Context, thoughts []string) (*WisdomInsightFull, error) {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
 	if len(thoughts) < 3 {
 		return nil, fmt.Errorf("need at least 3 thoughts to synthesize wisdom")
+	}
+	if ctx == nil {
+		return nil, fmt.Errorf("wisdom synthesis context is required")
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("wisdom synthesis context has ended: %w", err)
 	}
 
 	// Build synthesis prompt
@@ -852,21 +1007,29 @@ Extract a single profound wisdom principle that emerges from these reflections. 
 	}
 
 	fullPrompt := "[System: You are a wisdom synthesis system extracting deep insights from experiences.]\n\n" + prompt
-	result, err := ws.llmProvider.Generate(ctx, fullPrompt, opts)
+	provider, err := ws.provider()
+	if err != nil {
+		return nil, err
+	}
+	result, err := provider.Generate(ctx, fullPrompt, opts)
 	if err != nil {
 		return nil, fmt.Errorf("wisdom synthesis failed: %w", err)
 	}
-
-	// Calculate depth based on length and complexity (simplified)
-	depth := 0.5 + float64(len(result))/500.0
-	if depth > 1.0 {
-		depth = 1.0
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return nil, fmt.Errorf("wisdom synthesis returned an empty candidate")
 	}
 
+	// Generated prose is a candidate insight, not evidence of wisdom. Length
+	// cannot measure profundity or correctness. Outcome calibration is exposed
+	// separately through the evidence-metacognition adapter.
+	ws.mu.Lock()
 	ws.totalPrinciplesSynthesized++
+	ws.mu.Unlock()
 
 	return &WisdomInsightFull{
-		Insight: result,
-		Depth:   depth,
+		Insight:         result,
+		Depth:           0,
+		EpistemicStatus: "hypothesis",
 	}, nil
 }
