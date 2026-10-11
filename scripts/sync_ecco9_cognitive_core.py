@@ -102,7 +102,7 @@ def write_integration_module(destination: pathlib.Path, upstream_go_mod: pathlib
     if upstream_sum.exists():
         shutil.copy2(upstream_sum, destination / "go.sum.upstream")
     (destination / "go.mod").write_text(
-        "module github.com/EchoCog/echollama\n\ngo 1.25.0\n\ntoolchain go1.25.13\n",
+        "module github.com/EchoCog/echollama\n\ngo 1.26.0\n\ntoolchain go1.26.9\n",
         encoding="utf-8",
     )
 

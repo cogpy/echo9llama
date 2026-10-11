@@ -52,6 +52,7 @@ type DeepTreeEchoHub struct {
 
 	// Running state
 	running   bool
+	stopped   bool
 	startTime time.Time
 }
 
@@ -220,6 +221,10 @@ func (hub *DeepTreeEchoHub) Start() error {
 		hub.mu.Unlock()
 		return fmt.Errorf("hub already running")
 	}
+	if hub.stopped {
+		hub.mu.Unlock()
+		return fmt.Errorf("hub cannot be restarted after it has been stopped")
+	}
 	hub.running = true
 	hub.startTime = time.Now()
 	hub.mu.Unlock()
@@ -365,8 +370,14 @@ func (hub *DeepTreeEchoHub) mainLoop() {
 
 // performIntegrationCycle performs one cycle of integration
 func (hub *DeepTreeEchoHub) performIntegrationCycle() {
-	hub.mu.Lock()
-	defer hub.mu.Unlock()
+	hub.mu.RLock()
+	running := hub.running
+	hub.mu.RUnlock()
+	if !running {
+		return
+	}
+	// Subsystem references are immutable after construction. Never hold hub.mu
+	// while calling them: AddThought synchronously publishes back into this hub.
 
 	hub.metrics.mu.Lock()
 	hub.metrics.TotalCycles++
@@ -551,9 +562,23 @@ func (hub *DeepTreeEchoHub) publishEvent(eventType, source string, data interfac
 		Timestamp: time.Now(),
 	}
 
+	// Event-bus callbacks can outlive subsystem shutdown. Keep the channel open
+	// for the hub lifetime and serialize publication with the running transition,
+	// so Stop cannot race a sender with a channel close.
+	hub.mu.RLock()
+	if !hub.running {
+		hub.mu.RUnlock()
+		return
+	}
+
 	select {
+	case <-hub.ctx.Done():
+		hub.mu.RUnlock()
+		return
 	case hub.eventChan <- event:
+		hub.mu.RUnlock()
 	default:
+		hub.mu.RUnlock()
 		// Channel full, log dropped event
 		hub.metrics.mu.Lock()
 		hub.metrics.ErrorCount++
@@ -571,7 +596,15 @@ func (hub *DeepTreeEchoHub) Stop() error {
 		return fmt.Errorf("hub not running")
 	}
 	hub.running = false
+	hub.stopped = true
+	cancel := hub.cancel
 	hub.mu.Unlock()
+
+	// Stop hub workers and make asynchronous event callbacks no-ops before
+	// stopping their producers. Internal channels deliberately remain open:
+	// cognitive event-bus callbacks have no unsubscribe lifecycle and may still
+	// return from an in-flight dispatch after their producer has stopped.
+	cancel()
 
 	fmt.Println()
 	fmt.Println("========================================")
@@ -616,14 +649,6 @@ func (hub *DeepTreeEchoHub) Stop() error {
 		}
 	}
 
-	// Cancel context
-	hub.cancel()
-
-	// Close channels
-	close(hub.eventChan)
-	close(hub.commandChan)
-	close(hub.statusChan)
-
 	fmt.Println()
 	fmt.Printf("[*] Hub ran for: %s\n", time.Since(hub.startTime))
 	fmt.Println("[*] Deep Tree Echo Hub stopped successfully")
@@ -636,11 +661,13 @@ func (hub *DeepTreeEchoHub) Stop() error {
 // GetStatus returns the current status of the hub
 func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 	hub.mu.RLock()
-	defer hub.mu.RUnlock()
+	running := hub.running
+	startTime := hub.startTime
+	hub.mu.RUnlock()
 
 	status := HubStatus{
-		Running:   hub.running,
-		Uptime:    time.Since(hub.startTime),
+		Running:   running,
+		Uptime:    time.Since(startTime),
 		Timestamp: time.Now(),
 	}
 
@@ -700,21 +727,38 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 
 // SendCommand sends a command to the hub
 func (hub *DeepTreeEchoHub) SendCommand(cmd HubCommand) HubCommandResponse {
+	hub.mu.RLock()
 	if !hub.running {
+		hub.mu.RUnlock()
 		return HubCommandResponse{
 			Success: false,
 			Error:   fmt.Errorf("hub not running"),
 		}
 	}
+	ctx := hub.ctx
+	commandChan := hub.commandChan
+	hub.mu.RUnlock()
 
 	responseChan := make(chan HubCommandResponse, 1)
 	cmd.ResponseChan = responseChan
 
-	hub.commandChan <- cmd
+	select {
+	case <-ctx.Done():
+		return HubCommandResponse{
+			Success: false,
+			Error:   fmt.Errorf("hub not running"),
+		}
+	case commandChan <- cmd:
+	}
 
 	select {
 	case response := <-responseChan:
 		return response
+	case <-ctx.Done():
+		return HubCommandResponse{
+			Success: false,
+			Error:   fmt.Errorf("hub stopped before command completed"),
+		}
 	case <-time.After(10 * time.Second):
 		return HubCommandResponse{
 			Success: false,
@@ -747,11 +791,16 @@ func (hub *DeepTreeEchoHub) GetStateManager() *CognitiveStateManager {
 func (hub *DeepTreeEchoHub) GetGestalt() map[string]interface{} {
 	gestalt := make(map[string]interface{})
 
+	hub.mu.RLock()
+	running := hub.running
+	startTime := hub.startTime
+	hub.mu.RUnlock()
+
 	// Get hub metrics
 	hub.metrics.mu.RLock()
 	gestalt["hub"] = map[string]interface{}{
-		"running":           hub.running,
-		"uptime":            time.Since(hub.startTime).String(),
+		"running":           running,
+		"uptime":            time.Since(startTime).String(),
 		"total_events":      hub.metrics.TotalEvents,
 		"total_cycles":      hub.metrics.TotalCycles,
 		"events_per_second": hub.metrics.EventsPerSecond,

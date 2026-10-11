@@ -72,17 +72,16 @@ All final local checks below passed:
 
 ```bash
 go test ./...
-go test -race -count=1 ./core/metacognition ./core/cognitivecore \
-  ./core/persistence ./core/deeptreeecho ./core/coreself ./cmd/autonomous
-go vet ./core/... ./cmd/...
+go test -race -count=1 ./core/... ./cmd/... ./progress
+go vet ./progress/... ./core/... ./cmd/...
 CGO_ENABLED=0 go build ./...
 CGO_ENABLED=1 go build ./...
 go mod tidy -diff
 go mod verify
-golangci-lint run --new-from-rev=c970f497 --timeout 10m ./core/... ./cmd/...
+golangci-lint run --new-from-rev=c970f497 --timeout 10m ./progress/... ./core/... ./cmd/...
 ```
 
-The CI-matched linter reported **0 new issues**. Go dependencies were verified with no `go.mod`/`go.sum` changes. The nested upstream `core/ecco9/...` packages compiled (they have no upstream tests); full lineage comparison verified all 553 Go files.
+The CI-matched linter reported **0 new issues** after the lifecycle/security follow-up. The final whole-core/command/progress race suite and repository-wide tests both pass with a 120-second per-package timeout. The final compatibility baseline is Go **1.26.0** with patched toolchain **1.26.9**. The affected `golang.org/x/net` dependency was upgraded from `v0.58.0` to `v0.60.0`, with its required Go/x-module version alignment and corresponding `go.mod`/`go.sum` updates. The nested integration module, autonomous Docker builder and three active CI Go pins are aligned; original `go.mod.upstream` and all 553 source Go files remain untouched. The nested upstream `core/ecco9/...` packages compiled (they have no upstream tests).
 
 Deterministic tests cover Brier mathematics, missing/empty evidence, bounded snapshots, invalid confidence, strict citations, duplicate JSON keys, durable replay, no wisdom awards, invalid/degraded model output, source quarantine continuity, deferred admission, restricted proposal goals, one-call step budget, rest/pause, context-aware Stop/restart and concurrency.
 
@@ -103,6 +102,16 @@ Earlier build failures during concurrent file creation are not final validation 
 ### Repository security backlog
 
 The GitHub push response reported **1547 default-branch dependency alerts**: 456 critical, 445 high, 567 moderate and 79 low. This is GitHub's repository-wide aggregate (including legacy/multi-language dependencies), not a verified count of exploitable vulnerabilities in the canonical E4 runtime. E4 does not remediate that entire backlog; dependency reachability and upgrade triage remain a separate, explicit release concern. The existing hosted security scan should be reviewed before deployment, and no deployment or merge is implied by the passing local checks.
+
+### Post-push lifecycle and security follow-up
+
+A broader `go test -race ./core/... ./cmd/... ./progress` probe identified a real inherited hub send-versus-close race and CLI progress ticker state races. The untouched baseline CLI reproduced the progress races. Repairs keep hub channels open for its terminal lifecycle, gate publishes/commands by running state and cancellation, reject unsupported restarts, serialize progress rendering/shutdown, join the progress worker, eliminate spinner ticker goroutines and synchronize bar rendering/updates. Concurrent lifecycle tests and expanded CI race coverage were added.
+
+The initial hub publication fix exposed a synchronous callback deadlock: integration held `hub.mu` while `AddThought` called back into `publishEvent`. A captured goroutine dump identified this exact cycle. Integration/status methods now snapshot lifecycle state and call subsystems without holding the hub lock; a dedicated callback-reentry test passes. No regression assertion was relaxed.
+
+The expanded race run also exposed Sys6 complementary MP2 goroutines returning outside their cycle's wait barrier and unsynchronized worker counters. All six MP1/MP2 goroutines now remain simultaneous but join the parent cycle; worker counters use their metric-reader mutex, and Stop snapshots/deactivation serialize with cycles. A regression proves exactly 2 dyadic plus 6 triadic worker completions and no late updates after return/Stop; Sys6 race tests pass ten repetitions. The full repaired core/command/progress race suite then passes. These changes repair concurrency, not replace learning or cognitive computation with deterministic output.
+
+Hosted `govulncheck` also found **13 reachable standard-library vulnerability reports** at Go 1.25.13, with fixes listed at Go 1.26.9. The precise toolchain/network-module upgrade above addresses this failure rather than disabling the security gate. The patched local `govulncheck v1.7.0 ./...` passes with **0 reachable vulnerabilities**, while retaining **1 imported-package** and **1 module-only** finding not called by this code. These residuals and the default-branch aggregate do not justify an “all dependencies secure” claim. No unrelated automatic major-version migration was attempted.
 
 ## Operation
 
