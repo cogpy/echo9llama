@@ -100,6 +100,10 @@ One concurrent broad-test run observed a cross-process core-self root-lock asser
 
 Earlier build failures during concurrent file creation are not final validation failures; final checks ran against complete materialized files.
 
+### Repository security backlog
+
+The GitHub push response reported **1547 default-branch dependency alerts**: 456 critical, 445 high, 567 moderate and 79 low. This is GitHub's repository-wide aggregate (including legacy/multi-language dependencies), not a verified count of exploitable vulnerabilities in the canonical E4 runtime. E4 does not remediate that entire backlog; dependency reachability and upgrade triage remain a separate, explicit release concern. The existing hosted security scan should be reviewed before deployment, and no deployment or merge is implied by the passing local checks.
+
 ## Operation
 
 Build the single canonical entry point and use an appropriate persistent host:
