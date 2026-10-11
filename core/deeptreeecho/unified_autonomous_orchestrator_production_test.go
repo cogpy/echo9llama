@@ -111,8 +111,11 @@ func TestWakeRestManagerRoundTripIntegratesDreamWisdomOnce(t *testing.T) {
 	if !status.IsAwake || status.WakeRestState != StateAwake.String() {
 		t.Fatalf("wake round trip did not synchronize state: %#v", status)
 	}
-	if status.TotalWisdom == 0 || status.WisdomDepth <= 0 {
-		t.Fatalf("dream wisdom was not integrated: %#v", status)
+	if status.TotalWisdom != 0 || status.WisdomDepth != 0 {
+		t.Fatalf("unevaluated dream hypotheses self-awarded wisdom: %#v", status)
+	}
+	if status.DreamWisdom == 0 {
+		t.Fatalf("dream hypotheses were not synthesized: %#v", status)
 	}
 	if status.PendingExperiences != 0 {
 		t.Fatalf("dream cycle did not consume pending experiences: %d", status.PendingExperiences)

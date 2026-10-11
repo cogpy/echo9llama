@@ -45,6 +45,8 @@ jobs:
         run: |
           go test -v -race -coverprofile=coverage.out -covermode=atomic \
             ./core/coreself/... \
+            ./core/metacognition/... \
+            ./core/cognitivecore/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/persistence/... \

@@ -21,7 +21,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-09-12-cog253-core-self"
+const productionIteration = "2026-10-11-e4-evidence-metacognition"
 
 func main() {
 	fmt.Println()
@@ -231,39 +231,41 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 	mux.HandleFunc("/status", func(w http.ResponseWriter, _ *http.Request) {
 		status := orchestrator.GetStatus()
 		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"identity":               "Deep Tree Echo",
-			"iteration":              productionIteration,
-			"running":                status.Running,
-			"awake":                  status.IsAwake,
-			"autonomous":             status.IsAutonomous,
-			"session_id":             status.SessionID,
-			"uptime":                 status.Uptime.String(),
-			"provider":               status.Provider,
-			"provider_available":     status.ProviderAvailable,
-			"backend":                publicBackendState(status.Backend),
-			"wake_rest_state":        status.WakeRestState,
-			"dream_phase":            status.DreamPhase,
-			"pending_experiences":    status.PendingExperiences,
-			"experience_ledger_size": status.ExperienceLedgerSize,
-			"cognitive_load":         status.CognitiveLoad,
-			"wisdom_depth":           status.WisdomDepth,
-			"cycles":                 status.TotalCycles,
-			"thoughts":               status.TotalThoughts,
-			"goals":                  status.TotalGoals,
-			"wisdom":                 status.TotalWisdom,
-			"dream_wisdom":           status.DreamWisdom,
-			"last_state_sync":        status.LastStateSync.UTC().Format(time.RFC3339),
-			"persistence_enabled":    status.StateDirectory != "",
-			"enaction_enabled":       status.EnactionEnabled,
-			"enaction_mode":          status.EnactionMode,
-			"enaction_paused":        status.EnactionPaused,
-			"event_ledger_ready":     status.EventLedgerReady,
-			"cognitive_events":       status.EventCount,
-			"cognitive_core_enabled": status.CognitiveCoreEnabled,
-			"cognitive_core":         status.CognitiveCore,
-			"core_self_enabled":      status.CoreSelfEnabled,
-			"core_self_ready":        status.CoreSelfReady,
-			"core_self":              status.CoreSelf,
+			"identity":                "Deep Tree Echo",
+			"iteration":               productionIteration,
+			"running":                 status.Running,
+			"awake":                   status.IsAwake,
+			"autonomous":              status.IsAutonomous,
+			"session_id":              status.SessionID,
+			"uptime":                  status.Uptime.String(),
+			"provider":                status.Provider,
+			"provider_available":      status.ProviderAvailable,
+			"backend":                 publicBackendState(status.Backend),
+			"wake_rest_state":         status.WakeRestState,
+			"dream_phase":             status.DreamPhase,
+			"pending_experiences":     status.PendingExperiences,
+			"experience_ledger_size":  status.ExperienceLedgerSize,
+			"cognitive_load":          status.CognitiveLoad,
+			"wisdom_depth":            status.WisdomDepth,
+			"cycles":                  status.TotalCycles,
+			"thoughts":                status.TotalThoughts,
+			"goals":                   status.TotalGoals,
+			"wisdom":                  status.TotalWisdom,
+			"dream_wisdom":            status.DreamWisdom,
+			"last_state_sync":         status.LastStateSync.UTC().Format(time.RFC3339),
+			"persistence_enabled":     status.StateDirectory != "",
+			"enaction_enabled":        status.EnactionEnabled,
+			"enaction_mode":           status.EnactionMode,
+			"enaction_paused":         status.EnactionPaused,
+			"event_ledger_ready":      status.EventLedgerReady,
+			"cognitive_events":        status.EventCount,
+			"cognitive_core_enabled":  status.CognitiveCoreEnabled,
+			"cognitive_core":          status.CognitiveCore,
+			"core_self_enabled":       status.CoreSelfEnabled,
+			"core_self_ready":         status.CoreSelfReady,
+			"core_self":               status.CoreSelf,
+			"evidence_reflection":     status.Reflection,
+			"wisdom_epistemic_status": "legacy_unvalidated; new insights are hypotheses, not wisdom awards",
 		})
 	})
 
@@ -292,6 +294,13 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 		fmt.Fprintf(w, "# TYPE echo_core_self_ready gauge\necho_core_self_ready %d\n", boolMetric(status.CoreSelfReady))
 		fmt.Fprintf(w, "# TYPE echo_core_self_events_total counter\necho_core_self_events_total %d\n", status.CoreSelf.EventCount)
 		fmt.Fprintf(w, "# TYPE echo_core_self_pending_proposals gauge\necho_core_self_pending_proposals %d\n", status.CoreSelf.ProposalCount)
+		fmt.Fprintf(w, "# TYPE echo_reflection_evaluations gauge\necho_reflection_evaluations %d\n", status.Reflection.Evaluated)
+		fmt.Fprintf(w, "# TYPE echo_reflection_calibration_samples gauge\necho_reflection_calibration_samples %d\n", status.Reflection.CalibrationSamples)
+		fmt.Fprintf(w, "# TYPE echo_reflection_proposed_total counter\necho_reflection_proposed_total %d\n", status.Reflection.Proposed)
+		fmt.Fprintf(w, "# TYPE echo_reflection_errors_total counter\necho_reflection_errors_total %d\n", status.Reflection.Errors)
+		if status.Reflection.BrierScore != nil {
+			fmt.Fprintf(w, "# TYPE echo_artifact_brier_score gauge\necho_artifact_brier_score %.8f\n", *status.Reflection.BrierScore)
+		}
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

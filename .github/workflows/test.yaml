@@ -57,6 +57,9 @@ jobs:
       - name: Run tests
         run: |
           go test -v -race -count=1 \
+            ./core/metacognition/... \
+            ./core/cognitivecore/... \
+            ./core/persistence/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/consciousness/... \
