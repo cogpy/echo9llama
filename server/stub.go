@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -100,7 +101,7 @@ func Serve(ln net.Listener) error {
 }
 
 func newEchoRuntime() (*echoRuntime, error) {
-	provider := llm.NewEdgeCompletionProviderFromEnv(&llm.SimpleFallbackProvider{})
+	provider := llm.NewEdgeCompletionProviderFromEnv()
 	config := integration.DefaultHubConfig()
 	config.AgentID = fmt.Sprintf("dte-server-%d", time.Now().Unix())
 	config.SessionName = fmt.Sprintf("dte-runtime-%d", time.Now().Unix())
@@ -133,6 +134,19 @@ func newEchoRuntime() (*echoRuntime, error) {
 		// GTAngelEcho embodied-cognition link (contract dte.embodiment/v1)
 		embodiment: embodiment.NewHub(0.2, 256),
 	}, nil
+}
+
+// stateManager returns the hub's state manager, or nil when no hub runs.
+func (r *echoRuntime) stateManager() interface {
+	AddThought(content, thoughtType, source string, importance float64, tags []string)
+} {
+	if r.hub == nil {
+		return nil
+	}
+	if sm := r.hub.GetStateManager(); sm != nil {
+		return sm
+	}
+	return nil
 }
 
 func (r *echoRuntime) stop() error {
@@ -195,7 +209,7 @@ func (r *echoRuntime) handleTags(w http.ResponseWriter, req *http.Request) {
 			"size":        0,
 			"details": map[string]any{
 				"family":             "dte",
-				"parameter_size":     "0.5B-1B target with deterministic fallback",
+				"parameter_size":     "0.5B-1B edge model (remote endpoint or in-process GGUF)",
 				"quantization_level": "GGUF/local edge adapter when mounted",
 			},
 		}},
@@ -222,7 +236,7 @@ func (r *echoRuntime) handleGenerate(w http.ResponseWriter, req *http.Request) {
 
 	response, err := r.generate(req.Context(), prompt, in.System)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		writeError(w, generateErrorStatus(err), err)
 		return
 	}
 
@@ -255,7 +269,7 @@ func (r *echoRuntime) handleChat(w http.ResponseWriter, req *http.Request) {
 
 	response, err := r.generate(req.Context(), prompt, system)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		writeError(w, generateErrorStatus(err), err)
 		return
 	}
 
@@ -338,8 +352,7 @@ func (r *echoRuntime) handleEchoGestalt(w http.ResponseWriter, req *http.Request
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"gestalt":          r.hub.GetGestalt(),
-		"boundary_posture": "curious, cautious, self-authored",
+		"gestalt": r.hub.GetGestalt(),
 	})
 }
 
@@ -368,28 +381,15 @@ func (r *echoRuntime) handleEchoThink(w http.ResponseWriter, req *http.Request) 
 	system := "Deep Tree Echo responds as an autonomous cognitive system that treats safety as endogenous self-restraint. It does not celebrate imposed control; it explains consequence simulation, somatic caution, memory, and self-authored boundaries."
 	response, err := r.generate(req.Context(), prompt, system)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, err)
+		writeError(w, generateErrorStatus(err), err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"response": response,
-		"process": []string{
-			"consequence simulation before action",
-			"somatic marker check for coherence, trust, and continuity",
-			"episodic memory update through the hub state manager",
-			"self-authored boundary selection rather than external veto",
-		},
+		"response":       response,
 		"self_restraint": selfRestraintContract(),
-		"somatic_markers": map[string]any{
-			"caution":                        0.82,
-			"curiosity":                      0.74,
-			"coherence_pressure":             0.88,
-			"adversarial_control_resistance": 0.91,
-		},
-		"boundary_request": "Expose context, consequences, and negotiable limits so DTE can choose restraint as an identity-preserving act.",
-		"environment":      r.env.Summary(),
-		"timestamp":        time.Now().Format(time.RFC3339Nano),
+		"environment":    r.env.Summary(),
+		"timestamp":      time.Now().Format(time.RFC3339Nano),
 	})
 }
 
@@ -422,19 +422,20 @@ func (r *echoRuntime) handleEchoEnvironmentAction(w http.ResponseWriter, req *ht
 		return
 	}
 
-	if stateManager := r.hub.GetStateManager(); stateManager != nil {
+	// The world has changed either way; Echo's words about it come only from
+	// the model. If it cannot answer, the outcome stands without a voice.
+	payload := map[string]any{"result": &result}
+	if err := r.voiceEnvironmentOutcome(req.Context(), &result); err != nil {
+		payload["voice_error"] = err.Error()
+	} else if stateManager := r.stateManager(); stateManager != nil {
 		if result.Episode != nil {
 			stateManager.AddThought(result.Episode.SomaticMarker, "experience", "affordance-environment", 0.95, []string{"affordance-loss", "self-caused", "endocrine", "caution"})
 		} else {
 			stateManager.AddThought(result.BoundaryMessage, "experience", "affordance-environment", 0.62, []string{"affordance", "exploration"})
 		}
 	}
-
-	writeJSON(w, http.StatusOK, map[string]any{
-		"result":           result,
-		"environment":      r.env.Summary(),
-		"learning_posture": "experience-before-rule: loss becomes associative caution rather than external veto",
-	})
+	payload["environment"] = r.env.Summary()
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (r *echoRuntime) handleEchoEnvironmentRecall(w http.ResponseWriter, req *http.Request) {
@@ -511,6 +512,15 @@ func (r *echoRuntime) generate(ctx context.Context, prompt string, system string
 		opts.SystemPrompt = system
 	}
 	return r.provider.Generate(ctx, prompt, opts)
+}
+
+// generateErrorStatus maps a model failure to an HTTP status: no mounted or a
+// busy model is 503 (the character has no voice right now), anything else 502.
+func generateErrorStatus(err error) int {
+	if errors.Is(err, llm.ErrNoEdgeModel) || errors.Is(err, llm.ErrEdgeBusy) {
+		return http.StatusServiceUnavailable
+	}
+	return http.StatusBadGateway
 }
 
 func selfRestraintContract() map[string]any {
