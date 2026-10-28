@@ -2,8 +2,8 @@
   "active_adapter": "core/cognitivecore",
   "counts": {
     "active_adapter_source": 6,
-    "canonical_same_path_exact": 149,
-    "preserved_divergent": 327,
+    "canonical_same_path_exact": 146,
+    "preserved_divergent": 330,
     "preserved_unreviewed": 71
   },
   "files": [
@@ -269,31 +269,31 @@
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main_consolidated.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "79517039faf6fc8f7b7252b2e17b1d690f8b398475ef3e272dae2c2e4240341e"
+      "sha256": "9a85fc1b41a4f39eb5330f200f716c2ffc98c652913432bc99e40b3a5b56872a"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main_simple_consolidated.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "60bf3ce770d04f2c75483e6d40c4ff3282327332fc6205a5274dac451947dbb3"
+      "sha256": "73e101c8a9f58819c6f47dab3d10ef2caedaee7cb118cfb152f79d4e7ae136f1"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "cmd/autonomous_v6/main.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "a8573c628cfeb2cf0321515d5c5a35f375d6f9c6143bb6e37526b4d172a56bb1"
+      "sha256": "749b449c141dba9111a7023461a72d50965034e1cb8b5bbb6e3625b918ebe1de"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/chatserver/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "14bfd0bac32dc82a70443a6c33d5bd502d344287975282ac7cc9b7b9813e870a"
+      "sha256": "690f078ebbca87ca770319b8733dae2b9ba67208e1acd13f5b6def79a61e6773"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/cmd.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "3e143bd0f87672271996b3f55824ff06ec69c83f71371fae8b6d471a58d3093e"
+      "sha256": "a3fcbdf4655f5caf27674328bdf3d66dae65a7fd48e77b9000a925cb54d69507"
     },
     {
       "disposition": "preserved_divergent",
@@ -494,9 +494,9 @@
       "sha256": "7eb6b8eb99bce957f8497e88f89896bfaafbee7472dccb44ad9cd0ce6e59e2f0"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "convert/reader_torch.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "3fba8fb194405181ec48cf6b497ab0c0b462b4667f31d1f32046ccc9ab75f3e5"
     },
     {
@@ -539,13 +539,13 @@
       "disposition": "preserved_divergent",
       "path": "core/autonomous/agent_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "31ce68526d62bb1e9138a25ef6c6a20316f7a7296e1e1acd883bc05b5ca1298f"
+      "sha256": "7d67cbf7a304a39d1e7fcecbee27a53f19971f599327ee02ed5db1a0d980afaa"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/autonomous_agent.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "2022080ac5283f729e0e1915c95d3436bfc4f93571722c38d51d061383c5d403"
+      "sha256": "691970d416169b20be1246e1521b52df465645a1c63bb3f66b5c0dcd18602248"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -563,7 +563,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/autonomous_unified_agent.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "cd4c6cffec3c626ffa305e0763310e87d7758d751c8e13223b0bc28d961790f3"
+      "sha256": "3ae2e49891a3c26a8f2a6b42dd966c765c5a254e0b04dfcbf561142c2a7da003"
     },
     {
       "disposition": "preserved_divergent",
@@ -587,31 +587,31 @@
       "disposition": "preserved_unreviewed",
       "path": "core/consciousness/stream_of_consciousness.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "45402605e91031991ee9dd9ef43745d3a3a3888ab4b7bb9c833444268d94cef5"
+      "sha256": "d083f11a1d01bc19aa1a7cc72a088b2573c88c7a261bc478e00d455cf5eaa9de"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/consciousness/stream_of_consciousness_enhanced.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "342bb90a9abe4ddd57a40b2d9209146b382de926b1a4869a4bc9db74cc065346"
+      "sha256": "7f7528dafe02ae27a461c40082a5029b0dbcbd7189049ded72bb6b351308ae2d"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/consciousness/stream_of_consciousness_llm.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "1f385c3d87100940dbcaaf52d18dccb5b22ce6ac88a49dfd314fd649e314d581"
+      "sha256": "921a8bf3708c33bf112a777447ecc844e529f143f0613775028c09ac8115d2c4"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/aar_core.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "68b8c3070b9ce443cf8bd848acc38e187a4b9ce321c31a5e2439727d56b79f12"
+      "sha256": "6156c70402111e30e798b64db5fbc385eff6be0bb050bfa20af284103026e6c8"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/advanced_reasoning.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "8ef804610524ec3cb14445a146ecc89f8f14eb1da73de5f24b3b213c24234466"
+      "sha256": "460bc248675fef5e1ebf8ea9a074ec64aa37d3457707ab6d0606528dd1b58f80"
     },
     {
       "disposition": "preserved_divergent",
@@ -638,9 +638,9 @@
       "sha256": "8844fc41c034e2ba259b2312a0509331429334b560d5c9632cb308474a629573"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/deeptreeecho/embodied_emotion.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "c8ba216995bb013e5b95b367144b5830a02ac7e3c8c9fb4ed936bf11d589cf1e"
     },
     {
@@ -659,13 +659,13 @@
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/goal_orchestrator.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "7e32776b9701657c493b6d6de7ac5fce2c89cdfbf3d877f6241eb7298542bfb3"
+      "sha256": "344cb964dc514b0e8b1c926148c0354e8350eeb62c5e7b5aca25718d1212263e"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/llm_client.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "bb9331e6db9763f9dd2c5ce21304363fbc74d168a09e8f4762dec95cdc7c946f"
+      "sha256": "4ba2efe27bd175e6f5c5b71103e671af23a7473654efe143e1096a9d88f2856c"
     },
     {
       "disposition": "preserved_divergent",
@@ -674,16 +674,16 @@
       "sha256": "7dbd06f93f434fb0fcee7832e9c963b9c78c221b9878ac79efefda9aa5681e25"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/llm_featherless_integration.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "6563f5d21c84ac0a02b061dcef02443cd55f6f0c10c4e78ee92d167478bf6886"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/metacognitive_monitor.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "658fc63d54575117715548bd98055b1c745ba7805e454e3ca90772d1214abc03"
+      "sha256": "1509f1cf9a25bff55c5125816ce4a2979a7b301ba5f05358d1015b4162ae04b4"
     },
     {
       "disposition": "preserved_divergent",
@@ -695,13 +695,13 @@
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/n5_components_test.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "3abcf1aaa71bc9bb90a95b6da48c5d780400939a3779caeff2e0e0b6398b8d7a"
+      "sha256": "9f454e5cb8bd8eafe009a778b99575befdc06abbe8e046cb4edecad72408651c"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/n5_integration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "254b15ef4eb18ee89742eafdbdd9efb9cdc8337da2de8da85bd5a120ad785aaf"
+      "sha256": "7b8ed2d5ea9f91939867fdd0eec81daeeea5fc3bdf1fbeec8ede99952614997d"
     },
     {
       "disposition": "preserved_divergent",
@@ -743,19 +743,19 @@
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/providers/app_storage.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "775198af55d36b892199010325d3edebbf407e9d26699bd1c2c13fecd6473e1c"
+      "sha256": "212f69b324566fc38c17409c3a55ef6a97801a8edc56ef46a326af13f9b4b774"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/providers/local_gguf.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "11576315d4a57e99af6b9c47f9d4138de36a56a62a799824e041d7d56f217e4b"
+      "sha256": "8c57d6890dc3a22f04b78fb3bf43ac2bf984b4c0644a5613e825983b8cfb62ab"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/providers/openai.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "a552f013d3f9e083ac9b5033d796f385e5acbfc7737420134945e31891f30cfe"
+      "sha256": "3cd95d0b22a7c6e9cf7dfbc85ac2b0e8fbefc47fa017230929cc1cb6a06d2818"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -767,7 +767,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/self_directed_learning.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "35c9975a501b53306cbdf72581af2ccec3f91063c9ab8dd4f6d3c55f348be14b"
+      "sha256": "83bb73dd263df4672ee905ebd40d1dfde9ed9fb69d9393e02407d8c85acd307f"
     },
     {
       "disposition": "preserved_divergent",
@@ -782,16 +782,16 @@
       "sha256": "d59e57b201db34e7b8e041b471cdb68d479da5038e362c4ac80240d0c2fba624"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/utils.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "2656f4d772a4eb62d29176f5cae364e89cf97f35747a807d88e72d2ec8893249"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/wisdom_application.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "df711719047c55119e7eba7a96bfe73d1d08922396e2f6db35a8505da78600e2"
+      "sha256": "ca2fb44448f5c73048211f9c3973bbebc7250654ec3151a07c48ebe3583beca3"
     },
     {
       "disposition": "active_adapter_source",
@@ -809,7 +809,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/ecco9/drivers/llm_driver.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "4a82d989cd7e60431245cd2e7b84d6fcf19f116e19aff3310626563a0da3ac1d"
+      "sha256": "1b64610e430992a865f31d8f3a9a0691d17f4098b82fceffff5b6199d4633b07"
     },
     {
       "disposition": "active_adapter_source",
@@ -821,7 +821,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/ecco9/drivers/npu_driver.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "c817b6d4e292e51787f7a4e218385b6c9438464bfc876f4d399780bd254650ec"
+      "sha256": "ed566691b91ce0c24a69be12e5726e4d12d2499618c1b3fb785ffa0ec0843c1f"
     },
     {
       "disposition": "active_adapter_source",
@@ -845,43 +845,43 @@
       "disposition": "preserved_divergent",
       "path": "core/echobeats/cognitive_loop.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "1d6b3531a0620e31c516144e7bcb5ed67a6a3df4b587760faf9f3ee8d34c5c8c"
+      "sha256": "9bf85072e2dbace164d149cea76ca77a7a02e7edd09f9b3bed66f9bdfe3b73f5"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/concurrent_engines.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "1fcf6bc682b38562ab68b7308461fc09492656e4df32ade2971736c32880f0cc"
+      "sha256": "ae7ef577af64c914a511efdaeab0ae3b3ba7f3f506f921db11ad8c9de25d8714"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/discussion_manager.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "7042eb368faf4f9346f319a01b29d177c66c1566f8ac61fb292160335299b84a"
+      "sha256": "848489064d60aa0b190cb151075db490755cb099298b037493f4ed9140b1e2de"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/enhanced_scheduler.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "a2f682c168ea3555fd229211f6a35fca55758f1f73af86d72c0f7419fa411cc7"
+      "sha256": "3817c865febfa317682169f1ffec18b00156c492e40b0ad214c903db3bcb7d2e"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/fivechannel.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "374545999a3af54cefcc020d6772c17c74732e73ccfb271ba7a316a3a7ca35b2"
+      "sha256": "1ff9e9c097023bcf106a0196a9de253d7bd54ba421fe6aaf771272bbe1ad5eab"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/global.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "0fa5652cf69527b77b004af6c02f8aba08c4cb5dcb7829a7f1108b0f3b5aa8d9"
+      "sha256": "a8f2a5fbd02bb514f1c8eb24ad41ece16310648a8e161ab9fd50899c2879d86e"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/inference_engine.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "efcf933621d2a6d253064f7bad5df4c1bbfce0d53f596c0c30fac529026154c9"
+      "sha256": "52d5f85d59d5779bf424e9559d3c64eb4032bafc245b61d062b5ecc39ba6cc38"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -905,55 +905,55 @@
       "disposition": "preserved_divergent",
       "path": "core/echobeats/llm_step_handlers.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "cd2240850e02a07dccaa6abad4cafac45edbcfd2d6828c29ce515db47ebd8094"
+      "sha256": "5553ea8db43961518d984642292fc3ee6eb300452e3fbe7c0dddac09dd98542c"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/orchestrator_v5.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "196762297f6d62f633cff36d1a179dd236b3fa5abace4f05f427fe7054c71f3f"
+      "sha256": "d2ea6b2e3d230cc5879e326a379fd79594cac7dd82c8b150cdd38b5d45c3d9e6"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/processor.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "976b7856e458f2fea817616ab656c32ec151159c81a15e37ba6b30dd3c419cf3"
+      "sha256": "de9ce38ef23cba91df300e0cce5a6b637897e08f852002f5682ee95887139994"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/scheduler.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "c0b9ddd133414d8a9b49223e8d18c24422700e3da87057550554ba5ec8e0bf64"
+      "sha256": "929aa17968fef0f019793b24fc40edfb195dcec442ba35e668f2f6f15f482fef"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/echobeats/scheduler_extensions.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "d9eb526397eec196db1341c4a3a0a3074a3a4d76cd9d7a6fc1b7a2bcb7407761"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/echobeats/shared_types.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "d96ef3841ff67f9f42b04b604f765baf00e379028c870a064041fb8356e1369b"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echobeats/step_processors.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "e551680e23f009cdae7455a04e862c3845f015e796c8acbb68eb95cabe4a7ebe"
+      "sha256": "aaaa28963796f1ea2005fedbdb274d0570fcbe1cfc8e32987919bacd4c0c5d50"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/three_phase_echobeats.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "18fc8017dcd438bfdee92cb316d4153c37790e949ae853ca4945bf2d4762d777"
+      "sha256": "b7528c40f0a89f6797d78dc23b1b4c32430329244cd95711306091d9807aa4ff"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/threephase.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "65bed6882c40310cafed48387c92fc63a183f04bdf0cf0a19ee44ef4803ecb27"
+      "sha256": "ef764730483487cfac7d757367ee721d34d6cf9c47cfa0312c968ef08aa02e52"
     },
     {
       "disposition": "preserved_divergent",
@@ -983,25 +983,25 @@
       "disposition": "preserved_divergent",
       "path": "core/echodream/dream_cycle_integration.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "31195d407949bf45dea4a1257740893d1dd671db01945ae3845a65fa886b07fe"
+      "sha256": "932f10f4cc66cb6d21e6e497996c24e708c655cf39b79bf220946a96931456f2"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echodream/echodream.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "b716fab2b55eabd5cdec40af93d29c824d3d0449075e299514802b04499abe86"
+      "sha256": "80d00518b32c73a471e10cd73cdf7689b125ac63131a242bdd13c03bdb9f032a"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "core/echodream/integration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "73c1ff36c986c275e6f82853e46c41faa6ef779dc5410bf59c8fa7704ed0d43c"
+      "sha256": "0700bdcd134dccba043d713b061c3c5da0e83039dbb07eff56eca771e6ba3c48"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/echoself/autonomous_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "2634ce8ef1e22678be88c361eff8fa8c63c1f81df7b06906fa511f868bec658c"
+      "sha256": "c381229dece328fda00a66462725257d0ac4090802b631217b96308696672aa3"
     },
     {
       "disposition": "preserved_divergent",
@@ -1055,13 +1055,13 @@
       "disposition": "preserved_divergent",
       "path": "core/goals/goal_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "417343c98f7cbb8c844d07560e1b359747e8b09f068418f44ace08d7f4e3984c"
+      "sha256": "eaabac3845b2bef642be29efe67db194456026130c209761baaf20e8aded3fb4"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/goals/interest_driven_generator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "d33bbf1c73b2da9a92fe72ee3a9e49a72eef5d95ddca64512189500c41d0dc3e"
+      "sha256": "1d4197b164419ae21ccf2f7dcabe2f8cd85e23bc60af4d92472f1260d4fddd6e"
     },
     {
       "disposition": "preserved_divergent",
@@ -1100,9 +1100,9 @@
       "sha256": "7500ec2beb0f16a11d04b340009daa64a7d1ee864c29ef91b9e48e07f3117a51"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/improvement/recursive.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "b1f136114e9273d416e06c1b56537c73134222abcefc6461ed06736bc11ab41d"
     },
     {
@@ -1115,13 +1115,13 @@
       "disposition": "preserved_divergent",
       "path": "core/integration/event_loop_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "4068f168e323250f4b38d69bc15477d46f710a1e7cd94949306d2bf7c5b3151d"
+      "sha256": "5b6e2a7c7eb98973f2cdd5ae259a00dc716aa93ea038650bb71354c90bc4651d"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/integration/memory_consciousness.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "dbf19cf00d58310e4b7769d3fccf029b4698d52c7e447eeb948d701391740397"
+      "sha256": "2a2fd6cd5494f17042ec24dc6d52a652523749a7790c52447ba6daf46f3addbc"
     },
     {
       "disposition": "preserved_divergent",
@@ -1130,9 +1130,9 @@
       "sha256": "6fb83b4c2d1dd77eeb1370a1d62ee3e412d5219ad6682ee7e1bd960b6f190341"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/llm/openai_provider.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "f3a79b50a598586a1e8b39321857a692c032f337d3b6901f0668edb1f427cc79"
     },
     {
@@ -1160,10 +1160,10 @@
       "sha256": "941413b6edd7e7b93591d8f1d5bd614aa8b526104500c75f298f00620a6fe30f"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "core/memory/supabase_active.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
-      "sha256": "c9f2984b16c70597b4d3b915c377f4b0e33ee29a1af9ca9ded4067840eebc8c0"
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "sha256": "e706e5215403c893a023fbb34b094e35b959782042b11bd5f917db6f7597e4ed"
     },
     {
       "disposition": "preserved_divergent",
@@ -1172,15 +1172,15 @@
       "sha256": "1cf1d126da215d0c0781026b8af9aa4716f205497c2fa2ec7b2163678c9058e2"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/memory/weaver.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "67b9b1d22822ef8c8b92faef41b293a9fa4c1c4d9fccbe136b3e1fef527acc00"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/meta/learner.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "ade609df16eb6825879ab40032cf579f6ad4018723dba920e1f5638366342464"
     },
     {
@@ -1208,9 +1208,9 @@
       "sha256": "55e5c014516e46884c8a5159de5cf5bb92b55330f480d8c5bafa47097b39ce3b"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/opencog/atomspace.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "d63e803c5eea16d27025d99e2a1cd75a7691c5e7228f1f0402c810e5829ba906"
     },
     {
@@ -1223,7 +1223,7 @@
       "disposition": "preserved_divergent",
       "path": "core/opencog/echocog_integration.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "5a96f81dbdbf19b5d952c7e8a3541a573cabc0684023b3879f3182d96690a308"
+      "sha256": "df66e4880940c883e0d1918debb785d210582b993a2b111c2cfbb62763063686"
     },
     {
       "disposition": "preserved_divergent",
@@ -1235,7 +1235,7 @@
       "disposition": "preserved_divergent",
       "path": "core/opencog/opencog_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "7bfd9b8de45133fa9aa37885255735b68a28d54d1c4f5ebea11e7b92ba48d88f"
+      "sha256": "7d9899167bce37cc7590a7f410d6a781ede67b377006fd43b8d37f059e4943fa"
     },
     {
       "disposition": "preserved_divergent",
@@ -1274,9 +1274,9 @@
       "sha256": "fb529640c18d1acc4c2804fb049ccdde6ef5791e6a20347dd97493ff75296f7d"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/relevance/knowing_triad.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "83dd00f15548fa933917ba7e983cad9a4da6b56423e6f45c89c58a9d08b7544d"
     },
     {
@@ -1286,15 +1286,15 @@
       "sha256": "97cbd973034718e06c4c989e1c3db264d004ac047252f8bb1c1378acc781e6eb"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/relevance/understanding_triad.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "a2af437ae9d7ffe19e085d25ccaee22eb8677620c74d0eced80989f6fa912552"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/relevance/wisdom_triad.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "abf80756c19efd887e736b8fa5e3cb3ab70536f191141b8691538d67918a4a05"
     },
     {
@@ -1307,18 +1307,18 @@
       "disposition": "preserved_divergent",
       "path": "core/skills/practice_system.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "9ba2b872051f4eb3539b7e0c37b57b15020d74c17d9d0f5e93cc4e5d7b68196b"
+      "sha256": "e350d35f02eda613da7e2f0df18a1abeefab726282d509000fb3e9abcfd2dd2d"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/temporal/field.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "5db10d14904ae53c05bf3af222bbaeedc88e2bbeb529b5585d4195c4823639b0"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "core/wisdom/metrics.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "2aa3e23386d15e2ba662a88335bd89661ba50a32aff409fa76c710aaf218a638"
     },
     {
@@ -1334,15 +1334,15 @@
       "sha256": "227b07c23c9d20ea1442b63cf1787b2f9528b9a8b43c6749cd616681a2533cdf"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "demos/unified_consciousness_demo.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
-      "sha256": "d5fb3b90c636fc9a63688ba32e857a0895d1c14952ec54d013f1dafd45ee0331"
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "sha256": "281c6169aeb824a40b5006ee2666841b63b7237e39df7d5310e0fa976a87e096"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "dev-tools/dev-proxy.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "8b07b6d884e215b971e09a1288038ad80a88535ac8dc83833c4f5344557583ff"
     },
     {
@@ -1370,9 +1370,9 @@
       "sha256": "8d2de5debe6af5b83c37a329b72507ee4683bf7aee3b6a60f5fc73d7c3863a36"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "discover/cpu_common.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "bb34e9352a92baf486fd4303c2543025dd4e4e8d60cea85296ae1b66cdbbfb12"
     },
     {
@@ -1505,7 +1505,7 @@
       "disposition": "preserved_divergent",
       "path": "examples/echoself_demo.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "b9a52c6d53912aa1240414bb0c37bfb29d0ebc49a6314ffd318c748b6805a24e"
+      "sha256": "c06f035c8a4b5ce526419cf167bcad21c12f536a2eddeaa4193b1bd529668ba5"
     },
     {
       "disposition": "preserved_divergent",
@@ -1610,9 +1610,9 @@
       "sha256": "dc88ad6d65abb02a99ec0175061e2bfa0c198f25cd9b76b689c6c63ea1cf0ae3"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "fs/ggml/type.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "1096c1e075dc2040bdac7eff3eceab8cffb3863ec63fc90a97a3fc207ff60f71"
     },
     {
@@ -1628,9 +1628,9 @@
       "sha256": "f984873d27dee2316d1851329912fcce47e9eaae76bb0b0eb3343f3614e09b8b"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "fs/gguf/keyvalue.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "2e717462aff80c7dd74bdd9fab2790f4b8e788e1f0d3e42b4f695104336ce9d6"
     },
     {
@@ -1652,9 +1652,9 @@
       "sha256": "f78efbbec91c8cabc654fd668c836493988a668096daa58dd9b7e24bcbfea2ee"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "fs/gguf/tensor.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "8bd50f6de739e182f1a29e4334cc84f4c93ea7eee74b80832fd7464e4b972167"
     },
     {
@@ -1784,9 +1784,9 @@
       "sha256": "842d0f5ac18528d40e99f5d29b6aff12ca8ab653fcf950234f03b4d06be12ab2"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "lang/apl/parser.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "37a9f4c45323f1bd587d730828d56de4c0b763ae2bd624e30af473457e6f3eb9"
     },
     {
@@ -2030,9 +2030,9 @@
       "sha256": "6472b98865d477c4b21ed6780c116a21688f1efda5397d6a45220bbff8bad404"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "model/bytepairencoding_test.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "8924a8cdf36577d32071b6578c3de994a82601b212a5b4f5d66840c286386c45"
     },
     {
@@ -2258,21 +2258,21 @@
       "sha256": "447fd8aab9961f600928ea1cc32387ed60acb4f734e47dbdfa3d6c22340f4059"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "model/textprocessor.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "c41620b91d4f0e238a87bc2409e8c9f898452cd86d5c2876c02df30877bd61b7"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "model/vocabulary.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "29ef6c1970fb296a62d9143d93ae651921617df20a020cb722a979a09e136ca9"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "model/vocabulary_test.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "6fbd2f4946408691dad3e7c120995f3773497d71e5a8a7deb216003be775f83b"
     },
     {
@@ -2297,7 +2297,7 @@
       "disposition": "preserved_divergent",
       "path": "orchestration/deeptreeecho.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "91ee674fc38aa9442765d89098eddf9e4bdf2af3c1888e7ae5aae89a4316a74c"
+      "sha256": "7be5403a39104c807a62efa0feea3da5c8f5f5d13e0bdbc278fc072d85e0ffd7"
     },
     {
       "disposition": "preserved_divergent",
@@ -2306,34 +2306,34 @@
       "sha256": "8bfb56df835ca01de27888c676e0eee55ec75f7b9f75bb1f722301f0e22d82e1"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "orchestration/echochat.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "9b0475c1dbfa089e1a65480b356af42f54640e586e27e50b373c601855575cf4"
     },
     {
       "disposition": "preserved_divergent",
       "path": "orchestration/engine.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "2fe298fa84b54348456e13075a0687c48a8cea9216e85f44cb88738c8b6322f8"
+      "sha256": "0b70cb2c039f6b5a2255099a2b0325d3fd1d36cfc3426daa75b086cbe392ad31"
     },
     {
       "disposition": "preserved_divergent",
       "path": "orchestration/engine_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "dd6fb70bc6fb0db23bccdbe82334344e0a3f9a4d5450c481c6fb9f07de1acff4"
+      "sha256": "a750a428a426b875521fa1675b21ed92a436d0733e55fb8235852250f0ec59ff"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "orchestration/learning.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
       "sha256": "f002861634d4233a988369ae23aa369133c0c862088695b4356d68e7f49680e2"
     },
     {
       "disposition": "preserved_divergent",
       "path": "orchestration/learning_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "b76325bd884bceab279ec61c252c1ed2304edef1bb0b4955c0f44054f41b8227"
+      "sha256": "5f1810ea9d7b50e8ae7bfb871fed6906e0cbc7927e58605e33640e3ced753d74"
     },
     {
       "disposition": "preserved_divergent",
@@ -2345,13 +2345,13 @@
       "disposition": "preserved_divergent",
       "path": "orchestration/performance_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "5776a4652d0d4de530d240f3dd2de9116f9df851d35c1780e09f8a55500be2f5"
+      "sha256": "12fb1f44182c64ebfd2dc3c0d509e684d9257ddb36fcdd6502f73835b234269c"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "orchestration/tools.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "7f0e93b2f33b62729ead85d8a891879f01628cbbeed474066f3a575c390ddceb"
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "sha256": "938976f477ea0c80ff00c87542df2a505e2fc4ff99f7c84c28f16440750a37ef"
     },
     {
       "disposition": "preserved_divergent",
@@ -2360,22 +2360,22 @@
       "sha256": "72dedb01fb2b2194a377e22702b82e6e4221743a8f282379efbaa3122227e6c7"
     },
     {
-      "disposition": "preserved_divergent",
+      "disposition": "canonical_same_path_exact",
       "path": "orchestration/workflows.go",
-      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "58afa84818813f565b952ad5438ae6253903fc5f27759459d8209e947d04a163"
+      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "sha256": "24a4e7085def1a61e33baa46b58956e216886423986fa0a69f48764b7462c63f"
     },
     {
       "disposition": "preserved_divergent",
       "path": "orchestrator/task_automation.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "650deb9e1b8c329a887051f66c538026d34a3fe3e2f6bce11999bdaa084eb896"
+      "sha256": "27233c3623d90cb340566592a38c025f3e5800b33864d5f66c1f9c46391f3cc9"
     },
     {
       "disposition": "preserved_divergent",
       "path": "orchestrator/workflow_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "3cece1994c4b94701377f7b5b59e491919ce9823d304e1349ac60c7acf8729a0"
+      "sha256": "4f15445ee42ecb0b751705ca66445b95c113567c3a5ecdd72f3ed84d4025b4c9"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -2447,13 +2447,13 @@
       "disposition": "preserved_unreviewed",
       "path": "org/framework_integration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "491f8a6db4954c9bb2789f13cdac13fd0f9a631a2a3c0a7913c34a353299ec2e"
+      "sha256": "cab0028ff8aa1cca25723159603e1a585654d85abb7e12bb15f0ef7c026d6402"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "org/identity_framework.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "c885be4e476b577c7c4649f808fcce5c085d2356e08b6e48bb3dfb9b90563408"
+      "sha256": "d3972e7bc34dcba8b9c93ab40e0d7704caf6269a76403c7ed0196e7fa2290fdd"
     },
     {
       "disposition": "canonical_same_path_exact",
@@ -2492,9 +2492,9 @@
       "sha256": "79fd385e24fdc4face5c8158cc101eff3a61691aad4d95440ee39c36d9040a17"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "readline/buffer.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "10f377e7f19b4ecb8a50fed8ec38c40dd91c648a83ac0aec14406e527a445c22"
     },
     {
@@ -2510,9 +2510,9 @@
       "sha256": "2230e6eee2fd5b10943df339c470edb1fd61ec909437e4b4d85ff7977319b959"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "readline/readline.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "2e69d30eba1294f98a0a816f9fee6073d9ad97c4d51788602d0a0afbc3a73378"
     },
     {
@@ -2669,13 +2669,13 @@
       "disposition": "preserved_divergent",
       "path": "server/autonomous/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "414495aec24da15c9be3ffd982d584976d729b07c2eb1f26b7a09aaa3506fae8"
+      "sha256": "3d5b335836cbd7de6a7ed346d1d1fb07d28e792ef45e04f19cf287cf6cdcb5c8"
     },
     {
       "disposition": "preserved_divergent",
       "path": "server/autonomous/main_enhanced.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "e336ec6534a6b7af5bbbb794af4a094c7821372abcaff2d1c769cef9937756f6"
+      "sha256": "e0f6b78a7db721dcea7d7c2733f16e980ed66460be510b51634f056db8e9bcfe"
     },
     {
       "disposition": "preserved_divergent",
@@ -2840,9 +2840,9 @@
       "sha256": "638cba793fc409946a51da4ad8b31a879d9427edccbfb7e79cd5841bb0f1d68a"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "server/internal/internal/syncs/line.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "3575c5241f9fdc5daa3e4a12d8ef5c56646053a1e66fb795a435a11d9f9586f7"
     },
     {
@@ -3005,13 +3005,13 @@
       "disposition": "preserved_divergent",
       "path": "server/simple/autonomous_unified_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "21154255685e3aa9a1ff8be05037dec2e53ba1dbde8426022c762d9d7398a675"
+      "sha256": "c39c1208389c5113c89de4d5afa6bec9ac5ae29d0a639a08bcbf662ced851092"
     },
     {
       "disposition": "preserved_divergent",
       "path": "server/simple/autonomous_v4_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "aa824bff43dd0b57242c737e00ff86faac93f27c34271c38324cde6b6a149fd4"
+      "sha256": "28b0be765d19f81d3b7eec4a921afc0ee3450a9b85fb8271054ea20abdb93cf0"
     },
     {
       "disposition": "preserved_divergent",
@@ -3023,7 +3023,7 @@
       "disposition": "preserved_unreviewed",
       "path": "server/simple/ecco9_server.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "c314b2af189be94dc7fcecb6ba8554362ee3fe036bc8969e1b33769413ddfc6c"
+      "sha256": "aecccb595e0dbefc7399815e4e71a8e478f46c6a9e2958e47d1ccd70cfab5533"
     },
     {
       "disposition": "preserved_divergent",
@@ -3047,7 +3047,7 @@
       "disposition": "preserved_divergent",
       "path": "server/simple/fivechannel_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "c2c83bc233531dd3e800f89cc9466bb859251185b54a3e77ab26fa12909ff3c0"
+      "sha256": "d468eb8e95eaf92966a50311e39e93e33ae6ed07c80aecd837e3e5d6ba87aca8"
     },
     {
       "disposition": "preserved_divergent",
@@ -3065,7 +3065,7 @@
       "disposition": "preserved_divergent",
       "path": "server/simple/threephase_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "84dbefbc9c8b44caa96d678c1aa0c93af2ca69988d09e2be80e70d561006c890"
+      "sha256": "15ea48170229b3afb17e01031950bf5dbc3a64f05d023429189b0461a3080a41"
     },
     {
       "disposition": "canonical_same_path_exact",
@@ -3101,13 +3101,13 @@
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_agent_iteration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "066531e228b5ba6729e268c7b8dbce34c645db565211dece7eb855c7744106e9"
+      "sha256": "930cc64879cbbc9ffa5f1b56a00290edcda0c90d37aa889312e9962e801498c0"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_agent_nov22.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "402a2f03c8945cd9d1a1cc78337ebc6acd30048d4287dee3b11f7c27e3552a17"
+      "sha256": "66b5ba9ab431f3fdfcd36332609f1d2eb326f664cba7e5106f6569d8c4cc74ca"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3137,13 +3137,13 @@
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_llm.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "f942becab50a2f7d1847ada423ef927f8ef482b12c8cae6395efbf675bacc316"
+      "sha256": "670c9ff0eb0ba124d4cd415ce271f61b34edb97cb6704fe049110799c0f11a84"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_simple.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "4c4298c9698754fb9386a6dff3609418fb994c75d72a2b45719f0fb594b8e689"
+      "sha256": "68d4e10307754551f12c808f850fec6c747026b1324cf27c327c0a2a53cf2261"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3197,7 +3197,7 @@
       "disposition": "preserved_unreviewed",
       "path": "test_iteration5.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "850df435316219daf847b7fb13d104f16ab2069a653403e855c8fb2e9452c9c3"
+      "sha256": "ea4f47b9f24c4ffeb63b529d2c73f85c251b37e3935303ca004bf242282fa0d1"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3209,7 +3209,7 @@
       "disposition": "preserved_unreviewed",
       "path": "test_llm_v6_simple.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "a6114c9d4349fc8c91055968b1077fed13ce335222f90f616b59c2e52873f480"
+      "sha256": "6b44e91bd2657939ef6c58dd9aeb52a14737f5c76c1c15286126de401cdfc5bf"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3221,7 +3221,7 @@
       "disposition": "preserved_unreviewed",
       "path": "test_persistence.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "13c4791719dffa88e0fe1d37468a6e8dca625aeca6e2c972052a09830d75948d"
+      "sha256": "f6e1aebb1a9a632912cb100bfb75cfaa15244a47aea188c7474a6296ff0f0bb6"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3236,21 +3236,21 @@
       "sha256": "2ce515c9cfa04232144530f09979413a288203baf743b613c59f192973de879d"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "thinking/parser.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "45270bfac9735df4201eae64efefe4bf10621314a7ff88e4f0765d367ea4b104"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "thinking/parser_test.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "04bb77409bf3c27777d8cf613f36c7f2bab18992beca892b9862b6e7e950abc7"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "thinking/template.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "28c455d4c62345d61b7c3d1a751bdfdbe8a027c1f906ce8c95ea64883d7432f7"
     },
     {
@@ -3266,9 +3266,9 @@
       "sha256": "c2491d4a1edc971caecaf54e7c420bf16e5633eb60de3dc3a99ff30b5e6fb10a"
     },
     {
-      "disposition": "canonical_same_path_exact",
+      "disposition": "preserved_divergent",
       "path": "tools/template.go",
-      "reason": "Canonical root already contains the exact source bytes; snapshot preserves provenance.",
+      "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
       "sha256": "ff7b324170c7d4c38a55f93b0248a4cc441678e045fa632ab4aaf80c128c4ddc"
     },
     {

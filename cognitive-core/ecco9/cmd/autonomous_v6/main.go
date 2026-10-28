@@ -107,21 +107,22 @@ func postThink(c *gin.Context) {
 		return
 	}
 
-	// This would trigger external thought processing
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Thought received",
+	// AutonomousConsciousnessV6 exposes no API for external thoughts; report
+	// that instead of acknowledging a thought that is never processed.
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error":   "external thought processing is not exposed by the V6 consciousness",
 		"content": req.Content,
 	})
 }
 
 func postWake(c *gin.Context) {
-	// Trigger wake cycle
-	c.JSON(http.StatusOK, gin.H{"message": "Wake cycle initiated"})
+	// No wake control is exposed; do not claim a wake cycle was initiated.
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "wake control is not exposed by the V6 consciousness"})
 }
 
 func postRest(c *gin.Context) {
-	// Trigger rest cycle
-	c.JSON(http.StatusOK, gin.H{"message": "Rest cycle initiated"})
+	// No rest control is exposed; do not claim a rest cycle was initiated.
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "rest control is not exposed by the V6 consciousness"})
 }
 
 func getMemory(c *gin.Context) {

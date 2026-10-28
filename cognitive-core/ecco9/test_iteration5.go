@@ -43,7 +43,7 @@ func main() {
 	fmt.Printf("   - OPENROUTER_API_KEY: %v\n", hasOpenRouter)
 
 	if !hasOpenAI && !hasAnthropic && !hasOpenRouter {
-		fmt.Println("   ⚠️  No API keys found - will use fallback mode")
+		fmt.Println("   ⚠️  No API keys found - LLM thought generation is disabled")
 	} else {
 		fmt.Println("   ✅ API keys detected - LLM integration available")
 	}

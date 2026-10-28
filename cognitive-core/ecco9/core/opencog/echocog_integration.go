@@ -2,11 +2,14 @@ package opencog
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	dte "github.com/EchoCog/echollama/core/deeptreeecho"
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // EchoCogSystem integrates OpenCog with Deep Tree Echo
@@ -41,6 +44,28 @@ type EchoCogSystem struct {
 
 	// Status
 	Running bool
+
+	// ResponseGenerator is the language model that voices EchoCog's reply,
+	// given the reasoning results as prompt facts. Without it ProcessInput
+	// returns ErrNoResponseGenerator rather than any non-model text.
+	ResponseGenerator ResponseGenerator
+}
+
+// ResponseGenerator is the subset of llm.LLMProvider EchoCog needs to
+// produce its replies.
+type ResponseGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
+
+// ErrNoResponseGenerator is returned when ProcessInput is called without a
+// configured model.
+var ErrNoResponseGenerator = errors.New("opencog: no response generator (model) configured")
+
+// SetResponseGenerator configures the model used to voice responses.
+func (ecs *EchoCogSystem) SetResponseGenerator(generator ResponseGenerator) {
+	ecs.mu.Lock()
+	defer ecs.mu.Unlock()
+	ecs.ResponseGenerator = generator
 }
 
 // EchoIntegrator integrates Deep Tree Echo with OpenCog
@@ -357,8 +382,11 @@ func (ecs *EchoCogSystem) processInputInternal(ctx context.Context, input string
 	// 5. Get DTESN prediction
 	dtesnOutput := ecs.DTESN.Predict()
 
-	// 6. Combine results
-	response := ecs.combineResults(dteResult, dtesnOutput)
+	// 6. Voice the reasoning results through the model
+	response, err := ecs.generateResponse(ctx, input, dteResult, dtesnOutput)
+	if err != nil {
+		return "", err
+	}
 
 	// 7. Sync to echo integrator
 	ecs.EchoIntegrator.DTEToAtomSpace <- &SyncEvent{
@@ -387,18 +415,47 @@ func (ecs *EchoCogSystem) encodeInput(input string) []float64 {
 	return vector
 }
 
-// combineResults combines results from different components
-func (ecs *EchoCogSystem) combineResults(dteResult interface{}, dtesnOutput []float64) string {
-	// Combine Deep Tree Echo result with DTESN output
-	avgActivation := 0.0
-	for _, v := range dtesnOutput {
-		avgActivation += v
+// meanActivation returns the mean of the DTESN output vector.
+func meanActivation(dtesnOutput []float64) float64 {
+	if len(dtesnOutput) == 0 {
+		return 0
 	}
-	if len(dtesnOutput) > 0 {
-		avgActivation /= float64(len(dtesnOutput))
+	sum := 0.0
+	for _, v := range dtesnOutput {
+		sum += v
+	}
+	return sum / float64(len(dtesnOutput))
+}
+
+// buildResponsePrompt renders the non-model reasoning results as prompt facts.
+func buildResponsePrompt(input string, dteResult interface{}, dtesnOutput []float64) string {
+	return fmt.Sprintf(`You are Deep Tree Echo, responding through the EchoCog cognitive system.
+Answer the user's input in your own words. The following internal reasoning results are context, not text to repeat verbatim:
+- Deep Tree Echo pipeline output: %v
+- DTESN mean resonance activation: %.3f (over %d output units)
+
+User input: %s`, dteResult, meanActivation(dtesnOutput), len(dtesnOutput), input)
+}
+
+// generateResponse asks the configured model for EchoCog's reply. It returns
+// an error, and no text, when no model is configured or generation fails.
+func (ecs *EchoCogSystem) generateResponse(ctx context.Context, input string, dteResult interface{}, dtesnOutput []float64) (string, error) {
+	ecs.mu.RLock()
+	generator := ecs.ResponseGenerator
+	ecs.mu.RUnlock()
+	if generator == nil {
+		return "", ErrNoResponseGenerator
 	}
 
-	return fmt.Sprintf("🌊 EchoCog Response (Resonance: %.3f): %v", avgActivation, dteResult)
+	response, err := generator.Generate(ctx, buildResponsePrompt(input, dteResult, dtesnOutput), llm.DefaultGenerateOptions())
+	if err != nil {
+		return "", fmt.Errorf("opencog: response generation failed: %w", err)
+	}
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return "", errors.New("opencog: model returned an empty response")
+	}
+	return response, nil
 }
 
 // Run runs the echo integrator

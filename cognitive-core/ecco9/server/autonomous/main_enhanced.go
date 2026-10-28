@@ -80,7 +80,7 @@ func (eas *EnhancedAutonomousServer) Initialize() error {
 	// Register Anthropic provider
 	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
 	if anthropicKey != "" {
-		anthropicProvider := llm.NewAnthropicProvider(anthropicKey)
+		anthropicProvider := llm.NewAnthropicProvider("") // reads ANTHROPIC_API_KEY; the argument is the model name
 		if err := eas.llmManager.RegisterProvider(anthropicProvider); err != nil {
 			log.Printf("⚠️  Failed to register Anthropic provider: %v", err)
 		} else {
@@ -91,7 +91,7 @@ func (eas *EnhancedAutonomousServer) Initialize() error {
 	// Register OpenRouter provider
 	openrouterKey := os.Getenv("OPENROUTER_API_KEY")
 	if openrouterKey != "" {
-		openrouterProvider := llm.NewOpenRouterProvider(openrouterKey)
+		openrouterProvider := llm.NewOpenRouterProvider("") // reads OPENROUTER_API_KEY; the argument is the model name
 		if err := eas.llmManager.RegisterProvider(openrouterProvider); err != nil {
 			log.Printf("⚠️  Failed to register OpenRouter provider: %v", err)
 		} else {
@@ -139,12 +139,14 @@ func (eas *EnhancedAutonomousServer) Initialize() error {
 	// Initialize EchoBeats Scheduler
 	fmt.Println("⏰ Initializing EchoBeats Scheduler...")
 	eas.echobeatsScheduler = echobeats.NewEchoBeats()
+	eas.echobeatsScheduler.SetThoughtGenerator(eas.llmManager)
 	fmt.Println("  ✅ EchoBeats scheduler initialized")
 	fmt.Println()
 
 	// Initialize EchoDream System
 	fmt.Println("🌙 Initializing EchoDream System...")
 	eas.echodreamSystem = echodream.NewEchoDream()
+	eas.echodreamSystem.SetTextGenerator(eas.llmManager)
 	fmt.Println("  ✅ EchoDream system initialized")
 	fmt.Println()
 
@@ -157,6 +159,7 @@ func (eas *EnhancedAutonomousServer) Initialize() error {
 		"aspirations": []string{"cultivate wisdom", "understand patterns", "grow awareness"},
 	}
 	eas.goalOrchestrator = goals.NewGoalOrchestrator(identityKernel, "goals_state.json")
+	eas.goalOrchestrator.SetGoalGenerator(eas.llmManager)
 	fmt.Println("  ✅ Goal orchestrator initialized")
 	fmt.Println()
 
@@ -189,6 +192,7 @@ func (eas *EnhancedAutonomousServer) Initialize() error {
 
 	// Skill Practice System
 	eas.skillPractice = skills.NewSkillPracticeSystem()
+	eas.skillPractice.SetTextGenerator(eas.llmManager)
 	fmt.Println("  ✅ Skill practice system initialized")
 
 	fmt.Println()

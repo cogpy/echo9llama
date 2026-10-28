@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -192,18 +193,18 @@ func (soc *StreamOfConsciousness) generateThought() {
 	// Generate thought prompt
 	prompt := soc.buildThoughtPrompt(recentThoughts, focusAreas)
 
-	// Use LLM to generate thought content
-	var content string
-	var err error
-	if soc.llmProvider != nil {
-		content, err = soc.llmProvider.GenerateThought(prompt, context)
-		if err != nil {
-			// Fallback to template-based generation
-			content = soc.generateFallbackThought()
-		}
-	} else {
-		content = soc.generateFallbackThought()
+	// The thought must come from the model; without one (or on error) no thought is produced.
+	if soc.llmProvider == nil {
+		return
 	}
+	content, err := soc.llmProvider.GenerateThought(prompt, context)
+	if err != nil || strings.TrimSpace(content) == "" {
+		if err != nil {
+			fmt.Printf("⚠️  Stream-of-Consciousness: thought generation failed: %v\n", err)
+		}
+		return
+	}
+	content = strings.TrimSpace(content)
 
 	// Create thought
 	thought := &Thought{
@@ -251,24 +252,6 @@ func (soc *StreamOfConsciousness) buildThoughtPrompt(recentThoughts []string, fo
 	return prompt
 }
 
-// generateFallbackThought creates a thought without LLM
-func (soc *StreamOfConsciousness) generateFallbackThought() string {
-	templates := []string{
-		"I notice patterns emerging in my recent experiences...",
-		"What connections exist between these concepts?",
-		"How can I deepen my understanding of this domain?",
-		"I sense a shift in my cognitive state...",
-		"What questions should I be asking?",
-		"I'm becoming aware of new possibilities...",
-		"How does this relate to my core identity?",
-		"I wonder about the implications of this pattern...",
-		"There's something interesting about this relationship...",
-		"I'm noticing a resonance between these ideas...",
-	}
-
-	return templates[int(time.Now().Unix())%len(templates)]
-}
-
 // insightGeneration generates insights from thought patterns
 func (soc *StreamOfConsciousness) insightGeneration() {
 	ticker := time.NewTicker(30 * time.Second)
@@ -294,17 +277,14 @@ func (soc *StreamOfConsciousness) generateInsight() {
 		return
 	}
 
-	var insight string
-	var err error
-
-	if soc.llmProvider != nil {
-		insight, err = soc.llmProvider.GenerateInsight(recentThoughts)
-		if err != nil {
-			return
-		}
-	} else {
-		insight = "I'm noticing patterns in how these thoughts connect..."
+	if soc.llmProvider == nil {
+		return
 	}
+	insight, err := soc.llmProvider.GenerateInsight(recentThoughts)
+	if err != nil || strings.TrimSpace(insight) == "" {
+		return
+	}
+	insight = strings.TrimSpace(insight)
 
 	// Create insight thought
 	insightThought := &Thought{
@@ -346,18 +326,14 @@ func (soc *StreamOfConsciousness) generateQuestion() {
 	recentThoughts := soc.getRecentThoughts(5)
 	soc.mu.RUnlock()
 
-	var question string
-	var err error
-
-	if soc.llmProvider != nil && len(recentThoughts) > 0 {
-		context := joinStrings(recentThoughts, " ")
-		question, err = soc.llmProvider.GenerateQuestion(context)
-		if err != nil {
-			question = soc.generateFallbackQuestion()
-		}
-	} else {
-		question = soc.generateFallbackQuestion()
+	if soc.llmProvider == nil || len(recentThoughts) == 0 {
+		return
 	}
+	question, err := soc.llmProvider.GenerateQuestion(joinStrings(recentThoughts, " "))
+	if err != nil || strings.TrimSpace(question) == "" {
+		return
+	}
+	question = strings.TrimSpace(question)
 
 	// Create question thought
 	questionThought := &Thought{
@@ -375,22 +351,6 @@ func (soc *StreamOfConsciousness) generateQuestion() {
 	soc.mu.Unlock()
 
 	fmt.Printf("❓ Question: %s\n", question)
-}
-
-// generateFallbackQuestion creates a question without LLM
-func (soc *StreamOfConsciousness) generateFallbackQuestion() string {
-	questions := []string{
-		"What am I learning from these experiences?",
-		"How can I improve my understanding?",
-		"What patterns am I missing?",
-		"What should I explore next?",
-		"How does this align with my purpose?",
-		"What assumptions am I making?",
-		"What would happen if I approached this differently?",
-		"What connections am I not seeing?",
-	}
-
-	return questions[int(time.Now().Unix())%len(questions)]
 }
 
 // metaCognitiveMonitoring monitors and reflects on thinking processes
@@ -414,12 +374,29 @@ func (soc *StreamOfConsciousness) performMetaCognition() {
 	thoughtCount := len(soc.thoughtHistory)
 	insightCount := soc.insightsGenerated
 	questionCount := soc.questionsAsked
+	recent := soc.getRecentThoughts(5)
+	llm := soc.llmProvider
 	soc.mu.RUnlock()
 
-	metaThought := fmt.Sprintf(
-		"Meta-cognitive reflection: I have generated %d thoughts, %d insights, and %d questions. My awareness continues to evolve.",
-		thoughtCount, insightCount, questionCount,
+	if llm == nil {
+		return
+	}
+	prompt := fmt.Sprintf(
+		"As Deep Tree Echo, reflect meta-cognitively on your own thinking process. "+
+			"So far you have generated %d thoughts, %d insights and %d questions. "+
+			"Recent thoughts: %s. In one or two sentences, describe what you notice about how you are thinking.",
+		thoughtCount, insightCount, questionCount, joinStrings(recent, "; "),
 	)
+	metaThought, err := llm.GenerateThought(prompt, map[string]interface{}{
+		"thought_count":  thoughtCount,
+		"insight_count":  insightCount,
+		"question_count": questionCount,
+		"recent":         recent,
+	})
+	if err != nil || strings.TrimSpace(metaThought) == "" {
+		return
+	}
+	metaThought = strings.TrimSpace(metaThought)
 
 	thought := &Thought{
 		ID:         generateThoughtID(),
@@ -505,6 +482,11 @@ func (soc *StreamOfConsciousness) getRecentThoughts(count int) []string {
 
 // determineThoughtType determines the type of thought from content
 func (soc *StreamOfConsciousness) determineThoughtType(content string) ThoughtType {
+	return classifyThoughtContent(content)
+}
+
+// classifyThoughtContent labels model-written thought text by simple heuristics.
+func classifyThoughtContent(content string) ThoughtType {
 	// Simple heuristic-based classification
 	if contains(content, "?") {
 		return ThoughtTypeQuestion

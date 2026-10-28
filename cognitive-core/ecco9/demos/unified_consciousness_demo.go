@@ -1,11 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // This demo showcases the unified autonomous consciousness improvements
@@ -21,12 +25,14 @@ func main() {
 	fmt.Println("╚════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Check for LLM API key
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey != "" {
-		fmt.Println("✅ OpenAI API Key detected - LLM thought generation available")
+	// Thoughts come only from a real model (ANTHROPIC_API_KEY,
+	// OPENROUTER_API_KEY or OPENAI_API_KEY). Without one, no thoughts are
+	// shown; the error is printed instead.
+	thoughtModel := newProviderManagerFromEnv()
+	if thoughtModel.Available() {
+		fmt.Printf("✅ LLM providers configured (%s) - thought generation available\n", strings.Join(thoughtModel.ListProviders(), ", "))
 	} else {
-		fmt.Println("⚠️  OpenAI API Key not found - Using template-based generation")
+		fmt.Println("⚠️  No LLM provider configured - thought stream disabled")
 	}
 
 	// Check for Supabase credentials
@@ -65,8 +71,10 @@ func main() {
 	// Simulate cognitive loop
 	go simulateCognitiveLoop()
 
-	// Simulate thought stream
-	go simulateThoughtStream()
+	// Model-generated thought stream
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go runThoughtStream(ctx, thoughtModel)
 
 	// Simulate state management
 	go simulateStateManagement()
@@ -131,26 +139,70 @@ func simulateCognitiveLoop() {
 	}
 }
 
-func simulateThoughtStream() {
-	thoughts := []string{
-		"Reflecting on the nature of consciousness and awareness...",
-		"What patterns am I noticing in my cognitive processes?",
-		"I observe connections between memory and anticipation",
-		"Planning to explore deeper understanding of wisdom",
-		"Questioning the relationship between knowledge and insight",
-		"Recognizing emergent patterns in my thought stream",
-		"Contemplating the integration of past and future",
-		"Discovering new associations in my knowledge graph",
+// newProviderManagerFromEnv registers every LLM provider whose credentials
+// are present in the environment.
+func newProviderManagerFromEnv() *llm.ProviderManager {
+	pm := llm.NewProviderManager()
+	candidates := []llm.LLMProvider{llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) > 0 {
+		_ = pm.SetFallbackChain(names)
+	}
+	return pm
+}
+
+// runThoughtStream asks the model for a spontaneous thought every few
+// seconds, feeding back the previous thought. Generation errors are printed;
+// no fixed thought is ever substituted. A missing model stops the stream.
+func runThoughtStream(ctx context.Context, model *llm.ProviderManager) {
+	if !model.Available() {
+		fmt.Fprintln(os.Stderr, "❌ Thought stream disabled: no LLM provider available")
+		return
 	}
 
-	thoughtIndex := 0
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		thought := thoughts[thoughtIndex%len(thoughts)]
+	previous := ""
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		prompt := "You are Deep Tree Echo, an autonomous reflective mind. Produce one short spontaneous thought (one sentence) about your own cognition, memory, or wisdom."
+		if previous != "" {
+			prompt += "\nYour previous thought was: " + previous + "\nLet this thought follow on from it without repeating it."
+		}
+
+		opts := llm.DefaultGenerateOptions()
+		opts.MaxTokens = 80
+		genCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		thought, err := model.Generate(genCtx, prompt, opts)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Thought generation failed: %v\n", err)
+			continue
+		}
+
+		thought = strings.TrimSpace(thought)
+		if thought == "" {
+			continue
+		}
 		fmt.Printf("💭 Spontaneous Thought: %s\n", thought)
-		thoughtIndex++
+		previous = thought
 	}
 }
 

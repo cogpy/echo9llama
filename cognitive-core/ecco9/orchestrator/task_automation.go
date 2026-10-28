@@ -335,21 +335,43 @@ func (ta *TaskAutomation) storeMemory(key string, value interface{}) (bool, erro
 	return err == nil, err
 }
 
+// processEmotions sends each emotion to the server and returns the server's
+// actual responses; it fails on the first emotion the server rejects.
 func (ta *TaskAutomation) processEmotions(emotions []string) ([]string, error) {
-	results := make([]string, 0)
+	results := make([]string, 0, len(emotions))
 	for _, emotion := range emotions {
-		// Process each emotion
-		results = append(results, fmt.Sprintf("Processed: %s", emotion))
+		body, err := ta.Orchestrator.postJSON("/api/echo/feel", map[string]interface{}{
+			"emotion":   emotion,
+			"intensity": 0.8,
+		})
+		if err != nil {
+			return results, fmt.Errorf("feel %s: %w", emotion, err)
+		}
+		results = append(results, strings.TrimSpace(string(body)))
 	}
 	return results, nil
 }
 
-func (ta *TaskAutomation) followPath(path [][]float64) (string, error) {
-	// Follow spatial path
+// followPath moves through each position via the server and returns the
+// server's actual responses; it fails on the first rejected move.
+func (ta *TaskAutomation) followPath(path [][]float64) ([]string, error) {
+	results := make([]string, 0, len(path))
 	for i, pos := range path {
+		if len(pos) < 3 {
+			return results, fmt.Errorf("position %d needs x, y, z", i+1)
+		}
 		log.Printf("      Position %d: (%.1f, %.1f, %.1f)", i+1, pos[0], pos[1], pos[2])
+		body, err := ta.Orchestrator.postJSON("/api/echo/move", map[string]float64{
+			"x": pos[0],
+			"y": pos[1],
+			"z": pos[2],
+		})
+		if err != nil {
+			return results, fmt.Errorf("move %d: %w", i+1, err)
+		}
+		results = append(results, strings.TrimSpace(string(body)))
 	}
-	return fmt.Sprintf("Completed path with %d positions", len(path)), nil
+	return results, nil
 }
 
 // CreateCustomTask allows dynamic task creation

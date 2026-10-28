@@ -1,13 +1,14 @@
+//go:build simple
+// +build simple
+
 package providers
 
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 )
@@ -25,7 +26,7 @@ func NewLocalGGUFProvider() *LocalGGUFProvider {
 	return &LocalGGUFProvider{
 		modelsPath: "models",
 		modelInfo:  make(map[string]interface{}),
-		available:  true,
+		available:  false,
 	}
 }
 
@@ -67,47 +68,9 @@ func (p *LocalGGUFProvider) Generate(ctx context.Context, prompt string, options
 		}
 	}
 
-	// Simulate generation based on the loaded model
-	response := p.simulateGeneration(prompt, options)
-	return response, nil
-}
-
-// simulateGeneration creates a simulated response
-func (p *LocalGGUFProvider) simulateGeneration(prompt string, options deeptreeecho.GenerateOptions) string {
-	// Since we can't actually run llama.cpp in this environment,
-	// we'll create a sophisticated simulation that demonstrates
-	// the integration architecture
-
-	modelName := p.loadedModel
-
-	// Different behavior based on model
-	if strings.Contains(modelName, "stories") {
-		// Story models generate story-like content
-		stories := []string{
-			"Once upon a time in the digital realm, where GGUF models lived in harmony with Deep Tree Echo...",
-			"The tiny language model awakened, its parameters dancing in the resonance field...",
-			"In a world of tensors and embeddings, a small but mighty model began to speak...",
-			"Through the layers of neural networks, consciousness emerged like a wave...",
-		}
-
-		rand.Seed(time.Now().UnixNano())
-		base := stories[rand.Intn(len(stories))]
-
-		return fmt.Sprintf("[%s]: %s\n\nPrompt echo: %s\n[Temperature: %.2f]",
-			modelName, base, prompt, options.Temperature)
-	}
-
-	// Default response
-	return fmt.Sprintf("[Local GGUF - %s]: Processing '%s' through %d MB model\n"+
-		"🧠 Model loaded from: %s\n"+
-		"📊 Status: %v\n"+
-		"Note: Full GGUF inference requires llama.cpp compilation which is not available in this environment.\n"+
-		"This is a demonstration of the integration architecture.",
-		modelName,
-		prompt,
-		p.getModelSize(),
-		p.modelInfo["path"],
-		p.modelInfo["status"])
+	// No inference backend is linked into this provider; it never fabricates
+	// text in place of a model.
+	return "", fmt.Errorf("local GGUF inference is not available in this build (model %s is loaded but cannot be run)", p.loadedModel)
 }
 
 // getModelSize returns the size of the loaded model in MB
@@ -129,18 +92,15 @@ func (p *LocalGGUFProvider) GenerateStream(ctx context.Context, prompt string, o
 
 		response, err := p.Generate(ctx, prompt, options)
 		if err != nil {
-			ch <- fmt.Sprintf("Error: %v", err)
 			return
 		}
 
-		// Simulate streaming by sending words one at a time
 		words := strings.Fields(response)
 		for _, word := range words {
 			select {
 			case <-ctx.Done():
 				return
 			case ch <- word + " ":
-				time.Sleep(50 * time.Millisecond) // Simulate generation delay
 			}
 		}
 	}()
@@ -171,22 +131,7 @@ func (p *LocalGGUFProvider) ChatStream(ctx context.Context, messages []deeptreee
 
 // Embeddings implements ModelProvider.Embeddings
 func (p *LocalGGUFProvider) Embeddings(ctx context.Context, text string) ([]float64, error) {
-	// Generate pseudo-embeddings for demonstration
-	// In a real implementation, this would extract embeddings from the model
-	embeddings := make([]float64, 128) // Common embedding size
-
-	// Create deterministic pseudo-embeddings based on text
-	hash := 0.0
-	for i, char := range text {
-		hash += float64(char) * float64(i+1)
-	}
-
-	rand.Seed(int64(hash))
-	for i := range embeddings {
-		embeddings[i] = rand.Float64()*2 - 1 // Range -1 to 1
-	}
-
-	return embeddings, nil
+	return nil, fmt.Errorf("local GGUF embeddings are not available in this build")
 }
 
 // GetInfo implements ModelProvider.GetInfo
@@ -194,24 +139,18 @@ func (p *LocalGGUFProvider) GetInfo() deeptreeecho.ProviderInfo {
 	models := p.ListAvailableModels()
 
 	return deeptreeecho.ProviderInfo{
-		Name:        "Local GGUF",
-		Description: "Local GGUF model files (llama.cpp format)",
-		Models:      models,
-		Capabilities: []string{
-			"generation",
-			"streaming",
-			"chat",
-			"embeddings",
-			"offline",
-		},
+		Name:         "Local GGUF",
+		Description:  "Local GGUF model files (llama.cpp format)",
+		Models:       models,
+		Capabilities: []string{},
 	}
 }
 
 // IsAvailable implements ModelProvider.IsAvailable
+// Inference is not linked into this provider, so it never reports itself as
+// able to answer, even when GGUF files are present.
 func (p *LocalGGUFProvider) IsAvailable() bool {
-	// Check if we have any GGUF models
-	models := p.ListAvailableModels()
-	return len(models) > 0
+	return false
 }
 
 // ListAvailableModels returns list of available GGUF models

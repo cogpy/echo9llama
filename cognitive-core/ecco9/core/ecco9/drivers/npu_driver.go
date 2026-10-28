@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/EchoCog/echollama/core/ecco9"
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // MMIO register offsets for the NPU coprocessor (PERIPH space base 0x40001000).
@@ -212,6 +213,7 @@ type NPUDriver struct {
 	version string
 	devices map[string]*NPUDevice
 	config  *NPUModelConfig
+	backend TextGenerator
 }
 
 // NewNPUDriver creates a new NPU driver with default configuration.
@@ -224,16 +226,36 @@ func NewNPUDriver() *NPUDriver {
 	}
 }
 
-// Load implements Driver.Load.
+// NewNPUDriverWithBackend creates an NPU driver whose inference is served by
+// the given language model.
+func NewNPUDriverWithBackend(backend TextGenerator) *NPUDriver {
+	nd := NewNPUDriver()
+	nd.backend = backend
+	return nd
+}
+
+// Load implements Driver.Load. config may be a *NPUModelConfig or a
+// TextGenerator model backend. Without an injected backend the
+// environment-configured one (ModelBackendFromEnv) is used if present;
+// otherwise inference fails with ErrNoModelBackend.
 func (nd *NPUDriver) Load(config interface{}) error {
 	nd.mu.Lock()
 	defer nd.mu.Unlock()
 
-	if cfg, ok := config.(*NPUModelConfig); ok {
+	switch cfg := config.(type) {
+	case *NPUModelConfig:
 		nd.config = cfg
+	case TextGenerator:
+		nd.backend = cfg
+	}
+	if nd.backend == nil {
+		if gen, err := ModelBackendFromEnv(); err == nil {
+			nd.backend = gen
+		}
 	}
 
 	device := NewNPUDevice("npu0", nd.config)
+	device.backend = nd.backend
 	nd.devices["npu0"] = device
 	return nil
 }
@@ -308,8 +330,24 @@ type NPUDevice struct {
 	regs        *registerBank
 	telemetry   NPUTelemetry
 	modelLoaded bool
+	backend     TextGenerator
+	lastOutput  string
 	metrics     ecco9.DeviceMetrics
 	startTime   time.Time
+}
+
+// SetBackend attaches the language model that serves this NPU's inference.
+func (nd *NPUDevice) SetBackend(backend TextGenerator) {
+	nd.mu.Lock()
+	defer nd.mu.Unlock()
+	nd.backend = backend
+}
+
+// LastCompletion returns the model completion produced by the last Write.
+func (nd *NPUDevice) LastCompletion() string {
+	nd.mu.RLock()
+	defer nd.mu.RUnlock()
+	return nd.lastOutput
 }
 
 // NewNPUDevice constructs a new NPU device instance.
@@ -408,8 +446,8 @@ func (nd *NPUDevice) Read(buffer []byte) (int, error) {
 }
 
 // Write implements CognitiveDevice.Write.
-// Treats the buffer as a prompt and runs stubbed inference, writing output
-// back into the device's token stream registers.
+// Treats the buffer as a prompt and runs it through the model backend; the
+// completion is available from LastCompletion. On failure no output is kept.
 func (nd *NPUDevice) Write(buffer []byte) (int, error) {
 	nd.mu.Lock()
 	defer nd.mu.Unlock()
@@ -418,27 +456,14 @@ func (nd *NPUDevice) Write(buffer []byte) (int, error) {
 		return 0, fmt.Errorf("npu: device offline")
 	}
 
+	nd.lastOutput = ""
 	start := time.Now()
-
-	nd.regs.clearBits(regStatus, statusIdle|statusEOG)
-	nd.regs.setBits(regStatus, statusBusy)
-	nd.regs.write(regPromptLen, uint32(len(buffer)))
-
-	// Stubbed inference — replace with llama.cpp integration.
-	nd.regs.clearBits(regStatus, statusBusy)
-	nd.regs.setBits(regStatus, statusEOG|statusIdle)
-
-	nd.telemetry.TotalPrompts++
-	// NOTE: LastPromptTokens stores byte length as a proxy until a real tokenizer is integrated.
-	nd.telemetry.LastPromptTokens = uint64(len(buffer))
-	nd.telemetry.LastInferenceStart = start
-	nd.telemetry.LastInferenceEnd = time.Now()
-
-	elapsed := nd.telemetry.LastInferenceEnd.Sub(start).Seconds()
-	if elapsed > 0 {
-		nd.telemetry.TokensPerSecond = float64(nd.telemetry.LastCompletionTokens) / elapsed
+	result, err := nd.infer(string(buffer), DefaultNPUSequenceConfig())
+	if err != nil {
+		nd.metrics.ErrorCount++
+		return 0, err
 	}
-	nd.regs.write(regPerfTokensSec, uint32(nd.telemetry.TokensPerSecond))
+	nd.lastOutput = result
 
 	nd.metrics.OperationCount++
 	nd.metrics.LastOperation = time.Now()
@@ -469,7 +494,7 @@ func (nd *NPUDevice) IoCtl(command uint32, arg interface{}) error {
 		if !ok {
 			return fmt.Errorf("npu: IoctlNPURunInfer requires *NPUInferRequest argument")
 		}
-		result, err := nd.infer(req.Prompt, req.SeqConfig)
+		result, err := nd.Infer(req.Prompt, req.SeqConfig)
 		if err != nil {
 			return err
 		}
@@ -532,7 +557,8 @@ func (nd *NPUDevice) GetType() ecco9.DeviceType { return ecco9.DeviceTypeNPU }
 
 // ===== Hardware-level helpers =====
 
-// loadModel simulates loading a GGUF model into the coprocessor.
+// loadModel binds the model configuration to the coprocessor. The model is
+// served by the attached backend; without one the load fails.
 func (nd *NPUDevice) loadModel(cfg *NPUModelConfig) error {
 	nd.mu.Lock()
 	defer nd.mu.Unlock()
@@ -545,13 +571,26 @@ func (nd *NPUDevice) loadModel(cfg *NPUModelConfig) error {
 		nd.modelConfig = cfg
 	}
 
-	// Stub: real implementation would call llama_model_load here.
+	if nd.backend == nil {
+		nd.modelLoaded = false
+		nd.regs.setBits(regStatus, statusError)
+		nd.regs.write(regErrorCode, npuErrNoBackend)
+		return ErrNoModelBackend
+	}
 	nd.modelLoaded = true
 	nd.regs.setBits(regStatus, statusModelReady)
 	return nil
 }
 
-// infer runs a stubbed inference pass and returns generated text.
+// npuErrNoBackend / npuErrInference are values of the regErrorCode register.
+const (
+	npuErrNoBackend uint32 = 0x01
+	npuErrInference uint32 = 0x02
+)
+
+// infer runs prompt through the model backend and returns its completion.
+// Callers must hold nd.mu. It never returns text that did not come from the
+// model: without a backend, or on model failure, it returns an error.
 func (nd *NPUDevice) infer(prompt string, seq NPUSequenceConfig) (string, error) {
 	nd.regs.clearBits(regStatus, statusIdle|statusEOG|statusError)
 	nd.regs.setBits(regStatus, statusBusy)
@@ -560,20 +599,39 @@ func (nd *NPUDevice) infer(prompt string, seq NPUSequenceConfig) (string, error)
 
 	start := time.Now()
 
-	// Stub completion — wire llama.cpp here for real inference.
-	var sb strings.Builder
-	sb.WriteString("[NPU-COPROC STUB] n_predict=")
-	sb.WriteString(fmt.Sprintf("%d model=%s\n", seq.NPredict, nd.modelConfig.ModelName))
-	sb.WriteString("Completion: (stubbed — connect GGUF runtime here)\n")
-	result := sb.String()
+	fail := func(code uint32, err error) (string, error) {
+		nd.regs.clearBits(regStatus, statusBusy)
+		nd.regs.setBits(regStatus, statusError|statusIdle)
+		nd.regs.write(regErrorCode, code)
+		return "", err
+	}
+	if nd.backend == nil {
+		return fail(npuErrNoBackend, ErrNoModelBackend)
+	}
+
+	opts := llm.DefaultGenerateOptions()
+	if seq.NPredict > 0 {
+		opts.MaxTokens = int(seq.NPredict)
+	}
+	opts.SystemPrompt = seq.SystemPrompt
+	completion, err := generateText(context.Background(), nd.backend, prompt, opts)
+	if err != nil {
+		return fail(npuErrInference, fmt.Errorf("npu: inference failed: %w", err))
+	}
+	result := completion
+	if seq.EchoPrompt {
+		result = prompt + completion
+	}
+	nd.regs.write(regErrorCode, 0)
 
 	nd.regs.clearBits(regStatus, statusBusy)
 	nd.regs.setBits(regStatus, statusEOG|statusIdle)
 
 	nd.telemetry.TotalPrompts++
-	// TODO: replace byte-length proxies with real token counts once GGUF tokenizer is integrated.
+	// Byte lengths are used as token-count proxies (the backend does not
+	// report token usage through this interface).
 	nd.telemetry.LastPromptTokens = uint64(len(prompt))
-	nd.telemetry.LastCompletionTokens = uint64(len(result))
+	nd.telemetry.LastCompletionTokens = uint64(len(completion))
 	nd.telemetry.TotalTokensGenerated += nd.telemetry.LastCompletionTokens
 	nd.telemetry.LastInferenceStart = start
 	nd.telemetry.LastInferenceEnd = time.Now()
@@ -594,8 +652,9 @@ func (nd *NPUDevice) Infer(prompt string, seq NPUSequenceConfig) (string, error)
 	return nd.infer(prompt, seq)
 }
 
-// InferStreaming runs inference and calls cb for each token.
-// In the stubbed implementation cb is called once with the full result.
+// InferStreaming runs inference and calls cb with the model output.
+// The backend interface is non-streaming, so cb is called once with the full
+// completion.
 func (nd *NPUDevice) InferStreaming(prompt string, seq NPUSequenceConfig, cb TokenCallback) error {
 	result, err := nd.Infer(prompt, seq)
 	if err != nil {
@@ -711,8 +770,11 @@ func (nd *NPUDevice) assessSelf() NPUSelfAssessment {
 }
 
 func (nd *NPUDevice) assessOntological() OntologicalHealth {
-	foundation := 0.9  // MMIO register bank, config, device lifecycle — all present
-	core := 0.7        // Stubbed inference; GGUF runtime not yet wired
+	foundation := 0.9 // MMIO register bank, config, device lifecycle — all present
+	core := 0.5       // No model backend attached: inference unavailable
+	if nd.backend != nil {
+		core = 0.85 // Inference served by an attached model backend
+	}
 	specialized := 0.5 // KV-cache, GPU offload, hot-swap planned but not implemented
 	coherence := (foundation + core + specialized) / 3.0
 	return OntologicalHealth{
@@ -735,7 +797,10 @@ func (nd *NPUDevice) assessTeleological() TeleologicalAlignment {
 }
 
 func (nd *NPUDevice) assessCognitive() CognitiveCompleteness {
-	inferQ := 0.6   // Stubbed; real quality measurable once GGUF wired
+	inferQ := 0.0 // No model backend: no inference possible
+	if nd.backend != nil {
+		inferQ = 0.7 // Real model inference; no token-level quality metrics yet
+	}
 	perfInt := 0.85 // Telemetry registers fully functional
 	meta := 0.75    // Self-diagnostics and self-assessment implemented
 	overall := (inferQ + perfInt + meta) / 3.0
@@ -761,7 +826,7 @@ func (nd *NPUDevice) assessIntegrative() IntegrativeHealth {
 }
 
 func (nd *NPUDevice) assessEvolutionary() EvolutionaryPotential {
-	depth := 0.6    // Core stub present; production GGUF path not wired
+	depth := 0.6    // Backend-served inference; in-process GGUF path not wired
 	capacity := 0.8 // Clear extension points; ontogenesis framework ready
 	fitness := (depth + capacity) / 2.0
 	return EvolutionaryPotential{
@@ -777,8 +842,8 @@ func (nd *NPUDevice) generateRecommendations(
 	evo EvolutionaryPotential,
 ) []string {
 	var recs []string
-	if ont.CoreCompleteness < 0.9 {
-		recs = append(recs, "Wire llama.cpp GGUF runtime into infer() to replace stub")
+	if ont.CoreCompleteness < 0.8 {
+		recs = append(recs, "Attach a model backend (SetBackend or ECCO9_LLM_ENDPOINT) to enable inference")
 	}
 	if ont.SpecializedFeatures < 0.8 {
 		recs = append(recs, "Implement KV-cache management and GPU offload control")
@@ -790,7 +855,7 @@ func (nd *NPUDevice) generateRecommendations(
 		recs = append(recs, "Add tokenization/detokenization pipeline for accurate quality metrics")
 	}
 	if evo.ImplementationDepth < 0.8 {
-		recs = append(recs, "Replace stubbed paths with production implementations to raise depth score")
+		recs = append(recs, "Wire an in-process llama.cpp GGUF runtime as a backend to raise depth score")
 	}
 	return recs
 }

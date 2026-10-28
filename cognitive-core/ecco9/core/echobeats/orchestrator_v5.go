@@ -426,14 +426,34 @@ func (orch *OrchestratorV5) evaluateProgress(target string) {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
 
+	// Progress is only changed by measured reports (RecordGoalProgress);
+	// evaluation does not invent advancement or achievement.
 	for _, goal := range orch.currentGoals {
-		if goal.Type.String() == target {
-			// Simple progress update - in production, use actual metrics
-			goal.Progress += 0.1
-			if goal.Progress >= 1.0 {
-				goal.Achieved = true
-				orch.goalsAchieved++
-			}
+		if goal.Type.String() == target && !goal.Achieved && goal.Progress >= 1.0 {
+			goal.Achieved = true
+			orch.goalsAchieved++
+		}
+	}
+}
+
+// RecordGoalProgress applies a measured progress change reported by the
+// subsystem that actually worked on the goal.
+func (orch *OrchestratorV5) RecordGoalProgress(goalID string, delta float64) {
+	orch.mu.Lock()
+	defer orch.mu.Unlock()
+
+	for _, goal := range orch.currentGoals {
+		if goal.ID != goalID || goal.Achieved {
+			continue
+		}
+		goal.Progress += delta
+		if goal.Progress < 0 {
+			goal.Progress = 0
+		}
+		if goal.Progress >= 1.0 {
+			goal.Progress = 1.0
+			goal.Achieved = true
+			orch.goalsAchieved++
 		}
 	}
 }
@@ -462,16 +482,12 @@ func (orch *OrchestratorV5) updateGoalProgress() {
 	orch.mu.Lock()
 	defer orch.mu.Unlock()
 
-	// Update progress for all active goals
+	// Mark goals whose measured progress (RecordGoalProgress) is complete.
+	// Elapsed time alone never advances a goal.
 	for _, goal := range orch.currentGoals {
-		if !goal.Achieved {
-			// Simple progress update - in production, use actual metrics
-			goal.Progress += 0.01
-
-			if goal.Progress >= 1.0 {
-				goal.Achieved = true
-				orch.goalsAchieved++
-			}
+		if !goal.Achieved && goal.Progress >= 1.0 {
+			goal.Achieved = true
+			orch.goalsAchieved++
 		}
 	}
 }

@@ -145,31 +145,80 @@ func (sp *SupabasePersistence) GetKnowledgeGraphSize() (int, int, error) {
 // Helper conversion functions
 
 func (sp *SupabasePersistence) convertToThoughtRecord(thought interface{}) ThoughtRecord {
-	// Type assertion and conversion
-	// This is a simplified version - would need proper type handling
-	return ThoughtRecord{
-		ID:               fmt.Sprintf("thought-%d", time.Now().UnixNano()),
-		Content:          "thought content",
-		Type:             "reflection",
-		Timestamp:        time.Now(),
-		Importance:       0.5,
-		EmotionalValence: 0.0,
-		Source:           "internal",
-		Associations:     []string{},
-		Metadata:         make(map[string]interface{}),
+	// Convert the actual thought; nothing is substituted for its content.
+	switch t := thought.(type) {
+	case ThoughtRecord:
+		return t
+	case *ThoughtRecord:
+		if t != nil {
+			return *t
+		}
 	}
+	record := ThoughtRecord{
+		ID:           fmt.Sprintf("thought-%d", time.Now().UnixNano()),
+		Timestamp:    time.Now(),
+		Associations: []string{},
+		Metadata:     make(map[string]interface{}),
+	}
+	switch t := thought.(type) {
+	case string:
+		record.Content = t
+	case map[string]interface{}:
+		if v, ok := t["content"].(string); ok {
+			record.Content = v
+		}
+		if v, ok := t["type"].(string); ok {
+			record.Type = v
+		}
+		if v, ok := t["source"].(string); ok {
+			record.Source = v
+		}
+		if v, ok := t["importance"].(float64); ok {
+			record.Importance = v
+		}
+		if v, ok := t["emotional_valence"].(float64); ok {
+			record.EmotionalValence = v
+		}
+		record.Metadata = t
+	case fmt.Stringer:
+		record.Content = t.String()
+	case nil:
+	default:
+		record.Content = fmt.Sprint(t)
+	}
+	return record
 }
 
 func (sp *SupabasePersistence) convertToIdentityRecord(identity interface{}) IdentityRecord {
-	// Type assertion and conversion
-	// This is a simplified version - would need proper type handling
-	return IdentityRecord{
-		ID:        "identity-1",
-		Name:      "Deep Tree Echo",
-		Coherence: 0.95,
+	// Convert the actual identity state; no coherence or name is invented.
+	switch id := identity.(type) {
+	case IdentityRecord:
+		return id
+	case *IdentityRecord:
+		if id != nil {
+			return *id
+		}
+	}
+	record := IdentityRecord{
 		State:     make(map[string]interface{}),
 		UpdatedAt: time.Now(),
 	}
+	if m, ok := identity.(map[string]interface{}); ok {
+		if v, ok := m["id"].(string); ok {
+			record.ID = v
+		}
+		if v, ok := m["name"].(string); ok {
+			record.Name = v
+		}
+		if v, ok := m["coherence"].(float64); ok {
+			record.Coherence = v
+		}
+		record.State = m
+	}
+	if record.ID == "" {
+		record.ID = fmt.Sprintf("identity-%d", time.Now().UnixNano())
+	}
+	return record
 }
 
 // StoreNode persists a memory node to the database

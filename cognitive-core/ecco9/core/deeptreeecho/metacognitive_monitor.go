@@ -42,6 +42,9 @@ type MetaCognitiveMonitor struct {
 	totalDecisionsReviewed  uint64
 	totalStrategyShifts     uint64
 
+	// Model that writes meta-cognitive insights; nil disables them.
+	gen TextGenerator
+
 	// Running state
 	running bool
 }
@@ -341,8 +344,8 @@ func (mcm *MetaCognitiveMonitor) AssessDecisionQuality(decisionID string, outcom
 
 // SelectStrategy chooses the best cognitive strategy for a task
 func (mcm *MetaCognitiveMonitor) SelectStrategy(processType ProcessType, constraints map[string]interface{}) *CognitiveStrategy {
-	mcm.mu.RLock()
-	defer mcm.mu.RUnlock()
+	mcm.mu.Lock()
+	defer mcm.mu.Unlock()
 
 	var bestStrategy *CognitiveStrategy
 	bestScore := 0.0
@@ -372,21 +375,43 @@ func (mcm *MetaCognitiveMonitor) SelectStrategy(processType ProcessType, constra
 	}
 
 	if bestStrategy != nil && (mcm.currentStrategy == nil || bestStrategy.ID != mcm.currentStrategy.ID) {
-		mcm.mu.Lock()
 		mcm.currentStrategy = bestStrategy
 		mcm.totalStrategyShifts++
-		mcm.mu.Unlock()
 	}
 
 	return bestStrategy
 }
 
-// GenerateMetaThought creates recursive self-reflective thoughts
-func (mcm *MetaCognitiveMonitor) GenerateMetaThought(about, content string, depth int) *MetaThought {
+// SetTextGenerator injects the model that writes meta-cognitive insights.
+// Passing nil disables meta-thought generation.
+func (mcm *MetaCognitiveMonitor) SetTextGenerator(gen TextGenerator) {
 	mcm.mu.Lock()
 	defer mcm.mu.Unlock()
+	mcm.gen = gen
+}
 
-	if depth > mcm.maxReasoningDepth {
+// GenerateMetaThought creates recursive self-reflective thoughts. The insight
+// at every depth is written by the model; when no model is configured or the
+// call fails, no meta-thought is produced and nil is returned.
+func (mcm *MetaCognitiveMonitor) GenerateMetaThought(about, content string, depth int) *MetaThought {
+	mcm.mu.RLock()
+	gen := mcm.gen
+	maxDepth := mcm.maxReasoningDepth
+	ctx := mcm.ctx
+	mcm.mu.RUnlock()
+
+	if depth > maxDepth {
+		return nil
+	}
+
+	prompt := fmt.Sprintf(`Reflect meta-cognitively (reflection depth %d) on the following aspect of your own thinking.
+
+Topic: %s
+What you are reflecting on: %s
+
+Write one concise insight (1-2 sentences) in your own first-person voice about what this reveals about how you think. Reply with only the insight.`, depth, about, content)
+	insight, err := generateModelText(ctx, gen, prompt, 120)
+	if err != nil {
 		return nil
 	}
 
@@ -395,20 +420,17 @@ func (mcm *MetaCognitiveMonitor) GenerateMetaThought(about, content string, dept
 		Depth:     depth,
 		Content:   content,
 		About:     about,
+		Insight:   insight,
 		Timestamp: time.Now(),
 	}
 
-	// Generate insight based on depth
-	if depth > 0 {
-		thought.Insight = generateMetaInsight(about, content, depth)
-	}
-
+	mcm.mu.Lock()
 	mcm.recursiveThoughts = append(mcm.recursiveThoughts, thought)
+	mcm.mu.Unlock()
 
-	// Recursively think about the thought
-	if depth < mcm.maxReasoningDepth-1 && shouldRecurse(depth) {
-		metaContent := fmt.Sprintf("Thinking about: %s", content)
-		childThought := mcm.GenerateMetaThought("meta-reflection", metaContent, depth+1)
+	// Recursively reflect on the insight just produced
+	if depth < maxDepth-1 && shouldRecurse(depth) {
+		childThought := mcm.GenerateMetaThought("meta-reflection", insight, depth+1)
 		if childThought != nil {
 			childThought.ParentThought = thought
 		}
@@ -629,20 +651,6 @@ func updateSelfModel(model *SelfModel, record *ProcessRecord) {
 	} else {
 		model.Confidence = math.Max(0.0, model.Confidence-0.02)
 	}
-}
-
-func generateMetaInsight(about, content string, depth int) string {
-	insights := []string{
-		fmt.Sprintf("Reflecting on %s reveals patterns in my thinking", about),
-		fmt.Sprintf("At depth %d, I notice meta-patterns in %s", depth, about),
-		fmt.Sprintf("This recursive reflection about %s deepens self-understanding", about),
-	}
-
-	if depth < len(insights) {
-		return insights[depth]
-	}
-
-	return fmt.Sprintf("Deep meta-reflection (level %d) about %s", depth, about)
 }
 
 func shouldRecurse(depth int) bool {

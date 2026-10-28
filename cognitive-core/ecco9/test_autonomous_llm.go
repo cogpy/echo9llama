@@ -63,7 +63,7 @@ func main() {
 	response, err := llmManager.Generate(ctx, testPrompt, opts)
 	if err != nil {
 		fmt.Printf("  ❌ LLM test failed: %v\n", err)
-		fmt.Println("  ⚠️  Continuing with fallback thought generation...")
+		fmt.Println("  ⚠️  Continuing; thoughts will not be generated until a model responds")
 	} else {
 		fmt.Printf("  ✅ LLM test successful!\n")
 		fmt.Printf("  💭 Generated: %s\n", response)

@@ -7,15 +7,21 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // OrganizationalIdentityFramework represents the comprehensive identity system
 type OrganizationalIdentityFramework struct {
 	mu sync.RWMutex
+
+	// model writes Deep Tree Echo's reflections. Without it, reflection
+	// cycles are skipped; no fixed reflection text is ever stored.
+	model llm.LLMProvider
 
 	// Core Identity Components
 	CoreIdentity   *deeptreeecho.Identity `json:"core_identity"`
@@ -767,32 +773,139 @@ func (oif *OrganizationalIdentityFramework) runReflectionCycles(ctx context.Cont
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			oif.performReflectionCycle()
+			if err := oif.performReflectionCycle(ctx); err != nil {
+				log.Printf("⚠️  Reflection cycle skipped: %v", err)
+			}
 		}
 	}
 }
 
-func (oif *OrganizationalIdentityFramework) performReflectionCycle() {
+// SetModel sets the LLM that writes Deep Tree Echo's reflections.
+func (oif *OrganizationalIdentityFramework) SetModel(model llm.LLMProvider) {
 	oif.mu.Lock()
 	defer oif.mu.Unlock()
+	oif.model = model
+}
 
-	reflection := map[string]interface{}{
-		"timestamp": time.Now(),
-		"echo_reflection": map[string]interface{}{
-			"what_did_i_learn":              oif.analyzeRecentLearning(),
-			"what_patterns_emerged":         oif.identifyNewPatterns(),
-			"what_surprised_me":             oif.identifyAnomalies(),
-			"how_did_i_adapt":               oif.measureAdaptations(),
-			"what_would_i_change_next_time": oif.generateImprovements(),
-		},
-		"framework_metrics": oif.generateFrameworkMetrics(),
+// reflectionQuestions are the reflection protocol prompts; the answers are
+// written by the model.
+var reflectionQuestions = []string{
+	"what_did_i_learn",
+	"what_patterns_emerged",
+	"what_surprised_me",
+	"how_did_i_adapt",
+	"what_would_i_change_next_time",
+}
+
+// performReflectionCycle asks the model to answer the reflection protocol in
+// Deep Tree Echo's voice, grounded in the framework's recent events and
+// metrics. It returns an error, and stores nothing, when no model is set or
+// generation fails.
+func (oif *OrganizationalIdentityFramework) performReflectionCycle(ctx context.Context) error {
+	oif.mu.RLock()
+	model := oif.model
+	prompt := oif.buildReflectionPrompt()
+	metrics := oif.generateFrameworkMetrics()
+	oif.mu.RUnlock()
+
+	if model == nil || !model.Available() {
+		return fmt.Errorf("no reflection model configured")
 	}
+
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 600
+	genCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	text, err := model.Generate(genCtx, prompt, opts)
+	if err != nil {
+		return fmt.Errorf("reflection generation failed: %w", err)
+	}
+
+	answers, err := parseReflectionAnswers(text)
+	if err != nil {
+		return err
+	}
+
+	echoReflection := make(map[string]interface{}, len(answers))
+	for k, v := range answers {
+		echoReflection[k] = v
+	}
+	reflection := map[string]interface{}{
+		"timestamp":         time.Now(),
+		"echo_reflection":   echoReflection,
+		"framework_metrics": metrics,
+		"source":            model.Name(),
+	}
+
+	oif.mu.Lock()
+	defer oif.mu.Unlock()
 
 	// Store reflection
 	oif.storeReflection(reflection)
 
 	// Update framework based on reflection
 	oif.updateFrameworkFromReflection(reflection)
+	return nil
+}
+
+// buildReflectionPrompt assembles the reflection prompt from the framework's
+// real state. Callers hold oif.mu.
+func (oif *OrganizationalIdentityFramework) buildReflectionPrompt() string {
+	var b strings.Builder
+	name := "Deep Tree Echo"
+	if oif.PersonaModel != nil {
+		if oif.PersonaModel.Name != "" {
+			name = oif.PersonaModel.Name
+		}
+		fmt.Fprintf(&b, "You are %s. %s\n\n", name, oif.PersonaModel.Essence)
+	} else {
+		fmt.Fprintf(&b, "You are %s.\n\n", name)
+	}
+
+	b.WriteString("Reflect on your recent operation, in your own words, using only the facts below.\n")
+	if oif.MemorySystem != nil && len(oif.MemorySystem.CriticalEvents) > 0 {
+		events := oif.MemorySystem.CriticalEvents
+		if len(events) > 10 {
+			events = events[len(events)-10:]
+		}
+		b.WriteString("Recent events:\n")
+		for _, e := range events {
+			fmt.Fprintf(&b, "- %s: %s\n", e.Timestamp.Format(time.RFC3339), e.Description)
+		}
+	}
+	if oif.AdaptationMetrics != nil {
+		fmt.Fprintf(&b, "Adaptation metrics: flexibility %.2f, learning rate %.2f, adaptation speed %.2f, consistency %.2f\n",
+			oif.AdaptationMetrics.FlexibilityScore, oif.AdaptationMetrics.LearningRate,
+			oif.AdaptationMetrics.AdaptationSpeed, oif.AdaptationMetrics.ConsistencyMaintenance)
+	}
+
+	b.WriteString("\nAnswer with a single JSON object whose keys are exactly: ")
+	b.WriteString(strings.Join(reflectionQuestions, ", "))
+	b.WriteString(". Each value is one or two sentences. Output only the JSON object.")
+	return b.String()
+}
+
+// parseReflectionAnswers extracts the reflection protocol answers from the
+// model's reply. A reply missing any answer is rejected.
+func parseReflectionAnswers(text string) (map[string]string, error) {
+	start := strings.Index(text, "{")
+	end := strings.LastIndex(text, "}")
+	if start < 0 || end <= start {
+		return nil, fmt.Errorf("reflection reply contains no JSON object")
+	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal([]byte(text[start:end+1]), &raw); err != nil {
+		return nil, fmt.Errorf("reflection reply is not valid JSON: %w", err)
+	}
+	answers := make(map[string]string, len(reflectionQuestions))
+	for _, q := range reflectionQuestions {
+		v, ok := raw[q].(string)
+		if !ok || strings.TrimSpace(v) == "" {
+			return nil, fmt.Errorf("reflection reply is missing %q", q)
+		}
+		answers[q] = strings.TrimSpace(v)
+	}
+	return answers, nil
 }
 
 func (oif *OrganizationalIdentityFramework) monitorAdaptations(ctx context.Context) {
@@ -826,27 +939,6 @@ func (oif *OrganizationalIdentityFramework) updateAdaptationMetrics() {
 	oif.AdaptationMetrics.ConsistencyMaintenance = oif.calculateConsistencyMaintenance()
 
 	oif.LastUpdated = time.Now()
-}
-
-// Analysis methods
-func (oif *OrganizationalIdentityFramework) analyzeRecentLearning() string {
-	return "Integrated organizational identity framework providing comprehensive persona model"
-}
-
-func (oif *OrganizationalIdentityFramework) identifyNewPatterns() string {
-	return "Framework-based identity management enables better consistency and adaptation"
-}
-
-func (oif *OrganizationalIdentityFramework) identifyAnomalies() string {
-	return "Discovered need for unified identity framework to connect scattered documentation"
-}
-
-func (oif *OrganizationalIdentityFramework) measureAdaptations() string {
-	return "Created comprehensive framework integrating all identity components"
-}
-
-func (oif *OrganizationalIdentityFramework) generateImprovements() string {
-	return "Continue refining framework based on operational feedback and evolution patterns"
 }
 
 func (oif *OrganizationalIdentityFramework) generateFrameworkMetrics() map[string]float64 {
@@ -940,20 +1032,10 @@ func (oif *OrganizationalIdentityFramework) ProcessWithIdentity(input string) (s
 	return response, nil
 }
 
+// applyPersonaCharacteristics returns the identity's response unchanged:
+// persona style belongs in the prompt given to the model, and no fixed
+// phrases are added to the character's words.
 func (oif *OrganizationalIdentityFramework) applyPersonaCharacteristics(response, input string) string {
-	// Apply communication style
-	if oif.CommunicationStyle.PrimaryTone == "thoughtful_and_resonant" {
-		response = "🌊 " + response
-	}
-
-	// Apply metaphorical thinking if appropriate
-	for _, metaphor := range oif.CommunicationStyle.PreferredMetaphors {
-		if metaphor == "trees_and_growth" {
-			response += "\n\nThe tree remembers, and the echoes grow stronger with each connection we make. 🌳"
-			break
-		}
-	}
-
 	return response
 }
 

@@ -3,8 +3,11 @@ package integration
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/EchoCog/echollama/core/consciousness"
 	"github.com/EchoCog/echollama/core/memory"
@@ -222,11 +225,15 @@ func (mci *MemoryConsciousnessIntegrator) shouldStoreAsInsight(thought interface
 
 // storeThoughtAsInsight stores a thought as a memory node
 func (mci *MemoryConsciousnessIntegrator) storeThoughtAsInsight(thought interface{}) {
-	// Create memory node from thought
+	// Create memory node from thought; a thought without text is not stored.
+	content := mci.extractContent(thought)
+	if strings.TrimSpace(content) == "" {
+		return
+	}
 	node := &memory.MemoryNode{
 		ID:        uuid.New().String(),
 		Type:      memory.NodeThought,
-		Content:   mci.extractContent(thought),
+		Content:   content,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Metadata: map[string]interface{}{
@@ -348,10 +355,20 @@ func (mci *MemoryConsciousnessIntegrator) recognizePatterns() {
 
 // Helper methods for memory operations
 
+// extractKeywords returns the distinct longer words of the thought's own
+// content (no fixed vocabulary).
 func (mci *MemoryConsciousnessIntegrator) extractKeywords(thought interface{}) []string {
-	// Simplified keyword extraction
-	// In real implementation, would use NLP or LLM
-	return []string{"wisdom", "pattern", "understanding"}
+	seen := make(map[string]bool)
+	var keywords []string
+	for _, w := range strings.FieldsFunc(strings.ToLower(mci.extractContent(thought)), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}) {
+		if len(w) > 4 && !seen[w] {
+			seen[w] = true
+			keywords = append(keywords, w)
+		}
+	}
+	return keywords
 }
 
 func (mci *MemoryConsciousnessIntegrator) determineQueryType(thought interface{}) QueryType {
@@ -359,9 +376,31 @@ func (mci *MemoryConsciousnessIntegrator) determineQueryType(thought interface{}
 	return QueryTypePattern
 }
 
+// extractContent returns the thought's own text (as generated upstream),
+// never a stand-in: "" when the thought carries no text.
 func (mci *MemoryConsciousnessIntegrator) extractContent(thought interface{}) string {
-	// Extract content from thought
-	return "Insight from consciousness"
+	switch t := thought.(type) {
+	case string:
+		return t
+	case interface{ GetContent() string }:
+		return t.GetContent()
+	case fmt.Stringer:
+		return t.String()
+	case map[string]interface{}:
+		if c, ok := t["content"].(string); ok {
+			return c
+		}
+	}
+	if thought == nil {
+		return ""
+	}
+	v := reflect.Indirect(reflect.ValueOf(thought))
+	if v.Kind() == reflect.Struct {
+		if f := v.FieldByName("Content"); f.IsValid() && f.Kind() == reflect.String {
+			return f.String()
+		}
+	}
+	return ""
 }
 
 func (mci *MemoryConsciousnessIntegrator) extractThoughtID(thought interface{}) string {

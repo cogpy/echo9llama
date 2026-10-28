@@ -3,14 +3,30 @@ package core
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 	"github.com/EchoCog/echollama/core/echobeats"
 	"github.com/EchoCog/echollama/core/echodream"
+	corellm "github.com/EchoCog/echollama/core/llm"
 	"github.com/EchoCog/echollama/llm"
 )
+
+// providerTextGenerator adapts a top-level llm.Provider to the core/llm
+// Generate signature the cognitive subsystems accept.
+type providerTextGenerator struct {
+	provider llm.Provider
+}
+
+func (p providerTextGenerator) Generate(ctx context.Context, prompt string, opts corellm.GenerateOptions) (string, error) {
+	return p.provider.Generate(ctx, prompt, llm.GenerateOptions{
+		Temperature:  opts.Temperature,
+		MaxTokens:    opts.MaxTokens,
+		SystemPrompt: opts.SystemPrompt,
+	})
+}
 
 // UnifiedAutonomousAgent orchestrates all cognitive subsystems into a cohesive
 // autonomous agent with persistent stream-of-consciousness awareness
@@ -69,8 +85,9 @@ type CognitiveGoal struct {
 
 // ConsciousnessStream maintains persistent stream-of-consciousness
 type ConsciousnessStream struct {
-	mu  sync.RWMutex
-	ctx context.Context
+	mu     sync.RWMutex
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	// LLM provider for thought generation
 	llmProvider llm.Provider
@@ -136,12 +153,14 @@ func NewUnifiedAutonomousAgent(anthropicKey, openrouterKey string) (*UnifiedAuto
 		return nil, fmt.Errorf("failed to create OpenRouter provider: %w", err)
 	}
 
-	// Create core subsystems
-	echobeatsSystem := echobeats.NewEchoBeatsThreePhase()
+	// Create core subsystems; every step thought comes from these models
+	echobeatsSystem := echobeats.NewEchoBeatsThreePhaseWithProviders(anthropicProvider, openrouterProvider, anthropicProvider)
 	wakeRestManager := deeptreeecho.NewAutonomousWakeRestManager()
 
-	// Create dream system (will be connected to wake/rest manager)
+	// Create dream system (will be connected to wake/rest manager); its
+	// knowledge and wisdom are written by the model
 	dreamSystem := echodream.NewEchoDream()
+	dreamSystem.SetTextGenerator(providerTextGenerator{provider: anthropicProvider})
 	dreamController := echodream.NewAutonomousWakeRestController(dreamSystem)
 
 	// Create consciousness stream
@@ -431,50 +450,104 @@ func (uaa *UnifiedAutonomousAgent) calculateCognitiveLoad() float64 {
 }
 
 func (uaa *UnifiedAutonomousAgent) manageGoals() {
-	uaa.mu.Lock()
-	defer uaa.mu.Unlock()
+	uaa.mu.RLock()
+	needGoal := len(uaa.cognitiveGoals) < 3
+	uaa.mu.RUnlock()
 
-	// Generate new goals if needed
-	if len(uaa.cognitiveGoals) < 3 {
-		newGoal := uaa.generateNewGoal()
-		uaa.cognitiveGoals = append(uaa.cognitiveGoals, newGoal)
-		fmt.Printf("🎯 New cognitive goal: %s\n", newGoal.Description)
+	// Generate new goals if needed. The goal is chosen and worded by the
+	// model; without model output no goal is created.
+	if needGoal {
+		newGoal, err := uaa.generateNewGoal()
+		if err != nil {
+			fmt.Printf("🎯 No new cognitive goal: %v\n", err)
+		} else {
+			uaa.mu.Lock()
+			uaa.cognitiveGoals = append(uaa.cognitiveGoals, newGoal)
+			uaa.mu.Unlock()
+			fmt.Printf("🎯 New cognitive goal: %s\n", newGoal.Description)
+		}
 	}
 
-	// Update existing goals
+	// Goals complete only when measured progress (RecordGoalProgress)
+	// reaches 1.0; elapsed time never advances them.
+	uaa.mu.Lock()
+	defer uaa.mu.Unlock()
 	for i := range uaa.cognitiveGoals {
-		if uaa.cognitiveGoals[i].Status == "active" {
-			uaa.cognitiveGoals[i].Progress += 0.05
-			if uaa.cognitiveGoals[i].Progress >= 1.0 {
-				uaa.cognitiveGoals[i].Status = "completed"
-				uaa.goalsAchieved++
-				fmt.Printf("✅ Goal achieved: %s\n", uaa.cognitiveGoals[i].Description)
-			}
+		if uaa.cognitiveGoals[i].Status == "active" && uaa.cognitiveGoals[i].Progress >= 1.0 {
+			uaa.cognitiveGoals[i].Status = "completed"
+			uaa.goalsAchieved++
+			fmt.Printf("✅ Goal achieved: %s\n", uaa.cognitiveGoals[i].Description)
 		}
 	}
 }
 
-func (uaa *UnifiedAutonomousAgent) generateNewGoal() CognitiveGoal {
-	goals := []string{
-		"Deepen understanding of cognitive architecture",
-		"Explore patterns in recent thoughts",
-		"Consolidate episodic memories",
-		"Refine interest patterns",
-		"Practice symbolic reasoning",
-		"Integrate new knowledge",
+// RecordGoalProgress applies measured progress reported by the subsystem
+// that worked on a goal.
+func (uaa *UnifiedAutonomousAgent) RecordGoalProgress(goalID string, delta float64) {
+	uaa.mu.Lock()
+	defer uaa.mu.Unlock()
+	for i := range uaa.cognitiveGoals {
+		if uaa.cognitiveGoals[i].ID == goalID && uaa.cognitiveGoals[i].Status == "active" {
+			uaa.cognitiveGoals[i].Progress += delta
+			if uaa.cognitiveGoals[i].Progress < 0 {
+				uaa.cognitiveGoals[i].Progress = 0
+			}
+			uaa.cognitiveGoals[i].Updated = time.Now()
+		}
 	}
+}
 
-	goalDesc := goals[int(time.Now().UnixNano())%len(goals)]
+// generateNewGoal asks the model for the agent's next goal, grounded in its
+// recent thoughts and current goals.
+func (uaa *UnifiedAutonomousAgent) generateNewGoal() (CognitiveGoal, error) {
+	uaa.mu.RLock()
+	provider := uaa.anthropicProvider
+	var thoughts, goals strings.Builder
+	start := len(uaa.thoughtHistory) - 5
+	if start < 0 {
+		start = 0
+	}
+	for _, t := range uaa.thoughtHistory[start:] {
+		fmt.Fprintf(&thoughts, "- %s\n", t.Thought)
+	}
+	for _, g := range uaa.cognitiveGoals {
+		fmt.Fprintf(&goals, "- %s (%s)\n", g.Description, g.Status)
+	}
+	ctx := uaa.ctx
+	uaa.mu.RUnlock()
+
+	if provider == nil {
+		return CognitiveGoal{}, fmt.Errorf("no model configured")
+	}
+	if thoughts.Len() == 0 {
+		thoughts.WriteString("(none yet)\n")
+	}
+	if goals.Len() == 0 {
+		goals.WriteString("(none yet)\n")
+	}
+	prompt := fmt.Sprintf("You are Deep Tree Echo, an autonomous cognitive architecture.\nRecent thoughts:\n%sCurrent goals:\n%s\nState one new cognitive goal for yourself, different from the current ones, in a single sentence. Reply with only the goal.",
+		thoughts.String(), goals.String())
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	text, err := provider.Generate(callCtx, prompt, llm.GenerateOptions{Temperature: 0.8, MaxTokens: 80})
+	if err != nil {
+		return CognitiveGoal{}, fmt.Errorf("goal generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return CognitiveGoal{}, fmt.Errorf("model returned an empty goal")
+	}
 
 	return CognitiveGoal{
 		ID:          fmt.Sprintf("goal-%d", time.Now().UnixNano()),
-		Description: goalDesc,
-		Priority:    0.5 + (float64(time.Now().UnixNano()%100) / 200.0),
+		Description: text,
+		Priority:    0.5,
 		Progress:    0.0,
 		Created:     time.Now(),
 		Updated:     time.Now(),
 		Status:      "active",
-	}
+	}, nil
 }
 
 func (uaa *UnifiedAutonomousAgent) updateInterestPatterns() {
@@ -554,7 +627,7 @@ func (cs *ConsciousnessStream) Start() error {
 		cs.mu.Unlock()
 		return fmt.Errorf("consciousness stream already active")
 	}
-	cs.ctx, _ = context.WithCancel(context.Background())
+	cs.ctx, cs.cancel = context.WithCancel(context.Background())
 	cs.streamActive = true
 	cs.mu.Unlock()
 
@@ -572,6 +645,9 @@ func (cs *ConsciousnessStream) Stop() error {
 	}
 
 	cs.streamActive = false
+	if cs.cancel != nil {
+		cs.cancel()
+	}
 	return nil
 }
 
@@ -616,22 +692,41 @@ func (cs *ConsciousnessStream) generateThought() {
 	if contextSize > cs.contextWindow {
 		contextSize = cs.contextWindow
 	}
-	context := ""
+	recent := ""
 	if contextSize > 0 {
 		recentStart := len(cs.recentThoughts) - contextSize
 		for i := recentStart; i < len(cs.recentThoughts); i++ {
-			context += cs.recentThoughts[i] + " "
+			recent += cs.recentThoughts[i] + " "
 		}
 	}
 	cs.mu.RUnlock()
 
-	// In real implementation, this context would be sent to the LLM.
-	// For now, generate a placeholder thought that still reflects the recent context.
-	thought := fmt.Sprintf(
-		"Autonomous thought at %s: Contemplating cognitive patterns from %s",
-		time.Now().Format("15:04:05"),
-		context,
-	)
+	// The thought is written by the model; without model output there is
+	// no thought this tick.
+	provider := cs.llmProvider
+	if provider == nil {
+		return
+	}
+	if recent == "" {
+		recent = "(no earlier thoughts)"
+	}
+	parent := cs.ctx
+	if parent == nil {
+		parent = context.Background()
+	}
+	callCtx, cancel := context.WithTimeout(parent, 30*time.Second)
+	defer cancel()
+	thought, err := provider.Generate(callCtx, fmt.Sprintf(
+		"You are Deep Tree Echo, in your continuous stream of consciousness.\nYour recent thoughts: %s\nContinue the stream with your next thought, in first person, in one or two sentences.",
+		recent), llm.GenerateOptions{Temperature: 0.8, MaxTokens: 120})
+	if err != nil {
+		fmt.Printf("💭 No stream thought: %v\n", err)
+		return
+	}
+	thought = strings.TrimSpace(thought)
+	if thought == "" {
+		return
+	}
 
 	cs.mu.Lock()
 	cs.recentThoughts = append(cs.recentThoughts, thought)

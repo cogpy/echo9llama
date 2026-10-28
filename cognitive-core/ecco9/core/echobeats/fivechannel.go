@@ -89,6 +89,22 @@ func NewFiveChannelManager(processor PhaseProcessor, integrator ConsciousnessInt
 	return fcm
 }
 
+// SetTextGenerator injects the model behind the narrative channel's goals and
+// meaning, and behind the phase processor when it accepts one.
+func (fcm *FiveChannelManager) SetTextGenerator(gen TextGenerator) {
+	fcm.narrativeProcess.SetTextGenerator(gen)
+	seen := map[PhaseProcessor]bool{}
+	for _, phase := range fcm.phases {
+		if phase == nil || phase.processor == nil || seen[phase.processor] {
+			continue
+		}
+		seen[phase.processor] = true
+		if p, ok := phase.processor.(interface{ SetTextGenerator(TextGenerator) }); ok {
+			p.SetTextGenerator(gen)
+		}
+	}
+}
+
 // Start begins the 5-channel concurrent cognitive loop
 func (fcm *FiveChannelManager) Start() error {
 	fcm.mu.Lock()

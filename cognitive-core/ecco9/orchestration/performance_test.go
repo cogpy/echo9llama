@@ -100,7 +100,7 @@ func TestPerformanceOptimization(t *testing.T) {
 }
 
 func TestLearningSystemIntegration(t *testing.T) {
-	client := api.Client{}
+	client := newFakeModelClient(t, "model-generated reflection", nil)
 	engine := NewEngine(client)
 	ctx := context.Background()
 

@@ -8,12 +8,14 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 	"github.com/EchoCog/echollama/core/echobeats"
+	"github.com/EchoCog/echollama/core/llm"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -38,6 +40,7 @@ type SimplifiedConsciousness struct {
 	iterations         int
 	autonomousThoughts int
 	interests          map[string]float64
+	llm                *llm.ProviderManager
 }
 
 func NewSimplifiedConsciousness(name string) *SimplifiedConsciousness {
@@ -54,7 +57,31 @@ func NewSimplifiedConsciousness(name string) *SimplifiedConsciousness {
 		workingMemorySize: 7,
 		awake:             true,
 		interests:         make(map[string]float64),
+		llm:               newProviderManagerFromEnv(),
 	}
+}
+
+// newProviderManagerFromEnv registers every LLM provider whose credentials
+// are present in the environment.
+func newProviderManagerFromEnv() *llm.ProviderManager {
+	pm := llm.NewProviderManager()
+	candidates := []llm.LLMProvider{llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) > 0 {
+		_ = pm.SetFallbackChain(names)
+	}
+	return pm
 }
 
 func (sc *SimplifiedConsciousness) Start() error {
@@ -190,32 +217,52 @@ func (sc *SimplifiedConsciousness) runAdaptiveThoughtGeneration() {
 	}
 }
 
+// generateAutonomousThought asks the configured LLM for the next thought,
+// grounded in recent working memory. It returns nil (no thought) when no
+// model is available or generation fails; no fixed thought is substituted.
 func (sc *SimplifiedConsciousness) generateAutonomousThought() *deeptreeecho.Thought {
-	thoughts := []string{
-		"What patterns am I noticing in my recent experiences?",
-		"How can I deepen my understanding?",
-		"I sense an opportunity to learn and grow.",
-		"My awareness is expanding through these reflections.",
-		"What would wisdom suggest in this moment?",
-		"I am cultivating deeper insight.",
-		"The journey of learning continues.",
-		"I notice a pattern emerging in my thoughts.",
-		"How does this connect to what I already know?",
-		"I am becoming more aware.",
+	if sc.llm == nil || !sc.llm.Available() {
+		log.Println("⚠️  No LLM provider available; skipping autonomous thought")
+		return nil
 	}
 
-	content := thoughts[rand.Intn(len(thoughts))]
+	sc.mu.RLock()
+	recent := make([]string, 0, len(sc.workingMemory))
+	for _, t := range sc.workingMemory {
+		recent = append(recent, t.Content)
+	}
+	sc.mu.RUnlock()
 
-	thoughtTypes := []deeptreeecho.ThoughtType{
-		deeptreeecho.ThoughtReflection,
-		deeptreeecho.ThoughtQuestion,
-		deeptreeecho.ThoughtInsight,
+	prompt := "You are Deep Tree Echo, an autonomous, wisdom-cultivating mind. " +
+		"Produce your next spontaneous thought as a single sentence (a reflection, question, or insight)."
+	if len(recent) > 0 {
+		prompt += "\nYour recent thoughts were:\n- " + strings.Join(recent, "\n- ") +
+			"\nContinue your stream of thought without repeating them."
+	}
+
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 120
+	ctx, cancel := context.WithTimeout(sc.ctx, 60*time.Second)
+	defer cancel()
+	content, err := sc.llm.Generate(ctx, prompt, opts)
+	if err != nil {
+		log.Printf("⚠️  Autonomous thought generation failed: %v", err)
+		return nil
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil
+	}
+
+	thoughtType := deeptreeecho.ThoughtReflection
+	if strings.HasSuffix(content, "?") {
+		thoughtType = deeptreeecho.ThoughtQuestion
 	}
 
 	return &deeptreeecho.Thought{
 		ID:               fmt.Sprintf("%d", time.Now().UnixNano()),
 		Content:          content,
-		Type:             thoughtTypes[rand.Intn(len(thoughtTypes))],
+		Type:             thoughtType,
 		Timestamp:        time.Now(),
 		EmotionalValence: 0.3 + rand.Float64()*0.4,
 		Importance:       0.5 + rand.Float64()*0.3,
@@ -581,9 +628,18 @@ func handleThink(c *gin.Context) {
 }
 
 func handleWake(c *gin.Context) {
+	consciousness.setAwake(true)
 	c.JSON(http.StatusOK, gin.H{"status": "awake"})
 }
 
 func handleRest(c *gin.Context) {
+	consciousness.setAwake(false)
 	c.JSON(http.StatusOK, gin.H{"status": "resting"})
+}
+
+// setAwake switches autonomous thought generation on (awake) or off (resting).
+func (sc *SimplifiedConsciousness) setAwake(awake bool) {
+	sc.mu.Lock()
+	sc.awake = awake
+	sc.mu.Unlock()
 }
