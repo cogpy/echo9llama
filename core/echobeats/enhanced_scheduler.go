@@ -59,6 +59,9 @@ func NewEnhancedScheduler() *EnhancedScheduler {
 func (es *EnhancedScheduler) SetTextGenerator(gen TextGenerator) {
 	es.echoBeats.SetThoughtGenerator(gen)
 	es.masterLoop.SetTextGenerator(gen)
+	for _, engine := range es.engines {
+		engine.SetTextGenerator(gen)
+	}
 }
 
 // setupCallbacks configures coordination between components

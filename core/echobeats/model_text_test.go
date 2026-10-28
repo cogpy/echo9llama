@@ -160,3 +160,68 @@ func TestInsightProcessorRequiresModel(t *testing.T) {
 		t.Fatalf("expected model insight, got %#v err=%v", result, err)
 	}
 }
+
+func TestInferenceEngineResultsComeFromTheModel(t *testing.T) {
+	ie := NewInferenceEngine(1, SpecializationCognition)
+	defer ie.cancel()
+
+	task := &InferenceTask{ID: "t1", Type: "reason", Input: "two paths diverge"}
+	if res := ie.performInference(task); res.Success || res.Output != nil || task.Error == nil {
+		t.Fatalf("without a model: result %+v, err %v; want failure and no output", res, task.Error)
+	}
+
+	ie.SetTextGenerator(&fakeTextGenerator{reply: "the left path is shorter"})
+	task = &InferenceTask{ID: "t2", Type: "reason", Input: "two paths diverge"}
+	res := ie.performInference(task)
+	if !res.Success || res.Output != "the left path is shorter" || task.Error != nil {
+		t.Fatalf("with a model: result %+v, err %v", res, task.Error)
+	}
+	if res.Confidence != 0 || len(res.Insights) != 0 || len(res.NextActions) != 0 {
+		t.Fatalf("result carries invented fields: %+v", res)
+	}
+
+	ie.SetTextGenerator(&fakeTextGenerator{err: errors.New("model down")})
+	task = &InferenceTask{ID: "t3", Type: "reason"}
+	if res := ie.performInference(task); res.Success || task.Error == nil {
+		t.Fatalf("model error: result %+v, err %v", res, task.Error)
+	}
+}
+
+func TestReflectiveStepsComeFromTheModel(t *testing.T) {
+	state := &CognitiveState{WorkingMemory: map[string]interface{}{}, ActiveGoals: []string{"learn"}}
+	procs := []StepProcessor{
+		&ActionGenerationProcessor{}, &ScenarioSimulationProcessor{},
+		&ModelUpdateProcessor{}, &LearningConsolidationProcessor{},
+	}
+	for _, p := range procs {
+		if res, err := p.Process(context.Background(), state); err == nil || res != nil {
+			t.Fatalf("%T without a model: %+v, %v; want an error and no result", p, res, err)
+		}
+	}
+
+	gen := &fakeTextGenerator{reply: "1. walk the bridge\n- rest a while"}
+	res, err := (&ActionGenerationProcessor{Generator: gen}).Process(context.Background(), state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	actions := res.Output.([]string)
+	if len(actions) != 2 || actions[0] != "walk the bridge" || actions[1] != "rest a while" {
+		t.Fatalf("actions = %q", actions)
+	}
+
+	// Choosing an action is the model's call too; no random pick.
+	state.WorkingMemory["available_actions"] = actions
+	if _, err := (&ActionExecutionProcessor{}).Process(context.Background(), state); err == nil {
+		t.Fatal("action chosen without a model")
+	}
+	choice := &fakeTextGenerator{reply: "I rest, because the load is high."}
+	res, err = (&ActionExecutionProcessor{Generator: choice}).Process(context.Background(), state)
+	if err != nil || res.Output != "I rest, because the load is high." {
+		t.Fatalf("choice = %+v, %v", res, err)
+	}
+
+	gen.err = errors.New("model down")
+	if _, err := (&ScenarioSimulationProcessor{Generator: gen}).Process(context.Background(), state); err == nil {
+		t.Fatal("scenarios invented on model failure")
+	}
+}

@@ -154,9 +154,16 @@ func (cl *CognitiveLoop) registerDefaultProcessors() {
 	cl.stepProcessors[12] = &MetaCognitiveProcessor{}
 }
 
-// SetTextGenerator injects the model that writes the loop's insight step.
-// Passing nil means the insight step produces no insight.
+// SetTextGenerator injects the model behind the loop's action, scenario,
+// evaluation, model-update, consolidation and insight steps. Passing nil means
+// those steps fail and record nothing.
 func (cl *CognitiveLoop) SetTextGenerator(gen TextGenerator) {
+	cl.RegisterStepProcessor(3, &ActionGenerationProcessor{Generator: gen})
+	cl.RegisterStepProcessor(4, &ActionExecutionProcessor{Generator: gen})
+	cl.RegisterStepProcessor(6, &ScenarioSimulationProcessor{Generator: gen})
+	cl.RegisterStepProcessor(7, &OutcomeEvaluationProcessor{Generator: gen})
+	cl.RegisterStepProcessor(8, &ModelUpdateProcessor{Generator: gen})
+	cl.RegisterStepProcessor(9, &LearningConsolidationProcessor{Generator: gen})
 	cl.RegisterStepProcessor(10, &InsightGenerationProcessor{Generator: gen})
 }
 
