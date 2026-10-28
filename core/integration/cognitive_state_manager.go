@@ -2,10 +2,18 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
+
+// errNoWisdomProvider reports that no LLM provider is configured, so no
+// wisdom can be generated (wisdom text must come from the model).
+var errNoWisdomProvider = errors.New("cognitive state manager: no LLM provider configured for wisdom generation")
 
 // CognitiveStateManager integrates echobeats and echodream with shared state
 type CognitiveStateManager struct {
@@ -37,6 +45,10 @@ type CognitiveStateManager struct {
 	totalThoughts uint64
 	totalPatterns uint64
 	totalWisdom   uint64
+
+	// LLM provider used to generate wisdom insights from recognized patterns.
+	// Without it (or when it errors) no wisdom insight is produced.
+	llmProvider llm.LLMProvider
 
 	// Running state
 	running bool
@@ -84,6 +96,13 @@ func NewCognitiveStateManager() *CognitiveStateManager {
 		recognizedPatterns: make([]RecognizedPattern, 0),
 		wisdomInsights:     make([]WisdomInsight, 0),
 	}
+}
+
+// SetLLMProvider sets the model used to generate wisdom insights.
+func (csm *CognitiveStateManager) SetLLMProvider(provider llm.LLMProvider) {
+	csm.mu.Lock()
+	defer csm.mu.Unlock()
+	csm.llmProvider = provider
 }
 
 // Start begins cognitive state management
@@ -163,13 +182,25 @@ func (csm *CognitiveStateManager) processThoughts() {
 
 // recognizePattern creates a recognized pattern
 func (csm *CognitiveStateManager) recognizePattern(theme string, frequency int, thoughts []SharedThought) {
+	if !csm.recordPattern(theme, frequency, thoughts) {
+		return
+	}
+
+	// Check if patterns can generate wisdom (model call happens outside the lock)
+	if err := csm.generateWisdom(csm.ctx); err != nil {
+		fmt.Printf("⚠️  Wisdom generation skipped: %v\n", err)
+	}
+}
+
+// recordPattern stores a new pattern and reports whether one was added.
+func (csm *CognitiveStateManager) recordPattern(theme string, frequency int, thoughts []SharedThought) bool {
 	csm.mu.Lock()
 	defer csm.mu.Unlock()
 
 	// Check if pattern already exists
 	for _, pattern := range csm.recognizedPatterns {
 		if pattern.Description == theme {
-			return // Already recognized
+			return false // Already recognized
 		}
 	}
 
@@ -202,46 +233,75 @@ func (csm *CognitiveStateManager) recognizePattern(theme string, frequency int, 
 	if csm.onPatternRecognized != nil {
 		csm.onPatternRecognized(pattern)
 	}
-
-	// Check if patterns can generate wisdom
-	if len(csm.recognizedPatterns) >= 3 {
-		csm.generateWisdom()
-	}
+	return true
 }
 
-// generateWisdom extracts wisdom from multiple patterns
-func (csm *CognitiveStateManager) generateWisdom() {
-	// Take recent patterns
-	recentPatterns := csm.recognizedPatterns
+// generateWisdom asks the model to extract a wisdom insight from the most
+// recent patterns. It returns an error (and records no insight) when fewer
+// than three patterns exist, no provider is configured, or the model fails.
+func (csm *CognitiveStateManager) generateWisdom(ctx context.Context) error {
+	csm.mu.RLock()
+	provider := csm.llmProvider
+	recentPatterns := append([]RecognizedPattern(nil), csm.recognizedPatterns...)
+	csm.mu.RUnlock()
+
+	if len(recentPatterns) < 3 {
+		return nil
+	}
 	if len(recentPatterns) > 5 {
 		recentPatterns = recentPatterns[len(recentPatterns)-5:]
 	}
+	if provider == nil {
+		return errNoWisdomProvider
+	}
 
-	// Generate wisdom insight (simplified - in production would use LLM)
-	patternNames := make([]string, 0)
-	patternIDs := make([]string, 0)
+	patternIDs := make([]string, 0, len(recentPatterns))
+	var b strings.Builder
 	for _, pattern := range recentPatterns {
-		patternNames = append(patternNames, pattern.Description)
 		patternIDs = append(patternIDs, pattern.ID)
+		fmt.Fprintf(&b, "- Theme %q (seen %d times, strength %.2f)\n", pattern.Description, pattern.Frequency, pattern.Strength)
+		for _, ex := range pattern.Examples {
+			fmt.Fprintf(&b, "    example thought: %s\n", ex)
+		}
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, reflecting on recurring patterns in your own recent thoughts.
+
+Recognized patterns:
+%s
+In one or two sentences, in your own first-person voice, state the wisdom or deeper understanding these patterns reveal to you.`, b.String())
+
+	opts := llm.GenerateOptions{MaxTokens: 150, Temperature: 0.7}
+	text, err := provider.Generate(ctx, prompt, opts)
+	if err != nil {
+		return fmt.Errorf("wisdom generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return errors.New("wisdom generation returned empty text")
 	}
 
 	insight := WisdomInsight{
 		ID:        fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-		Insight:   fmt.Sprintf("Patterns of %v suggest deeper understanding emerging", patternNames),
+		Insight:   text,
 		Depth:     0.7,
 		Source:    patternIDs,
 		Generated: time.Now(),
 	}
 
+	csm.mu.Lock()
 	csm.wisdomInsights = append(csm.wisdomInsights, insight)
 	csm.totalWisdom++
+	onWisdom := csm.onWisdomGained
+	csm.mu.Unlock()
 
 	fmt.Printf("💎 Wisdom insight: %s\n", insight.Insight)
 
 	// Trigger callback
-	if csm.onWisdomGained != nil {
-		csm.onWisdomGained(insight)
+	if onWisdom != nil {
+		onWisdom(insight)
 	}
+	return nil
 }
 
 // AddThought adds a thought to the shared buffer

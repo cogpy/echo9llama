@@ -46,6 +46,10 @@ type DiscoveryOptions struct {
 	MemoryReserveBytes uint64
 	MaxFiles           int
 	HostMemory         *HostMemoryProbe
+	// ContextWindow is the context the runtime will actually allocate. When
+	// set and smaller than the model's trained context, the memory estimate
+	// uses it instead, so a 32k-context model run at 4k is not rejected.
+	ContextWindow int
 }
 
 // ModelFileMetadata captures scheduler-relevant metadata discovered from a GGUF file.
@@ -185,6 +189,10 @@ func ProbeModelFile(path string, options ...DiscoveryOptions) (Capability, error
 	metadata, err := ReadGGUFModelMetadata(canonical)
 	if err != nil {
 		return Capability{}, err
+	}
+
+	if option.ContextWindow > 0 && metadata.ContextLength > option.ContextWindow {
+		metadata.EstimatedMemoryBytes = estimateModelMemory(metadata.FileSizeBytes, option.ContextWindow)
 	}
 
 	host := ProbeHostMemory()

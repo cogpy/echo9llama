@@ -28,6 +28,13 @@ func NewHTTPBridge(port int) *HTTPBridge {
 	}
 }
 
+// SetNarrativeGenerator configures the model used to narrate the environment.
+// Until it is set, the narrative endpoint reports that no narrative is
+// available instead of returning fixed text.
+func (hb *HTTPBridge) SetNarrativeGenerator(generator TextGenerator) {
+	hb.storytellingEngine.SetGenerator(generator)
+}
+
 // Start starts the HTTP server
 func (hb *HTTPBridge) Start() error {
 	// Start avatar manager
@@ -261,7 +268,11 @@ func (hb *HTTPBridge) handleGetNarrative(w http.ResponseWriter, r *http.Request)
 	avatarState := hb.avatarManager.GetCurrentState()
 	envState := hb.environmentCoupler.GetEnvironmentState()
 
-	narrative := hb.storytellingEngine.GenerateNarrative(envState, avatarState)
+	narrative, err := hb.storytellingEngine.GenerateNarrative(r.Context(), envState, avatarState)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("narrative unavailable: %v", err), http.StatusServiceUnavailable)
+		return
+	}
 
 	response := map[string]interface{}{
 		"narrative": narrative,

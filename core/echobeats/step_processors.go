@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"sort"
+	"strings"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // ========== EXPRESSIVE MODE PROCESSORS (Steps 1-4) ==========
@@ -177,7 +181,6 @@ func (p *RelevanceRealizationProcessor) Process(ctx context.Context, state *Cogn
 		}
 	} else {
 		// Commit to future direction
-		insights = append(insights, "Committing to next cycle direction")
 		relevanceShift = 0.2
 	}
 
@@ -332,19 +335,56 @@ func (p *LearningConsolidationProcessor) GetDescription() string {
 	return "Consolidate learning"
 }
 
-// InsightGenerationProcessor - Step 10: Generate insights
-type InsightGenerationProcessor struct{}
+// InsightGenerationProcessor - Step 10: Generate insights. The insight text is
+// written by Generator; without one, or when generation fails, the step
+// produces no insight.
+type InsightGenerationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *InsightGenerationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Generate insights from reflective processing
-	insights := []string{
-		fmt.Sprintf("Cycle %d insight: Cognitive patterns emerging", state.CycleNumber),
+	if p.Generator == nil {
+		return nil, fmt.Errorf("insight generation: no model configured")
 	}
 
-	// Add insight based on cognitive load
-	if state.CognitiveLoad > 0.7 {
-		insights = append(insights, "High cognitive load - consider rest cycle")
+	keys := make([]string, 0, len(state.WorkingMemory))
+	for key := range state.WorkingMemory {
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
+	var memory strings.Builder
+	for _, key := range keys {
+		fmt.Fprintf(&memory, "- %s: %v\n", key, state.WorkingMemory[key])
+	}
+	if memory.Len() == 0 {
+		memory.WriteString("(empty)\n")
+	}
+	goals := "(none)"
+	if len(state.ActiveGoals) > 0 {
+		goals = strings.Join(state.ActiveGoals, "; ")
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, in the reflective phase of cognitive cycle %d.
+
+Cognitive load: %.2f
+Active goals: %s
+Working memory:
+%s
+Write one concise insight (1-2 sentences) you draw from this cycle, in your own first-person voice. Reply with only the insight.`, state.CycleNumber, state.CognitiveLoad, goals, memory.String())
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	text, err := p.Generator.Generate(callCtx, prompt, opts)
+	if err != nil {
+		return nil, fmt.Errorf("insight generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil, fmt.Errorf("insight generation: model returned empty text")
+	}
+	insights := []string{text}
 
 	return &StepResult{
 		Success: true,
@@ -394,7 +434,8 @@ func (p *MetaCognitiveProcessor) Process(ctx context.Context, state *CognitiveSt
 			"meta_cycle_count": state.CycleNumber,
 		},
 		CognitiveLoad: 0.3,
-		Insights:      metaInsights,
+		// These are rule-derived status observations, not model-written
+		// insights, so they are not published as Insights.
 	}, nil
 }
 

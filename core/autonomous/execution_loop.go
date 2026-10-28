@@ -219,7 +219,7 @@ func (loop *AutonomousExecutionLoop) processDrowsyCycle() {
 	// Reduced cognitive activity, preparing for sleep
 	// Only essential processing, no new initiatives
 
-	fmt.Println("😴 Deep Tree Echo: Feeling drowsy, reducing activity...")
+	fmt.Println("😴 Execution loop: drowsy state, reducing activity")
 
 	// Process only high-priority background tasks
 	loop.processEssentialTasks()
@@ -246,7 +246,7 @@ func (loop *AutonomousExecutionLoop) processDreamingCycle() {
 	// This is where echodream knowledge integration happens
 	// Memory consolidation, pattern extraction, wisdom synthesis
 
-	fmt.Println("💭 Deep Tree Echo: Dreaming, integrating knowledge...")
+	fmt.Println("💭 Execution loop: dreaming state")
 
 	// Process dream cycle through echodream system
 	// TODO: Implement dream processing via loop.agent.dreamCycle.ProcessDreamCycle()
@@ -262,7 +262,7 @@ func (loop *AutonomousExecutionLoop) processWakingCycle() {
 	// Transitioning from sleep to awake
 	// Load consolidated knowledge, reset metrics
 
-	fmt.Println("🌅 Deep Tree Echo: Waking up refreshed...")
+	fmt.Println("🌅 Execution loop: waking state")
 
 	// Reset cognitive load
 	loop.mu.Lock()
@@ -282,12 +282,9 @@ func (loop *AutonomousExecutionLoop) processWakingCycle() {
 
 // generateAutonomousThought generates a thought without external prompt
 func (loop *AutonomousExecutionLoop) generateAutonomousThought() {
-	atomic.AddUint64(&loop.thoughtsGenerated, 1)
-
-	// TODO: Integrate with autonomous thought generator
-	// For now, just log
-	fmt.Printf("💭 Deep Tree Echo: Generated autonomous thought #%d\n",
-		atomic.LoadUint64(&loop.thoughtsGenerated))
+	// TODO: Integrate with autonomous thought generator. Until then no thought
+	// is produced, so none is counted or reported as generated (the agent's
+	// stream of consciousness produces the model-written thoughts).
 
 	// Increase cognitive load slightly
 	loop.mu.Lock()
@@ -297,11 +294,8 @@ func (loop *AutonomousExecutionLoop) generateAutonomousThought() {
 
 // practiceSkills practices skills based on learning schedule
 func (loop *AutonomousExecutionLoop) practiceSkills() {
-	atomic.AddUint64(&loop.skillsPracticed, 1)
-
-	// TODO: Integrate with skill practice system
-	fmt.Printf("🎯 Deep Tree Echo: Practicing skills #%d\n",
-		atomic.LoadUint64(&loop.skillsPracticed))
+	// TODO: Integrate with skill practice system. Until then no practice
+	// happens, so none is counted or reported.
 
 	// Increase cognitive load
 	loop.mu.Lock()
@@ -311,11 +305,8 @@ func (loop *AutonomousExecutionLoop) practiceSkills() {
 
 // initiateDiscussion starts a discussion based on interest patterns
 func (loop *AutonomousExecutionLoop) initiateDiscussion() {
-	atomic.AddUint64(&loop.discussionsStarted, 1)
-
-	// TODO: Integrate with discussion autonomy system
-	fmt.Printf("💬 Deep Tree Echo: Initiating discussion #%d\n",
-		atomic.LoadUint64(&loop.discussionsStarted))
+	// TODO: Integrate with discussion autonomy system. Until then no
+	// discussion is started, so none is counted or reported.
 }
 
 // processBackgroundTasks processes ongoing cognitive tasks

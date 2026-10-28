@@ -67,6 +67,7 @@ My core values:
 
 	// Initialize echobeats scheduler
 	echobeatsScheduler := echobeats.NewEchoBeats()
+	echobeatsScheduler.SetThoughtGenerator(llmManager)
 	fmt.Println("✓ EchoBeats Scheduler initialized")
 
 	// Initialize echodream system

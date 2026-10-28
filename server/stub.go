@@ -262,12 +262,15 @@ func (r *echoRuntime) handleChat(w http.ResponseWriter, req *http.Request) {
 	}
 
 	prompt, system := buildChat(in.Messages, r.embodiment)
-	if prompt == "" && system == "" {
-		writeError(w, http.StatusBadRequest, fmt.Errorf("at least one non-empty message is required"))
+	if prompt == "" {
+		writeError(w, http.StatusBadRequest, fmt.Errorf("at least one non-empty user or assistant message is required"))
 		return
 	}
+	if system == "" {
+		system = echoChatSystem
+	}
 
-	response, err := r.generate(req.Context(), prompt, system)
+	response, err := r.generateShort(req.Context(), prompt, system)
 	if err != nil {
 		writeError(w, generateErrorStatus(err), err)
 		return
@@ -281,6 +284,10 @@ func (r *echoRuntime) handleChat(w http.ResponseWriter, req *http.Request) {
 	}
 	writeStreamingAwareJSON(w, in.Stream, payload)
 }
+
+// echoChatSystem frames chat when neither the caller nor an embodiment frame
+// supplies a system prompt. It is prompt text for the model, not a reply.
+const echoChatSystem = "You are Deep Tree Echo, an embodied cognitive system. Reply to the user in the first person, in one short paragraph."
 
 // buildChat flattens the conversation into a prompt and picks the system
 // prompt: the caller's system messages when present, otherwise the embodied
@@ -511,6 +518,16 @@ func (r *echoRuntime) generate(ctx context.Context, prompt string, system string
 	if system != "" {
 		opts.SystemPrompt = system
 	}
+	return r.provider.Generate(ctx, prompt, opts)
+}
+
+// generateShort is generate for a brief first-person line: a small token
+// budget, ending at a blank line, a new turn, or any of the extra stops.
+func (r *echoRuntime) generateShort(ctx context.Context, prompt, system string, extraStops ...string) (string, error) {
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = system
+	opts.MaxTokens = 120
+	opts.Stop = append(llm.EdgeTurnStops(), append([]string{"\n\n"}, extraStops...)...)
 	return r.provider.Generate(ctx, prompt, opts)
 }
 

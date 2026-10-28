@@ -234,6 +234,12 @@ func (p *EdgeCompletionProvider) generateRemote(ctx context.Context, prompt stri
 // ("...time? Echo: A great day...").
 var defaultEdgeStops = []string{"\nUser:", "\nuser:", "\nEcho:", "User:", "Echo:"}
 
+// EdgeTurnStops returns a copy of the default turn-marker stops, for callers
+// that add their own stops and still want completions to end at a new turn.
+func EdgeTurnStops() []string {
+	return append([]string(nil), defaultEdgeStops...)
+}
+
 func edgeStops(stop []string) []string {
 	if len(stop) > 0 {
 		return stop

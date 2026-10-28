@@ -57,6 +57,7 @@ My cognitive architecture:
 
 	// Create echobeats scheduler
 	echobeatsScheduler := echobeats.NewEchoBeats()
+	echobeatsScheduler.SetThoughtGenerator(consciousness.LLMManager())
 
 	// Create echodream system
 	echodreamSystem := echodream.NewDreamSystem()

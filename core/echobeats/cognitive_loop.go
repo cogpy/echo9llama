@@ -154,6 +154,12 @@ func (cl *CognitiveLoop) registerDefaultProcessors() {
 	cl.stepProcessors[12] = &MetaCognitiveProcessor{}
 }
 
+// SetTextGenerator injects the model that writes the loop's insight step.
+// Passing nil means the insight step produces no insight.
+func (cl *CognitiveLoop) SetTextGenerator(gen TextGenerator) {
+	cl.RegisterStepProcessor(10, &InsightGenerationProcessor{Generator: gen})
+}
+
 // RegisterStepProcessor registers a custom step processor
 func (cl *CognitiveLoop) RegisterStepProcessor(step int, processor StepProcessor) {
 	cl.mu.Lock()

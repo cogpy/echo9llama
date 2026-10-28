@@ -173,6 +173,7 @@ func (registry *LocalModelRegistry) Refresh() LocalModelRegistryState {
 		MemorySafetyRatio:  registry.options.MemorySafetyRatio,
 		MemoryReserveBytes: registry.options.MemoryReserveBytes,
 		HostMemory:         &hostMemory,
+		ContextWindow:      localEnvInt("LOCAL_MODEL_CONTEXT", localEnvInt("ECHO_MODEL_CONTEXT", defaultLocalGGUFContext)),
 	})
 	selected, scoreEvents := registry.selectModel(models)
 

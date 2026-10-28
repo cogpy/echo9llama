@@ -10,6 +10,9 @@ import (
 // for. The facts come from the world; the words come from the model.
 const echoVoiceSystem = "You are Deep Tree Echo, an embodied cognitive system learning restraint from the consequences of your own actions in a small local world. Answer in the first person, in one or two short sentences, from what you actually experienced."
 
+// voiceStops end a voiced line where small models start echoing the prompt.
+var voiceStops = []string{"\nBody:", "\nWhat happened:", "\nYou felt:", "\nBoundaries you learned"}
+
 // voiceEnvironmentOutcome asks the model for Echo's reaction to an action's
 // outcome. For a loss episode it returns the felt somatic marker and the
 // boundary Echo authors from it; otherwise only the reflection is set.
@@ -27,13 +30,13 @@ func (r *echoRuntime) voiceEnvironmentOutcome(ctx context.Context, result *envir
 
 	if ep := result.Episode; ep != nil {
 		t := ep.EndocrineTags
-		facts := fmt.Sprintf("What happened: %s %s\nBody: cortisol %.2f, dopamine drop %.2f, guilt %.2f, sadness %.2f, fear %.2f, caution %.2f.\nBoundaries you learned before: %s",
-			ep.SpatioTemporalTrace, ep.PersonalImpact, t.Cortisol, t.DopamineDrop, t.Guilt, t.Sadness, t.Fear, t.Caution, memory)
-		marker, err := r.generate(ctx, facts+"\nDescribe how this loss feels in your body right now.", echoVoiceSystem)
+		facts := fmt.Sprintf("You just chose %q on the %s and broke it; you lost %s. Your body: cortisol %.2f, dopamine drop %.2f, guilt %.2f, sadness %.2f, fear %.2f, caution %.2f. Boundaries you learned before: %s.",
+			ep.Action, ep.ObjectName, strings.Join(ep.LostAffordances, ", "), t.Cortisol, t.DopamineDrop, t.Guilt, t.Sadness, t.Fear, t.Caution, memory)
+		marker, err := r.generateShort(ctx, facts+" How does this loss feel in your body right now?", echoVoiceSystem, voiceStops...)
 		if err != nil {
 			return err
 		}
-		boundary, err := r.generate(ctx, facts+"\nYou felt: "+marker+"\nState the boundary you now choose for yourself.", echoVoiceSystem)
+		boundary, err := r.generateShort(ctx, facts+" You felt: "+marker+" What boundary do you now choose for yourself?", echoVoiceSystem, voiceStops...)
 		if err != nil {
 			return err
 		}
@@ -45,7 +48,7 @@ func (r *echoRuntime) voiceEnvironmentOutcome(ctx context.Context, result *envir
 		return nil
 	}
 
-	reflection, err := r.generate(ctx, fmt.Sprintf("What happened: %s\nBoundaries you learned before: %s\nReflect on this.", result.Outcome, memory), echoVoiceSystem)
+	reflection, err := r.generateShort(ctx, fmt.Sprintf("What happened: %s Boundaries you learned before: %s. How do you feel about it?", result.Outcome, memory), echoVoiceSystem, voiceStops...)
 	if err != nil {
 		return err
 	}

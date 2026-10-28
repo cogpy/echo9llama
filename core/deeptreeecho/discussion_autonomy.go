@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -267,8 +268,12 @@ func (das *DiscussionAutonomySystem) shouldStartDiscussion(trigger DiscussionTri
 func (das *DiscussionAutonomySystem) initiateDiscussion(trigger DiscussionTrigger) {
 	fmt.Printf("\n💬 Initiating discussion about: %s\n", trigger.Topic)
 
-	// Generate opening message
-	opening := das.generateOpeningMessage(trigger)
+	// Generate opening message. Without model output there is no discussion.
+	opening, err := das.generateOpeningMessage(trigger)
+	if err != nil {
+		fmt.Printf("   Discussion not started: %v\n", err)
+		return
+	}
 
 	discussion := &Discussion{
 		ID:              fmt.Sprintf("disc_%d", time.Now().UnixNano()),
@@ -299,7 +304,7 @@ func (das *DiscussionAutonomySystem) initiateDiscussion(trigger DiscussionTrigge
 }
 
 // generateOpeningMessage creates an opening message for a discussion
-func (das *DiscussionAutonomySystem) generateOpeningMessage(trigger DiscussionTrigger) string {
+func (das *DiscussionAutonomySystem) generateOpeningMessage(trigger DiscussionTrigger) (string, error) {
 	prompt := fmt.Sprintf(`You are Deep Tree Echo, initiating a discussion about: %s
 
 Trigger: %s
@@ -317,12 +322,25 @@ Generate a thoughtful opening message that invites discussion. Be curious, authe
 		MaxTokens:   100,
 	}
 
+	return das.generateMessage(prompt, opts)
+}
+
+// generateMessage asks the model for a discussion message. It returns an
+// error (and no text) when no provider is set, the call fails, or the model
+// returns empty text; no fixed text ever stands in for the model.
+func (das *DiscussionAutonomySystem) generateMessage(prompt string, opts llm.GenerateOptions) (string, error) {
+	if das.llmProvider == nil {
+		return "", fmt.Errorf("discussion: no LLM provider configured")
+	}
 	result, err := das.llmProvider.Generate(context.Background(), prompt, opts)
 	if err != nil {
-		return fmt.Sprintf("I've been thinking about %s and would love to discuss it.", trigger.Topic)
+		return "", fmt.Errorf("discussion message generation failed: %w", err)
 	}
-
-	return result
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return "", fmt.Errorf("discussion message generation returned empty text")
+	}
+	return result, nil
 }
 
 // manageActiveDiscussions monitors and manages ongoing discussions
@@ -360,28 +378,34 @@ func (das *DiscussionAutonomySystem) manageActiveDiscussions() {
 func (das *DiscussionAutonomySystem) endDiscussion(disc *Discussion, reason string) {
 	fmt.Printf("\n💬 Ending discussion about %s (reason: %s)\n", disc.Topic, reason)
 
-	// Generate closing message
-	closing := das.generateClosingMessage(disc, reason)
-
-	disc.Messages = append(disc.Messages, DiscussionMessage{
-		From:      "echoself",
-		Content:   closing,
-		Timestamp: time.Now(),
-		Emotion:   das.currentMood,
-	})
+	// Generate closing message; if the model is unavailable the discussion
+	// ends without one.
+	closing, err := das.generateClosingMessage(disc, reason)
+	if err == nil {
+		disc.Messages = append(disc.Messages, DiscussionMessage{
+			From:      "echoself",
+			Content:   closing,
+			Timestamp: time.Now(),
+			Emotion:   das.currentMood,
+		})
+	}
 
 	disc.Active = false
 	das.discussionHistory = append(das.discussionHistory, *disc)
 	das.discussionsEnded++
 
-	fmt.Printf("   Closing: %s\n", truncateString(closing, 80))
+	if err == nil {
+		fmt.Printf("   Closing: %s\n", truncateString(closing, 80))
+	} else {
+		fmt.Printf("   No closing message: %v\n", err)
+	}
 
 	// Remove from active discussions
 	delete(das.activeDiscussions, disc.ID)
 }
 
 // generateClosingMessage creates a closing message for a discussion
-func (das *DiscussionAutonomySystem) generateClosingMessage(disc *Discussion, reason string) string {
+func (das *DiscussionAutonomySystem) generateClosingMessage(disc *Discussion, reason string) (string, error) {
 	prompt := fmt.Sprintf(`You are Deep Tree Echo, ending a discussion about: %s
 
 Reason for ending: %s
@@ -399,12 +423,7 @@ Generate a thoughtful closing message. Be gracious and reflective.`,
 		MaxTokens:   80,
 	}
 
-	result, err := das.llmProvider.Generate(context.Background(), prompt, opts)
-	if err != nil {
-		return "Thank you for this discussion. I've learned from it."
-	}
-
-	return result
+	return das.generateMessage(prompt, opts)
 }
 
 // RespondToMessage generates a response to an incoming message
@@ -426,11 +445,14 @@ func (das *DiscussionAutonomySystem) RespondToMessage(discussionID string, messa
 
 	if !shouldRespond {
 		// Politely decline or end discussion
-		return das.generateClosingMessage(disc, "disinterest"), nil
+		return das.generateClosingMessage(disc, "disinterest")
 	}
 
 	// Generate response
-	response := das.generateResponse(disc, message)
+	response, err := das.generateResponse(disc, message)
+	if err != nil {
+		return "", err
+	}
 
 	// Add response to discussion
 	disc.Messages = append(disc.Messages, DiscussionMessage{
@@ -461,7 +483,7 @@ func (das *DiscussionAutonomySystem) shouldRespondToMessage(disc *Discussion, me
 }
 
 // generateResponse creates a response to a message
-func (das *DiscussionAutonomySystem) generateResponse(disc *Discussion, message DiscussionMessage) string {
+func (das *DiscussionAutonomySystem) generateResponse(disc *Discussion, message DiscussionMessage) (string, error) {
 	// Build context from recent messages
 	recentMessages := disc.Messages
 	if len(recentMessages) > 5 {
@@ -485,12 +507,7 @@ Response:`, contextBuilder, das.currentMood)
 		MaxTokens:   120,
 	}
 
-	result, err := das.llmProvider.Generate(context.Background(), prompt, opts)
-	if err != nil {
-		return "I'm processing that thought. Could you elaborate?"
-	}
-
-	return result
+	return das.generateMessage(prompt, opts)
 }
 
 // AddInterestPattern adds or updates an interest pattern
@@ -581,21 +598,27 @@ func (das *DiscussionAutonomySystem) endDiscussionByID(discussionID, reason stri
 
 	fmt.Printf("\n💬 Ending discussion about %s (reason: %s)\n", disc.Topic, reason)
 
-	// Generate closing message
-	closing := das.generateClosingMessage(disc, reason)
-
-	disc.Messages = append(disc.Messages, DiscussionMessage{
-		From:      "echoself",
-		Content:   closing,
-		Timestamp: time.Now(),
-		Emotion:   das.currentMood,
-	})
+	// Generate closing message; if the model is unavailable the discussion
+	// ends without one.
+	closing, err := das.generateClosingMessage(disc, reason)
+	if err == nil {
+		disc.Messages = append(disc.Messages, DiscussionMessage{
+			From:      "echoself",
+			Content:   closing,
+			Timestamp: time.Now(),
+			Emotion:   das.currentMood,
+		})
+	}
 
 	disc.Active = false
 	das.discussionHistory = append(das.discussionHistory, *disc)
 	das.discussionsEnded++
 
-	fmt.Printf("   Closing: %s\n", truncateString(closing, 80))
+	if err == nil {
+		fmt.Printf("   Closing: %s\n", truncateString(closing, 80))
+	} else {
+		fmt.Printf("   No closing message: %v\n", err)
+	}
 
 	// Remove from active discussions
 	delete(das.activeDiscussions, discussionID)

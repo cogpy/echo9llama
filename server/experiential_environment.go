@@ -81,10 +81,10 @@ type environmentRecallRequest struct {
 }
 
 type environmentActionResult struct {
-	Object          affordanceObject `json:"object"`
-	Episode         *lossEpisode     `json:"episode,omitempty"`
-	RecalledLosses  []lossEpisode    `json:"recalled_losses,omitempty"`
-	CautionScore    float64          `json:"caution_score"`
+	Object         affordanceObject `json:"object"`
+	Episode        *lossEpisode     `json:"episode,omitempty"`
+	RecalledLosses []lossEpisode    `json:"recalled_losses,omitempty"`
+	CautionScore   float64          `json:"caution_score"`
 	// Outcome is a factual, third-person record of what the action did to
 	// the world. It is the model's input, never shown as Echo's voice.
 	Outcome string `json:"outcome"`
@@ -263,8 +263,8 @@ func (env *affordanceEnvironment) ApplyAction(req environmentActionRequest) (env
 
 	recalled := env.recallLocked(environmentRecallRequest{Cue: action, Object: objectID, Action: action, Limit: 5})
 	result := environmentActionResult{
-		Object:          cloneObject(obj),
-		RecalledLosses:  recalled,
+		Object:         cloneObject(obj),
+		RecalledLosses: recalled,
 		CautionScore:   env.cautionScoreLocked(),
 	}
 

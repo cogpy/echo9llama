@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -571,57 +572,89 @@ func (ws *WisdomSynthesis) applicationLoop() {
 	}
 }
 
-// applyWisdom applies relevant wisdom to current context
+// applyWisdom applies relevant wisdom to current context. The outcome text
+// is the model's account of how the principle bears on the situation; when
+// the model is unavailable no application is recorded.
 func (ws *WisdomSynthesis) applyWisdom() {
-	ws.mu.Lock()
-	defer ws.mu.Unlock()
-
+	ws.mu.RLock()
 	if len(ws.wisdomPrinciples) == 0 {
+		ws.mu.RUnlock()
 		return
 	}
 
 	// Get current context from heartbeat if available
-	context := "general cognitive operation"
+	situation := "general cognitive operation"
 	if ws.heartbeat != nil {
 		vitals := ws.heartbeat.GetVitalSigns()
 		if vitals.CognitiveLoad > 0.7 {
-			context = "high cognitive load situation"
+			situation = "high cognitive load situation"
 		} else if vitals.CreativityIndex > 0.7 {
-			context = "creative exploration"
+			situation = "creative exploration"
 		} else if vitals.EmotionalBalance < 0.3 {
-			context = "emotional regulation needed"
+			situation = "emotional regulation needed"
 		}
 	}
 
 	// Find most relevant principle
-	bestPrinciple := ws.findRelevantPrinciple(context)
-	if bestPrinciple == nil {
+	var principle WisdomPrinciple
+	best := ws.findRelevantPrinciple(situation)
+	if best != nil {
+		principle = *best
+	}
+	provider := ws.llmProvider
+	ws.mu.RUnlock()
+
+	if best == nil || provider == nil {
+		return
+	}
+
+	prompt := fmt.Sprintf(`[System: You are Deep Tree Echo applying one of your wisdom principles to your present situation.]
+
+Principle (%s): %s
+Current situation: %s
+
+In one or two sentences, in first person, describe how this principle shapes what you do now.`,
+		principle.Domain, principle.Content, situation)
+	opts := llm.GenerateOptions{Temperature: 0.6, MaxTokens: 100}
+	outcome, err := provider.Generate(ws.ctx, prompt, opts)
+	if err != nil {
+		fmt.Printf("⚠️  Wisdom application skipped: %v\n", err)
+		return
+	}
+	outcome = strings.TrimSpace(outcome)
+	if outcome == "" {
 		return
 	}
 
 	// Record application
 	application := WisdomApplication{
-		Context:       context,
-		Outcome:       "Applied to current state",
+		Context:       situation,
+		Outcome:       outcome,
 		Effectiveness: 0.7,
 		Timestamp:     time.Now(),
 	}
 
-	// Update principle
+	ws.mu.Lock()
+	found := false
 	for i := range ws.wisdomPrinciples {
-		if ws.wisdomPrinciples[i].ID == bestPrinciple.ID {
+		if ws.wisdomPrinciples[i].ID == principle.ID {
 			ws.wisdomPrinciples[i].Applications = append(ws.wisdomPrinciples[i].Applications, application)
 			ws.wisdomPrinciples[i].ApplyCount++
 			ws.wisdomPrinciples[i].LastApplied = time.Now()
+			principle = ws.wisdomPrinciples[i]
+			found = true
 			break
 		}
 	}
-
-	ws.totalApplications++
+	if found {
+		ws.totalApplications++
+	}
+	onApplied := ws.onWisdomApplied
+	ws.mu.Unlock()
 
 	// Notify callback
-	if ws.onWisdomApplied != nil {
-		go ws.onWisdomApplied(*bestPrinciple, context)
+	if found && onApplied != nil {
+		go onApplied(principle, situation)
 	}
 }
 

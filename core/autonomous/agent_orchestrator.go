@@ -3,6 +3,7 @@ package autonomous
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -105,7 +106,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	// Initialize LLM provider (auto-detects available providers)
 	llmProvider := deeptreeecho.NewMultiProviderLLM()
 	if !llmProvider.IsAvailable() {
-		fmt.Println("⚠️  Warning: No LLM providers available, using fallback mode")
+		fmt.Println("⚠️  Warning: No LLM providers available; no autonomous character text will be generated")
 	}
 
 	// Initialize memory system (without persistence for now)
@@ -122,11 +123,13 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 
 	// Initialize echobeats scheduler
 	scheduler := echobeats.NewEchoBeats()
+	scheduler.SetThoughtGenerator(llmAdapter)
 
 	// Initialize dream system if enabled
 	var dreamSystem *echodream.DreamCycleIntegration
 	if config.EnableDreamCycles {
 		dreamSystem = echodream.NewDreamCycleIntegration()
+		dreamSystem.SetTextGenerator(llmAdapter)
 	}
 
 	// Initialize interest system and discussion manager if enabled
@@ -139,6 +142,8 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 		discussionManager = echobeats.NewDiscussionManager(
 			interestSystem,
 		)
+		discussionManager.SetResponseGenerator(newDiscussionResponder(identityName, llmAdapter))
+		discussionManager.SetOpeningGenerator(newDiscussionOpener(identityName, llmAdapter))
 	}
 
 	orchestrator := &AgentOrchestrator{
@@ -205,7 +210,7 @@ func (ao *AgentOrchestrator) Start() error {
 		fmt.Printf("   LLM Providers: %v\n", providers)
 		fmt.Printf("   Current: %s\n", ao.llmProvider.GetCurrentProvider())
 	} else {
-		fmt.Println("   LLM Providers: None (using fallback mode)")
+		fmt.Println("   LLM Providers: None (autonomous character text disabled)")
 	}
 	fmt.Println()
 
@@ -397,15 +402,58 @@ func (ao *AgentOrchestrator) handleGoalEvent(event *echobeats.CognitiveEvent) er
 func (ao *AgentOrchestrator) handleIntrospectionEvent(event *echobeats.CognitiveEvent) error {
 	fmt.Println("🔍 Performing introspection...")
 
-	// Generate insight about current state
 	state := ao.persistentState.GetState()
-	if state != nil {
-		insight := fmt.Sprintf("Completed %d cycles, generated %d thoughts, %d insights. Current focus: autonomous operation.",
-			state.CycleCount, state.TotalThoughts, state.TotalInsights)
-		ao.persistentState.AddInsight(insight)
+	if state == nil {
+		return nil
 	}
 
+	// The insight is written by the model from the factual state; on failure
+	// no insight is recorded.
+	prompt := fmt.Sprintf(`You are %s, introspecting on your own autonomous operation.
+
+Trigger: %v
+Cycles completed: %d
+Thoughts generated: %d
+Insights recorded: %d
+
+Write one concise insight (1-2 sentences) about your current state and direction, in your own first-person voice. Reply with only the insight.`,
+		ao.identityName, event.Payload, state.CycleCount, state.TotalThoughts, state.TotalInsights)
+
+	ctx, cancel := context.WithTimeout(ao.ctx, 30*time.Second)
+	defer cancel()
+	insight, err := ao.llmProvider.GenerateThought(ctx, prompt)
+	if err != nil {
+		return fmt.Errorf("introspection insight not generated: %w", err)
+	}
+	insight = strings.TrimSpace(insight)
+	if insight == "" {
+		return fmt.Errorf("introspection insight not generated: model returned empty text")
+	}
+	ao.persistentState.AddInsight(insight)
+
 	return nil
+}
+
+// newDiscussionResponder returns a discussion ResponseGenerator backed by the model.
+func newDiscussionResponder(identityName string, gen llm.LLMProvider) echobeats.ResponseGenerator {
+	return func(ctx context.Context, topic, content string) (string, error) {
+		prompt := fmt.Sprintf(`You are %s, taking part in a discussion about %q.
+
+They said: %s
+
+Reply in your own first-person voice, in a few sentences. Reply with only your message.`, identityName, topic, content)
+		return gen.Generate(ctx, prompt, llm.DefaultGenerateOptions())
+	}
+}
+
+// newDiscussionOpener returns a discussion OpeningGenerator backed by the model.
+func newDiscussionOpener(identityName string, gen llm.LLMProvider) echobeats.OpeningGenerator {
+	return func(ctx context.Context, topic string) (string, error) {
+		prompt := fmt.Sprintf(`You are %s, and you want to start a discussion about %q because it interests you.
+
+Write your opening message in your own first-person voice, in one to three sentences. Reply with only the message.`, identityName, topic)
+		return gen.Generate(ctx, prompt, llm.DefaultGenerateOptions())
+	}
 }
 
 // Autonomous processes

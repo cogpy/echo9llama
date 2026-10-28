@@ -54,6 +54,13 @@ func NewEnhancedScheduler() *EnhancedScheduler {
 	return es
 }
 
+// SetTextGenerator injects the model that writes autonomous thoughts and
+// cognitive-loop insights. Passing nil disables that text.
+func (es *EnhancedScheduler) SetTextGenerator(gen TextGenerator) {
+	es.echoBeats.SetThoughtGenerator(gen)
+	es.masterLoop.SetTextGenerator(gen)
+}
+
 // setupCallbacks configures coordination between components
 func (es *EnhancedScheduler) setupCallbacks() {
 	// Cognitive loop callbacks

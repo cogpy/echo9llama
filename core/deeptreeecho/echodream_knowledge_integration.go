@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -518,11 +519,10 @@ func (edi *EchoDreamKnowledgeIntegration) deepConsolidation() {
 // activePatternProcessing performs REM-like active pattern processing
 func (edi *EchoDreamKnowledgeIntegration) activePatternProcessing() {
 	edi.mu.Lock()
-	defer edi.mu.Unlock()
 
-	// Link patterns and detect emergence
+	// Link patterns and find emergence candidates
 	edi.linkPatterns()
-	edi.detectEmergence()
+	candidates := edi.emergenceCandidates(maxEmergencePerCycle)
 
 	// Grow wisdom depth
 	if len(edi.wisdomInsights) > 0 {
@@ -531,6 +531,26 @@ func (edi *EchoDreamKnowledgeIntegration) activePatternProcessing() {
 			edi.wisdomDepth = edi.maxWisdomDepth
 		}
 	}
+	edi.mu.Unlock()
+
+	// Name each emergent concept with the model (outside the lock).
+	for _, c := range candidates {
+		if err := edi.realizeEmergentConcept(context.Background(), c); err != nil {
+			fmt.Printf("   ✨ Emergence (strength %.2f) not recorded: %v\n", c.strength, err)
+		}
+	}
+}
+
+// maxEmergencePerCycle bounds model calls for emergent concepts per REM phase.
+const maxEmergencePerCycle = 3
+
+// emergenceCandidate is a strong pattern link whose emergent concept has not
+// yet been named by the model.
+type emergenceCandidate struct {
+	id       string
+	key      string
+	strength float64
+	from, to string // pattern descriptions
 }
 
 // createSemanticNode creates a semantic node from a memory
@@ -582,43 +602,87 @@ func (edi *EchoDreamKnowledgeIntegration) linkPatterns() {
 	}
 }
 
-// detectEmergence identifies emergent concepts from pattern combinations
-func (edi *EchoDreamKnowledgeIntegration) detectEmergence() {
-	// Look for strongly linked patterns
-	linkStrengths := make(map[string]float64)
+// emergenceCandidates returns up to limit strongly linked pattern pairs
+// without an emergent concept yet. Caller must hold edi.mu.
+func (edi *EchoDreamKnowledgeIntegration) emergenceCandidates(limit int) []emergenceCandidate {
+	descriptions := make(map[string]string, len(edi.consolidatedPatterns))
+	for _, p := range edi.consolidatedPatterns {
+		descriptions[p.ID] = p.Description
+	}
+	existing := make(map[string]bool, len(edi.emergentConcepts))
+	for _, ec := range edi.emergentConcepts {
+		existing[ec.ID] = true
+	}
+
+	candidates := make([]emergenceCandidate, 0)
+	seen := make(map[string]bool)
 	for _, link := range edi.patternLinks {
-		if link.Strength > 0.7 {
-			key := link.FromPattern + "_" + link.ToPattern
-			linkStrengths[key] = link.Strength
+		if link.Strength <= 0.7 {
+			continue
+		}
+		key := link.FromPattern + "_" + link.ToPattern
+		id := "em_" + key
+		if existing[id] || seen[id] {
+			continue
+		}
+		seen[id] = true
+		candidates = append(candidates, emergenceCandidate{
+			id:       id,
+			key:      key,
+			strength: link.Strength,
+			from:     descriptions[link.FromPattern],
+			to:       descriptions[link.ToPattern],
+		})
+		if len(candidates) >= limit {
+			break
 		}
 	}
+	return candidates
+}
 
-	// Create emergent concepts from strong links
-	for key, strength := range linkStrengths {
-		// Check if we already have this concept
-		exists := false
-		for _, ec := range edi.emergentConcepts {
-			if ec.ID == "em_"+key {
-				exists = true
-				break
-			}
-		}
+// realizeEmergentConcept asks the model to name the concept that emerges from
+// two linked patterns and records it. On model failure nothing is recorded.
+func (edi *EchoDreamKnowledgeIntegration) realizeEmergentConcept(ctx context.Context, c emergenceCandidate) error {
+	if edi.llmProvider == nil {
+		return fmt.Errorf("no LLM provider configured")
+	}
+	prompt := fmt.Sprintf(`[System: You are Deep Tree Echo dreaming, integrating patterns into new understanding.]
 
-		if !exists {
-			emergent := EmergentConcept{
-				ID:                "em_" + key,
-				Concept:           "Emergent concept from pattern combination",
-				SourcePatterns:    []string{key},
-				EmergenceStrength: strength,
-				Novelty:           0.7,
-				Utility:           0.6,
-				CreatedAt:         time.Now(),
-			}
-			edi.emergentConcepts = append(edi.emergentConcepts, emergent)
-			edi.emergenceEvents++
-			fmt.Printf("   ✨ Emergence detected: strength %.2f\n", strength)
+Two strongly linked patterns from recent experience:
+1. %s
+2. %s
+
+In one sentence, name and describe the new concept that emerges from combining them.`, c.from, c.to)
+
+	opts := llm.GenerateOptions{Temperature: 0.8, MaxTokens: 100}
+	result, err := edi.llmProvider.Generate(ctx, prompt, opts)
+	if err != nil {
+		return fmt.Errorf("emergent concept generation failed: %w", err)
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return fmt.Errorf("emergent concept generation returned empty text")
+	}
+
+	edi.mu.Lock()
+	defer edi.mu.Unlock()
+	for _, ec := range edi.emergentConcepts {
+		if ec.ID == c.id {
+			return nil // recorded concurrently
 		}
 	}
+	edi.emergentConcepts = append(edi.emergentConcepts, EmergentConcept{
+		ID:                c.id,
+		Concept:           result,
+		SourcePatterns:    []string{c.key},
+		EmergenceStrength: c.strength,
+		Novelty:           0.7,
+		Utility:           0.6,
+		CreatedAt:         time.Now(),
+	})
+	edi.emergenceEvents++
+	fmt.Printf("   ✨ Emergence detected (strength %.2f): %s\n", c.strength, truncate(result, 70))
+	return nil
 }
 
 // GetWisdomDepth returns the current wisdom depth
