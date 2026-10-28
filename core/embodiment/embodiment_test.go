@@ -131,8 +131,10 @@ func TestRoutes(t *testing.T) {
 
 func TestSystemPromptStatesActionUnitsAndVoicedExpression(t *testing.T) {
 	h := NewHub(1, 4)
-	f := Frame{Contract: Contract, Persona: "Lucy", Valence: 0.4, Arousal: 0.6, Flow: 0.7,
-		Expression: "quiet focus", ActionUnits: map[string]float64{"AU6": 0.52, "AU12": 0.65}}
+	f := Frame{
+		Contract: Contract, Persona: "Lucy", Valence: 0.4, Arousal: 0.6, Flow: 0.7,
+		Expression: "quiet focus", ActionUnits: map[string]float64{"AU6": 0.52, "AU12": 0.65},
+	}
 	r, err := h.Ingest(f)
 	if err != nil {
 		t.Fatal(err)
