@@ -28,7 +28,7 @@ func (p *HGQLParser) Parse(query string) (*GraphTraversal, error) {
 	return traversal, nil
 }
 
-// AnalyzeQuery performs lightweight analysis and returns placeholder pattern matches.
+// AnalyzeQuery returns the patterns recognized in a traversal (none until a recognizer exists).
 func (p *PatternRecognition) AnalyzeQuery(traversal *GraphTraversal) ([]PatternMatch, error) {
 	if p == nil {
 		return nil, fmt.Errorf("pattern recognition not initialized")
@@ -37,14 +37,10 @@ func (p *PatternRecognition) AnalyzeQuery(traversal *GraphTraversal) ([]PatternM
 		return []PatternMatch{}, nil
 	}
 
-	return []PatternMatch{
-		{
-			Pattern:    "basic_traversal",
-			Confidence: 0.5,
-			Nodes:      traversal.StartNodes,
-			Metadata:   map[string]interface{}{"depth": traversal.MaxDepth},
-		},
-	}, nil
+	// No pattern recognizer is implemented yet, so no pattern is claimed:
+	// reporting a fixed "basic_traversal" match at confidence 0.5 would
+	// present an analysis that never ran.
+	return []PatternMatch{}, nil
 }
 
 // OptimizeQuery currently returns the traversal unchanged while ensuring defaults.

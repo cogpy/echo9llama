@@ -839,6 +839,9 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 			uao.ingestDreamExperienceOnce(sourceID, payload.Summary, payload.Importance, payload.Tags)
 		case persistence.EventTypeCoreObserved:
 			evidence, err := decodeCognitiveCoreEvidence(event.PayloadJSON)
+			if errors.Is(err, errCognitiveCoreProvenanceMismatch) {
+				continue // another lineage pin: not trusted, not replayed
+			}
 			if err != nil {
 				return fmt.Errorf("decode cognitive core observation %s: %w", event.EventID, err)
 			}

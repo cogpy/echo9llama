@@ -1294,10 +1294,13 @@
       "sha256": "73589eb53b2b5266bdded96b9bf0e6660b53d8aec16cf513c80eb5607f229368"
     },
     {
-      "bytes": 4526,
+      "bytes": 4548,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/hgql/runtime.go",
-      "sha256": "ac575c485b5a41355fe2169c71c372125c102d1fbbaea41d2b0da097e9679abb"
+      "sha256": "cc6c573a777574adde82184d6eed01b93a4cba45fea3782a384ca5571fc91f5f",
+      "upstream_bytes": 4526,
+      "upstream_sha256": "ac575c485b5a41355fe2169c71c372125c102d1fbbaea41d2b0da097e9679abb"
     },
     {
       "bytes": 17395,
@@ -3924,7 +3927,7 @@
   "go_file_count": 553,
   "license_file_count": 3,
   "local_addition_count": 11,
-  "local_patch_count": 78,
+  "local_patch_count": 79,
   "local_patch_policy": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
   "schema_version": 1,
   "source_commit": "1b22401ee8842fd1aa2769b688d588cd9f1f9ce9",

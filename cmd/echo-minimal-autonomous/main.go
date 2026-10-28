@@ -23,11 +23,21 @@ func main() {
 	// Initialize LLM provider
 	fmt.Println("Initializing LLM providers...")
 	llmManager := llm.NewProviderManager()
+	chain := []string{}
+
+	// A locally served model (llama.cpp/OpenAI-compatible endpoint, or a GGUF
+	// loaded in-process) is preferred when configured.
+	edgeProvider := llm.NewEdgeCompletionProviderFromEnv()
+	if edgeProvider.Available() {
+		llmManager.RegisterProvider(edgeProvider)
+		chain = append(chain, edgeProvider.Name())
+		fmt.Println("✓ Local edge model ready")
+	}
 
 	anthropicProvider := llm.NewAnthropicProvider("")
 	if anthropicProvider.Available() {
 		llmManager.RegisterProvider(anthropicProvider)
-		llmManager.SetFallbackChain([]string{"anthropic"})
+		chain = append(chain, "anthropic")
 		fmt.Println("✓ Anthropic provider ready")
 	} else {
 		fmt.Println("⚠️  Anthropic provider not available (set ANTHROPIC_API_KEY)")
@@ -41,8 +51,13 @@ func main() {
 		fmt.Println("⚠️  OpenRouter provider not available (set OPENROUTER_API_KEY)")
 	}
 
-	if !anthropicProvider.Available() && !openrouterProvider.Available() {
-		fmt.Println("\n❌ No LLM providers available. Please set API keys.")
+	if len(chain) > 0 {
+		if err := llmManager.SetFallbackChain(chain); err != nil {
+			fmt.Printf("⚠️  provider chain: %v\n", err)
+		}
+	}
+	if !edgeProvider.Available() && !anthropicProvider.Available() && !openrouterProvider.Available() {
+		fmt.Println("\n❌ No model available. Set ECHO_EDGE_COMPLETION_URL / ECHO_EDGE_MODEL_PATH or an API key.")
 		os.Exit(1)
 	}
 

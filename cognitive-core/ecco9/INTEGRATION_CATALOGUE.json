@@ -1079,7 +1079,7 @@
       "disposition": "preserved_divergent",
       "path": "core/hgql/runtime.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "ac575c485b5a41355fe2169c71c372125c102d1fbbaea41d2b0da097e9679abb"
+      "sha256": "cc6c573a777574adde82184d6eed01b93a4cba45fea3782a384ca5571fc91f5f"
     },
     {
       "disposition": "preserved_divergent",

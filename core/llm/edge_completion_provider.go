@@ -42,7 +42,7 @@ type EdgeCompletionProvider struct {
 var ErrNoEdgeModel = errors.New("no edge model mounted: set ECHO_EDGE_COMPLETION_URL or ECHO_EDGE_MODEL_PATH")
 
 // ErrEdgeBusy reports that a background call found the edge model in use.
-var ErrEdgeBusy = errors.New("edge model busy with a foreground request")
+var ErrEdgeBusy = errors.New("edge model busy with another request")
 
 // Background returns a view of the provider that shares its model and gate
 // but never waits for it: when another completion is in flight it returns
