@@ -3,6 +3,8 @@ package echodream
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -251,9 +253,12 @@ func (lc *LLMConsolidator) parseWisdomInsights(response string) []WisdomInsight 
 	// Split by "WISDOM INSIGHT"
 	parts := strings.Split(response, "WISDOM INSIGHT")
 
+	seen := make(map[string]bool)
 	for _, part := range parts[1:] { // Skip first empty part
 		insight := lc.parseWisdomInsight(part)
-		if insight != nil {
+		// A small model may repeat the same block; keep each insight once.
+		if insight != nil && !seen[insight.Insight] {
+			seen[insight.Insight] = true
 			insights = append(insights, *insight)
 		}
 	}
@@ -277,28 +282,33 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 	lines := strings.Split(text, "\n")
 
 	var wisdom string
+	var body []string
 	depth, applicability := -1.0, -1.0 // unrated until the model states them
+	inBody := true
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if strings.HasPrefix(line, "Wisdom:") {
+		switch {
+		case strings.HasPrefix(line, "Wisdom:"):
 			wisdom = strings.TrimSpace(strings.TrimPrefix(line, "Wisdom:"))
-		} else if strings.HasPrefix(line, "Depth:") {
-			depthStr := strings.TrimSpace(strings.TrimPrefix(line, "Depth:"))
-			if _, err := fmt.Sscanf(depthStr, "%f", &depth); err != nil || depth < 0 || depth > 1 {
-				depth = -1
-			}
-		} else if strings.HasPrefix(line, "Applicability:") {
-			appStr := strings.TrimSpace(strings.TrimPrefix(line, "Applicability:"))
-			if _, err := fmt.Sscanf(appStr, "%f", &applicability); err != nil || applicability < 0 || applicability > 1 {
-				applicability = -1
-			}
+		case strings.HasPrefix(line, "Depth:"):
+			depth = statedScore(strings.TrimPrefix(line, "Depth:"))
+			inBody = false
+		case strings.HasPrefix(line, "Applicability:"):
+			applicability = statedScore(strings.TrimPrefix(line, "Applicability:"))
+			inBody = false
+		case strings.HasPrefix(line, "Implications:"):
+			inBody = false
+		case inBody && line != "":
+			body = append(body, line)
 		}
 	}
 
 	if wisdom == "" {
-		// Try to extract from whole text
-		wisdom = strings.TrimSpace(text)
+		// No "Wisdom:" label: the statement is the text before the ratings,
+		// without the block's "1:" numbering.
+		wisdom = strings.TrimSpace(strings.Join(body, " "))
+		wisdom = strings.TrimSpace(wisdomNumbering.ReplaceAllString(wisdom, ""))
 	}
 
 	if wisdom == "" {
@@ -313,6 +323,26 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 		Created:       time.Now(),
 	}
 }
+
+// wisdomNumbering matches a leading "1:" block number.
+var wisdomNumbering = regexp.MustCompile(`^\d+\s*:\s*`)
+
+// statedScore reads the last number in a "Depth:"-style value, e.g.
+// "[assessment of depth, 0.75]" -> 0.75. A missing or out-of-range number
+// is -1 (unrated).
+func statedScore(value string) float64 {
+	nums := statedNumber.FindAllString(value, -1)
+	if len(nums) == 0 {
+		return -1
+	}
+	v, err := strconv.ParseFloat(nums[len(nums)-1], 64)
+	if err != nil || v < 0 || v > 1 {
+		return -1
+	}
+	return v
+}
+
+var statedNumber = regexp.MustCompile(`\d+(?:\.\d+)?`)
 
 // extractSourceIDs extracts IDs from source thoughts
 func (lc *LLMConsolidator) extractSourceIDs(thoughts []*consciousness.Thought) []string {

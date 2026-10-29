@@ -3,7 +3,7 @@
 This directory preserves **all 553 tracked Go files** from
 `https://github.com/o9nn/ecco9.git` at commit `1b22401ee8842fd1aa2769b688d588cd9f1f9ce9` plus 45 files required by Go embed
 directives and 3 applicable license files. Every imported byte is
-inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `184e5fd13db5872b63dbb61bc2598a4ad1248ec94a6d081433c5d46dd5541bd3`).
+inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `bdca458f1756461aef7e7fc65c27a87d873ab22b34d78da7360ccfd3082bfaa7`).
 
 The snapshot is a **nested Go module and evidence boundary**, not a second
 canonical runtime. Files retain their upstream package paths and are not copied

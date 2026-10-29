@@ -47,3 +47,18 @@ func TestRatePercentNeverInventsNumbers(t *testing.T) {
 		})
 	}
 }
+
+func TestEdgeTimeoutFromEnv(t *testing.T) {
+	t.Setenv("ECHO_EDGE_TIMEOUT", "")
+	if got := edgeTimeoutFromEnv(); got != defaultEdgeTimeout {
+		t.Fatalf("default = %v", got)
+	}
+	t.Setenv("ECHO_EDGE_TIMEOUT", "90s")
+	if got := edgeTimeoutFromEnv(); got.Seconds() != 90 {
+		t.Fatalf("ECHO_EDGE_TIMEOUT=90s gave %v", got)
+	}
+	t.Setenv("ECHO_EDGE_TIMEOUT", "soon")
+	if got := edgeTimeoutFromEnv(); got != defaultEdgeTimeout {
+		t.Fatalf("invalid value gave %v", got)
+	}
+}

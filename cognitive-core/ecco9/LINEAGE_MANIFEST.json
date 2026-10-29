@@ -1375,11 +1375,11 @@
       "sha256": "53f712c04df59856d03ed7b30bea680c00510fa01bd030dd94c88a2a3eb6151e"
     },
     {
-      "bytes": 1827,
+      "bytes": 2189,
       "kind": "local_go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/llm/rating.go",
-      "sha256": "bc00c7e4781cdeac9029c9e066b690807e8d07e8371cb0e57a974d06d49c7a91"
+      "sha256": "cb575be8a4a9850e59544dd4ba23dea6fd456146f6e1a9abdbdd55befdb4c79d"
     },
     {
       "bytes": 11891,

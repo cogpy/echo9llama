@@ -81,13 +81,26 @@ func NewEdgeCompletionProviderFromEnv() *EdgeCompletionProvider {
 		lastSource: "none",
 		gate:       make(chan struct{}, 1),
 		client: &http.Client{
-			Timeout: 45 * time.Second,
+			Timeout: edgeTimeoutFromEnv(),
 		},
 	}
 	if p.endpoint == "" && p.modelPath != "" {
 		p.local = NewLocalGGUFProvider(p.modelPath)
 	}
 	return p
+}
+
+// defaultEdgeTimeout bounds one edge completion. A small CPU model with a
+// single slot can need minutes for a long answer; callers that want less
+// pass a context deadline.
+const defaultEdgeTimeout = 5 * time.Minute
+
+// edgeTimeoutFromEnv reads ECHO_EDGE_TIMEOUT (a Go duration, e.g. "90s").
+func edgeTimeoutFromEnv() time.Duration {
+	if d, err := time.ParseDuration(strings.TrimSpace(os.Getenv("ECHO_EDGE_TIMEOUT"))); err == nil && d > 0 {
+		return d
+	}
+	return defaultEdgeTimeout
 }
 
 func (p *EdgeCompletionProvider) Generate(ctx context.Context, prompt string, opts GenerateOptions) (string, error) {

@@ -3,7 +3,7 @@ package cognitivecore
 const (
 	SourceRepositoryURL  = "https://github.com/o9nn/ecco9.git"
 	SourceCommitSHA      = "1b22401ee8842fd1aa2769b688d588cd9f1f9ce9"
-	ManifestSHA256       = "184e5fd13db5872b63dbb61bc2598a4ad1248ec94a6d081433c5d46dd5541bd3"
+	ManifestSHA256       = "bdca458f1756461aef7e7fc65c27a87d873ab22b34d78da7360ccfd3082bfaa7"
 	CatalogueSHA256      = "e4c60c085670c8ad7d61676b2146f47c1b8682ffe0d53ca18392833b3efe16bf"
 	PreservedGoFileCount = 553
 )
