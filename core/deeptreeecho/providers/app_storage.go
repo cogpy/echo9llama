@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
+	"sync"
 
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 )
@@ -23,6 +23,8 @@ type AppStorageProvider struct {
 	cachedModels map[string]string // model name -> local path
 	loadedModel  string
 	modelInfo    map[string]interface{}
+	sel          sync.Mutex // guards loadedModel and modelInfo
+	rt           nativeRuntime
 }
 
 // NewAppStorageProvider creates a new App Storage provider
@@ -40,52 +42,43 @@ func NewAppStorageProvider() *AppStorageProvider {
 	}
 }
 
-// ListStorageModels lists models available in App Storage
+// ListStorageModels lists the GGUF models present in the local cache
+// (downloaded with DownloadFromURL). Only files that exist are listed.
 func (p *AppStorageProvider) ListStorageModels() ([]string, error) {
-	// For now, return a simulated list
-	// In production, this would query the GCS bucket
-	return []string{
-		"llama-7b.gguf",
-		"mistral-7b.gguf",
-		"mixtral-8x7b.gguf",
-		"phi-2.gguf",
-		"qwen-1.5b.gguf",
-	}, nil
+	matches, err := filepath.Glob(filepath.Join(p.localCache, "*.gguf"))
+	if err != nil {
+		return nil, err
+	}
+	models := make([]string, 0, len(matches))
+	for _, m := range matches {
+		models = append(models, filepath.Base(m))
+	}
+	return models, nil
 }
 
-// DownloadModel downloads a model from App Storage to local cache
+// listStorageModelsOrNil lists cached models, or none when the cache
+// cannot be read.
+func (p *AppStorageProvider) listStorageModelsOrNil() []string {
+	models, err := p.ListStorageModels()
+	if err != nil {
+		return nil
+	}
+	return models
+}
+
+// DownloadModel returns the cached path of a model. A model that has not
+// been downloaded (DownloadFromURL) is an error; no placeholder is created.
 func (p *AppStorageProvider) DownloadModel(modelName string) (string, error) {
-	// Check if already cached
 	if cachedPath, exists := p.cachedModels[modelName]; exists {
 		if _, err := os.Stat(cachedPath); err == nil {
 			return cachedPath, nil
 		}
 	}
-
-	// Create cache directory
-	if err := os.MkdirAll(p.localCache, 0755); err != nil {
-		return "", fmt.Errorf("failed to create cache directory: %v", err)
-	}
-
-	// Build local path
 	localPath := filepath.Join(p.localCache, modelName)
-
-	// Simulate download (in production, this would use GCS client)
-	// For now, create a placeholder file
-	file, err := os.Create(localPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cache file: %v", err)
+	if _, err := os.Stat(localPath); err != nil {
+		return "", fmt.Errorf("model %s is not in the local cache %s: download it with DownloadFromURL", modelName, p.localCache)
 	}
-	defer file.Close()
-
-	// Write placeholder content
-	content := fmt.Sprintf("Model: %s\nBucket: %s\nDownloaded: %s\n",
-		modelName, p.bucketID, time.Now().Format(time.RFC3339))
-	file.WriteString(content)
-
-	// Update cache map
 	p.cachedModels[modelName] = localPath
-
 	return localPath, nil
 }
 
@@ -97,6 +90,9 @@ func (p *AppStorageProvider) LoadModel(modelName string) error {
 		return err
 	}
 
+	p.rt.reset() // closes the previous model once no request uses it
+	p.sel.Lock()
+	defer p.sel.Unlock()
 	p.loadedModel = modelName
 	p.modelInfo["name"] = modelName
 	p.modelInfo["path"] = localPath
@@ -108,67 +104,53 @@ func (p *AppStorageProvider) LoadModel(modelName string) error {
 		p.modelInfo["size_mb"] = info.Size() / (1024 * 1024)
 	}
 
-	p.modelInfo["status"] = "loaded from App Storage"
+	p.modelInfo["status"] = "selected from the App Storage cache"
 	return nil
 }
 
-// Generate implements ModelProvider.Generate
+// Generate implements ModelProvider.Generate by running the selected GGUF
+// model in-process through llama.cpp (core/llm.LocalGGUFProvider).
 func (p *AppStorageProvider) Generate(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (string, error) {
-	if p.loadedModel == "" {
-		// Try to load a default model
-		models, err := p.ListStorageModels()
-		if err != nil || len(models) == 0 {
-			return "", fmt.Errorf("no models available in App Storage")
-		}
+	path, err := p.selectedPath()
+	if err != nil {
+		return "", err
+	}
+	return p.rt.generate(ctx, path, prompt, llmOptions(options))
+}
 
+// selectedPath returns the selected model file, selecting the first
+// available one when none is.
+func (p *AppStorageProvider) selectedPath() (string, error) {
+	p.sel.Lock()
+	selected := p.loadedModel != ""
+	p.sel.Unlock()
+	if !selected {
+		models := p.listStorageModelsOrNil()
+		if len(models) == 0 {
+			return "", fmt.Errorf("no models in the App Storage cache %s", p.localCache)
+		}
 		if err := p.LoadModel(models[0]); err != nil {
-			return "", fmt.Errorf("failed to load model: %v", err)
+			return "", fmt.Errorf("no model loaded and failed to load default: %v", err)
 		}
 	}
-
-	// Simulate generation
-	response := fmt.Sprintf(
-		"[App Storage Model - %s]\n"+
-			"📦 Loaded from bucket: %s\n"+
-			"💭 Processing: %s\n"+
-			"🌊 Through Deep Tree Echo resonance field\n\n"+
-			"Response: This demonstrates App Storage integration for large model support.\n"+
-			"Models up to 50GB (Core plan) or 256GB (Teams plan) can be stored and loaded on-demand.",
-		p.loadedModel,
-		p.bucketID,
-		prompt,
-	)
-
-	return response, nil
+	p.sel.Lock()
+	defer p.sel.Unlock()
+	path, _ := p.modelInfo["path"].(string)
+	return path, nil
 }
 
-// GenerateStream implements ModelProvider.GenerateStream
+// GenerateStream implements ModelProvider.GenerateStream with the model's
+// own token stream. If the stream ends early, StreamErr says why.
 func (p *AppStorageProvider) GenerateStream(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (<-chan string, error) {
-	ch := make(chan string, 100)
-
-	go func() {
-		defer close(ch)
-
-		response, err := p.Generate(ctx, prompt, options)
-		if err != nil {
-			ch <- fmt.Sprintf("Error: %v", err)
-			return
-		}
-
-		// Simulate streaming
-		words := strings.Fields(response)
-		for _, word := range words {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- word + " ":
-				time.Sleep(30 * time.Millisecond)
-			}
-		}
-	}()
-
-	return ch, nil
+	path, err := p.selectedPath()
+	if err != nil {
+		return nil, err
+	}
+	return p.rt.stream(ctx, path, prompt, llmOptions(options))
 }
+
+// StreamErr reports why the last GenerateStream ended early, or nil.
+func (p *AppStorageProvider) StreamErr() error { return p.rt.StreamErr() }
 
 // Chat implements ModelProvider.Chat
 func (p *AppStorageProvider) Chat(ctx context.Context, messages []deeptreeecho.ChatMessage, options deeptreeecho.ChatOptions) (string, error) {
@@ -190,14 +172,11 @@ func (p *AppStorageProvider) ChatStream(ctx context.Context, messages []deeptree
 	return p.GenerateStream(ctx, prompt.String(), options.GenerateOptions)
 }
 
-// Embeddings implements ModelProvider.Embeddings
+// Embeddings implements ModelProvider.Embeddings. This provider does not
+// extract embeddings from the model, so it reports that instead of
+// returning pseudo-vectors.
 func (p *AppStorageProvider) Embeddings(ctx context.Context, text string) ([]float64, error) {
-	// Generate pseudo-embeddings
-	embeddings := make([]float64, 256)
-	for i := range embeddings {
-		embeddings[i] = float64(i) / 256.0
-	}
-	return embeddings, nil
+	return nil, fmt.Errorf("embeddings are not supported by the App Storage provider")
 }
 
 // GetInfo implements ModelProvider.GetInfo
@@ -226,12 +205,20 @@ func (p *AppStorageProvider) IsAvailable() bool {
 
 // GetLoadedModel returns the currently loaded model
 func (p *AppStorageProvider) GetLoadedModel() string {
+	p.sel.Lock()
+	defer p.sel.Unlock()
 	return p.loadedModel
 }
 
 // GetModelInfo returns information about the loaded model
 func (p *AppStorageProvider) GetModelInfo() map[string]interface{} {
-	return p.modelInfo
+	p.sel.Lock()
+	defer p.sel.Unlock()
+	info := make(map[string]interface{}, len(p.modelInfo))
+	for k, v := range p.modelInfo {
+		info[k] = v
+	}
+	return info
 }
 
 // GetCachedModels returns list of cached models
@@ -253,9 +240,7 @@ func (p *AppStorageProvider) ClearCache() error {
 
 // UploadModel uploads a model to App Storage (for admin use)
 func (p *AppStorageProvider) UploadModel(localPath, modelName string) error {
-	// This would use the GCS client to upload
-	// For now, return success
-	return fmt.Errorf("upload not implemented in simulation mode")
+	return fmt.Errorf("upload to App Storage is not implemented")
 }
 
 // GetStorageURL returns the GCS URL for direct access
@@ -271,6 +256,12 @@ func (p *AppStorageProvider) DownloadFromURL(url, modelName string) error {
 		return fmt.Errorf("failed to download from URL: %v", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download from URL: %s", resp.Status)
+	}
+	if err := os.MkdirAll(p.localCache, 0o755); err != nil {
+		return fmt.Errorf("failed to create cache directory: %v", err)
+	}
 
 	// Create local file
 	localPath := filepath.Join(p.localCache, modelName)

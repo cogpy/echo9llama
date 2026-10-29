@@ -2,6 +2,10 @@ package orchestration
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -689,8 +693,8 @@ func TestCloseConversation(t *testing.T) {
 }
 
 func TestExecuteConversationWorkflow(t *testing.T) {
-	client := api.Client{}
-	engine := NewEngine(client)
+	var prompts []string
+	engine := NewEngine(newFakeModelClient(t, "model words", &prompts))
 	ctx := context.Background()
 
 	// Create test agents
@@ -762,14 +766,50 @@ func TestExecuteConversationWorkflow(t *testing.T) {
 		t.Errorf("Expected 2 step results, got %d", len(result.StepResults))
 	}
 
-	if len(result.Insights) != 2 {
-		t.Errorf("Expected 2 insights, got %d", len(result.Insights))
+	// Every message and answer is the agents' model output; the template is
+	// only the sending agent's brief.
+	for i, sr := range result.StepResults {
+		if !sr.Success || sr.Message.Content != "model words" || sr.Response == nil || sr.Response.Content != "model words" {
+			t.Fatalf("step %d not model-written: %+v", i+1, sr)
+		}
 	}
+	if sr := result.StepResults[0]; sr.Message.Context["brief"] != "Please analyze: test data analysis" {
+		t.Errorf("Expected processed template as brief, got: %v", sr.Message.Context["brief"])
+	}
+	if len(prompts) != 4 || !strings.Contains(prompts[0], "Please analyze: test data analysis") || !strings.Contains(prompts[1], "model words") {
+		t.Fatalf("prompts = %q", prompts)
+	}
+	// The second step's models see the first step's exchange.
+	if !strings.Contains(prompts[2], "The conversation so far:") || !strings.Contains(prompts[3], "The conversation so far:") {
+		t.Fatalf("step 2 prompts lack the earlier conversation: %q / %q", prompts[2], prompts[3])
+	}
+	if strings.Contains(prompts[0], "The conversation so far:") {
+		t.Fatalf("first prompt has a transcript before anything was said: %q", prompts[0])
+	}
+	if result.FinalOutcome != "2 of 2 steps answered" {
+		t.Errorf("FinalOutcome = %q", result.FinalOutcome)
+	}
+}
 
-	// Verify message template processing
-	step1Result := result.StepResults[0]
-	if step1Result.Message.Content != "Please analyze: test data analysis" {
-		t.Errorf("Expected processed template, got: %s", step1Result.Message.Content)
+func TestConversationWorkflowWithoutModelFails(t *testing.T) {
+	engine := NewEngine(newFailingModelClient(t))
+	ctx := context.Background()
+	a := &Agent{Name: "a", Type: AgentTypeGeneral, Models: []string{"m"}}
+	b := &Agent{Name: "b", Type: AgentTypeGeneral, Models: []string{"m"}}
+	for _, ag := range []*Agent{a, b} {
+		if err := engine.CreateAgent(ctx, ag); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := engine.ExecuteConversationWorkflow(ctx, &ConversationWorkflow{
+		ID: "w", Participants: []string{a.ID, b.ID},
+		Steps: []ConversationStep{{ID: "s", FromAgentID: a.ID, ToAgentID: b.ID, MessageTemplate: "hello"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Success || result.StepResults[0].Success || result.StepResults[0].Message != nil {
+		t.Fatalf("workflow succeeded without a model: %+v", result)
 	}
 }
 
@@ -869,5 +909,38 @@ func TestGetConversationMetrics(t *testing.T) {
 	}
 	if agentParticipation[agent2.ID] != 1 {
 		t.Errorf("Expected agent2 to participate in 1 conversation, got %d", agentParticipation[agent2.ID])
+	}
+}
+
+func TestConversationStepTimeout(t *testing.T) {
+	done := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-done:
+		}
+	}))
+	defer slow.Close()
+	defer close(done) // runs first: lets the stalled handler return before Close
+	u, _ := url.Parse(slow.URL)
+	engine := NewEngine(*api.NewClient(u, slow.Client()))
+	ctx := context.Background()
+	a := &Agent{Name: "a", Type: AgentTypeGeneral, Models: []string{"m"}}
+	b := &Agent{Name: "b", Type: AgentTypeGeneral, Models: []string{"m"}}
+	for _, ag := range []*Agent{a, b} {
+		if err := engine.CreateAgent(ctx, ag); err != nil {
+			t.Fatal(err)
+		}
+	}
+	start := time.Now()
+	result, err := engine.ExecuteConversationWorkflow(ctx, &ConversationWorkflow{
+		ID: "w", Participants: []string{a.ID, b.ID},
+		Steps: []ConversationStep{{ID: "s", FromAgentID: a.ID, ToAgentID: b.ID, MessageTemplate: "hi", Timeout: 200 * time.Millisecond}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Success || time.Since(start) > 3*time.Second {
+		t.Fatalf("step outlived its timeout: success=%v after %v", result.Success, time.Since(start))
 	}
 }

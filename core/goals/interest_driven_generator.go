@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
 	"strings"
 	"sync"
 	"time"
@@ -103,13 +102,13 @@ func (idgg *InterestDrivenGoalGenerator) initializeSeedInterests() {
 
 	for _, topic := range seedTopics {
 		idgg.interestPatterns[topic] = &InterestPattern{
-			Topic:           topic,
-			Strength:        0.5 + rand.Float64()*0.3,
-			Recency:         0.5,
-			Depth:           0.2,
-			Novelty:         0.8,
-			Utility:         0.6,
-			LastEngaged:     time.Now().Add(-time.Duration(rand.Intn(24)) * time.Hour),
+			Topic:    topic,
+			Strength: 0.5, // equal prior: engagement, not chance, makes interests differ
+			Recency:  0.5,
+			Depth:    0.2,
+			Novelty:  0.8,
+			Utility:  0.6,
+			// LastEngaged stays zero: a seed interest has not been engaged yet.
 			EngagementCount: 0,
 			RelatedTopics:   make([]string, 0),
 		}
@@ -347,7 +346,7 @@ func (idgg *InterestDrivenGoalGenerator) decayInterests() {
 	for _, pattern := range idgg.interestPatterns {
 		// Decay strength over time if not engaged
 		timeSinceEngagement := time.Since(pattern.LastEngaged)
-		if timeSinceEngagement > 24*time.Hour {
+		if !pattern.LastEngaged.IsZero() && timeSinceEngagement > 24*time.Hour {
 			decayFactor := 0.95
 			pattern.Strength *= decayFactor
 		}

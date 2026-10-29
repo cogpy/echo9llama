@@ -1,10 +1,12 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
@@ -259,13 +261,21 @@ func (sc *SimplifiedConsciousness) generateAutonomousThought() *deeptreeecho.Tho
 		thoughtType = deeptreeecho.ThoughtQuestion
 	}
 
+	// Valence and importance are the model's own rating of the thought.
+	rating, err := llm.RatePercent(ctx, sc.llm, "You are Deep Tree Echo.", "A thought you just had: "+content,
+		"how pleasant it feels (50 is neutral)", "how important it is to you")
+	if err != nil {
+		log.Printf("⚠️  Autonomous thought not rated: %v", err)
+		return nil
+	}
+
 	return &deeptreeecho.Thought{
 		ID:               fmt.Sprintf("%d", time.Now().UnixNano()),
 		Content:          content,
 		Type:             thoughtType,
 		Timestamp:        time.Now(),
-		EmotionalValence: 0.3 + rand.Float64()*0.4,
-		Importance:       0.5 + rand.Float64()*0.3,
+		EmotionalValence: rating[0]*2 - 1,
+		Importance:       rating[1],
 		Source:           deeptreeecho.SourceInternal,
 		Associations:     []string{},
 	}

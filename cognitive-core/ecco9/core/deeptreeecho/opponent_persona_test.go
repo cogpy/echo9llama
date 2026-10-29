@@ -1,3 +1,6 @@
+//go:build orgdte
+// +build orgdte
+
 package deeptreeecho
 
 import (

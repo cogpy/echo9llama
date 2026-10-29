@@ -1,3 +1,6 @@
+//go:build embodied
+// +build embodied
+
 package opencog
 
 import (

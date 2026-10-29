@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1039,7 +1040,10 @@ func (e *Engine) processTaskMessage(ctx context.Context, conversation *Conversat
 	return nil
 }
 
-// ExecuteConversationWorkflow executes a structured conversation workflow
+// ExecuteConversationWorkflow executes a structured conversation workflow.
+// Each step's template is the sending agent's brief: that agent's model
+// writes the message, and the receiving agent's model answers it. A step
+// whose message or answer the model does not produce fails the workflow.
 func (e *Engine) ExecuteConversationWorkflow(ctx context.Context, workflow *ConversationWorkflow) (*ConversationWorkflowResult, error) {
 	// Start the conversation (don't hold lock during this)
 	conversation, err := e.StartConversation(ctx, workflow.Participants, workflow.Description)
@@ -1049,54 +1053,157 @@ func (e *Engine) ExecuteConversationWorkflow(ctx context.Context, workflow *Conv
 
 	result := &ConversationWorkflowResult{
 		Success:     true,
-		StepResults: make([]ConversationStepResult, len(workflow.Steps)),
-		Insights:    make([]string, 0),
+		StepResults: make([]ConversationStepResult, 0, len(workflow.Steps)),
 	}
 
 	startTime := time.Now()
 
-	// Execute each step
 	for i, step := range workflow.Steps {
-		stepStartTime := time.Now()
-
-		// Create message from template
-		message := &Message{
-			ID:          uuid.New().String(),
-			FromAgentID: step.FromAgentID,
-			ToAgentID:   step.ToAgentID,
-			Content:     e.processMessageTemplate(step.MessageTemplate, step.Parameters),
-			Type:        MessageTypeRequest,
-			Context:     step.Parameters,
-			Timestamp:   time.Now(),
-		}
-
-		// Send message
-		err := e.SendMessage(ctx, conversation.ID, message)
+		stepResult, err := e.runConversationStep(ctx, conversation.ID, step)
+		result.StepResults = append(result.StepResults, stepResult)
 		if err != nil {
 			result.Success = false
 			result.Error = fmt.Sprintf("Step %d failed: %v", i+1, err)
 			break
 		}
-
-		stepResult := ConversationStepResult{
-			StepID:   step.ID,
-			Message:  message,
-			Success:  true,
-			Duration: time.Since(stepStartTime),
-		}
-
-		result.StepResults[i] = stepResult
-
-		// Add insight about the interaction
-		insight := fmt.Sprintf("Step %d: %s -> %s completed successfully", i+1, step.FromAgentID, step.ToAgentID)
-		result.Insights = append(result.Insights, insight)
 	}
 
 	result.Duration = time.Since(startTime)
-	result.FinalOutcome = fmt.Sprintf("Conversation workflow completed with %d steps", len(workflow.Steps))
+	answered := 0
+	for _, sr := range result.StepResults {
+		if sr.Success {
+			answered++
+		}
+	}
+	result.FinalOutcome = fmt.Sprintf("%d of %d steps answered", answered, len(workflow.Steps))
 
-	slog.Info("Conversation workflow completed", "workflowID", workflow.ID, "steps", len(workflow.Steps), "success", result.Success)
+	slog.Info("Conversation workflow finished", "workflowID", workflow.ID, "steps", len(workflow.Steps), "answered", answered, "success", result.Success)
 	return result, nil
+}
+
+// runConversationStep has the sending agent's model write the step's
+// message from its brief, then the receiving agent's model answer it.
+func (e *Engine) runConversationStep(ctx context.Context, conversationID string, step ConversationStep) (ConversationStepResult, error) {
+	stepStart := time.Now()
+	sr := ConversationStepResult{StepID: step.ID}
+	fail := func(err error) (ConversationStepResult, error) {
+		sr.Error = err.Error()
+		sr.Duration = time.Since(stepStart)
+		return sr, err
+	}
+
+	e.mu.RLock()
+	from, okFrom := e.agents[step.FromAgentID]
+	to, okTo := e.agents[step.ToAgentID]
+	e.mu.RUnlock()
+	if !okFrom {
+		return fail(fmt.Errorf("agent not found: %s", step.FromAgentID))
+	}
+	if !okTo {
+		return fail(fmt.Errorf("agent not found: %s", step.ToAgentID))
+	}
+
+	if step.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, step.Timeout)
+		defer cancel()
+	}
+
+	brief := e.processMessageTemplate(step.MessageTemplate, step.Parameters)
+	composed, err := e.ExecuteTask(ctx, &Task{
+		ID:   uuid.New().String(),
+		Type: TaskTypeGenerate,
+		Input: fmt.Sprintf("You are %s, %s.%s\nWrite the message you now send to %s (%s).\nWhat your message should ask or say: %s\nReply with the message only.",
+			from.Name, from.Description, e.conversationTranscript(conversationID), to.Name, to.Description, brief),
+		AgentID: from.ID,
+	}, from)
+	if err != nil {
+		return fail(fmt.Errorf("%s did not write its message: %w", from.Name, err))
+	}
+	msgCtx := map[string]interface{}{"brief": brief}
+	for k, v := range step.Parameters {
+		msgCtx[k] = v
+	}
+	message := &Message{
+		ID:          uuid.New().String(),
+		FromAgentID: from.ID,
+		ToAgentID:   to.ID,
+		Content:     strings.TrimSpace(composed.Output),
+		Type:        MessageTypeRequest,
+		Context:     msgCtx,
+		Timestamp:   time.Now(),
+	}
+	sr.Message = message
+	if message.Content == "" {
+		return fail(fmt.Errorf("%s's model returned an empty message", from.Name))
+	}
+	if err := e.SendMessage(ctx, conversationID, message); err != nil {
+		return fail(err)
+	}
+
+	answer, err := e.ExecuteTask(ctx, &Task{
+		ID:   uuid.New().String(),
+		Type: TaskTypeGenerate,
+		Input: fmt.Sprintf("You are %s, %s.%s\n%s (%s) sent you this message:\n%s\nReply to it.",
+			to.Name, to.Description, e.conversationTranscript(conversationID, message.ID), from.Name, from.Description, message.Content),
+		AgentID: to.ID,
+	}, to)
+	if err != nil {
+		return fail(fmt.Errorf("%s did not answer: %w", to.Name, err))
+	}
+	response := &Message{
+		ID:          uuid.New().String(),
+		FromAgentID: to.ID,
+		ToAgentID:   from.ID,
+		Content:     strings.TrimSpace(answer.Output),
+		Type:        MessageTypeResponse,
+		Context:     map[string]interface{}{"original_message_id": message.ID},
+		Timestamp:   time.Now(),
+	}
+	sr.Response = response
+	if response.Content == "" {
+		return fail(fmt.Errorf("%s's model returned an empty answer", to.Name))
+	}
+	if err := e.SendMessage(ctx, conversationID, response); err != nil {
+		return fail(err)
+	}
+
+	sr.Success = true
+	sr.Duration = time.Since(stepStart)
+	return sr, nil
+}
+
+// conversationTranscript renders the conversation's earlier messages for a
+// model prompt, so a step can refer to what was said before. Messages whose
+// IDs are in exclude are left out. It is "" when there are none.
+func (e *Engine) conversationTranscript(conversationID string, exclude ...string) string {
+	e.mu.RLock()
+	conv, ok := e.conversations[conversationID]
+	var msgs []Message
+	if ok {
+		msgs = append(msgs, conv.Messages...)
+	}
+	names := make(map[string]string, len(e.agents))
+	for id, a := range e.agents {
+		names[id] = a.Name
+	}
+	e.mu.RUnlock()
+
+	var sb strings.Builder
+	for _, m := range msgs {
+		if slices.Contains(exclude, m.ID) || strings.TrimSpace(m.Content) == "" {
+			continue
+		}
+		from := names[m.FromAgentID]
+		if from == "" {
+			from = m.FromAgentID
+		}
+		fmt.Fprintf(&sb, "\n%s: %s", from, m.Content)
+	}
+	if sb.Len() == 0 {
+		return ""
+	}
+	return "\nThe conversation so far:" + sb.String()
 }
 
 // processMessageTemplate processes a message template with parameters

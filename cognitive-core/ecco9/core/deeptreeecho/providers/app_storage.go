@@ -109,29 +109,14 @@ func (p *AppStorageProvider) Generate(ctx context.Context, prompt string, option
 	return "", fmt.Errorf("App Storage inference is not available in this build (model %s)", p.loadedModel)
 }
 
-// GenerateStream implements ModelProvider.GenerateStream
+// GenerateStream implements ModelProvider.GenerateStream. There is no
+// inference backend to stream from, so it reports Generate's error rather
+// than splitting a finished reply into words.
 func (p *AppStorageProvider) GenerateStream(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (<-chan string, error) {
-	ch := make(chan string, 100)
-
-	go func() {
-		defer close(ch)
-
-		response, err := p.Generate(ctx, prompt, options)
-		if err != nil {
-			return
-		}
-
-		words := strings.Fields(response)
-		for _, word := range words {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- word + " ":
-			}
-		}
-	}()
-
-	return ch, nil
+	if _, err := p.Generate(ctx, prompt, options); err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("streaming is not available in this build")
 }
 
 // Chat implements ModelProvider.Chat

@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 )
@@ -40,17 +39,11 @@ func NewAppStorageProvider() *AppStorageProvider {
 	}
 }
 
-// ListStorageModels lists models available in App Storage
+// ListStorageModels lists models available in App Storage.
+// Listing the bucket is not implemented; it reports an error instead of a
+// fabricated model list.
 func (p *AppStorageProvider) ListStorageModels() ([]string, error) {
-	// For now, return a simulated list
-	// In production, this would query the GCS bucket
-	return []string{
-		"llama-7b.gguf",
-		"mistral-7b.gguf",
-		"mixtral-8x7b.gguf",
-		"phi-2.gguf",
-		"qwen-1.5b.gguf",
-	}, nil
+	return nil, fmt.Errorf("listing App Storage bucket %s is not implemented", p.bucketID)
 }
 
 // DownloadModel downloads a model from App Storage to local cache
@@ -70,23 +63,8 @@ func (p *AppStorageProvider) DownloadModel(modelName string) (string, error) {
 	// Build local path
 	localPath := filepath.Join(p.localCache, modelName)
 
-	// Simulate download (in production, this would use GCS client)
-	// For now, create a placeholder file
-	file, err := os.Create(localPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cache file: %v", err)
-	}
-	defer file.Close()
-
-	// Write placeholder content
-	content := fmt.Sprintf("Model: %s\nBucket: %s\nDownloaded: %s\n",
-		modelName, p.bucketID, time.Now().Format(time.RFC3339))
-	file.WriteString(content)
-
-	// Update cache map
-	p.cachedModels[modelName] = localPath
-
-	return localPath, nil
+	_ = localPath
+	return "", fmt.Errorf("downloading %s from App Storage is not implemented", modelName)
 }
 
 // LoadModel loads a model from App Storage
@@ -126,48 +104,19 @@ func (p *AppStorageProvider) Generate(ctx context.Context, prompt string, option
 		}
 	}
 
-	// Simulate generation
-	response := fmt.Sprintf(
-		"[App Storage Model - %s]\n"+
-			"📦 Loaded from bucket: %s\n"+
-			"💭 Processing: %s\n"+
-			"🌊 Through Deep Tree Echo resonance field\n\n"+
-			"Response: This demonstrates App Storage integration for large model support.\n"+
-			"Models up to 50GB (Core plan) or 256GB (Teams plan) can be stored and loaded on-demand.",
-		p.loadedModel,
-		p.bucketID,
-		prompt,
-	)
-
-	return response, nil
+	// No inference backend is linked into this provider; it never fabricates
+	// text in place of a model.
+	return "", fmt.Errorf("App Storage inference is not available in this build (model %s)", p.loadedModel)
 }
 
-// GenerateStream implements ModelProvider.GenerateStream
+// GenerateStream implements ModelProvider.GenerateStream. There is no
+// inference backend to stream from, so it reports Generate's error rather
+// than splitting a finished reply into words.
 func (p *AppStorageProvider) GenerateStream(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (<-chan string, error) {
-	ch := make(chan string, 100)
-
-	go func() {
-		defer close(ch)
-
-		response, err := p.Generate(ctx, prompt, options)
-		if err != nil {
-			ch <- fmt.Sprintf("Error: %v", err)
-			return
-		}
-
-		// Simulate streaming
-		words := strings.Fields(response)
-		for _, word := range words {
-			select {
-			case <-ctx.Done():
-				return
-			case ch <- word + " ":
-				time.Sleep(30 * time.Millisecond)
-			}
-		}
-	}()
-
-	return ch, nil
+	if _, err := p.Generate(ctx, prompt, options); err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("streaming is not available in this build")
 }
 
 // Chat implements ModelProvider.Chat
@@ -192,12 +141,7 @@ func (p *AppStorageProvider) ChatStream(ctx context.Context, messages []deeptree
 
 // Embeddings implements ModelProvider.Embeddings
 func (p *AppStorageProvider) Embeddings(ctx context.Context, text string) ([]float64, error) {
-	// Generate pseudo-embeddings
-	embeddings := make([]float64, 256)
-	for i := range embeddings {
-		embeddings[i] = float64(i) / 256.0
-	}
-	return embeddings, nil
+	return nil, fmt.Errorf("App Storage embeddings are not available in this build")
 }
 
 // GetInfo implements ModelProvider.GetInfo
@@ -205,23 +149,18 @@ func (p *AppStorageProvider) GetInfo() deeptreeecho.ProviderInfo {
 	models, _ := p.ListStorageModels()
 
 	return deeptreeecho.ProviderInfo{
-		Name:        "App Storage",
-		Description: fmt.Sprintf("Large models from Replit App Storage (bucket: %s)", p.bucketID),
-		Models:      models,
-		Capabilities: []string{
-			"generation",
-			"streaming",
-			"chat",
-			"embeddings",
-			"cloud-storage",
-			"large-models",
-		},
+		Name:         "App Storage",
+		Description:  fmt.Sprintf("Large models from Replit App Storage (bucket: %s)", p.bucketID),
+		Models:       models,
+		Capabilities: []string{"cloud-storage"},
 	}
 }
 
 // IsAvailable implements ModelProvider.IsAvailable
+// Inference is not implemented, so the provider never reports itself as able
+// to answer.
 func (p *AppStorageProvider) IsAvailable() bool {
-	return p.bucketID != ""
+	return false
 }
 
 // GetLoadedModel returns the currently loaded model
@@ -253,9 +192,7 @@ func (p *AppStorageProvider) ClearCache() error {
 
 // UploadModel uploads a model to App Storage (for admin use)
 func (p *AppStorageProvider) UploadModel(localPath, modelName string) error {
-	// This would use the GCS client to upload
-	// For now, return success
-	return fmt.Errorf("upload not implemented in simulation mode")
+	return fmt.Errorf("upload to App Storage is not implemented")
 }
 
 // GetStorageURL returns the GCS URL for direct access

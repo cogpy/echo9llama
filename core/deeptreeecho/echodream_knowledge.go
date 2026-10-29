@@ -114,6 +114,7 @@ type EmergentInsightV2 struct {
 	Sources   []string // IDs of patterns that combined
 	Novelty   float64  // 0.0-1.0
 	Depth     float64  // 0.0-1.0
+	Rated     bool     // Novelty and Depth were rated by the model
 	CreatedAt time.Time
 }
 
@@ -218,10 +219,14 @@ func (eki *EchodreamKnowledgeIntegrator) RunDreamCycle(ctx context.Context) *Dre
 
 	if eki.eventBus != nil {
 		for _, insight := range insights {
+			content := insight.Insight
+			if insight.Rated {
+				content = fmt.Sprintf("[Novelty: %.0f%% Depth: %.0f%%] %s", insight.Novelty*100, insight.Depth*100, insight.Insight)
+			}
 			eki.eventBus.Publish(CogEvent{
 				Category: CogEventEmergence,
 				Source:   "echodream.insight",
-				Content:  fmt.Sprintf("[Novelty: %.0f%% Depth: %.0f%%] %s", insight.Novelty*100, insight.Depth*100, insight.Insight),
+				Content:  content,
 				Priority: 0.8,
 			})
 		}
@@ -414,14 +419,26 @@ func (eki *EchodreamKnowledgeIntegrator) generateInsights(ctx context.Context, g
 	for _, p := range material.patterns {
 		sources = append(sources, p.ID)
 	}
-	return []*EmergentInsightV2{{
+	insight := &EmergentInsightV2{
 		ID:        fmt.Sprintf("insight_%d", time.Now().UnixNano()),
 		Insight:   text,
 		Sources:   sources,
-		Novelty:   0.5 + rand.Float64()*0.5,
-		Depth:     0.5 + rand.Float64()*0.5,
 		CreatedAt: time.Now(),
-	}}
+	}
+	insight.Novelty, insight.Depth, insight.Rated = eki.rateInsight(ctx, gen, text)
+	return []*EmergentInsightV2{insight}
+}
+
+// rateInsight asks the model how novel and how deep an insight is. The
+// scores are the model's; when it gives no readable rating the insight
+// stays unrated rather than receiving invented numbers.
+func (eki *EchodreamKnowledgeIntegrator) rateInsight(ctx context.Context, gen EchoTextGenerator, insight string) (novelty, depth float64, ok bool) {
+	r, err := llm.RatePercent(ctx, gen, echoPersonaSystemPrompt, "Insight you just had in a dream: "+insight, "how novel it is to you", "how deep it is")
+	if err != nil {
+		eki.publishSystem(fmt.Sprintf("[system] dream insight not rated: %v", err))
+		return 0, 0, false
+	}
+	return r[0], r[1], true
 }
 
 // generateDreamNarrative asks the model to narrate the dream cycle from what
