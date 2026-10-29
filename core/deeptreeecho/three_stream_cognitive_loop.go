@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -536,7 +537,11 @@ func (loop *ThreeStreamCognitiveLoop) processSimulation(stream *ConsciousnessStr
 	if len(stream.simulation.VirtualScenarios) > 100 {
 		dropped := stream.simulation.VirtualScenarios[0]
 		stream.simulation.VirtualScenarios = stream.simulation.VirtualScenarios[1:]
-		delete(stream.simulation.AnticipatedOutcomes, dropped)
+		// Model-written scenarios can repeat: keep the rating while any
+		// retained scenario still has that text.
+		if !slices.Contains(stream.simulation.VirtualScenarios, dropped) {
+			delete(stream.simulation.AnticipatedOutcomes, dropped)
+		}
 	}
 
 	stream.simulationsRun++

@@ -950,7 +950,9 @@ func (ri *RepositoryIntrospector) AnalyzeRepository(cognitiveLoad, recentActivit
 			}
 
 			// Read content if file is small enough
-			if info.Size() <= ri.maxFileSize {
+			// Only regular files: a symlink's size is its link, and reading it
+			// would follow the link outside the repository.
+			if info.Mode().IsRegular() && info.Size() <= ri.maxFileSize {
 				if data, err := os.ReadFile(path); err == nil {
 					salientFile.Content = string(data)
 				}

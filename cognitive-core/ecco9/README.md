@@ -3,7 +3,7 @@
 This directory preserves **all 553 tracked Go files** from
 `https://github.com/o9nn/ecco9.git` at commit `1b22401ee8842fd1aa2769b688d588cd9f1f9ce9` plus 45 files required by Go embed
 directives and 3 applicable license files. Every imported byte is
-inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `d1ce16f6a68f138e93c7c2a9a95d29ece1011f432574bedf94187bd50af06e14`).
+inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `6781879f5ddf50598694f06730b1028d07c8ee93a1b179d2e69281d469c40660`).
 
 The snapshot is a **nested Go module and evidence boundary**, not a second
 canonical runtime. Files retain their upstream package paths and are not copied
@@ -14,7 +14,7 @@ packages remain preserved for staged repair and promotion.
 
 `INTEGRATION_CATALOGUE.json` assigns every preserved Go file an explicit
 disposition. Current counts are `{"active_adapter_source": 6, "canonical_same_path_exact": 146, "preserved_divergent": 330, "preserved_unreviewed": 71}`;
-catalogue SHA-256 is `53a7c8349889af8e7c27aefb1d9efa28fff991ef2aa5299c3a0135da72b053dc`.
+catalogue SHA-256 is `bd864497ddb035716666fc021c4d575f27d4123f3a59de10ea254d7a60db9f88`.
 
 `go.mod.upstream` and `go.sum.upstream` preserve the upstream module graph. The
 minimal local `go.mod` prevents unreviewed transitive dependencies from entering

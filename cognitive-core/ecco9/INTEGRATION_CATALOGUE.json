@@ -2441,7 +2441,7 @@
       "disposition": "preserved_unreviewed",
       "path": "org/deeptreeecho.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "97f8a4c8f0f0bf4b95d760fce23ebf691530fd3bcd7f6cc86acc5d7378d2af14"
+      "sha256": "4080c3f4241bfda7fc06cfc31b090974d6e6563326c04cac90fe61f0934f9089"
     },
     {
       "disposition": "preserved_unreviewed",

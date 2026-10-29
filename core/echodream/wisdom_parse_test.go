@@ -24,3 +24,18 @@ func TestParseWisdomInsightUnstatedScoresStayUnrated(t *testing.T) {
 		t.Fatalf("parsed %+v", w)
 	}
 }
+
+func TestStatedScoreRejectsSignsAndRanges(t *testing.T) {
+	for in, want := range map[string]float64{
+		"[assessment of depth, 0.75]":    0.75,
+		"0.8":                            0.8,
+		"-0.75":                          -1,
+		"[assessment of depth, 0.0-1.0]": -1,
+		"very deep":                      -1,
+		"1.5":                            -1,
+	} {
+		if got := statedScore(in); got != want {
+			t.Errorf("statedScore(%q) = %v, want %v", in, got, want)
+		}
+	}
+}

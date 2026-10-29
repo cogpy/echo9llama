@@ -39,6 +39,8 @@ func TestRatePercentNeverInventsNumbers(t *testing.T) {
 		"no numbers": &ratingFake{reply: "quite deep"},
 		"too few":    &ratingFake{reply: "80"},
 		"over 100":   &ratingFake{reply: "180 20"},
+		"negative":   &ratingFake{reply: "-20 80"},
+		"decimal":    &ratingFake{reply: "75.5 80"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			if r, err := RatePercent(context.Background(), gen, "", "x", "a", "b"); err == nil {

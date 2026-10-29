@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -48,19 +49,26 @@ func RatePercent(ctx context.Context, gen Completer, system, subject string, sca
 	return nil, fmt.Errorf("model rating unreadable: %q", strings.TrimSpace(reply))
 }
 
-// ParsePercentRatings reads the first n integers from reply; each must be in
-// [0,100]. It returns them scaled to [0,1].
+// ParsePercentRatings reads the first n numbers in reply. Each must be a
+// whole integer in [0,100] — a sign, a decimal or an out-of-range value
+// makes the reply unreadable rather than a different rating. It returns
+// them scaled to [0,1].
 func ParsePercentRatings(reply string, n int) ([]float64, bool) {
+	nums := numericLiteral.FindAllString(reply, n)
+	if len(nums) < n {
+		return nil, false
+	}
 	out := make([]float64, 0, n)
-	for _, f := range strings.FieldsFunc(reply, func(r rune) bool { return r < '0' || r > '9' }) {
-		v, err := strconv.Atoi(f)
-		if err != nil || v > 100 {
+	for _, lit := range nums {
+		v, err := strconv.Atoi(lit)
+		if err != nil || v < 0 || v > 100 {
 			return nil, false
 		}
 		out = append(out, float64(v)/100)
-		if len(out) == n {
-			return out, true
-		}
 	}
-	return nil, false
+	return out, true
 }
+
+// numericLiteral matches a whole number token, sign and decimals included,
+// so "-20" or "75.5" is seen as one (invalid) value, not as "20" or "75","5".
+var numericLiteral = regexp.MustCompile(`[-+]?\d+(?:\.\d+)?`)

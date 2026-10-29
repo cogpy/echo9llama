@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -1102,12 +1103,18 @@ func (e *Engine) runConversationStep(ctx context.Context, conversationID string,
 		return fail(fmt.Errorf("agent not found: %s", step.ToAgentID))
 	}
 
+	if step.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, step.Timeout)
+		defer cancel()
+	}
+
 	brief := e.processMessageTemplate(step.MessageTemplate, step.Parameters)
 	composed, err := e.ExecuteTask(ctx, &Task{
 		ID:   uuid.New().String(),
 		Type: TaskTypeGenerate,
-		Input: fmt.Sprintf("You are %s, %s. Write the message you now send to %s (%s).\nWhat your message should ask or say: %s\nReply with the message only.",
-			from.Name, from.Description, to.Name, to.Description, brief),
+		Input: fmt.Sprintf("You are %s, %s.%s\nWrite the message you now send to %s (%s).\nWhat your message should ask or say: %s\nReply with the message only.",
+			from.Name, from.Description, e.conversationTranscript(conversationID), to.Name, to.Description, brief),
 		AgentID: from.ID,
 	}, from)
 	if err != nil {
@@ -1137,8 +1144,8 @@ func (e *Engine) runConversationStep(ctx context.Context, conversationID string,
 	answer, err := e.ExecuteTask(ctx, &Task{
 		ID:   uuid.New().String(),
 		Type: TaskTypeGenerate,
-		Input: fmt.Sprintf("You are %s, %s. %s (%s) sent you this message:\n%s\nReply to it.",
-			to.Name, to.Description, from.Name, from.Description, message.Content),
+		Input: fmt.Sprintf("You are %s, %s.%s\n%s (%s) sent you this message:\n%s\nReply to it.",
+			to.Name, to.Description, e.conversationTranscript(conversationID, message.ID), from.Name, from.Description, message.Content),
 		AgentID: to.ID,
 	}, to)
 	if err != nil {
@@ -1164,6 +1171,39 @@ func (e *Engine) runConversationStep(ctx context.Context, conversationID string,
 	sr.Success = true
 	sr.Duration = time.Since(stepStart)
 	return sr, nil
+}
+
+// conversationTranscript renders the conversation's earlier messages for a
+// model prompt, so a step can refer to what was said before. Messages whose
+// IDs are in exclude are left out. It is "" when there are none.
+func (e *Engine) conversationTranscript(conversationID string, exclude ...string) string {
+	e.mu.RLock()
+	conv, ok := e.conversations[conversationID]
+	var msgs []Message
+	if ok {
+		msgs = append(msgs, conv.Messages...)
+	}
+	names := make(map[string]string, len(e.agents))
+	for id, a := range e.agents {
+		names[id] = a.Name
+	}
+	e.mu.RUnlock()
+
+	var sb strings.Builder
+	for _, m := range msgs {
+		if slices.Contains(exclude, m.ID) || strings.TrimSpace(m.Content) == "" {
+			continue
+		}
+		from := names[m.FromAgentID]
+		if from == "" {
+			from = m.FromAgentID
+		}
+		fmt.Fprintf(&sb, "\n%s: %s", from, m.Content)
+	}
+	if sb.Len() == 0 {
+		return ""
+	}
+	return "\nThe conversation so far:" + sb.String()
 }
 
 // processMessageTemplate processes a message template with parameters

@@ -60,3 +60,23 @@ func TestThreeStreamStepsWithoutModelProduceNothing(t *testing.T) {
 		t.Fatalf("stream produced cognition without a model: %+v %+v %+v", s.perception, s.action, s.simulation)
 	}
 }
+
+func TestRepeatedScenarioKeepsItsRating(t *testing.T) {
+	loop := newTestThreeStreamLoop(&echoTextFake{reply: func(p string) string {
+		if strings.Contains(p, "Rate it honestly") {
+			return "40"
+		}
+		return "the same scenario"
+	}})
+	defer loop.cancel()
+	s := loop.stream3
+	for range 102 {
+		loop.processSimulation(s)
+	}
+	if len(s.simulation.VirtualScenarios) != 100 {
+		t.Fatalf("scenarios = %d", len(s.simulation.VirtualScenarios))
+	}
+	if got, ok := s.simulation.AnticipatedOutcomes["the same scenario"]; !ok || got != 0.4 {
+		t.Fatalf("retained scenario lost its rating: %v %v", got, ok)
+	}
+}

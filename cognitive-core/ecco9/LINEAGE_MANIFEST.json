@@ -1418,11 +1418,11 @@
       "sha256": "53f712c04df59856d03ed7b30bea680c00510fa01bd030dd94c88a2a3eb6151e"
     },
     {
-      "bytes": 2189,
+      "bytes": 2529,
       "kind": "local_go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/llm/rating.go",
-      "sha256": "cb575be8a4a9850e59544dd4ba23dea6fd456146f6e1a9abdbdd55befdb4c79d"
+      "sha256": "c5b4ffea4117efdb3259ab599581a95547402ff2a05872599e489d8befebce93"
     },
     {
       "bytes": 11891,
@@ -2820,11 +2820,11 @@
       "sha256": "7b9eada67c88d29139bc4799066ab0f5173fd30aa8d6b5e046af45eddb2f9f28"
     },
     {
-      "bytes": 32636,
+      "bytes": 32786,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/deeptreeecho.go",
-      "sha256": "97f8a4c8f0f0bf4b95d760fce23ebf691530fd3bcd7f6cc86acc5d7378d2af14",
+      "sha256": "4080c3f4241bfda7fc06cfc31b090974d6e6563326c04cac90fe61f0934f9089",
       "upstream_bytes": 33734,
       "upstream_sha256": "c2dfed661ec6ceeb6300be3dd6bf6bb92de152fbd219d41290c62684fe82b03a"
     },

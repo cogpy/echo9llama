@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/llm"
@@ -20,7 +21,8 @@ type LocalGGUFProvider struct {
 	loadedModel string
 	modelInfo   map[string]interface{}
 	available   bool
-	native      *llm.LocalGGUFProvider
+	sel         sync.Mutex // guards loadedModel and modelInfo
+	rt          nativeRuntime
 }
 
 // NewLocalGGUFProvider creates a new local GGUF provider
@@ -43,8 +45,10 @@ func (p *LocalGGUFProvider) LoadModel(modelName string) error {
 
 	// For now, just mark the model as loaded without trying to read GGUF metadata
 	// (GGUF reading seems to hang in this environment)
+	p.rt.reset() // closes the previous model once no request uses it
+	p.sel.Lock()
+	defer p.sel.Unlock()
 	p.loadedModel = modelName
-	p.native = nil
 	p.modelInfo["name"] = modelName
 	p.modelInfo["path"] = modelPath
 
@@ -57,35 +61,35 @@ func (p *LocalGGUFProvider) LoadModel(modelName string) error {
 	return nil
 }
 
-// Generate implements ModelProvider.Generate by running the loaded GGUF
+// Generate implements ModelProvider.Generate by running the selected GGUF
 // model in-process through llama.cpp (core/llm.LocalGGUFProvider).
 func (p *LocalGGUFProvider) Generate(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (string, error) {
-	model, err := p.runtime()
+	path, err := p.selectedPath()
 	if err != nil {
 		return "", err
 	}
-	return model.Generate(ctx, prompt, llmOptions(options))
+	return p.rt.generate(ctx, path, prompt, llmOptions(options))
 }
 
-// runtime loads (once) the native model for the selected GGUF file.
-func (p *LocalGGUFProvider) runtime() (*llm.LocalGGUFProvider, error) {
-	if p.loadedModel == "" {
+// selectedPath returns the selected model file, selecting the first
+// available one when none is.
+func (p *LocalGGUFProvider) selectedPath() (string, error) {
+	p.sel.Lock()
+	selected := p.loadedModel != ""
+	p.sel.Unlock()
+	if !selected {
 		models := p.ListAvailableModels()
 		if len(models) == 0 {
-			return nil, fmt.Errorf("no GGUF models available in %s", p.modelsPath)
+			return "", fmt.Errorf("no GGUF models available in %s", p.modelsPath)
 		}
 		if err := p.LoadModel(models[0]); err != nil {
-			return nil, fmt.Errorf("no model loaded and failed to load default: %v", err)
+			return "", fmt.Errorf("no model loaded and failed to load default: %v", err)
 		}
 	}
-	if p.native == nil {
-		path, _ := p.modelInfo["path"].(string)
-		p.native = llm.NewLocalGGUFProvider(path)
-	}
-	if !p.native.Available() {
-		return nil, fmt.Errorf("local GGUF model %s is not served: native llama.cpp bindings unavailable", p.loadedModel)
-	}
-	return p.native, nil
+	p.sel.Lock()
+	defer p.sel.Unlock()
+	path, _ := p.modelInfo["path"].(string)
+	return path, nil
 }
 
 func llmOptions(o deeptreeecho.GenerateOptions) llm.GenerateOptions {
@@ -100,34 +104,17 @@ func llmOptions(o deeptreeecho.GenerateOptions) llm.GenerateOptions {
 }
 
 // GenerateStream implements ModelProvider.GenerateStream with the model's
-// own token stream.
+// own token stream. If the stream ends early, StreamErr says why.
 func (p *LocalGGUFProvider) GenerateStream(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (<-chan string, error) {
-	model, err := p.runtime()
+	path, err := p.selectedPath()
 	if err != nil {
 		return nil, err
 	}
-	chunks, err := model.StreamGenerate(ctx, prompt, llmOptions(options))
-	if err != nil {
-		return nil, err
-	}
-	ch := make(chan string, 16)
-	go func() {
-		defer close(ch)
-		for chunk := range chunks {
-			if chunk.Error != nil {
-				return
-			}
-			if chunk.Content != "" {
-				select {
-				case <-ctx.Done():
-					return
-				case ch <- chunk.Content:
-				}
-			}
-		}
-	}()
-	return ch, nil
+	return p.rt.stream(ctx, path, prompt, llmOptions(options))
 }
+
+// StreamErr reports why the last GenerateStream ended early, or nil.
+func (p *LocalGGUFProvider) StreamErr() error { return p.rt.StreamErr() }
 
 // Chat implements ModelProvider.Chat
 func (p *LocalGGUFProvider) Chat(ctx context.Context, messages []deeptreeecho.ChatMessage, options deeptreeecho.ChatOptions) (string, error) {
@@ -202,10 +189,18 @@ func (p *LocalGGUFProvider) ListAvailableModels() []string {
 
 // GetLoadedModel returns the currently loaded model name
 func (p *LocalGGUFProvider) GetLoadedModel() string {
+	p.sel.Lock()
+	defer p.sel.Unlock()
 	return p.loadedModel
 }
 
 // GetModelInfo returns information about the loaded model
 func (p *LocalGGUFProvider) GetModelInfo() map[string]interface{} {
-	return p.modelInfo
+	p.sel.Lock()
+	defer p.sel.Unlock()
+	info := make(map[string]interface{}, len(p.modelInfo))
+	for k, v := range p.modelInfo {
+		info[k] = v
+	}
+	return info
 }

@@ -327,22 +327,23 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 // wisdomNumbering matches a leading "1:" block number.
 var wisdomNumbering = regexp.MustCompile(`^\d+\s*:\s*`)
 
-// statedScore reads the last number in a "Depth:"-style value, e.g.
-// "[assessment of depth, 0.75]" -> 0.75. A missing or out-of-range number
-// is -1 (unrated).
+// statedScore reads a "Depth:"-style value, e.g. "[assessment of depth,
+// 0.75]" -> 0.75. It must contain exactly one number, in [0,1]; a negative
+// value, an echoed range such as "0.0-1.0", or no number is -1 (unrated),
+// so the model is asked to rate instead.
 func statedScore(value string) float64 {
 	nums := statedNumber.FindAllString(value, -1)
-	if len(nums) == 0 {
+	if len(nums) != 1 {
 		return -1
 	}
-	v, err := strconv.ParseFloat(nums[len(nums)-1], 64)
+	v, err := strconv.ParseFloat(nums[0], 64)
 	if err != nil || v < 0 || v > 1 {
 		return -1
 	}
 	return v
 }
 
-var statedNumber = regexp.MustCompile(`\d+(?:\.\d+)?`)
+var statedNumber = regexp.MustCompile(`[-+]?\d+(?:\.\d+)?`)
 
 // extractSourceIDs extracts IDs from source thoughts
 func (lc *LLMConsolidator) extractSourceIDs(thoughts []*consciousness.Thought) []string {
