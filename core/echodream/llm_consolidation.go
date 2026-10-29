@@ -66,7 +66,22 @@ Focus on patterns, connections, and insights that emerged across multiple though
 	// Parse response into knowledge items
 	knowledgeItems := lc.parseKnowledgeItems(response, thoughts)
 
-	return knowledgeItems, nil
+	// Confidence is the model's rating of each item; an item it cannot rate is not kept.
+	rated := knowledgeItems[:0]
+	for _, item := range knowledgeItems {
+		r, err := llm.RatePercent(ctx, lc.llmProvider, "", "Knowledge consolidated from your recent thoughts: "+item.Content,
+			"how confident you are that it is true")
+		if err != nil {
+			continue
+		}
+		item.Confidence = r[0]
+		rated = append(rated, item)
+	}
+	if len(rated) == 0 && len(knowledgeItems) > 0 {
+		return nil, fmt.Errorf("LLM consolidation failed: model did not rate its knowledge")
+	}
+
+	return rated, nil
 }
 
 // ExtractWisdomFromKnowledge extracts wisdom insights from consolidated knowledge
@@ -115,7 +130,25 @@ Focus on timeless, broadly applicable insights that represent genuine understand
 	// Parse response into wisdom insights
 	wisdomInsights := lc.parseWisdomInsights(response)
 
-	return wisdomInsights, nil
+	// An insight whose depth or applicability the model did not state is
+	// rated by the model now; one it cannot rate is not kept.
+	rated := wisdomInsights[:0]
+	for _, w := range wisdomInsights {
+		if w.Depth < 0 || w.Applicability < 0 {
+			r, err := llm.RatePercent(ctx, lc.llmProvider, "", "Wisdom insight: "+w.Insight,
+				"how deep and fundamental it is", "how broadly it applies")
+			if err != nil {
+				continue
+			}
+			w.Depth, w.Applicability = r[0], r[1]
+		}
+		rated = append(rated, w)
+	}
+	if len(rated) == 0 && len(wisdomInsights) > 0 {
+		return nil, fmt.Errorf("wisdom extraction failed: model did not rate its insights")
+	}
+
+	return rated, nil
 }
 
 // prepareThoughtSummary prepares a summary of thoughts for consolidation
@@ -158,11 +191,10 @@ func (lc *LLMConsolidator) parseKnowledgeItems(response string, sourceThoughts [
 	// If parsing failed, create a single item from the whole response
 	if len(items) == 0 && len(response) > 0 {
 		items = append(items, KnowledgeItem{
-			ID:         fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
-			Content:    strings.TrimSpace(response),
-			Source:     lc.extractSourceIDs(sourceThoughts),
-			Confidence: 0.7,
-			Created:    time.Now(),
+			ID:      fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
+			Content: strings.TrimSpace(response),
+			Source:  lc.extractSourceIDs(sourceThoughts),
+			Created: time.Now(),
 		})
 	}
 
@@ -205,11 +237,10 @@ func (lc *LLMConsolidator) parseKnowledgeItem(text string, sourceThoughts []*con
 	}
 
 	return &KnowledgeItem{
-		ID:         fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
-		Content:    content,
-		Source:     lc.extractSourceIDs(sourceThoughts),
-		Confidence: 0.8,
-		Created:    time.Now(),
+		ID:      fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
+		Content: content,
+		Source:  lc.extractSourceIDs(sourceThoughts),
+		Created: time.Now(),
 	}
 }
 
@@ -232,8 +263,8 @@ func (lc *LLMConsolidator) parseWisdomInsights(response string) []WisdomInsight 
 		insights = append(insights, WisdomInsight{
 			ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
 			Insight:       strings.TrimSpace(response),
-			Depth:         0.7,
-			Applicability: 0.7,
+			Depth:         -1, // unrated: rated by the model in ExtractWisdomFromKnowledge
+			Applicability: -1,
 			Created:       time.Now(),
 		})
 	}
@@ -246,8 +277,7 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 	lines := strings.Split(text, "\n")
 
 	var wisdom string
-	depth := 0.7
-	applicability := 0.7
+	depth, applicability := -1.0, -1.0 // unrated until the model states them
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -255,10 +285,14 @@ func (lc *LLMConsolidator) parseWisdomInsight(text string) *WisdomInsight {
 			wisdom = strings.TrimSpace(strings.TrimPrefix(line, "Wisdom:"))
 		} else if strings.HasPrefix(line, "Depth:") {
 			depthStr := strings.TrimSpace(strings.TrimPrefix(line, "Depth:"))
-			fmt.Sscanf(depthStr, "%f", &depth)
+			if _, err := fmt.Sscanf(depthStr, "%f", &depth); err != nil || depth < 0 || depth > 1 {
+				depth = -1
+			}
 		} else if strings.HasPrefix(line, "Applicability:") {
 			appStr := strings.TrimSpace(strings.TrimPrefix(line, "Applicability:"))
-			fmt.Sscanf(appStr, "%f", &applicability)
+			if _, err := fmt.Sscanf(appStr, "%f", &applicability); err != nil || applicability < 0 || applicability > 1 {
+				applicability = -1
+			}
 		}
 	}
 

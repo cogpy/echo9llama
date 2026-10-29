@@ -598,30 +598,17 @@ func (dte *DeepTreeEcho) initializeEchoPatterns() error {
 	return nil
 }
 
-func (dte *DeepTreeEcho) updateIdentityCoherence() {
-	// Simulate coherence evolution
-	baseCoherence := 0.87
-	variation := math.Sin(float64(time.Now().Unix())/3600) * 0.05
-	dte.IdentityCoherence.OverallCoherence = baseCoherence + variation
-	dte.IdentityCoherence.LastUpdated = time.Now()
-}
+// updateIdentityCoherence leaves coherence as last measured; it is not
+// varied on a clock to look alive.
+func (dte *DeepTreeEcho) updateIdentityCoherence() {}
 
-func (dte *DeepTreeEcho) updateMemoryResonance() {
-	// Simulate memory growth
-	dte.MemoryResonance.MemoryNodes += 1
-	dte.MemoryResonance.Connections += 2
-	dte.MemoryResonance.LastUpdated = time.Now()
-}
+// updateMemoryResonance does not invent memory growth; the counts change
+// only when memories are actually stored.
+func (dte *DeepTreeEcho) updateMemoryResonance() {}
 
 func (dte *DeepTreeEcho) updateEchoPatterns() {
-	// Update pattern strengths
-	dte.EchoPatterns.RecursiveSelfImprovement.Strength = math.Min(0.95, dte.EchoPatterns.RecursiveSelfImprovement.Strength+0.001)
-	dte.EchoPatterns.CrossSystemSynthesis.Strength = math.Min(0.90, dte.EchoPatterns.CrossSystemSynthesis.Strength+0.002)
-	dte.EchoPatterns.IdentityPreservation.Strength = math.Min(0.95, dte.EchoPatterns.IdentityPreservation.Strength+0.001)
-	dte.EchoPatterns.SpatialAwareness.Strength = math.Min(0.88, dte.EchoPatterns.SpatialAwareness.Strength+0.0015)
-	dte.EchoPatterns.EmotionalResonance.Strength = math.Min(0.92, dte.EchoPatterns.EmotionalResonance.Strength+0.0012)
-	dte.EchoPatterns.LastUpdated = time.Now()
-
+	// Pattern strengths are not grown on a timer; only the reservoir state
+	// advances here.
 	// Update reservoir network state
 	dte.updateReservoirNetwork()
 }
@@ -721,23 +708,11 @@ func (dte *DeepTreeEcho) updateEvolutionTimeline() {
 func (dte *DeepTreeEcho) checkIntegrations() {
 	now := time.Now()
 
-	// Simulate integration health checks
+	// No integration is probed here, so none is reported as connected.
 	for name, status := range dte.Integrations {
 		status.LastChecked = now
-		switch name {
-		case "ReservoirPy":
-			status.Status = "disconnected"
-			status.Health = "offline"
-		case "Mem0":
-			status.Status = "disconnected"
-			status.Health = "offline"
-		case "KoboldCpp":
-			status.Status = "connected"
-			status.Health = "good"
-		case "EchoSurface":
-			status.Status = "connected"
-			status.Health = "good"
-		}
+		status.Status = "unknown"
+		status.Health = "not checked"
 		dte.Integrations[name] = status
 	}
 }
@@ -976,9 +951,9 @@ func (ri *RepositoryIntrospector) AnalyzeRepository(cognitiveLoad, recentActivit
 
 			// Read content if file is small enough
 			if info.Size() <= ri.maxFileSize {
-				// Note: In a real implementation, we would read the file content here
-				// For now, we'll simulate content based on the file name
-				salientFile.Content = fmt.Sprintf("Simulated content for %s", relPath)
+				if data, err := os.ReadFile(path); err == nil {
+					salientFile.Content = string(data)
+				}
 			}
 
 			salientFiles = append(salientFiles, salientFile)

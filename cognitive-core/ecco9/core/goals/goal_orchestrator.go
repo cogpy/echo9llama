@@ -272,7 +272,8 @@ TITLE: <short goal title>
 DESCRIPTION: <one sentence, in your own first-person voice>
 CATEGORY: <one of: %s>
 PRIORITY: <integer 1-10>
-CRITERIA: <2-3 measurable success criteria separated by semicolons>`, kernel, existingText, strings.Join(categories, ", "))
+CRITERIA: <2-3 measurable success criteria separated by semicolons>
+FIRST_ACTION: <the first concrete step you will take toward the first criterion>`, kernel, existingText, strings.Join(categories, ", "))
 
 	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
@@ -387,10 +388,20 @@ func parseGeneratedGoal(reply string) (*Goal, error) {
 		Actions:         make([]Action, 0),
 		DerivedFrom:     "identity_kernel",
 		RelatedGoals:    make([]string, 0),
-		Metadata:        map[string]interface{}{"source": "model"},
+		Metadata:        goalMetadata(fields["FIRST_ACTION"]),
 		LessonsLearned:  make([]string, 0),
 		Challenges:      make([]string, 0),
 	}, nil
+}
+
+// goalMetadata records the model as the goal's source and keeps the first
+// action the model chose, if it named one.
+func goalMetadata(firstAction string) map[string]interface{} {
+	meta := map[string]interface{}{"source": "model"}
+	if firstAction != "" {
+		meta["first_action"] = firstAction
+	}
+	return meta
 }
 
 // decomposGoalIntoMilestones breaks down a goal into milestones
@@ -404,16 +415,16 @@ func (g *GoalOrchestrator) decomposGoalIntoMilestones(goal *Goal) {
 		}
 		goal.Milestones = append(goal.Milestones, milestone)
 
-		// Create initial actions for first milestone
-		if i == 0 {
-			action := Action{
+		// The first milestone's action is the step the model chose when it
+		// wrote the goal; without one, no action is invented for Echo.
+		if first, _ := goal.Metadata["first_action"].(string); i == 0 && first != "" {
+			goal.Actions = append(goal.Actions, Action{
 				ID:          uuid.New().String(),
-				Title:       fmt.Sprintf("Begin work on: %s", criterion),
-				Description: fmt.Sprintf("Take first steps toward achieving: %s", criterion),
+				Title:       first,
+				Description: first,
 				Status:      "pending",
-				Metadata:    make(map[string]interface{}),
-			}
-			goal.Actions = append(goal.Actions, action)
+				Metadata:    map[string]interface{}{"source": "model", "milestone": criterion},
+			})
 		}
 	}
 }

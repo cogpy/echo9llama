@@ -275,7 +275,7 @@
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main_simple_consolidated.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "73e101c8a9f58819c6f47dab3d10ef2caedaee7cb118cfb152f79d4e7ae136f1"
+      "sha256": "40f796df3e777f8f1e80d89630da139ff1a638d1ffb9b0bf27576512474c642a"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -743,13 +743,13 @@
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/providers/app_storage.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "212f69b324566fc38c17409c3a55ef6a97801a8edc56ef46a326af13f9b4b774"
+      "sha256": "5e2ff68db6ab109362adb545833e378f35c5f8ac88e25cd71fe74c2d321db527"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/providers/local_gguf.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "8c57d6890dc3a22f04b78fb3bf43ac2bf984b4c0644a5613e825983b8cfb62ab"
+      "sha256": "bbc109c59481af51c21b03c7ca1e722c2f15ad04949144f44dd9f09b8c85f7cd"
     },
     {
       "disposition": "preserved_divergent",
@@ -917,7 +917,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/echobeats/processor.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "de9ce38ef23cba91df300e0cce5a6b637897e08f852002f5682ee95887139994"
+      "sha256": "1f91a5bd79310e7702de80389260053a7b867143d2ed9406a25d803c006151e0"
     },
     {
       "disposition": "preserved_divergent",
@@ -1055,13 +1055,13 @@
       "disposition": "preserved_divergent",
       "path": "core/goals/goal_orchestrator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "eaabac3845b2bef642be29efe67db194456026130c209761baaf20e8aded3fb4"
+      "sha256": "492bfb82f07313d70144921179d816f57da10ce6b83d43423c538a2e175a7eaa"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/goals/interest_driven_generator.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "1d4197b164419ae21ccf2f7dcabe2f8cd85e23bc60af4d92472f1260d4fddd6e"
+      "sha256": "5c66e2a5f07d6885e4e18764853e08a202ff6755a50bb89621a04cd18d01662c"
     },
     {
       "disposition": "preserved_divergent",
@@ -1337,7 +1337,7 @@
       "disposition": "preserved_divergent",
       "path": "demos/unified_consciousness_demo.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "281c6169aeb824a40b5006ee2666841b63b7237e39df7d5310e0fa976a87e096"
+      "sha256": "3c98e1153547a3e94968da918fccf30f2914b09bc17911f4c6d87bb5bd91dfbf"
     },
     {
       "disposition": "canonical_same_path_exact",
@@ -2381,7 +2381,7 @@
       "disposition": "preserved_unreviewed",
       "path": "org/core/deeptreeecho/embodied.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "26b6b9b9b7bc72a3e5e90c019e988fd11cd29e1a78d278dd7e2c7be22458b519"
+      "sha256": "b37218268bb108e21995ededdac3f6db47670286903af5ed52b90017751f5f6b"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -2399,25 +2399,25 @@
       "disposition": "preserved_unreviewed",
       "path": "org/core/deeptreeecho/identity.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "53613b4d0ace5e1c7f19d78148a672772e86fcaefb55d2c5e8b1853e52187d46"
+      "sha256": "d26753f27495fa38bf08f0a1c086ef9ae58f8101b67840892835ada8dc45706e"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "org/core/deeptreeecho/models.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "c36239be5c2289a7a285edbccfa9415667e52732abc369f45bbedd48dd870d23"
+      "sha256": "ab2658faca3b4cc723116cbc05dcce9394c61b8976c27d8b816b4197301ee06c"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "org/core/deeptreeecho/providers/app_storage.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "27681691132f851cd2cf5a6cc114ba1eca589dfaa99d1c426bf9ece101597cfe"
+      "sha256": "775d021a74458422ac5f5f12d4e2ac68ac0db7d070bbee6d00022805b6f1a836"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "org/core/deeptreeecho/providers/local_gguf.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "42919860e670ae3f9c017abdf2041da555997035f3ae3e8ce220b96ad53cd86c"
+      "sha256": "ad76192f5957d10f82e2c358a5f340d965e07814826b83375ab8b7b3a6c57352"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -2441,7 +2441,7 @@
       "disposition": "preserved_unreviewed",
       "path": "org/deeptreeecho.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "c2dfed661ec6ceeb6300be3dd6bf6bb92de152fbd219d41290c62684fe82b03a"
+      "sha256": "97f8a4c8f0f0bf4b95d760fce23ebf691530fd3bcd7f6cc86acc5d7378d2af14"
     },
     {
       "disposition": "preserved_unreviewed",

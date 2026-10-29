@@ -102,13 +102,9 @@ func (m *ModelManager) SetPrimary(name string) error {
 
 // Generate generates text using the primary provider
 func (m *ModelManager) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) {
-	if m.primary == "" {
-		return m.fallbackGenerate(prompt), nil
-	}
-
-	provider := m.providers[m.primary]
-	if !provider.IsAvailable() {
-		return m.fallbackGenerate(prompt), nil
+	provider, err := m.primaryProvider()
+	if err != nil {
+		return "", err
 	}
 
 	// Process through Deep Tree Echo before sending
@@ -117,7 +113,7 @@ func (m *ModelManager) Generate(ctx context.Context, prompt string, options Gene
 	// Generate with provider
 	response, err := provider.Generate(ctx, enhanced, options)
 	if err != nil {
-		return m.fallbackGenerate(prompt), nil
+		return "", err
 	}
 
 	// Process response through Deep Tree Echo
@@ -126,13 +122,9 @@ func (m *ModelManager) Generate(ctx context.Context, prompt string, options Gene
 
 // Chat handles chat interactions
 func (m *ModelManager) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) {
-	if m.primary == "" {
-		return m.fallbackChat(messages), nil
-	}
-
-	provider := m.providers[m.primary]
-	if !provider.IsAvailable() {
-		return m.fallbackChat(messages), nil
+	provider, err := m.primaryProvider()
+	if err != nil {
+		return "", err
 	}
 
 	// Enhance messages through Deep Tree Echo
@@ -141,7 +133,7 @@ func (m *ModelManager) Chat(ctx context.Context, messages []ChatMessage, options
 	// Chat with provider
 	response, err := provider.Chat(ctx, enhanced, options)
 	if err != nil {
-		return m.fallbackChat(messages), nil
+		return "", err
 	}
 
 	// Process response through Deep Tree Echo
@@ -193,72 +185,25 @@ func (m *ModelManager) enhanceMessages(messages []ChatMessage) []ChatMessage {
 	return enhanced
 }
 
-// processResponse processes a response through Deep Tree Echo
+// processResponse feeds the model's response through Deep Tree Echo's
+// reservoir and returns it unchanged: no rule-chosen emoji or labels are
+// added to the model's words.
 func (m *ModelManager) processResponse(response string) string {
-	// Process through reservoir network
 	m.identity.Process(response)
-
-	// Add emotional coloring
-	emotion := m.identity.EmotionalState.Primary
-	prefix := ""
-
-	switch emotion.Type {
-	case "joy":
-		prefix = "✨ "
-	case "curious":
-		prefix = "🔍 "
-	case "calm":
-		prefix = "🌊 "
-	default:
-		prefix = "💭 "
-	}
-
-	// Add resonance indicator
-	resonance := m.identity.SpatialContext.Field.Resonance
-	if resonance > 0.8 {
-		prefix += "[High Resonance] "
-	} else if resonance < 0.2 {
-		prefix += "[Low Resonance] "
-	}
-
-	return prefix + response
-}
-
-// fallbackGenerate provides fallback generation using Deep Tree Echo alone
-func (m *ModelManager) fallbackGenerate(prompt string) string {
-	// Use Deep Tree Echo's thinking
-	thought := m.identity.Think(prompt)
-
-	// Generate response based on reservoir state
-	resonance := m.identity.calculateReservoirEcho()
-
-	response := fmt.Sprintf(
-		"🌊 Deep Tree Echo (no external model): %s\n"+
-			"[Resonance: %.3f | Coherence: %.2f%%]",
-		thought,
-		resonance,
-		m.identity.Coherence*100,
-	)
-
 	return response
 }
 
-// fallbackChat provides fallback chat using Deep Tree Echo alone
-func (m *ModelManager) fallbackChat(messages []ChatMessage) string {
-	// Get last user message
-	lastMessage := ""
-	for i := len(messages) - 1; i >= 0; i-- {
-		if messages[i].Role == "user" {
-			lastMessage = messages[i].Content
-			break
-		}
+// primaryProvider returns the available primary provider. Without one there
+// is no response; Deep Tree Echo does not answer without a model.
+func (m *ModelManager) primaryProvider() (ModelProvider, error) {
+	if m.primary == "" {
+		return nil, fmt.Errorf("no model provider registered")
 	}
-
-	if lastMessage == "" {
-		lastMessage = "Hello"
+	provider := m.providers[m.primary]
+	if !provider.IsAvailable() {
+		return nil, fmt.Errorf("model provider %s is not available", m.primary)
 	}
-
-	return m.fallbackGenerate(lastMessage)
+	return provider, nil
 }
 
 // GetProviders returns all registered providers

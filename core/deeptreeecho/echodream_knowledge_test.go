@@ -55,7 +55,10 @@ func seedDreamMemories(eki *EchodreamKnowledgeIntegrator) {
 func TestDreamCycleInsightAndNarrativeComeFromModel(t *testing.T) {
 	eki := NewEchodreamKnowledgeIntegrator(nil)
 	fake := &echoTextFake{reply: func(p string) string {
-		if strings.Contains(p, "emergent insight") {
+		switch {
+		case strings.Contains(p, "Rate it honestly"):
+			return "80 35"
+		case strings.Contains(p, "emergent insight"):
 			return "MODEL-INSIGHT"
 		}
 		return "MODEL-NARRATIVE"
@@ -64,6 +67,9 @@ func TestDreamCycleInsightAndNarrativeComeFromModel(t *testing.T) {
 	seedDreamMemories(eki)
 
 	entry := eki.RunDreamCycle(context.Background())
+	if in := eki.EmergentInsights; len(in) != 1 || !in[0].Rated || in[0].Novelty != 0.8 || in[0].Depth != 0.35 {
+		t.Fatalf("insight rating is not the model's: %+v", in)
+	}
 	if entry.InsightsGenerated != 1 {
 		t.Fatalf("insights = %d, want 1", entry.InsightsGenerated)
 	}
@@ -75,6 +81,21 @@ func TestDreamCycleInsightAndNarrativeComeFromModel(t *testing.T) {
 	}
 	if !strings.Contains(fake.prompts[0], "rivers and memory") {
 		t.Fatalf("insight prompt lacks the actual memories: %q", fake.prompts[0])
+	}
+}
+
+func TestDreamInsightUnreadableRatingStaysUnrated(t *testing.T) {
+	eki := NewEchodreamKnowledgeIntegrator(nil)
+	eki.SetGenerator(&echoTextFake{reply: func(p string) string {
+		if strings.Contains(p, "emergent insight") {
+			return "MODEL-INSIGHT"
+		}
+		return "it is very novel"
+	}})
+	seedDreamMemories(eki)
+	eki.RunDreamCycle(context.Background())
+	if in := eki.EmergentInsights; len(in) != 1 || in[0].Rated || in[0].Novelty != 0 || in[0].Depth != 0 {
+		t.Fatalf("insight got scores the model did not give: %+v", in)
 	}
 }
 

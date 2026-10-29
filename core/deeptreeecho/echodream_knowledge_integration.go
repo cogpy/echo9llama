@@ -326,12 +326,19 @@ Provide a concise wisdom insight:`, patternTexts)
 		return fmt.Errorf("wisdom generation failed: %w", err)
 	}
 
+	// Depth and applicability are the model's own rating of the insight.
+	rating, err := llm.RatePercent(context.Background(), edi.llmProvider, "", "Wisdom insight: "+result,
+		"how deep and fundamental it is", "how broadly it applies")
+	if err != nil {
+		return fmt.Errorf("wisdom rating failed: %w", err)
+	}
+
 	wisdom := WisdomInsight{
 		ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
 		Insight:       result,
 		Source:        patternIDs,
-		Depth:         0.7,
-		Applicability: 0.8,
+		Depth:         rating[0],
+		Applicability: rating[1],
 		CreatedAt:     time.Now(),
 	}
 

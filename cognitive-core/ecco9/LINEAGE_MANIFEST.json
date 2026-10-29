@@ -295,11 +295,11 @@
       "upstream_sha256": "79517039faf6fc8f7b7252b2e17b1d690f8b398475ef3e272dae2c2e4240341e"
     },
     {
-      "bytes": 18430,
+      "bytes": 18740,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "cmd/autonomous/main_simple_consolidated.go",
-      "sha256": "73e101c8a9f58819c6f47dab3d10ef2caedaee7cb118cfb152f79d4e7ae136f1",
+      "sha256": "40f796df3e777f8f1e80d89630da139ff1a638d1ffb9b0bf27576512474c642a",
       "upstream_bytes": 16709,
       "upstream_sha256": "60bf3ce770d04f2c75483e6d40c4ff3282327332fc6205a5274dac451947dbb3"
     },
@@ -828,20 +828,20 @@
       "sha256": "88393257fe5ec12d6c3073d25754adf1b1938999f0764f588807f6fa755b6445"
     },
     {
-      "bytes": 7140,
+      "bytes": 7108,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/deeptreeecho/providers/app_storage.go",
-      "sha256": "212f69b324566fc38c17409c3a55ef6a97801a8edc56ef46a326af13f9b4b774",
+      "sha256": "5e2ff68db6ab109362adb545833e378f35c5f8ac88e25cd71fe74c2d321db527",
       "upstream_bytes": 8035,
       "upstream_sha256": "775198af55d36b892199010325d3edebbf407e9d26699bd1c2c13fecd6473e1c"
     },
     {
-      "bytes": 5134,
+      "bytes": 5102,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/deeptreeecho/providers/local_gguf.go",
-      "sha256": "8c57d6890dc3a22f04b78fb3bf43ac2bf984b4c0644a5613e825983b8cfb62ab",
+      "sha256": "bbc109c59481af51c21b03c7ca1e722c2f15ad04949144f44dd9f09b8c85f7cd",
       "upstream_bytes": 7069,
       "upstream_sha256": "11576315d4a57e99af6b9c47f9d4138de36a56a62a799824e041d7d56f217e4b"
     },
@@ -1078,11 +1078,11 @@
       "upstream_sha256": "196762297f6d62f633cff36d1a179dd236b3fa5abace4f05f427fe7054c71f3f"
     },
     {
-      "bytes": 17901,
+      "bytes": 18511,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/echobeats/processor.go",
-      "sha256": "de9ce38ef23cba91df300e0cce5a6b637897e08f852002f5682ee95887139994",
+      "sha256": "1f91a5bd79310e7702de80389260053a7b867143d2ed9406a25d803c006151e0",
       "upstream_bytes": 12575,
       "upstream_sha256": "976b7856e458f2fea817616ab656c32ec151159c81a15e37ba6b30dd3c419cf3"
     },
@@ -1257,11 +1257,11 @@
       "sha256": "aab82251cf26ef8e8a092044b4cdab15b885c396bc8180a41b8128c62f21f423"
     },
     {
-      "bytes": 17128,
+      "bytes": 17593,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/goals/goal_orchestrator.go",
-      "sha256": "eaabac3845b2bef642be29efe67db194456026130c209761baaf20e8aded3fb4",
+      "sha256": "492bfb82f07313d70144921179d816f57da10ce6b83d43423c538a2e175a7eaa",
       "upstream_bytes": 14729,
       "upstream_sha256": "417343c98f7cbb8c844d07560e1b359747e8b09f068418f44ace08d7f4e3984c"
     },
@@ -1273,11 +1273,11 @@
       "sha256": "2e24de3ca837649432205de94ee6977f906c38f84bb25a187866e26d3892fcd3"
     },
     {
-      "bytes": 12893,
+      "bytes": 12906,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "core/goals/interest_driven_generator.go",
-      "sha256": "1d4197b164419ae21ccf2f7dcabe2f8cd85e23bc60af4d92472f1260d4fddd6e",
+      "sha256": "5c66e2a5f07d6885e4e18764853e08a202ff6755a50bb89621a04cd18d01662c",
       "upstream_bytes": 12326,
       "upstream_sha256": "d33bbf1c73b2da9a92fe72ee3a9e49a72eef5d95ddca64512189500c41d0dc3e"
     },
@@ -1373,6 +1373,13 @@
       "kind": "go",
       "path": "core/llm/provider.go",
       "sha256": "53f712c04df59856d03ed7b30bea680c00510fa01bd030dd94c88a2a3eb6151e"
+    },
+    {
+      "bytes": 1827,
+      "kind": "local_go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
+      "path": "core/llm/rating.go",
+      "sha256": "bc00c7e4781cdeac9029c9e066b690807e8d07e8371cb0e57a974d06d49c7a91"
     },
     {
       "bytes": 11891,
@@ -1580,11 +1587,11 @@
       "sha256": "227b07c23c9d20ea1442b63cf1787b2f9528b9a8b43c6749cd616681a2533cdf"
     },
     {
-      "bytes": 7929,
+      "bytes": 9558,
       "kind": "go",
       "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "demos/unified_consciousness_demo.go",
-      "sha256": "281c6169aeb824a40b5006ee2666841b63b7237e39df7d5310e0fa976a87e096",
+      "sha256": "3c98e1153547a3e94968da918fccf30f2914b09bc17911f4c6d87bb5bd91dfbf",
       "upstream_bytes": 6322,
       "upstream_sha256": "d5fb3b90c636fc9a63688ba32e857a0895d1c14952ec54d013f1dafd45ee0331"
     },
@@ -2676,10 +2683,13 @@
       "upstream_sha256": "3cece1994c4b94701377f7b5b59e491919ce9823d304e1349ac60c7acf8729a0"
     },
     {
-      "bytes": 23136,
+      "bytes": 22830,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/core/deeptreeecho/embodied.go",
-      "sha256": "26b6b9b9b7bc72a3e5e90c019e988fd11cd29e1a78d278dd7e2c7be22458b519"
+      "sha256": "b37218268bb108e21995ededdac3f6db47670286903af5ed52b90017751f5f6b",
+      "upstream_bytes": 23136,
+      "upstream_sha256": "26b6b9b9b7bc72a3e5e90c019e988fd11cd29e1a78d278dd7e2c7be22458b519"
     },
     {
       "bytes": 8579,
@@ -2694,28 +2704,40 @@
       "sha256": "ab6739436928b0410050cec55b611d685376a07aec757329341bd375118ec648"
     },
     {
-      "bytes": 25581,
+      "bytes": 25738,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/core/deeptreeecho/identity.go",
-      "sha256": "53613b4d0ace5e1c7f19d78148a672772e86fcaefb55d2c5e8b1853e52187d46"
+      "sha256": "d26753f27495fa38bf08f0a1c086ef9ae58f8101b67840892835ada8dc45706e",
+      "upstream_bytes": 25581,
+      "upstream_sha256": "53613b4d0ace5e1c7f19d78148a672772e86fcaefb55d2c5e8b1853e52187d46"
     },
     {
-      "bytes": 7842,
+      "bytes": 6762,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/core/deeptreeecho/models.go",
-      "sha256": "c36239be5c2289a7a285edbccfa9415667e52732abc369f45bbedd48dd870d23"
+      "sha256": "ab2658faca3b4cc723116cbc05dcce9394c61b8976c27d8b816b4197301ee06c",
+      "upstream_bytes": 7842,
+      "upstream_sha256": "c36239be5c2289a7a285edbccfa9415667e52732abc369f45bbedd48dd870d23"
     },
     {
-      "bytes": 8071,
+      "bytes": 7108,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/core/deeptreeecho/providers/app_storage.go",
-      "sha256": "27681691132f851cd2cf5a6cc114ba1eca589dfaa99d1c426bf9ece101597cfe"
+      "sha256": "775d021a74458422ac5f5f12d4e2ac68ac0db7d070bbee6d00022805b6f1a836",
+      "upstream_bytes": 8071,
+      "upstream_sha256": "27681691132f851cd2cf5a6cc114ba1eca589dfaa99d1c426bf9ece101597cfe"
     },
     {
-      "bytes": 7105,
+      "bytes": 5102,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/core/deeptreeecho/providers/local_gguf.go",
-      "sha256": "42919860e670ae3f9c017abdf2041da555997035f3ae3e8ce220b96ad53cd86c"
+      "sha256": "ad76192f5957d10f82e2c358a5f340d965e07814826b83375ab8b7b3a6c57352",
+      "upstream_bytes": 7105,
+      "upstream_sha256": "42919860e670ae3f9c017abdf2041da555997035f3ae3e8ce220b96ad53cd86c"
     },
     {
       "bytes": 8156,
@@ -2736,10 +2758,13 @@
       "sha256": "7b9eada67c88d29139bc4799066ab0f5173fd30aa8d6b5e046af45eddb2f9f28"
     },
     {
-      "bytes": 33734,
+      "bytes": 32636,
       "kind": "go",
+      "local_patch": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
       "path": "org/deeptreeecho.go",
-      "sha256": "c2dfed661ec6ceeb6300be3dd6bf6bb92de152fbd219d41290c62684fe82b03a"
+      "sha256": "97f8a4c8f0f0bf4b95d760fce23ebf691530fd3bcd7f6cc86acc5d7378d2af14",
+      "upstream_bytes": 33734,
+      "upstream_sha256": "c2dfed661ec6ceeb6300be3dd6bf6bb92de152fbd219d41290c62684fe82b03a"
     },
     {
       "bytes": 5081,
@@ -3926,8 +3951,8 @@
   ],
   "go_file_count": 553,
   "license_file_count": 3,
-  "local_addition_count": 11,
-  "local_patch_count": 79,
+  "local_addition_count": 12,
+  "local_patch_count": 85,
   "local_patch_policy": "model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent",
   "schema_version": 1,
   "source_commit": "1b22401ee8842fd1aa2769b688d588cd9f1f9ce9",

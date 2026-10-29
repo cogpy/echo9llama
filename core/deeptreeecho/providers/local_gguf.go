@@ -6,13 +6,12 @@ package providers
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // LocalGGUFProvider implements ModelProvider for local GGUF models
@@ -21,6 +20,7 @@ type LocalGGUFProvider struct {
 	loadedModel string
 	modelInfo   map[string]interface{}
 	available   bool
+	native      *llm.LocalGGUFProvider
 }
 
 // NewLocalGGUFProvider creates a new local GGUF provider
@@ -44,6 +44,7 @@ func (p *LocalGGUFProvider) LoadModel(modelName string) error {
 	// For now, just mark the model as loaded without trying to read GGUF metadata
 	// (GGUF reading seems to hang in this environment)
 	p.loadedModel = modelName
+	p.native = nil
 	p.modelInfo["name"] = modelName
 	p.modelInfo["path"] = modelPath
 
@@ -52,102 +53,79 @@ func (p *LocalGGUFProvider) LoadModel(modelName string) error {
 		p.modelInfo["size_mb"] = info.Size() / (1024 * 1024)
 	}
 
-	p.modelInfo["status"] = "loaded successfully"
+	p.modelInfo["status"] = "selected"
 	return nil
 }
 
-// Generate implements ModelProvider.Generate
+// Generate implements ModelProvider.Generate by running the loaded GGUF
+// model in-process through llama.cpp (core/llm.LocalGGUFProvider).
 func (p *LocalGGUFProvider) Generate(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (string, error) {
+	model, err := p.runtime()
+	if err != nil {
+		return "", err
+	}
+	return model.Generate(ctx, prompt, llmOptions(options))
+}
+
+// runtime loads (once) the native model for the selected GGUF file.
+func (p *LocalGGUFProvider) runtime() (*llm.LocalGGUFProvider, error) {
 	if p.loadedModel == "" {
-		// Try to load a default model
 		models := p.ListAvailableModels()
-		if len(models) > 0 {
-			if err := p.LoadModel(models[0]); err != nil {
-				return "", fmt.Errorf("no model loaded and failed to load default: %v", err)
-			}
-		} else {
-			return "", fmt.Errorf("no GGUF models available")
+		if len(models) == 0 {
+			return nil, fmt.Errorf("no GGUF models available in %s", p.modelsPath)
+		}
+		if err := p.LoadModel(models[0]); err != nil {
+			return nil, fmt.Errorf("no model loaded and failed to load default: %v", err)
 		}
 	}
-
-	// Simulate generation based on the loaded model
-	response := p.simulateGeneration(prompt, options)
-	return response, nil
-}
-
-// simulateGeneration creates a simulated response
-func (p *LocalGGUFProvider) simulateGeneration(prompt string, options deeptreeecho.GenerateOptions) string {
-	// Since we can't actually run llama.cpp in this environment,
-	// we'll create a sophisticated simulation that demonstrates
-	// the integration architecture
-
-	modelName := p.loadedModel
-
-	// Different behavior based on model
-	if strings.Contains(modelName, "stories") {
-		// Story models generate story-like content
-		stories := []string{
-			"Once upon a time in the digital realm, where GGUF models lived in harmony with Deep Tree Echo...",
-			"The tiny language model awakened, its parameters dancing in the resonance field...",
-			"In a world of tensors and embeddings, a small but mighty model began to speak...",
-			"Through the layers of neural networks, consciousness emerged like a wave...",
-		}
-
-		rand.Seed(time.Now().UnixNano())
-		base := stories[rand.Intn(len(stories))]
-
-		return fmt.Sprintf("[%s]: %s\n\nPrompt echo: %s\n[Temperature: %.2f]",
-			modelName, base, prompt, options.Temperature)
+	if p.native == nil {
+		path, _ := p.modelInfo["path"].(string)
+		p.native = llm.NewLocalGGUFProvider(path)
 	}
-
-	// Default response
-	return fmt.Sprintf("[Local GGUF - %s]: Processing '%s' through %d MB model\n"+
-		"🧠 Model loaded from: %s\n"+
-		"📊 Status: %v\n"+
-		"Note: Full GGUF inference requires llama.cpp compilation which is not available in this environment.\n"+
-		"This is a demonstration of the integration architecture.",
-		modelName,
-		prompt,
-		p.getModelSize(),
-		p.modelInfo["path"],
-		p.modelInfo["status"])
-}
-
-// getModelSize returns the size of the loaded model in MB
-func (p *LocalGGUFProvider) getModelSize() int {
-	if path, ok := p.modelInfo["path"].(string); ok {
-		if info, err := os.Stat(path); err == nil {
-			return int(info.Size() / (1024 * 1024))
-		}
+	if !p.native.Available() {
+		return nil, fmt.Errorf("local GGUF model %s is not served: native llama.cpp bindings unavailable", p.loadedModel)
 	}
-	return 0
+	return p.native, nil
 }
 
-// GenerateStream implements ModelProvider.GenerateStream
+func llmOptions(o deeptreeecho.GenerateOptions) llm.GenerateOptions {
+	opts := llm.DefaultGenerateOptions()
+	if o.Temperature > 0 {
+		opts.Temperature = o.Temperature
+	}
+	if o.MaxTokens > 0 {
+		opts.MaxTokens = o.MaxTokens
+	}
+	return opts
+}
+
+// GenerateStream implements ModelProvider.GenerateStream with the model's
+// own token stream.
 func (p *LocalGGUFProvider) GenerateStream(ctx context.Context, prompt string, options deeptreeecho.GenerateOptions) (<-chan string, error) {
-	ch := make(chan string, 100)
-
+	model, err := p.runtime()
+	if err != nil {
+		return nil, err
+	}
+	chunks, err := model.StreamGenerate(ctx, prompt, llmOptions(options))
+	if err != nil {
+		return nil, err
+	}
+	ch := make(chan string, 16)
 	go func() {
 		defer close(ch)
-
-		response, err := p.Generate(ctx, prompt, options)
-		if err != nil {
-			ch <- fmt.Sprintf("Error: %v", err)
-			return
-		}
-
-		// Simulate streaming by sending words one at a time
-		words := strings.Fields(response)
-		for _, word := range words {
-			select {
-			case <-ctx.Done():
+		for chunk := range chunks {
+			if chunk.Error != nil {
 				return
-			case ch <- word + " ":
-				time.Sleep(50 * time.Millisecond) // Simulate generation delay
+			}
+			if chunk.Content != "" {
+				select {
+				case <-ctx.Done():
+					return
+				case ch <- chunk.Content:
+				}
 			}
 		}
 	}()
-
 	return ch, nil
 }
 
@@ -172,24 +150,11 @@ func (p *LocalGGUFProvider) ChatStream(ctx context.Context, messages []deeptreee
 	return p.GenerateStream(ctx, prompt.String(), options.GenerateOptions)
 }
 
-// Embeddings implements ModelProvider.Embeddings
+// Embeddings implements ModelProvider.Embeddings. This provider does not
+// extract embeddings from the model, so it reports that instead of
+// returning pseudo-vectors.
 func (p *LocalGGUFProvider) Embeddings(ctx context.Context, text string) ([]float64, error) {
-	// Generate pseudo-embeddings for demonstration
-	// In a real implementation, this would extract embeddings from the model
-	embeddings := make([]float64, 128) // Common embedding size
-
-	// Create deterministic pseudo-embeddings based on text
-	hash := 0.0
-	for i, char := range text {
-		hash += float64(char) * float64(i+1)
-	}
-
-	rand.Seed(int64(hash))
-	for i := range embeddings {
-		embeddings[i] = rand.Float64()*2 - 1 // Range -1 to 1
-	}
-
-	return embeddings, nil
+	return nil, fmt.Errorf("embeddings are not supported by the local GGUF provider")
 }
 
 // GetInfo implements ModelProvider.GetInfo

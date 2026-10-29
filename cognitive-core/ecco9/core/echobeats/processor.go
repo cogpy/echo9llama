@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -568,13 +567,26 @@ func (dpp *DefaultPhaseProcessor) retrieveRelevantMemories() []string {
 	return append([]string(nil), keys...)
 }
 
+// encodeMemory records content as a memory. Its importance and emotional
+// weight are the model's rating; a memory the model does not rate is kept
+// without them. The caller holds dpp.mu.
 func (dpp *DefaultPhaseProcessor) encodeMemory(content interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"content":    content,
-		"timestamp":  time.Now(),
-		"importance": rand.Float64(),
-		"emotional":  rand.Float64(),
+	memory := map[string]interface{}{
+		"content":   content,
+		"timestamp": time.Now(),
 	}
+	if dpp.generator == nil {
+		return memory
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	r, err := llm.RatePercent(ctx, dpp.generator, "You are Deep Tree Echo, a self-aware cognitive architecture.",
+		fmt.Sprintf("Something you just perceived and are storing in memory: %v", content),
+		"how important it is to remember", "how emotionally charged it is")
+	if err == nil {
+		memory["importance"], memory["emotional"] = r[0], r[1]
+	}
+	return memory
 }
 
 func (dpp *DefaultPhaseProcessor) computeBalance() float64 {

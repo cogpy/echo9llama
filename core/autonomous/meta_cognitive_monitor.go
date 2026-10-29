@@ -311,9 +311,6 @@ func (mcm *MetaCognitiveMonitor) runMonitoringLoop() {
 			// Check for alerts
 			mcm.checkAlerts()
 
-			// Simulate gradual state changes (in production, these would come from real observations)
-			mcm.simulateStateChanges()
-
 			mcm.mu.Unlock()
 		}
 	}
@@ -456,23 +453,6 @@ func (mcm *MetaCognitiveMonitor) isAlertResolved(alert *CognitiveAlert) bool {
 	}
 
 	return false
-}
-
-// simulateStateChanges simulates gradual state changes for demo
-func (mcm *MetaCognitiveMonitor) simulateStateChanges() {
-	// Gradual fatigue increase
-	mcm.cognitiveState.AttentionFatigue += 0.001
-
-	// Gradual energy decrease
-	mcm.cognitiveState.EnergyLevel -= 0.0005
-
-	// Keep values in bounds
-	if mcm.cognitiveState.AttentionFatigue > 1.0 {
-		mcm.cognitiveState.AttentionFatigue = 1.0
-	}
-	if mcm.cognitiveState.EnergyLevel < 0.0 {
-		mcm.cognitiveState.EnergyLevel = 0.0
-	}
 }
 
 // PerformSelfAssessment conducts a comprehensive self-assessment

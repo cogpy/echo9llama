@@ -73,6 +73,10 @@ CRITERIA: Chart 10 memory clusters; Describe 3 cross-links`})
 	if len(goal.SuccessCriteria) != 2 || len(goal.Milestones) != 2 {
 		t.Fatalf("expected two criteria and milestones, got %#v", goal.SuccessCriteria)
 	}
+	// The model named no first action, so none is invented.
+	if len(goal.Actions) != 0 {
+		t.Fatalf("action invented without the model: %#v", goal.Actions)
+	}
 
 	// The same goal is not duplicated.
 	g.generateGoalsFromIdentity()
@@ -91,5 +95,25 @@ func TestGoalOrchestratorStopDoesNotDeadlock(t *testing.T) {
 	}
 	if err := g.Stop(); err == nil {
 		t.Fatal("second Stop should report not running")
+	}
+}
+
+func TestGeneratedGoalFirstActionIsTheModels(t *testing.T) {
+	g := newTestGoalOrchestrator()
+	defer g.cancel()
+	g.SetGoalGenerator(&fakeGoalGenerator{reply: `TITLE: Learn my rhythms
+DESCRIPTION: I want to notice when I think best.
+CATEGORY: self_improvement
+PRIORITY: 4
+CRITERIA: Log 20 thought timestamps; Find one daily peak
+FIRST_ACTION: Timestamp each thought I have tonight`})
+
+	g.generateGoalsFromIdentity()
+	goals := g.GetActiveGoals()
+	if len(goals) != 1 || len(goals[0].Actions) != 1 {
+		t.Fatalf("goals = %#v", goals)
+	}
+	if a := goals[0].Actions[0]; a.Title != "Timestamp each thought I have tonight" || a.Metadata["source"] != "model" {
+		t.Fatalf("first action not the model's: %#v", a)
 	}
 }

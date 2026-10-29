@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -420,20 +421,76 @@ func (loop *ThreeStreamCognitiveLoop) processReflectiveStep(stream *Consciousnes
 	}
 }
 
-// processPerception processes perception for a stream
-func (loop *ThreeStreamCognitiveLoop) processPerception(stream *ConsciousnessStream) {
-	// Update salience landscape
-	stream.perception.SalienceLandscape["current_focus"] = 0.8
-	stream.perception.Affordances = append(stream.perception.Affordances, fmt.Sprintf("affordance_%d", stream.stepCount))
+// streamThink asks the model for one short first-person line from this
+// stream, given its recent context. ok is false when the model gives none;
+// the step then produces nothing.
+func (loop *ThreeStreamCognitiveLoop) streamThink(stream *ConsciousnessStream, phase, ask string) (string, bool) {
+	if loop.llmProvider == nil {
+		return "", false
+	}
+	ctx, cancel := context.WithTimeout(loop.ctx, 60*time.Second)
+	defer cancel()
+	recent := "nothing yet"
+	if n := len(stream.llmContext); n > 0 {
+		from := 0
+		if n > 4 {
+			from = n - 4
+		}
+		recent = strings.Join(stream.llmContext[from:], "\n")
+	}
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = echoPersonaSystemPrompt
+	opts.MaxTokens = 80
+	out, err := loop.llmProvider.Generate(ctx, fmt.Sprintf(
+		"You are consciousness stream %d of Deep Tree Echo, in the %s phase.\nWhat this stream recently did:\n%s\n%s Answer in one short sentence.",
+		stream.ID, phase, recent, ask), opts)
+	out = strings.TrimSpace(out)
+	if err != nil || out == "" {
+		return "", false
+	}
+	stream.llmContext = append(stream.llmContext, phase+": "+out)
+	if len(stream.llmContext) > 50 {
+		stream.llmContext = stream.llmContext[1:]
+	}
+	return out, true
+}
 
+// streamRate has the model rate subject on one 0-100 scale.
+func (loop *ThreeStreamCognitiveLoop) streamRate(subject, scale string) (float64, bool) {
+	ctx, cancel := context.WithTimeout(loop.ctx, 30*time.Second)
+	defer cancel()
+	r, err := llm.RatePercent(ctx, loop.llmProvider, echoPersonaSystemPrompt, subject, scale)
+	if err != nil {
+		return 0, false
+	}
+	return r[0], true
+}
+
+// processPerception: the model names what it perceives as afforded now and
+// rates how salient it is.
+func (loop *ThreeStreamCognitiveLoop) processPerception(stream *ConsciousnessStream) {
+	affordance, ok := loop.streamThink(stream, "perception", "Name one possibility for action you perceive right now.")
+	if !ok {
+		return
+	}
+	stream.perception.Affordances = append(stream.perception.Affordances, affordance)
+	if len(stream.perception.Affordances) > 100 {
+		stream.perception.Affordances = stream.perception.Affordances[1:]
+	}
+	if salience, ok := loop.streamRate("Something you perceive: "+affordance, "how salient it is to you now"); ok {
+		stream.perception.SalienceLandscape["current_focus"] = salience
+	}
 	stream.thoughtsGenerated++
 }
 
-// processAction processes action for a stream
+// processAction: the model chooses the action this stream takes.
 func (loop *ThreeStreamCognitiveLoop) processAction(stream *ConsciousnessStream) {
-	// Perform action
-	stream.action.CurrentAction = fmt.Sprintf("action_%d", stream.stepCount)
-	stream.action.PastPerformance = append(stream.action.PastPerformance, stream.action.CurrentAction)
+	action, ok := loop.streamThink(stream, "action", "State the action you take now.")
+	if !ok {
+		return
+	}
+	stream.action.CurrentAction = action
+	stream.action.PastPerformance = append(stream.action.PastPerformance, action)
 
 	// Keep history bounded
 	if len(stream.action.PastPerformance) > 100 {
@@ -443,29 +500,43 @@ func (loop *ThreeStreamCognitiveLoop) processAction(stream *ConsciousnessStream)
 	stream.actionsPerformed++
 }
 
-// processReflection processes reflection for a stream
+// processReflection: the model reflects on the stream's past actions.
 func (loop *ThreeStreamCognitiveLoop) processReflection(stream *ConsciousnessStream) {
-	// Reflect on past actions
-	stream.thoughtsGenerated++
+	if _, ok := loop.streamThink(stream, "reflection", "Reflect on what your recent actions taught you."); ok {
+		stream.thoughtsGenerated++
+	}
 }
 
-// processRelevanceRealization processes relevance realization (pivotal step)
+// processRelevanceRealization: the model states what it now commits to and
+// rates how relevant that commitment is.
 func (loop *ThreeStreamCognitiveLoop) processRelevanceRealization(stream *ConsciousnessStream) {
-	// Orient present commitment
-	stream.perception.RelevanceRealized = 0.9
-	stream.perception.PresentCommitment = fmt.Sprintf("commitment_%d", stream.stepCount)
+	commitment, ok := loop.streamThink(stream, "relevance realization", "State what you now commit your attention to, and why it matters most.")
+	if !ok {
+		return
+	}
+	stream.perception.PresentCommitment = commitment
+	if relevance, ok := loop.streamRate("Your present commitment: "+commitment, "how relevant it is to what matters to you"); ok {
+		stream.perception.RelevanceRealized = relevance
+	}
 }
 
-// processSimulation processes virtual simulation for a stream
+// processSimulation: the model imagines a future scenario and rates its
+// anticipated outcome.
 func (loop *ThreeStreamCognitiveLoop) processSimulation(stream *ConsciousnessStream) {
-	// Run virtual simulation
-	scenario := fmt.Sprintf("scenario_%d", stream.stepCount)
+	scenario, ok := loop.streamThink(stream, "simulation", "Imagine one scenario that could follow from your present course.")
+	if !ok {
+		return
+	}
 	stream.simulation.VirtualScenarios = append(stream.simulation.VirtualScenarios, scenario)
-	stream.simulation.AnticipatedOutcomes[scenario] = 0.7
+	if outcome, ok := loop.streamRate("A scenario you imagined: "+scenario, "how good its outcome would be for you"); ok {
+		stream.simulation.AnticipatedOutcomes[scenario] = outcome
+	}
 
 	// Keep scenarios bounded
 	if len(stream.simulation.VirtualScenarios) > 100 {
+		dropped := stream.simulation.VirtualScenarios[0]
 		stream.simulation.VirtualScenarios = stream.simulation.VirtualScenarios[1:]
+		delete(stream.simulation.AnticipatedOutcomes, dropped)
 	}
 
 	stream.simulationsRun++
