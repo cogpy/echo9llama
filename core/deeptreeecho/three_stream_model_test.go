@@ -5,7 +5,15 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
+
+// step runs fn the way processStreamStep does: with the stream locked.
+func step(s *ConsciousnessStream, fn func(*ConsciousnessStream)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	fn(s)
+}
 
 func newTestThreeStreamLoop(gen *echoTextFake) *ThreeStreamCognitiveLoop {
 	loop := NewThreeStreamCognitiveLoop(gen, nil)
@@ -24,11 +32,11 @@ func TestThreeStreamStepsComeFromModel(t *testing.T) {
 	defer loop.cancel()
 	s := loop.stream1
 
-	loop.processPerception(s)
-	loop.processAction(s)
-	loop.processReflection(s)
-	loop.processRelevanceRealization(s)
-	loop.processSimulation(s)
+	step(s, loop.processPerception)
+	step(s, loop.processAction)
+	step(s, loop.processReflection)
+	step(s, loop.processRelevanceRealization)
+	step(s, loop.processSimulation)
 
 	if got := s.perception.Affordances; len(got) != 1 || got[0] != "model line" || s.perception.SalienceLandscape["current_focus"] != 0.62 {
 		t.Fatalf("perception = %+v", s.perception)
@@ -49,11 +57,11 @@ func TestThreeStreamStepsWithoutModelProduceNothing(t *testing.T) {
 	defer loop.cancel()
 	s := loop.stream2
 
-	loop.processPerception(s)
-	loop.processAction(s)
-	loop.processReflection(s)
-	loop.processRelevanceRealization(s)
-	loop.processSimulation(s)
+	step(s, loop.processPerception)
+	step(s, loop.processAction)
+	step(s, loop.processReflection)
+	step(s, loop.processRelevanceRealization)
+	step(s, loop.processSimulation)
 
 	if len(s.perception.Affordances) != 0 || s.action.CurrentAction != "" || s.perception.PresentCommitment != "" ||
 		len(s.simulation.VirtualScenarios) != 0 || s.thoughtsGenerated+s.actionsPerformed+s.simulationsRun != 0 {
@@ -71,7 +79,7 @@ func TestRepeatedScenarioKeepsItsRating(t *testing.T) {
 	defer loop.cancel()
 	s := loop.stream3
 	for range 102 {
-		loop.processSimulation(s)
+		step(s, loop.processSimulation)
 	}
 	if len(s.simulation.VirtualScenarios) != 100 {
 		t.Fatalf("scenarios = %d", len(s.simulation.VirtualScenarios))
@@ -79,4 +87,28 @@ func TestRepeatedScenarioKeepsItsRating(t *testing.T) {
 	if got, ok := s.simulation.AnticipatedOutcomes["the same scenario"]; !ok || got != 0.4 {
 		t.Fatalf("retained scenario lost its rating: %v %v", got, ok)
 	}
+}
+
+func TestStreamStateReadableDuringModelCall(t *testing.T) {
+	release := make(chan struct{})
+	entered := make(chan struct{})
+	loop := newTestThreeStreamLoop(&echoTextFake{reply: func(string) string {
+		close(entered)
+		<-release
+		return "model line"
+	}})
+	defer loop.cancel()
+	s := loop.stream1
+	done := make(chan struct{})
+	go func() { step(s, loop.processReflection); close(done) }()
+	<-entered
+	got := make(chan map[string]interface{}, 1)
+	go func() { got <- s.GetState() }()
+	select {
+	case <-got:
+	case <-time.After(2 * time.Second):
+		t.Fatal("GetState blocked while the model was generating")
+	}
+	close(release)
+	<-done
 }

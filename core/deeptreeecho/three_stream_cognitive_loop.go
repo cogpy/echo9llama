@@ -424,7 +424,8 @@ func (loop *ThreeStreamCognitiveLoop) processReflectiveStep(stream *Consciousnes
 
 // streamThink asks the model for one short first-person line from this
 // stream, given its recent context. ok is false when the model gives none;
-// the step then produces nothing.
+// the step then produces nothing. The caller holds stream.mu; it is
+// released during the model call.
 func (loop *ThreeStreamCognitiveLoop) streamThink(stream *ConsciousnessStream, phase, ask string) (string, bool) {
 	if loop.llmProvider == nil {
 		return "", false
@@ -442,9 +443,12 @@ func (loop *ThreeStreamCognitiveLoop) streamThink(stream *ConsciousnessStream, p
 	opts := llm.DefaultGenerateOptions()
 	opts.SystemPrompt = echoPersonaSystemPrompt
 	opts.MaxTokens = 80
-	out, err := loop.llmProvider.Generate(ctx, fmt.Sprintf(
+	prompt := fmt.Sprintf(
 		"You are consciousness stream %d of Deep Tree Echo, in the %s phase.\nWhat this stream recently did:\n%s\n%s Answer in one short sentence.",
-		stream.ID, phase, recent, ask), opts)
+		stream.ID, phase, recent, ask)
+	var out string
+	var err error
+	stream.unlockedDuring(func() { out, err = loop.llmProvider.Generate(ctx, prompt, opts) })
 	out = strings.TrimSpace(out)
 	if err != nil || out == "" {
 		return "", false
@@ -456,11 +460,27 @@ func (loop *ThreeStreamCognitiveLoop) streamThink(stream *ConsciousnessStream, p
 	return out, true
 }
 
-// streamRate has the model rate subject on one 0-100 scale.
-func (loop *ThreeStreamCognitiveLoop) streamRate(subject, scale string) (float64, bool) {
+// unlockedDuring releases the stream's lock while fn runs a model call, so
+// state reads, synchronization and Stop are not held up by a slow model.
+// Only this stream's goroutine changes its cognitive state, so the step
+// resumes on consistent state when the lock is retaken. The caller holds
+// stream.mu (processStreamStep).
+func (stream *ConsciousnessStream) unlockedDuring(fn func()) {
+	stream.mu.Unlock()
+	defer stream.mu.Lock()
+	fn()
+}
+
+// streamRate has the model rate subject on one 0-100 scale. The caller
+// holds stream.mu; it is released during the model call.
+func (loop *ThreeStreamCognitiveLoop) streamRate(stream *ConsciousnessStream, subject, scale string) (float64, bool) {
 	ctx, cancel := context.WithTimeout(loop.ctx, 30*time.Second)
 	defer cancel()
-	r, err := llm.RatePercent(ctx, loop.llmProvider, echoPersonaSystemPrompt, subject, scale)
+	var r []float64
+	var err error
+	stream.unlockedDuring(func() {
+		r, err = llm.RatePercent(ctx, loop.llmProvider, echoPersonaSystemPrompt, subject, scale)
+	})
 	if err != nil {
 		return 0, false
 	}
@@ -478,7 +498,7 @@ func (loop *ThreeStreamCognitiveLoop) processPerception(stream *ConsciousnessStr
 	if len(stream.perception.Affordances) > 100 {
 		stream.perception.Affordances = stream.perception.Affordances[1:]
 	}
-	if salience, ok := loop.streamRate("Something you perceive: "+affordance, "how salient it is to you now"); ok {
+	if salience, ok := loop.streamRate(stream, "Something you perceive: "+affordance, "how salient it is to you now"); ok {
 		stream.perception.SalienceLandscape["current_focus"] = salience
 	}
 	stream.thoughtsGenerated++
@@ -516,7 +536,7 @@ func (loop *ThreeStreamCognitiveLoop) processRelevanceRealization(stream *Consci
 		return
 	}
 	stream.perception.PresentCommitment = commitment
-	if relevance, ok := loop.streamRate("Your present commitment: "+commitment, "how relevant it is to what matters to you"); ok {
+	if relevance, ok := loop.streamRate(stream, "Your present commitment: "+commitment, "how relevant it is to what matters to you"); ok {
 		stream.perception.RelevanceRealized = relevance
 	}
 }
@@ -529,7 +549,7 @@ func (loop *ThreeStreamCognitiveLoop) processSimulation(stream *ConsciousnessStr
 		return
 	}
 	stream.simulation.VirtualScenarios = append(stream.simulation.VirtualScenarios, scenario)
-	if outcome, ok := loop.streamRate("A scenario you imagined: "+scenario, "how good its outcome would be for you"); ok {
+	if outcome, ok := loop.streamRate(stream, "A scenario you imagined: "+scenario, "how good its outcome would be for you"); ok {
 		stream.simulation.AnticipatedOutcomes[scenario] = outcome
 	}
 
