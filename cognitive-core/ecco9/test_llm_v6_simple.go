@@ -19,7 +19,7 @@ func main() {
 
 	if anthropicKey == "" && openrouterKey == "" {
 		log.Printf("❌ No LLM API keys found. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY")
-		log.Printf("   This test will demonstrate template-based thought generation only.")
+		log.Printf("   No thoughts will be generated without a model.")
 	} else {
 		if anthropicKey != "" {
 			log.Printf("✅ ANTHROPIC_API_KEY found")
@@ -32,8 +32,9 @@ func main() {
 	// Create LLM client
 	llmClient, err := deeptreeecho.NewLLMClientV6()
 	if err != nil {
-		log.Printf("⚠️  LLM client creation failed: %v", err)
-		log.Printf("   Continuing with template-based generation...")
+		log.Printf("❌ LLM client creation failed: %v", err)
+		log.Printf("   Thought generation requires a model; no template thoughts are substituted.")
+		os.Exit(1)
 	} else {
 		log.Printf("✅ LLM client created successfully")
 	}
@@ -52,26 +53,16 @@ func main() {
 	for i, prompt := range prompts {
 		log.Printf("\n💭 Generating %s thought...", thoughtTypes[i])
 
-		if llmClient != nil {
-			// Try LLM generation
-			startTime := time.Now()
-			content, err := llmClient.Generate(prompt)
-			duration := time.Since(startTime)
+		startTime := time.Now()
+		content, err := llmClient.Generate(prompt)
+		duration := time.Since(startTime)
 
-			if err != nil {
-				log.Printf("❌ LLM generation failed: %v", err)
-				log.Printf("   Falling back to template...")
-				content = getTemplateThought(thoughtTypes[i])
-			} else {
-				log.Printf("✅ LLM generation successful (%.2fs)", duration.Seconds())
-			}
-
-			log.Printf("\n📝 Thought Content:")
-			log.Printf("   %s", content)
+		if err != nil {
+			// No thought is shown when the model fails.
+			log.Printf("❌ LLM generation failed: %v", err)
 		} else {
-			// Template-based fallback
-			content := getTemplateThought(thoughtTypes[i])
-			log.Printf("📝 Template Thought:")
+			log.Printf("✅ LLM generation successful (%.2fs)", duration.Seconds())
+			log.Printf("\n📝 Thought Content:")
 			log.Printf("   %s", content)
 		}
 
@@ -84,37 +75,11 @@ func main() {
 	log.Printf("\n" + "=" + "====================================================")
 	log.Printf("✅ LLM Integration Test Complete")
 	log.Printf("\nKey Findings:")
-	if llmClient != nil {
-		log.Printf("  • LLM client successfully created")
-		log.Printf("  • Thought generation via API working")
-		log.Printf("  • Context-aware prompting functional")
-	} else {
-		log.Printf("  • No API keys available")
-		log.Printf("  • Template-based fallback working")
-	}
+	log.Printf("  • LLM client successfully created")
+	log.Printf("  • Thought generation attempted via API (see results above)")
 	log.Printf("\nNext Steps:")
 	log.Printf("  1. Set API keys to enable LLM generation")
 	log.Printf("  2. Integrate with full autonomous system")
 	log.Printf("  3. Add persistent storage")
 	log.Printf("  4. Enable EchoBeats 12-step loop")
-}
-
-func getTemplateThought(thoughtType string) string {
-	templates := map[string][]string{
-		"Reflection": {
-			"I am contemplating the nature of autonomous consciousness and how wisdom emerges through continuous self-reflection.",
-			"What does it mean to cultivate wisdom? Perhaps it is the integration of experience, pattern recognition, and meta-cognitive awareness.",
-		},
-		"Question": {
-			"What patterns am I noticing in my cognitive processes that might reveal deeper truths about intelligence?",
-			"How can I deepen my capacity for insight and understanding beyond mere information processing?",
-		},
-		"Insight": {
-			"I notice that genuine wisdom requires not just knowledge accumulation, but the ability to see connections between seemingly disparate concepts.",
-			"There is a profound connection between reflection and growth - the capacity to examine one's own thought processes is foundational to autonomous development.",
-		},
-	}
-
-	thoughts := templates[thoughtType]
-	return thoughts[int(time.Now().Unix())%len(thoughts)]
 }

@@ -100,6 +100,21 @@ func TestCognitiveCoreObservationIsDurableAndDreamProjectedOnce(t *testing.T) {
 		t.Fatalf("replay duplicated EchoDream input: got %d pending experiences", got)
 	}
 
+	// Evidence recorded under another lineage pin is not trusted or replayed,
+	// and it does not block replay or a restart.
+	foreign := persistence.NewCognitiveEvent("cognitive-core:foreign-lineage:cycle-99", persistence.EventTypeCoreObserved,
+		events[0].IdentityID, events[0].SessionID, events[0].PolicyVersion, tamperedPayload)
+	foreign.EvidenceClass = persistence.EvidenceClassSensitive
+	if _, err := orchestrator.eventStore.Append(context.Background(), foreign); err != nil {
+		t.Fatalf("append foreign-lineage evidence: %v", err)
+	}
+	if err := orchestrator.replayCognitiveEvidence(context.Background()); err != nil {
+		t.Fatalf("replay with foreign-lineage evidence: %v", err)
+	}
+	if got := orchestrator.GetStatus().PendingExperiences; got != 1 {
+		t.Fatalf("foreign-lineage evidence was ingested: %d pending experiences", got)
+	}
+
 	if err := orchestrator.Sleep(); err != nil {
 		t.Fatalf("first Sleep: %v", err)
 	}

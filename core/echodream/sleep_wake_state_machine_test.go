@@ -10,6 +10,8 @@ import (
 // pipeline: ingest → consolidate → extract patterns → synthesize wisdom.
 func TestDreamProcessorFullCycle(t *testing.T) {
 	dp := NewDreamProcessor(context.Background())
+	gen := &fakeDreamGenerator{reply: "model-written dream text"}
+	dp.SetTextGenerator(gen)
 
 	// Ingest a set of waking experiences with recurring themes
 	experiences := []struct {
@@ -83,6 +85,18 @@ func TestDreamProcessorFullCycle(t *testing.T) {
 	if wisdomCount == 0 {
 		t.Fatal("expected synthesized wisdom insights, got none")
 	}
+	dp.mu.RLock()
+	for _, w := range dp.wisdomInsights {
+		if w.Insight != "model-written dream text" {
+			t.Errorf("wisdom insight was not model text: %q", w.Insight)
+		}
+	}
+	for _, k := range dp.consolidatedKnowledge {
+		if k.Content != "model-written dream text" {
+			t.Errorf("knowledge content was not model text: %q", k.Content)
+		}
+	}
+	dp.mu.RUnlock()
 	if pendingAfter != 0 {
 		t.Errorf("expected pending experiences cleared after cycle, got %d", pendingAfter)
 	}
@@ -150,6 +164,7 @@ func TestStateMachineIngestDelegation(t *testing.T) {
 func TestStateMachineConfiguredCyclePublishesTruthfulMetrics(t *testing.T) {
 	sm := NewSleepWakeStateMachine()
 	defer sm.Shutdown()
+	sm.SetTextGenerator(&fakeDreamGenerator{reply: "a model-written insight"})
 	sm.ConfigurePhaseDurations(time.Millisecond, time.Millisecond, time.Millisecond)
 
 	sm.IngestExperience("Repeated reflection exposed a feedback pattern", 0.9, []string{"reflection", "feedback"})

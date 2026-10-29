@@ -3,6 +3,7 @@ package autonomous
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -346,8 +347,17 @@ Generate your opening thought or reflection to begin this exploration. Speak in 
 	di.mu.Unlock()
 
 	opening, err := di.llmProvider.Generate(context.Background(), openingPrompt, opts)
+	if err == nil {
+		opening = strings.TrimSpace(opening)
+		if opening == "" {
+			err = fmt.Errorf("model returned empty opening")
+		}
+	}
 	if err != nil {
-		opening = fmt.Sprintf("I find myself curious about %s...", topic.Title)
+		// No opening text stands in for the model: the discussion is not
+		// started and the topic stays pending for a later attempt.
+		fmt.Printf("⚠️  Discussion on %q not initiated: %v\n", topic.Title, err)
+		return
 	}
 
 	di.mu.Lock()
@@ -417,6 +427,10 @@ Continue your exploration. Build on your previous thoughts, make connections, or
 	if err != nil {
 		return err
 	}
+	continuation = strings.TrimSpace(continuation)
+	if continuation == "" {
+		return fmt.Errorf("model returned empty continuation")
+	}
 
 	di.mu.Lock()
 	di.activeDiscussion.Messages = append(di.activeDiscussion.Messages, DiscussionMessage{
@@ -461,8 +475,16 @@ Based on this exploration, extract 2-3 key insights or learnings. Be concise and
 	}
 
 	insights, err := di.llmProvider.Generate(context.Background(), prompt, opts)
+	if err == nil {
+		insights = strings.TrimSpace(insights)
+		if insights == "" {
+			err = fmt.Errorf("model returned empty insights")
+		}
+	}
 	if err != nil {
-		insights = "Reflection pending..."
+		// No placeholder insight is recorded; the discussion stays active so
+		// completion can be retried.
+		return fmt.Errorf("discussion insights not generated: %w", err)
 	}
 
 	di.mu.Lock()

@@ -258,24 +258,38 @@ func (cis *ConcurrentInferenceSystem) integrateEngineOutputs() {
 	cis.sharedState.integrationLevel = integration
 }
 
-// calculateTemporalCoherence measures alignment across time
+// calculateTemporalCoherence measures how much of the past/present/future
+// picture the engines have actually populated (caller holds sharedState.mu).
+// It is measured from state, not assumed.
 func (cis *ConcurrentInferenceSystem) calculateTemporalCoherence() float64 {
-	// Simplified coherence calculation
-	// In full implementation, this would measure semantic alignment
-	// between past context, present focus, and future options
-
-	pastPresent := 0.8   // How well past informs present
-	presentFuture := 0.7 // How well present guides future
-	futurePast := 0.6    // How well future learning updates past
-
-	return (pastPresent + presentFuture + futurePast) / 3.0
+	populated := 0
+	if len(cis.sharedState.pastContext) > 0 {
+		populated++
+	}
+	if cis.sharedState.presentFocus != nil {
+		populated++
+	}
+	if len(cis.sharedState.futureOptions) > 0 {
+		populated++
+	}
+	return float64(populated) / 3.0
 }
 
-// calculateIntegrationLevel measures engine synchronization
+// calculateIntegrationLevel measures engine synchronization as the share of
+// adjacent temporal links (past→present, present→future) that both sides
+// have populated (caller holds sharedState.mu).
 func (cis *ConcurrentInferenceSystem) calculateIntegrationLevel() float64 {
-	// Check if engines are in sync
-	// Full implementation would track message passing and state sharing
-	return 0.85
+	links := 0
+	hasPast := len(cis.sharedState.pastContext) > 0
+	hasPresent := cis.sharedState.presentFocus != nil
+	hasFuture := len(cis.sharedState.futureOptions) > 0
+	if hasPast && hasPresent {
+		links++
+	}
+	if hasPresent && hasFuture {
+		links++
+	}
+	return float64(links) / 2.0
 }
 
 // GetSharedState returns a copy of the shared cognitive state

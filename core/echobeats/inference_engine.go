@@ -2,9 +2,19 @@ package echobeats
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
+)
+
+// errNoInferenceModel reports that an engine has no model to infer with.
+var (
+	errNoInferenceModel    = errors.New("inference engine has no model")
+	errModelReturnedNoText = errors.New("model returned no text")
 )
 
 // InferenceEngine represents a concurrent inference engine
@@ -34,9 +44,23 @@ type InferenceEngine struct {
 	tasksProcessed  uint64
 	totalInferences uint64
 
+	// gen is the model that performs inference; nil means tasks fail.
+	gen TextGenerator
+
 	// Control
 	running bool
 	paused  bool
+}
+
+// SetTextGenerator injects the model this engine infers with. Without one,
+// tasks complete with Success=false and no output.
+func (ie *InferenceEngine) SetTextGenerator(gen TextGenerator) {
+	ie.mu.Lock()
+	ie.gen = gen
+	ie.mu.Unlock()
+	if ie.cognitiveLoop != nil {
+		ie.cognitiveLoop.SetTextGenerator(gen)
+	}
 }
 
 // InferenceSpecialization defines what the engine specializes in
@@ -247,75 +271,53 @@ func (ie *InferenceEngine) processNextTask() {
 	ie.totalInferences++
 	ie.mu.Unlock()
 
-	fmt.Printf("🔍 %s: Completed task %s (%.2fs, confidence: %.2f)\n",
-		ie.name, task.Type, processingTime.Seconds(), result.Confidence)
+	if result.Success {
+		fmt.Printf("🔍 %s: Completed task %s (%.2fs)\n", ie.name, task.Type, processingTime.Seconds())
+	} else {
+		fmt.Printf("🔍 %s: Task %s produced no inference: %v\n", ie.name, task.Type, task.Error)
+	}
 }
 
-// performInference performs the actual inference
+// performInference asks the model to carry out the task for this engine's
+// specialization, given the task and the engine's real cognitive state. No
+// result is invented: without a model, or when it fails or answers with
+// nothing, the task records the error and Success=false.
 func (ie *InferenceEngine) performInference(task *InferenceTask) *InferenceResult {
-	// Get current cognitive state
+	ie.mu.RLock()
+	gen := ie.gen
+	ctx := ie.ctx
+	ie.mu.RUnlock()
+	if gen == nil {
+		task.Error = errNoInferenceModel
+		return &InferenceResult{}
+	}
+
 	cogState := ie.cognitiveLoop.GetCurrentState()
-
-	// Perform inference based on specialization and task type
-	var output interface{}
-	var confidence float64
-	var insights []string
-
+	facts := fmt.Sprintf("Task type: %s. Input: %v. Context: %v.", task.Type, task.Input, task.Context)
+	if cogState != nil {
+		facts += fmt.Sprintf(" Attention: %v. Working memory items: %d. Cognitive load: %.2f. Pending actions: %v.",
+			cogState.Attention, len(cogState.WorkingMemory), cogState.CognitiveLoad, cogState.PendingActions)
+	}
+	var instruction string
 	switch ie.specialization {
 	case SpecializationPerception:
-		output = ie.processPerceptualTask(task, cogState)
-		confidence = 0.8
-		insights = []string{"Perceptual processing complete"}
-
-	case SpecializationCognition:
-		output = ie.processCognitiveTask(task, cogState)
-		confidence = 0.85
-		insights = []string{"Cognitive inference complete"}
-
+		instruction = "As Deep Tree Echo's perception engine, describe in one or two sentences what is salient in this input and why."
 	case SpecializationAction:
-		output = ie.processActionTask(task, cogState)
-		confidence = 0.75
-		insights = []string{"Action planning complete"}
-
+		instruction = "As Deep Tree Echo's action engine, propose in one or two sentences the next concrete action and its expected effect."
 	default:
-		output = "Generic inference result"
-		confidence = 0.7
+		instruction = "As Deep Tree Echo's reasoning engine, state in one or two sentences what you infer from this input."
 	}
 
-	return &InferenceResult{
-		Success:     true,
-		Output:      output,
-		Confidence:  confidence,
-		Insights:    insights,
-		NextActions: []string{"Continue processing"},
+	out, err := gen.Generate(ctx, facts+"\n"+instruction, llm.GenerateOptions{MaxTokens: 120, Temperature: 0.6})
+	out = strings.TrimSpace(out)
+	if err == nil && out == "" {
+		err = errModelReturnedNoText
 	}
-}
-
-// processPerceptualTask processes perceptual tasks
-func (ie *InferenceEngine) processPerceptualTask(task *InferenceTask, cogState *CognitiveState) interface{} {
-	return map[string]interface{}{
-		"perception":      "Sensory input processed",
-		"attention_focus": cogState.Attention,
-		"relevance":       0.7,
+	if err != nil {
+		task.Error = err
+		return &InferenceResult{}
 	}
-}
-
-// processCognitiveTask processes cognitive tasks
-func (ie *InferenceEngine) processCognitiveTask(task *InferenceTask, cogState *CognitiveState) interface{} {
-	return map[string]interface{}{
-		"reasoning":      "Logical inference complete",
-		"working_memory": len(cogState.WorkingMemory),
-		"cognitive_load": cogState.CognitiveLoad,
-	}
-}
-
-// processActionTask processes action tasks
-func (ie *InferenceEngine) processActionTask(task *InferenceTask, cogState *CognitiveState) interface{} {
-	return map[string]interface{}{
-		"action_plan":     "Action sequence generated",
-		"pending_actions": cogState.PendingActions,
-		"feasibility":     0.8,
-	}
+	return &InferenceResult{Success: true, Output: out}
 }
 
 // GetMetrics returns inference engine metrics

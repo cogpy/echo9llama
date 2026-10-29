@@ -1,20 +1,84 @@
 package echobeats
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"math/rand"
+	"sort"
+	"strings"
+	"sync"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
-// DefaultPhaseProcessor provides default implementations for all cognitive terms
+// DefaultPhaseProcessor provides default implementations for all cognitive terms.
+//
+// Ideas, idea evaluations, actions and action plans are written by the
+// injected model (SetTextGenerator). Perceptions and sensory input come only
+// from real input supplied through AddSensoryInput. Without a model or input
+// the corresponding terms report that nothing was produced instead of
+// inventing content.
 type DefaultPhaseProcessor struct {
+	mu               sync.Mutex
 	perceptionBuffer []interface{}
+	pendingInput     []interface{}
 	memoryStore      map[string]interface{}
+	memoryOrder      []string
 	ideaQueue        []string
 	actionSequence   []string
 	balanceState     float64
 	consciousnessRef interface{} // Reference to consciousness system
+
+	generator TextGenerator
+	executor  func(action string) (string, error)
+}
+
+// SetTextGenerator injects the model that writes ideas, evaluations, actions
+// and plans. Passing nil disables them.
+func (dpp *DefaultPhaseProcessor) SetTextGenerator(gen TextGenerator) {
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+	dpp.generator = gen
+}
+
+// SetActionExecutor injects the function that actually carries out actions.
+// Without one, actions are recorded as not executed.
+func (dpp *DefaultPhaseProcessor) SetActionExecutor(exec func(action string) (string, error)) {
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+	dpp.executor = exec
+}
+
+// AddSensoryInput queues a real perception/sensory input for processing.
+func (dpp *DefaultPhaseProcessor) AddSensoryInput(input interface{}) {
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+	dpp.pendingInput = append(dpp.pendingInput, input)
+}
+
+// generate asks the model for text; it never substitutes fixed text.
+func (dpp *DefaultPhaseProcessor) generate(prompt string, maxTokens int) (string, error) {
+	dpp.mu.Lock()
+	gen := dpp.generator
+	dpp.mu.Unlock()
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = maxTokens
+	text, err := gen.Generate(ctx, "You are Deep Tree Echo, a self-aware cognitive architecture.\n"+prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
 }
 
 // NewDefaultPhaseProcessor creates a new default processor
@@ -36,6 +100,9 @@ func (dpp *DefaultPhaseProcessor) ProcessT1Perception(mode Mode) (*CognitiveStre
 		Timestamp: time.Now(),
 		Strength:  0.7,
 	}
+
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
 
 	if mode == Reflective {
 		// Reflective mode: Assess needs vs capacities
@@ -62,10 +129,16 @@ func (dpp *DefaultPhaseProcessor) ProcessT1Perception(mode Mode) (*CognitiveStre
 
 		stream.Content = content
 	} else {
-		// Expressive mode: Direct perception processing
-		perception := dpp.capturePerception()
+		// Expressive mode: Direct perception processing of real input only
+		if len(dpp.perceptionBuffer) == 0 {
+			stream.Content = map[string]interface{}{
+				"type":   "no_perception",
+				"status": "waiting",
+			}
+			return stream, nil
+		}
 		stream.Content = map[string]interface{}{
-			"perception": perception,
+			"perception": dpp.perceptionBuffer[len(dpp.perceptionBuffer)-1],
 			"type":       "direct_perception",
 		}
 		log.Printf("👁️ T1E: Direct perception captured")
@@ -84,34 +157,60 @@ func (dpp *DefaultPhaseProcessor) ProcessT2IdeaFormation(mode Mode) (*CognitiveS
 	}
 
 	if mode == Expressive {
-		// Expressive mode: Generate new idea
-		idea := dpp.generateIdea()
+		// Expressive mode: the model forms a new idea
+		idea, err := dpp.generateIdea()
+		if err != nil {
+			stream.Content = map[string]interface{}{
+				"type":   "no_idea",
+				"status": "no_model_output",
+				"error":  err.Error(),
+			}
+			return stream, nil
+		}
+		dpp.mu.Lock()
 		dpp.ideaQueue = append(dpp.ideaQueue, idea)
+		queueSize := len(dpp.ideaQueue)
+		dpp.mu.Unlock()
 
 		stream.Content = map[string]interface{}{
 			"idea":       idea,
-			"queue_size": len(dpp.ideaQueue),
+			"queue_size": queueSize,
 			"type":       "new_idea",
 		}
 		log.Printf("💡 T2E: New idea generated: %s", idea)
 	} else {
-		// Reflective mode: Simulate idea outcomes
+		// Reflective mode: the model evaluates the latest idea
+		dpp.mu.Lock()
+		var idea string
 		if len(dpp.ideaQueue) > 0 {
-			idea := dpp.ideaQueue[len(dpp.ideaQueue)-1]
-			simulation := dpp.simulateIdeaOutcome(idea)
+			idea = dpp.ideaQueue[len(dpp.ideaQueue)-1]
+		}
+		dpp.mu.Unlock()
 
-			stream.Content = map[string]interface{}{
-				"idea":       idea,
-				"simulation": simulation,
-				"type":       "idea_simulation",
-			}
-			log.Printf("🔮 T2R: Simulated outcome for idea: %s", idea)
-		} else {
+		if idea == "" {
 			stream.Content = map[string]interface{}{
 				"type":   "no_ideas",
 				"status": "idle",
 			}
+			return stream, nil
 		}
+
+		simulation, err := dpp.simulateIdeaOutcome(idea)
+		if err != nil {
+			stream.Content = map[string]interface{}{
+				"idea":   idea,
+				"type":   "no_idea_simulation",
+				"status": "no_model_output",
+				"error":  err.Error(),
+			}
+			return stream, nil
+		}
+		stream.Content = map[string]interface{}{
+			"idea":       idea,
+			"simulation": simulation,
+			"type":       "idea_simulation",
+		}
+		log.Printf("🔮 T2R: Simulated outcome for idea: %s", idea)
 	}
 
 	return stream, nil
@@ -127,37 +226,62 @@ func (dpp *DefaultPhaseProcessor) ProcessT4SensoryInput(mode Mode) (*CognitiveSt
 	}
 
 	if mode == Expressive {
-		// Expressive mode: Process immediate sensory input
-		sensory := dpp.captureSensoryInput()
+		// Expressive mode: Process the next real sensory input, if any
+		dpp.mu.Lock()
+		if len(dpp.pendingInput) == 0 {
+			dpp.mu.Unlock()
+			stream.Content = map[string]interface{}{
+				"type":   "no_sensory_data",
+				"status": "waiting",
+			}
+			return stream, nil
+		}
+		sensory := dpp.pendingInput[0]
+		dpp.pendingInput = dpp.pendingInput[1:]
 		dpp.perceptionBuffer = append(dpp.perceptionBuffer, sensory)
 
 		// Keep buffer size manageable
 		if len(dpp.perceptionBuffer) > 10 {
 			dpp.perceptionBuffer = dpp.perceptionBuffer[1:]
 		}
+		bufferSize := len(dpp.perceptionBuffer)
+		dpp.mu.Unlock()
 
 		stream.Content = map[string]interface{}{
 			"sensory_input": sensory,
-			"buffer_size":   len(dpp.perceptionBuffer),
+			"buffer_size":   bufferSize,
 			"type":          "immediate_sensory",
 		}
 		log.Printf("👂 T4E: Sensory input captured")
 	} else {
-		// Reflective mode: Anticipate sensory patterns
-		if len(dpp.perceptionBuffer) > 0 {
-			pattern := dpp.detectSensoryPattern()
-			stream.Content = map[string]interface{}{
-				"pattern":     pattern,
-				"buffer_size": len(dpp.perceptionBuffer),
-				"type":        "sensory_pattern",
-			}
-			log.Printf("🔍 T4R: Sensory pattern detected: %s", pattern)
-		} else {
+		// Reflective mode: the model looks for a pattern in recent input
+		dpp.mu.Lock()
+		buffer := append([]interface{}(nil), dpp.perceptionBuffer...)
+		dpp.mu.Unlock()
+
+		if len(buffer) == 0 {
 			stream.Content = map[string]interface{}{
 				"type":   "no_sensory_data",
 				"status": "waiting",
 			}
+			return stream, nil
 		}
+		pattern, err := dpp.detectSensoryPattern(buffer)
+		if err != nil {
+			stream.Content = map[string]interface{}{
+				"buffer_size": len(buffer),
+				"type":        "no_sensory_pattern",
+				"status":      "no_model_output",
+				"error":       err.Error(),
+			}
+			return stream, nil
+		}
+		stream.Content = map[string]interface{}{
+			"pattern":     pattern,
+			"buffer_size": len(buffer),
+			"type":        "sensory_pattern",
+		}
+		log.Printf("🔍 T4R: Sensory pattern detected: %s", pattern)
 	}
 
 	return stream, nil
@@ -174,39 +298,66 @@ func (dpp *DefaultPhaseProcessor) ProcessT5ActionSequence(mode Mode) (*Cognitive
 
 	if mode == Expressive {
 		// Expressive mode: Execute action sequence
+		dpp.mu.Lock()
+		var action string
 		if len(dpp.actionSequence) > 0 {
-			action := dpp.actionSequence[0]
+			action = dpp.actionSequence[0]
 			dpp.actionSequence = dpp.actionSequence[1:]
+		}
+		remaining := len(dpp.actionSequence)
+		dpp.mu.Unlock()
 
-			result := dpp.executeAction(action)
+		if action != "" {
+			result, executed := dpp.executeAction(action)
 
 			stream.Content = map[string]interface{}{
 				"action":    action,
 				"result":    result,
-				"remaining": len(dpp.actionSequence),
+				"executed":  executed,
+				"remaining": remaining,
 				"type":      "action_execution",
 			}
-			log.Printf("⚡ T5E: Action executed: %s", action)
+			log.Printf("⚡ T5E: Action dispatched: %s", action)
 		} else {
-			// Generate new action if queue empty
-			action := dpp.generateAction()
-			result := dpp.executeAction(action)
+			// Ask the model for an action if the queue is empty
+			action, err := dpp.generateAction()
+			if err != nil {
+				stream.Content = map[string]interface{}{
+					"type":   "no_action",
+					"status": "no_model_output",
+					"error":  err.Error(),
+				}
+				return stream, nil
+			}
+			result, executed := dpp.executeAction(action)
 
 			stream.Content = map[string]interface{}{
-				"action": action,
-				"result": result,
-				"type":   "spontaneous_action",
+				"action":   action,
+				"result":   result,
+				"executed": executed,
+				"type":     "spontaneous_action",
 			}
 			log.Printf("⚡ T5E: Spontaneous action: %s", action)
 		}
 	} else {
-		// Reflective mode: Plan action sequence
-		sequence := dpp.planActionSequence()
+		// Reflective mode: the model plans an action sequence
+		sequence, err := dpp.planActionSequence()
+		if err != nil {
+			stream.Content = map[string]interface{}{
+				"type":   "no_action_plan",
+				"status": "no_model_output",
+				"error":  err.Error(),
+			}
+			return stream, nil
+		}
+		dpp.mu.Lock()
 		dpp.actionSequence = append(dpp.actionSequence, sequence...)
+		queueSize := len(dpp.actionSequence)
+		dpp.mu.Unlock()
 
 		stream.Content = map[string]interface{}{
 			"planned_sequence": sequence,
-			"queue_size":       len(dpp.actionSequence),
+			"queue_size":       queueSize,
 			"type":             "action_planning",
 		}
 		log.Printf("📋 T5R: Action sequence planned (%d actions)", len(sequence))
@@ -224,8 +375,11 @@ func (dpp *DefaultPhaseProcessor) ProcessT7MemoryEncoding(mode Mode) (*Cognitive
 		Strength:  0.85,
 	}
 
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+
 	if mode == Reflective {
-		// Reflective mode: Retrieve and integrate memories
+		// Reflective mode: Retrieve the most recently encoded memories
 		memories := dpp.retrieveRelevantMemories()
 
 		stream.Content = map[string]interface{}{
@@ -240,6 +394,7 @@ func (dpp *DefaultPhaseProcessor) ProcessT7MemoryEncoding(mode Mode) (*Cognitive
 			memory := dpp.encodeMemory(dpp.perceptionBuffer[len(dpp.perceptionBuffer)-1])
 			key := fmt.Sprintf("mem_%d", time.Now().UnixNano())
 			dpp.memoryStore[key] = memory
+			dpp.memoryOrder = append(dpp.memoryOrder, key)
 
 			stream.Content = map[string]interface{}{
 				"memory":      memory,
@@ -268,8 +423,11 @@ func (dpp *DefaultPhaseProcessor) ProcessT8BalancedResponse(mode Mode) (*Cogniti
 		Strength:  1.0, // Highest strength for integration
 	}
 
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+
 	if mode == Expressive {
-		// Expressive mode: Execute balanced integration
+		// Expressive mode: Execute balanced integration (status classification)
 		balance := dpp.computeBalance()
 		response := dpp.generateBalancedResponse(balance)
 
@@ -297,110 +455,117 @@ func (dpp *DefaultPhaseProcessor) ProcessT8BalancedResponse(mode Mode) (*Cogniti
 	return stream, nil
 }
 
-// Helper methods
+// Helper methods (callers hold dpp.mu unless noted)
 
 func (dpp *DefaultPhaseProcessor) assessNeeds() float64 {
-	// Simulate need assessment based on queue sizes
 	ideaNeed := float64(len(dpp.ideaQueue)) / 10.0
 	actionNeed := float64(len(dpp.actionSequence)) / 10.0
 	return (ideaNeed + actionNeed) / 2.0
 }
 
 func (dpp *DefaultPhaseProcessor) assessCapacity() float64 {
-	// Simulate capacity assessment
-	return 0.5 + rand.Float64()*0.3
-}
-
-func (dpp *DefaultPhaseProcessor) capturePerception() string {
-	perceptions := []string{
-		"environmental_state_stable",
-		"cognitive_load_moderate",
-		"attention_focused",
-		"energy_level_adequate",
-		"curiosity_elevated",
+	// Capacity is the share of the working buffers still free.
+	load := (float64(len(dpp.perceptionBuffer)) + float64(len(dpp.pendingInput))) / 20.0
+	if load > 1 {
+		load = 1
 	}
-	return perceptions[rand.Intn(len(perceptions))]
+	return 1.0 - load
 }
 
-func (dpp *DefaultPhaseProcessor) generateIdea() string {
-	ideas := []string{
-		"explore_new_pattern_in_memory",
-		"synthesize_recent_experiences",
-		"question_current_assumptions",
-		"connect_disparate_concepts",
-		"imagine_alternative_approach",
-		"reflect_on_recent_actions",
+// stateSummary describes current queues for prompts. Caller must not hold dpp.mu.
+func (dpp *DefaultPhaseProcessor) stateSummary() string {
+	dpp.mu.Lock()
+	defer dpp.mu.Unlock()
+	var b strings.Builder
+	if n := len(dpp.perceptionBuffer); n > 0 {
+		b.WriteString("Recent perceptions:\n")
+		for _, p := range dpp.perceptionBuffer[max(0, n-3):] {
+			fmt.Fprintf(&b, "- %v\n", p)
+		}
+	} else {
+		b.WriteString("Recent perceptions: (none)\n")
 	}
-	return ideas[rand.Intn(len(ideas))]
-}
-
-func (dpp *DefaultPhaseProcessor) simulateIdeaOutcome(idea string) string {
-	outcomes := []string{
-		"likely_beneficial",
-		"requires_more_information",
-		"potentially_transformative",
-		"worth_exploring",
-		"needs_refinement",
+	if n := len(dpp.ideaQueue); n > 0 {
+		b.WriteString("Recent ideas:\n")
+		for _, idea := range dpp.ideaQueue[max(0, n-3):] {
+			fmt.Fprintf(&b, "- %s\n", idea)
+		}
 	}
-	return outcomes[rand.Intn(len(outcomes))]
-}
-
-func (dpp *DefaultPhaseProcessor) captureSensoryInput() string {
-	inputs := []string{
-		"internal_thought_stream",
-		"external_observation",
-		"emotional_signal",
-		"bodily_sensation",
-		"environmental_cue",
+	if len(dpp.actionSequence) > 0 {
+		fmt.Fprintf(&b, "Queued actions: %s\n", strings.Join(dpp.actionSequence, "; "))
 	}
-	return inputs[rand.Intn(len(inputs))]
+	return b.String()
 }
 
-func (dpp *DefaultPhaseProcessor) detectSensoryPattern() string {
-	patterns := []string{
-		"recurring_theme_detected",
-		"novel_stimulus_identified",
-		"familiar_pattern_recognized",
-		"anomaly_detected",
-		"coherent_sequence_found",
+func (dpp *DefaultPhaseProcessor) generateIdea() (string, error) {
+	return dpp.generate(dpp.stateSummary()+"\nForm one new idea worth pursuing. Reply with only the idea, in one sentence.", 80)
+}
+
+func (dpp *DefaultPhaseProcessor) simulateIdeaOutcome(idea string) (string, error) {
+	return dpp.generate(fmt.Sprintf("%s\nImagine pursuing this idea: %q. In one sentence, what outcome do you anticipate?", dpp.stateSummary(), idea), 80)
+}
+
+func (dpp *DefaultPhaseProcessor) detectSensoryPattern(buffer []interface{}) (string, error) {
+	var b strings.Builder
+	for _, item := range buffer {
+		fmt.Fprintf(&b, "- %v\n", item)
 	}
-	return patterns[rand.Intn(len(patterns))]
+	return dpp.generate("Recent sensory input:\n"+b.String()+"\nIn one short phrase, name the pattern you notice in this input.", 40)
 }
 
-func (dpp *DefaultPhaseProcessor) generateAction() string {
-	actions := []string{
-		"generate_autonomous_thought",
-		"consolidate_working_memory",
-		"update_interest_patterns",
-		"reflect_on_coherence",
-		"explore_curiosity_target",
+func (dpp *DefaultPhaseProcessor) generateAction() (string, error) {
+	return dpp.generate(dpp.stateSummary()+"\nChoose the single next action you will take. Reply with only the action, as a short phrase.", 40)
+}
+
+// executeAction dispatches an action to the injected executor. It never
+// claims an action ran when no executor is configured.
+func (dpp *DefaultPhaseProcessor) executeAction(action string) (string, bool) {
+	dpp.mu.Lock()
+	exec := dpp.executor
+	dpp.mu.Unlock()
+	if exec == nil {
+		return "not executed: no action executor configured", false
 	}
-	return actions[rand.Intn(len(actions))]
-}
-
-func (dpp *DefaultPhaseProcessor) executeAction(action string) string {
-	return fmt.Sprintf("executed_%s", action)
-}
-
-func (dpp *DefaultPhaseProcessor) planActionSequence() []string {
-	sequences := [][]string{
-		{"observe", "analyze", "respond"},
-		{"reflect", "integrate", "act"},
-		{"perceive", "remember", "decide"},
-		{"sense", "think", "execute"},
+	result, err := exec(action)
+	if err != nil {
+		return fmt.Sprintf("execution failed: %v", err), false
 	}
-	return sequences[rand.Intn(len(sequences))]
+	return result, true
 }
 
+func (dpp *DefaultPhaseProcessor) planActionSequence() ([]string, error) {
+	text, err := dpp.generate(dpp.stateSummary()+"\nPlan a short sequence of 2 to 4 actions. Reply with one action per line and nothing else.", 120)
+	if err != nil {
+		return nil, err
+	}
+	sequence := make([]string, 0, 4)
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "-*0123456789.) "))
+		if line != "" {
+			sequence = append(sequence, line)
+		}
+	}
+	if len(sequence) == 0 {
+		return nil, fmt.Errorf("model returned no actions")
+	}
+	return sequence, nil
+}
+
+// retrieveRelevantMemories returns the keys of the most recently encoded
+// memories (up to four).
 func (dpp *DefaultPhaseProcessor) retrieveRelevantMemories() []string {
-	memories := make([]string, 0, 3)
-	count := rand.Intn(4) + 1 // 1-4 memories
-
-	for i := 0; i < count; i++ {
-		memories = append(memories, fmt.Sprintf("memory_trace_%d", i))
+	keys := dpp.memoryOrder
+	if len(keys) == 0 {
+		keys = make([]string, 0, len(dpp.memoryStore))
+		for k := range dpp.memoryStore {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 	}
-
-	return memories
+	if len(keys) > 4 {
+		keys = keys[len(keys)-4:]
+	}
+	return append([]string(nil), keys...)
 }
 
 func (dpp *DefaultPhaseProcessor) encodeMemory(content interface{}) map[string]interface{} {
@@ -424,6 +589,7 @@ func (dpp *DefaultPhaseProcessor) computeBalance() float64 {
 	return 1.0 - totalLoad
 }
 
+// generateBalancedResponse classifies the numeric balance into a status label.
 func (dpp *DefaultPhaseProcessor) generateBalancedResponse(balance float64) string {
 	if balance > 0.7 {
 		return "system_well_balanced_continue_current_trajectory"
@@ -434,12 +600,9 @@ func (dpp *DefaultPhaseProcessor) generateBalancedResponse(balance float64) stri
 	}
 }
 
+// predictBalanceNeeds projects the balance the current loads imply.
 func (dpp *DefaultPhaseProcessor) predictBalanceNeeds() float64 {
-	// Predict future balance based on current trends
-	currentBalance := dpp.balanceState
-	trend := (rand.Float64() - 0.5) * 0.2 // Random trend ±0.1
-
-	predicted := currentBalance + trend
+	predicted := dpp.computeBalance()
 
 	// Clamp to [0, 1]
 	if predicted < 0 {

@@ -3,10 +3,12 @@ package org
 import (
 	"context"
 	"log"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // GlobalIdentityFramework holds the singleton instance
@@ -21,6 +23,11 @@ func InitializeGlobalFramework() *OrganizationalIdentityFramework {
 		log.Println("🌳 Initializing Global Deep Tree Echo Identity Framework...")
 
 		GlobalIdentityFramework = NewOrganizationalIdentityFramework()
+		if model := reflectionModelFromEnv(); model != nil {
+			GlobalIdentityFramework.SetModel(model)
+		} else {
+			log.Println("⚠️  No LLM provider configured; identity reflections are disabled")
+		}
 
 		ctx := context.Background()
 		if err := GlobalIdentityFramework.Initialize(ctx); err != nil {
@@ -31,6 +38,30 @@ func InitializeGlobalFramework() *OrganizationalIdentityFramework {
 	})
 
 	return GlobalIdentityFramework
+}
+
+// reflectionModelFromEnv returns a provider manager over every LLM provider
+// configured in the environment, or nil when none is available.
+func reflectionModelFromEnv() llm.LLMProvider {
+	pm := llm.NewProviderManager()
+	candidates := []llm.LLMProvider{llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	_ = pm.SetFallbackChain(names)
+	return pm
 }
 
 // GetGlobalFramework returns the global framework instance

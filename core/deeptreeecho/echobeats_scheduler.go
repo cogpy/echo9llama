@@ -2,6 +2,7 @@ package deeptreeecho
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -10,6 +11,10 @@ import (
 	"github.com/cogpy/echo9llama/core/backendcap"
 	"github.com/cogpy/echo9llama/core/llm"
 )
+
+// errModelReturnedNoText reports that a model call succeeded but produced no
+// text; callers treat it like a model failure and produce no character text.
+var errModelReturnedNoText = errors.New("model returned no text")
 
 // EchobeatsScheduler implements the 12-step 3-phase cognitive loop
 // with three logical inference engines on a sequential cadence for goal-directed scheduling.
@@ -398,7 +403,7 @@ func (sched *EchobeatsScheduler) relevanceRealization(question string) {
 			Intent:                "echobeats.relevance",
 			PreferNative:          true,
 			AllowRemote:           true,
-			AllowFallback:         true,
+			AllowFallback:         false,
 			PolicyExplicit:        true,
 			AllowQueue:            true,
 			RequiredContextTokens: 512,
@@ -409,8 +414,12 @@ func (sched *EchobeatsScheduler) relevanceRealization(question string) {
 
 	fullPrompt := "[System: You are performing relevance realization. Be concise and focused.]\n\n" + question
 	result, err := sched.llmProvider.Generate(sched.ctx, fullPrompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = "Unable to determine relevance at this time."
+		result = ""
 	}
 
 	now := time.Now()
@@ -423,6 +432,12 @@ func (sched *EchobeatsScheduler) relevanceRealization(question string) {
 	sched.engine1.taskHistory = append(sched.engine1.taskHistory, *task)
 	sched.engine1.currentTask = nil
 	sched.engine1.mu.Unlock()
+
+	if err != nil {
+		// No model output: the present commitment is left unchanged.
+		fmt.Printf("      → relevance realization skipped: %v\n", err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.presentCommitment = result
@@ -503,7 +518,7 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 			Intent:                "echobeats.affordance",
 			PreferNative:          true,
 			AllowRemote:           true,
-			AllowFallback:         true,
+			AllowFallback:         false,
 			PolicyExplicit:        true,
 			AllowQueue:            false,
 			RequiredContextTokens: 384,
@@ -513,8 +528,12 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 	}
 
 	result, err := sched.llmProvider.Generate(sched.ctx, prompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = fmt.Sprintf("Action step %d in progress", stepNum-1)
+		result = ""
 	}
 
 	now := time.Now()
@@ -527,6 +546,11 @@ func (sched *EchobeatsScheduler) affordanceInteraction(stepNum int) {
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
+
+	if err != nil {
+		fmt.Printf("      [Engine %d] → affordance reflection skipped: %v\n", engineID, err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.pastPerformance = append(sched.pastPerformance, result)
@@ -578,7 +602,7 @@ func (sched *EchobeatsScheduler) salienceSimulation(stepNum int) {
 			Intent:                "echobeats.salience",
 			PreferNative:          false,
 			AllowRemote:           true,
-			AllowFallback:         true,
+			AllowFallback:         false,
 			PolicyExplicit:        true,
 			AllowQueue:            true,
 			RequiredContextTokens: 768,
@@ -588,8 +612,12 @@ func (sched *EchobeatsScheduler) salienceSimulation(stepNum int) {
 	}
 
 	result, err := sched.llmProvider.Generate(sched.ctx, prompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = fmt.Sprintf("Future scenario %d under consideration", stepNum)
+		result = ""
 	}
 
 	now := time.Now()
@@ -602,6 +630,11 @@ func (sched *EchobeatsScheduler) salienceSimulation(stepNum int) {
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
+
+	if err != nil {
+		fmt.Printf("      [Engine %d] → salience simulation skipped: %v\n", engineID, err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.futureAnticipation = append(sched.futureAnticipation, result)

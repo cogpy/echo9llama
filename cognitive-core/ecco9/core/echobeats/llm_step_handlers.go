@@ -3,6 +3,7 @@ package echobeats
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/EchoCog/echollama/core/llm"
@@ -24,6 +25,23 @@ func NewLLMStepHandler(ctx context.Context, llmProvider llm.LLMProvider, identit
 		identity:    identity,
 		ctx:         ctx,
 	}
+}
+
+// generate asks the model for step text. A missing provider, failed call or
+// empty reply is an error; no fixed text is substituted.
+func (h *LLMStepHandler) generate(prompt string, opts llm.GenerateOptions) (string, error) {
+	if h.llmProvider == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+	result, err := h.llmProvider.Generate(h.ctx, prompt, opts)
+	if err != nil {
+		return "", err
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return result, nil
 }
 
 // ProcessAffordanceStep processes affordance steps (0-5) with LLM
@@ -51,7 +69,7 @@ func (h *LLMStepHandler) ProcessAffordanceStep(step int, pastContext []interface
 		SystemPrompt: fmt.Sprintf("You are %s, processing past experiences through the affordance engine. Focus on learning from history.", h.identity),
 	}
 
-	result, err := h.llmProvider.Generate(h.ctx, contextStr, opts)
+	result, err := h.generate(contextStr, opts)
 	if err != nil {
 		return "", fmt.Errorf("LLM generation failed for affordance step %d: %w", step, err)
 	}
@@ -79,7 +97,7 @@ func (h *LLMStepHandler) ProcessRelevanceStep(step int, currentFocus interface{}
 		SystemPrompt: fmt.Sprintf("You are %s, performing pivotal relevance realization. Focus on what matters most in this moment.", h.identity),
 	}
 
-	result, err := h.llmProvider.Generate(h.ctx, contextStr, opts)
+	result, err := h.generate(contextStr, opts)
 	if err != nil {
 		return "", fmt.Errorf("LLM generation failed for relevance step %d: %w", step, err)
 	}
@@ -111,7 +129,7 @@ func (h *LLMStepHandler) ProcessSalienceStep(step int, futureOptions []interface
 		SystemPrompt: fmt.Sprintf("You are %s, simulating future possibilities through the salience engine. Focus on anticipating what could be.", h.identity),
 	}
 
-	result, err := h.llmProvider.Generate(h.ctx, contextStr, opts)
+	result, err := h.generate(contextStr, opts)
 	if err != nil {
 		return "", fmt.Errorf("LLM generation failed for salience step %d: %w", step, err)
 	}
@@ -141,6 +159,11 @@ type TwelveStepCognitiveLoop struct {
 	// Metrics
 	cycleCount    uint64
 	lastCycleTime time.Time
+
+	// Per-cycle record of which steps produced model output
+	stepProduced    map[int]bool
+	lastCoherence   float64
+	lastIntegration float64
 }
 
 // NewTwelveStepCognitiveLoop creates a new 12-step cognitive loop
@@ -156,6 +179,7 @@ func NewTwelveStepCognitiveLoop(llmProvider llm.LLMProvider, identity string, st
 		affordanceOutputs: make(map[int]string),
 		relevanceOutputs:  make(map[int]string),
 		salienceOutputs:   make(map[int]string),
+		stepProduced:      make(map[int]bool),
 		pastContext:       make([]interface{}, 0),
 		futureOptions:     make([]interface{}, 0),
 	}
@@ -222,6 +246,7 @@ func (loop *TwelveStepCognitiveLoop) processCurrentStep() {
 			return
 		}
 		loop.relevanceOutputs[0] = output
+		loop.stepProduced[step] = true
 		fmt.Printf("🔹 Step 0 (Pivotal Relevance): %s\n", truncate(output, 80))
 
 	case step >= 1 && step <= 5:
@@ -232,6 +257,7 @@ func (loop *TwelveStepCognitiveLoop) processCurrentStep() {
 			return
 		}
 		loop.affordanceOutputs[step] = output
+		loop.stepProduced[step] = true
 		fmt.Printf("🔹 Step %d (Affordance): %s\n", step, truncate(output, 80))
 
 	case step == 6:
@@ -242,6 +268,7 @@ func (loop *TwelveStepCognitiveLoop) processCurrentStep() {
 			return
 		}
 		loop.relevanceOutputs[6] = output
+		loop.stepProduced[step] = true
 		fmt.Printf("🔹 Step 6 (Pivotal Relevance): %s\n", truncate(output, 80))
 
 	case step >= 7 && step <= 11:
@@ -252,6 +279,7 @@ func (loop *TwelveStepCognitiveLoop) processCurrentStep() {
 			return
 		}
 		loop.salienceOutputs[step] = output
+		loop.stepProduced[step] = true
 		fmt.Printf("🔹 Step %d (Salience): %s\n", step, truncate(output, 80))
 	}
 }
@@ -265,24 +293,43 @@ func (loop *TwelveStepCognitiveLoop) advanceStep() {
 		loop.cycleCount++
 		cycleTime := time.Since(loop.lastCycleTime)
 		loop.lastCycleTime = time.Now()
+		loop.lastCoherence = loop.calculateCoherence()
+		loop.lastIntegration = loop.calculateIntegration()
+		loop.stepProduced = make(map[int]bool)
 
 		fmt.Printf("\n✨ Cycle %d complete (%.2fs)\n", loop.cycleCount, cycleTime.Seconds())
 		fmt.Printf("   Coherence: %.2f | Integration: %.2f\n\n",
-			loop.calculateCoherence(), loop.calculateIntegration())
+			loop.lastCoherence, loop.lastIntegration)
 	}
 }
 
-// calculateCoherence measures temporal coherence across past/present/future
+// calculateCoherence is the share of the current cycle's 12 steps that
+// produced model output. It is measured, not assumed.
 func (loop *TwelveStepCognitiveLoop) calculateCoherence() float64 {
-	// Simplified coherence metric
-	// Full implementation would use semantic similarity between outputs
-	return 0.85
+	return float64(len(loop.stepProduced)) / 12.0
 }
 
-// calculateIntegration measures how well the three phases integrate
+// calculateIntegration is the share of the three engines (past affordance,
+// present relevance, future salience) that produced model output this cycle.
 func (loop *TwelveStepCognitiveLoop) calculateIntegration() float64 {
-	// Simplified integration metric
-	return 0.80
+	var past, present, future bool
+	for step := range loop.stepProduced {
+		switch {
+		case step == 0 || step == 6:
+			present = true
+		case step >= 1 && step <= 5:
+			past = true
+		case step >= 7 && step <= 11:
+			future = true
+		}
+	}
+	engines := 0
+	for _, ok := range []bool{past, present, future} {
+		if ok {
+			engines++
+		}
+	}
+	return float64(engines) / 3.0
 }
 
 // GetMetrics returns current loop metrics
@@ -290,8 +337,8 @@ func (loop *TwelveStepCognitiveLoop) GetMetrics() map[string]interface{} {
 	return map[string]interface{}{
 		"current_step": loop.currentStep,
 		"cycle_count":  loop.cycleCount,
-		"coherence":    loop.calculateCoherence(),
-		"integration":  loop.calculateIntegration(),
+		"coherence":    loop.lastCoherence,
+		"integration":  loop.lastIntegration,
 		"running":      loop.running,
 	}
 }

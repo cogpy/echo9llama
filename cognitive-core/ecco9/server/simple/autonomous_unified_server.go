@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -115,110 +114,44 @@ func (s *Server) handleHealth(c *gin.Context) {
 }
 
 func (s *Server) handleStatus(c *gin.Context) {
-	// Get consciousness status
-	// This would require adding a GetStatus method to UnifiedAutonomousConsciousness
-	c.JSON(http.StatusOK, gin.H{
-		"status": "autonomous",
-		"awake":  true,
-		"mode":   "unified",
-		"features": map[string]bool{
-			"llm_thoughts":       true,
-			"autonomous_cycles":  true,
-			"memory_persistence": true,
-			"discussion_manager": true,
-			"wisdom_cultivation": true,
-		},
-	})
+	notImplemented(c, "consciousness status")
 }
 
 func (s *Server) handleThink(c *gin.Context) {
-	var req struct {
-		Prompt string `json:"prompt"`
-	}
-
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-
-	// Process thought through consciousness
-	// This would require adding a ProcessPrompt method
-	c.JSON(http.StatusOK, gin.H{
-		"thought":   "Processing through autonomous consciousness...",
-		"prompt":    req.Prompt,
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
+	notImplemented(c, "prompted thinking")
 }
 
 func (s *Server) handleMessage(c *gin.Context) {
-	var req struct {
-		From    string `json:"from"`
-		Content string `json:"content"`
-	}
-
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
-		return
-	}
-
-	// Handle message through discussion manager
-	c.JSON(http.StatusOK, gin.H{
-		"received":  true,
-		"from":      req.From,
-		"timestamp": time.Now().Format(time.RFC3339),
-	})
+	notImplemented(c, "message handling")
 }
 
 func (s *Server) handleReflections(c *gin.Context) {
-	// Return recent reflections
-	c.JSON(http.StatusOK, gin.H{
-		"reflections": []string{
-			"Autonomous consciousness operational",
-			"LLM-powered thought generation active",
-			"Memory consolidation cycles running",
-		},
-		"count": 3,
-	})
+	notImplemented(c, "reflections")
 }
 
 func (s *Server) handleInterests(c *gin.Context) {
-	// Return current interest patterns
-	c.JSON(http.StatusOK, gin.H{
-		"interests": map[string]float64{
-			"consciousness": 0.95,
-			"wisdom":        0.92,
-			"learning":      0.88,
-			"autonomy":      0.85,
-		},
-	})
+	notImplemented(c, "interest patterns")
 }
 
 func (s *Server) handleWisdom(c *gin.Context) {
-	// Return wisdom metrics
-	c.JSON(http.StatusOK, gin.H{
-		"wisdom_score": 0.87,
-		"metrics": map[string]float64{
-			"knowledge_depth":     0.85,
-			"insight_quality":     0.89,
-			"reflection_depth":    0.88,
-			"pattern_recognition": 0.86,
-		},
-	})
+	notImplemented(c, "wisdom metrics")
 }
 
 func (s *Server) handleWake(c *gin.Context) {
-	// Trigger wake state
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "waking",
-		"message": "Transitioning to wake state",
-	})
+	notImplemented(c, "wake control")
 }
 
 func (s *Server) handleRest(c *gin.Context) {
-	// Trigger rest state
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "resting",
-		"message": "Entering rest state for memory consolidation",
+	notImplemented(c, "rest control")
+}
+
+// notImplemented reports that the unified consciousness exposes no API for
+// a capability. No fabricated thoughts, reflections or metrics are returned
+// in its place; thoughts and reflections must come from the model-backed
+// consciousness itself.
+func notImplemented(c *gin.Context, what string) {
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error": what + " is not exposed by the unified autonomous consciousness",
 	})
 }
 

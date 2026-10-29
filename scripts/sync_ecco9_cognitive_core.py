@@ -14,6 +14,7 @@ import hashlib
 import json
 import os
 import pathlib
+import re
 import shlex
 import shutil
 import subprocess
@@ -153,7 +154,115 @@ def write_disposition_catalogue(
     return counts
 
 
+LOCAL_PATCH_POLICY = (
+    "model-only character text: canned, templated, random-choice and fallback "
+    "output replaced by model queries; no text when the model is absent"
+)
+
+
+def repin_local_patches(destination: pathlib.Path, target_root: pathlib.Path) -> dict:
+    """Re-pin the snapshot after in-place local patches.
+
+    Every manifest record whose bytes changed keeps its upstream identity in
+    upstream_sha256/upstream_bytes and gains local_patch; sha256/bytes then
+    describe the patched file. The catalogue is re-derived from current bytes,
+    the README notice hashes are refreshed, and the adapter pins in
+    core/cognitivecore/lineage.go are rewritten. A fresh import with main()
+    drops the patches, so re-apply them after a re-import.
+    """
+    manifest_path = destination / "LINEAGE_MANIFEST.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    patched = 0
+    for record in manifest["files"]:
+        path = destination / record["path"]
+        current_hash = sha256(path)
+        upstream_hash = record.get("upstream_sha256", record["sha256"])
+        upstream_bytes = record.get("upstream_bytes", record["bytes"])
+        if record["kind"] == "local_go":
+            continue
+        if current_hash == upstream_hash:
+            for key in ("upstream_sha256", "upstream_bytes", "local_patch"):
+                record.pop(key, None)
+            record["sha256"], record["bytes"] = upstream_hash, upstream_bytes
+            continue
+        record["upstream_sha256"] = upstream_hash
+        record["upstream_bytes"] = upstream_bytes
+        record["local_patch"] = LOCAL_PATCH_POLICY
+        record["sha256"] = current_hash
+        record["bytes"] = path.stat().st_size
+        patched += 1
+    # Go files added locally (no upstream identity) are recorded separately,
+    # so go_file_count and the catalogue keep describing the upstream import.
+    recorded = {r["path"] for r in manifest["files"]}
+    manifest["files"] = [r for r in manifest["files"] if r["kind"] != "local_go" or (destination / r["path"]).is_file()]
+    added = 0
+    for path in sorted(destination.rglob("*.go")):
+        relative = path.relative_to(destination).as_posix()
+        if relative in recorded and not any(r["path"] == relative and r["kind"] == "local_go" for r in manifest["files"]):
+            continue
+        manifest["files"] = [r for r in manifest["files"] if r["path"] != relative]
+        manifest["files"].append({
+            "path": relative,
+            "kind": "local_go",
+            "bytes": path.stat().st_size,
+            "sha256": sha256(path),
+            "local_patch": LOCAL_PATCH_POLICY,
+        })
+        added += 1
+    manifest["files"].sort(key=lambda r: r["path"])
+    manifest["local_addition_count"] = added
+    manifest["local_patch_count"] = patched
+    if patched or added:
+        manifest["local_patch_policy"] = LOCAL_PATCH_POLICY
+    else:
+        manifest.pop("local_patch_policy", None)
+
+    go_files = [pathlib.Path(r["path"]) for r in manifest["files"] if r["kind"] == "go"]
+    counts = write_disposition_catalogue(destination, target_root, destination, go_files)
+    catalogue_hash = sha256(destination / "INTEGRATION_CATALOGUE.json")
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    manifest_hash = sha256(manifest_path)
+
+    readme = destination / "README.md"
+    if readme.exists():
+        text = readme.read_text(encoding="utf-8")
+        text = re.sub(r"manifest SHA-256 `[0-9a-f]{64}`", f"manifest SHA-256 `{manifest_hash}`", text)
+        text = re.sub(r"catalogue SHA-256 is `[0-9a-f]{64}`", f"catalogue SHA-256 is `{catalogue_hash}`", text)
+        text = re.sub(r"Current counts are `\{[^`]*\}`", f"Current counts are `{json.dumps(counts, sort_keys=True)}`", text)
+        marker = "## Local patches"
+        section = (
+            f"{marker}\n\n{patched} preserved files carry local patches and {added} Go files were added locally ({LOCAL_PATCH_POLICY}). "
+            "Each patched record in `LINEAGE_MANIFEST.json` keeps its upstream bytes and SHA-256 "
+            "in `upstream_bytes`/`upstream_sha256`. Re-pin after editing with:\n\n"
+            "```bash\npython3 scripts/sync_ecco9_cognitive_core.py --repin-local-patches\n```\n"
+        )
+        if marker in text:
+            text = text[: text.index(marker)] + section
+        elif patched or added:
+            text = text.rstrip("\n") + "\n\n" + section
+        readme.write_text(text, encoding="utf-8")
+
+    lineage = target_root / "core" / "cognitivecore" / "lineage.go"
+    if lineage.exists():
+        text = lineage.read_text(encoding="utf-8")
+        text = re.sub(r'(ManifestSHA256\s*=\s*)"[0-9a-f]{64}"', rf'\g<1>"{manifest_hash}"', text)
+        text = re.sub(r'(CatalogueSHA256\s*=\s*)"[0-9a-f]{64}"', rf'\g<1>"{catalogue_hash}"', text)
+        lineage.write_text(text, encoding="utf-8")
+
+    return {
+        "local_patch_count": patched,
+        "local_addition_count": added,
+        "disposition_counts": counts,
+        "catalogue_sha256": catalogue_hash,
+        "manifest_sha256": manifest_hash,
+    }
+
+
 def main() -> int:
+    if "--repin-local-patches" in sys.argv[1:]:
+        print(json.dumps(repin_local_patches(
+            pathlib.Path("cognitive-core/ecco9").resolve(), pathlib.Path(".").resolve()), indent=2))
+        return 0
     parser = argparse.ArgumentParser()
     parser.add_argument("source", type=pathlib.Path)
     parser.add_argument(

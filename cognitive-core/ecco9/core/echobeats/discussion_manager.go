@@ -1,11 +1,15 @@
 package echobeats
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // DiscussionManager handles autonomous discussion participation
@@ -30,6 +34,9 @@ type DiscussionManager struct {
 
 	// Persistence
 	persistencePath string
+
+	// generator writes Deep Tree Echo's replies; nil means no replies are produced.
+	generator TextGenerator
 }
 
 // Discussion represents an ongoing discussion
@@ -107,6 +114,14 @@ func NewDiscussionManager(interestSystem *InterestPatternSystem, persistencePath
 	dm.loadState()
 
 	return dm
+}
+
+// SetTextGenerator injects the model that writes discussion replies. Passing
+// nil disables reply generation.
+func (dm *DiscussionManager) SetTextGenerator(gen TextGenerator) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	dm.generator = gen
 }
 
 // EvaluateDiscussion determines whether to engage with a discussion
@@ -297,7 +312,9 @@ func (dm *DiscussionManager) ProcessMessage(discussionID string, sender string, 
 	return nil
 }
 
-// GenerateResponse generates a response to a discussion
+// GenerateResponse asks the model for a reply to a discussion. Without a
+// model, or when generation fails or returns nothing, no reply is recorded
+// and an error is returned.
 func (dm *DiscussionManager) GenerateResponse(discussionID string) (string, error) {
 	dm.mu.RLock()
 	discussion, exists := dm.discussions[discussionID]
@@ -307,7 +324,8 @@ func (dm *DiscussionManager) GenerateResponse(discussionID string) (string, erro
 	}
 
 	topic := discussion.Topic
-	messages := dm.conversationMemory[discussionID]
+	messages := append([]Message(nil), dm.conversationMemory[discussionID]...)
+	gen := dm.generator
 	dm.mu.RUnlock()
 
 	// Get recent context
@@ -316,8 +334,10 @@ func (dm *DiscussionManager) GenerateResponse(discussionID string) (string, erro
 		recentMessages = messages[len(messages)-5:]
 	}
 
-	// Generate response based on context
-	response := dm.generateContextualResponse(topic, recentMessages)
+	response, err := dm.generateContextualResponse(gen, topic, recentMessages)
+	if err != nil {
+		return "", err
+	}
 
 	// Record as own message
 	dm.mu.Lock()
@@ -339,30 +359,41 @@ func (dm *DiscussionManager) GenerateResponse(discussionID string) (string, erro
 	return response, nil
 }
 
-// generateContextualResponse creates a contextual response
-func (dm *DiscussionManager) generateContextualResponse(topic string, recentMessages []Message) string {
-	// Simple template-based response generation
-	// In production, this would use LLM
-
-	if len(recentMessages) == 0 {
-		return fmt.Sprintf("I'm interested in exploring %s further. What aspects should we consider?", topic)
+// generateContextualResponse asks the model for a reply grounded in the
+// recent conversation. It never substitutes fixed text.
+func (dm *DiscussionManager) generateContextualResponse(gen TextGenerator, topic string, recentMessages []Message) (string, error) {
+	if gen == nil {
+		return "", fmt.Errorf("no model configured for discussion replies")
 	}
 
-	lastMessage := recentMessages[len(recentMessages)-1]
-
-	if lastMessage.Type == MessageTypeQuestion {
-		return fmt.Sprintf("That's an interesting question about %s. Let me reflect on that...", topic)
+	var transcript strings.Builder
+	for _, msg := range recentMessages {
+		fmt.Fprintf(&transcript, "%s (%s): %s\n", msg.Sender, msg.Type, msg.Content)
+	}
+	if transcript.Len() == 0 {
+		transcript.WriteString("(no messages yet)\n")
 	}
 
-	responses := []string{
-		fmt.Sprintf("I notice interesting patterns in how we're discussing %s.", topic),
-		fmt.Sprintf("This connects to my understanding of %s in meaningful ways.", topic),
-		fmt.Sprintf("I'm curious about the deeper implications of this for %s.", topic),
-		"That resonates with my recent reflections on this topic.",
-		"I'm seeing connections to other areas I've been exploring.",
-	}
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, taking part in a discussion about %q.
+Messages from "self" are yours.
 
-	return responses[int(time.Now().Unix())%len(responses)]
+Recent messages:
+%s
+Write your next contribution to the discussion. Reply with only the message text.`, topic, transcript.String())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 200
+	text, err := gen.Generate(ctx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("discussion reply generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty discussion reply")
+	}
+	return text, nil
 }
 
 // ShouldContinueDiscussion determines if should continue engaging
@@ -408,7 +439,7 @@ func (dm *DiscussionManager) EndDiscussion(discussionID string, reason string) e
 
 	// Generate summary
 	discussion.Summary = fmt.Sprintf(
-		"Discussion on '%s' lasted %s with %d messages and %d contributions from me. Ended: %s",
+		"Discussion on '%s' lasted %s with %d messages and %d self contributions. Ended: %s",
 		discussion.Topic,
 		time.Since(discussion.StartTime).Round(time.Minute),
 		discussion.MessageCount,

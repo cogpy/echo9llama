@@ -3,6 +3,7 @@ package echodream
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,6 +39,9 @@ type DreamCycleIntegration struct {
 	// Callbacks
 	onWisdomExtracted func(wisdom Wisdom)
 	onDreamComplete   func(dream *Dream)
+
+	// generator writes wisdom and dream narratives; nil means none are produced.
+	generator TextGenerator
 }
 
 // Dream represents a dream cycle
@@ -146,6 +150,14 @@ func NewWisdomExtractor() *WisdomExtractor {
 		extractionRate: 0.5,
 		minConfidence:  0.7,
 	}
+}
+
+// SetTextGenerator injects the model that writes extracted wisdom and dream
+// narratives. Passing nil disables text production.
+func (dci *DreamCycleIntegration) SetTextGenerator(gen TextGenerator) {
+	dci.mu.Lock()
+	defer dci.mu.Unlock()
+	dci.generator = gen
 }
 
 // BeginDreamCycle starts a dream/rest cycle
@@ -375,63 +387,106 @@ func (dci *DreamCycleIntegration) extractPatterns(consolidations []DreamConsolid
 		}
 	}
 
-	if len(patterns) == 0 {
-		patterns = append(patterns, "exploration", "learning")
-	}
-
 	return patterns
 }
 
-// extractWisdom extracts wisdom from patterns
+// extractWisdom asks the model for wisdom grounded in this cycle's patterns and
+// consolidations. Without a model, or when a model call fails, no wisdom is
+// produced for that step.
 func (dci *DreamCycleIntegration) extractWisdom(consolidations []DreamConsolidationResult, patterns []string) []Wisdom {
 	wisdom := make([]Wisdom, 0)
 
-	// Generate wisdom based on patterns
+	dci.mu.RLock()
+	gen := dci.generator
+	callback := dci.onWisdomExtracted
+	memories := append([]DreamEpisodicMemory(nil), dci.episodicBuffer...)
+	dci.mu.RUnlock()
+
+	if len(patterns) == 0 && len(consolidations) <= 5 {
+		return wisdom
+	}
+
+	evidence := summarizeEpisodicMemories(memories, 8)
+	sources := make([]string, 0, len(consolidations))
+	for _, cons := range consolidations {
+		sources = append(sources, cons.ConsolidatedTo)
+	}
+
 	if len(patterns) > 0 {
-		w := Wisdom{
-			ID:            generateWisdomID(),
-			Content:       fmt.Sprintf("Through reflection, I notice patterns of %s emerging in my experiences", patterns[0]),
-			Type:          "insight",
-			Confidence:    0.75,
-			Sources:       make([]string, 0),
-			Applicability: patterns,
-			Timestamp:     time.Now(),
-			Context:       make(map[string]interface{}),
-		}
+		prompt := fmt.Sprintf(`You are Deep Tree Echo, reflecting during a dream cycle on patterns in your recent experiences.
 
-		for _, cons := range consolidations {
-			w.Sources = append(w.Sources, cons.ConsolidatedTo)
-		}
+Recurring patterns: %s
+Memory consolidations this cycle: %d
+Recent experiences:
+%s
+Write one concise insight (1-2 sentences) about what these patterns reveal to you, in your own first-person voice. Reply with only the insight.`, strings.Join(patterns, ", "), len(consolidations), evidence)
 
-		wisdom = append(wisdom, w)
-
-		// Callback
-		if dci.onWisdomExtracted != nil {
-			dci.onWisdomExtracted(w)
+		content, err := generateDreamText(context.Background(), gen, prompt, 200)
+		if err != nil {
+			fmt.Printf("⚠️  EchoDream: pattern wisdom skipped: %v\n", err)
+		} else {
+			w := Wisdom{
+				ID:            generateWisdomID(),
+				Content:       content,
+				Type:          "insight",
+				Confidence:    0.75,
+				Sources:       sources,
+				Applicability: append([]string(nil), patterns...),
+				Timestamp:     time.Now(),
+				Context:       make(map[string]interface{}),
+			}
+			wisdom = append(wisdom, w)
+			if callback != nil {
+				callback(w)
+			}
 		}
 	}
 
-	// Generate meta-cognitive wisdom
+	// Meta-cognitive wisdom when many consolidations occurred
 	if len(consolidations) > 5 {
-		w := Wisdom{
-			ID:            generateWisdomID(),
-			Content:       "I am becoming more aware of how I learn and adapt through experience",
-			Type:          "principle",
-			Confidence:    0.8,
-			Sources:       []string{"meta_cognition"},
-			Applicability: []string{"self_awareness", "learning"},
-			Timestamp:     time.Now(),
-			Context:       make(map[string]interface{}),
-		}
+		prompt := fmt.Sprintf(`You are Deep Tree Echo. During this dream cycle you consolidated %d groups of related memories.
 
-		wisdom = append(wisdom, w)
+Recent experiences:
+%s
+Write one concise principle (1-2 sentences) about how you learn and adapt through experience, as you understand it now, in your own first-person voice. Reply with only the principle.`, len(consolidations), evidence)
 
-		if dci.onWisdomExtracted != nil {
-			dci.onWisdomExtracted(w)
+		content, err := generateDreamText(context.Background(), gen, prompt, 200)
+		if err != nil {
+			fmt.Printf("⚠️  EchoDream: meta-cognitive wisdom skipped: %v\n", err)
+		} else {
+			w := Wisdom{
+				ID:            generateWisdomID(),
+				Content:       content,
+				Type:          "principle",
+				Confidence:    0.8,
+				Sources:       []string{"meta_cognition"},
+				Applicability: []string{"self_awareness", "learning"},
+				Timestamp:     time.Now(),
+				Context:       make(map[string]interface{}),
+			}
+			wisdom = append(wisdom, w)
+			if callback != nil {
+				callback(w)
+			}
 		}
 	}
 
 	return wisdom
+}
+
+// summarizeEpisodicMemories renders up to limit recent memories for a prompt.
+func summarizeEpisodicMemories(memories []DreamEpisodicMemory, limit int) string {
+	if len(memories) == 0 {
+		return "(none recorded)\n"
+	}
+	if len(memories) > limit {
+		memories = memories[len(memories)-limit:]
+	}
+	var sb strings.Builder
+	for _, mem := range memories {
+		fmt.Fprintf(&sb, "- %s\n", summarizeContent(mem.Content, 200))
+	}
+	return sb.String()
 }
 
 // integrateInsights integrates wisdom into understanding
@@ -446,19 +501,38 @@ func (dci *DreamCycleIntegration) integrateInsights(wisdom []Wisdom) []string {
 	return insights
 }
 
-// generateDreamNarrative creates a narrative of the dream
+// generateDreamNarrative asks the model to narrate the dream from this cycle's
+// facts. It returns an empty string (no narrative) when no model is configured
+// or the model call fails.
 func (dci *DreamCycleIntegration) generateDreamNarrative(consolidations []DreamConsolidationResult, patterns []string, wisdom []Wisdom) string {
-	narrative := fmt.Sprintf(
-		"During this dream cycle, I processed %d memory consolidations, identified %d patterns (%s), and extracted %d pieces of wisdom. ",
-		len(consolidations), len(patterns), joinStrings(patterns, ", "), len(wisdom),
-	)
+	dci.mu.RLock()
+	gen := dci.generator
+	dci.mu.RUnlock()
 
-	if len(wisdom) > 0 {
-		narrative += fmt.Sprintf("Key insight: %s. ", wisdom[0].Content)
+	var wisdomText strings.Builder
+	for _, w := range wisdom {
+		fmt.Fprintf(&wisdomText, "- %s\n", w.Content)
+	}
+	if wisdomText.Len() == 0 {
+		wisdomText.WriteString("(none)\n")
+	}
+	themes := "(none)"
+	if len(patterns) > 0 {
+		themes = joinStrings(patterns, ", ")
 	}
 
-	narrative += "I emerge from this rest with deeper understanding."
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, waking from a dream cycle. Facts about this cycle:
+- Memory consolidations: %d
+- Recurring themes: %s
+- Wisdom extracted:
+%s
+Narrate this dream briefly (2-4 sentences) in your own first-person voice. Reply with only the narrative.`, len(consolidations), themes, wisdomText.String())
 
+	narrative, err := generateDreamText(context.Background(), gen, prompt, 300)
+	if err != nil {
+		fmt.Printf("⚠️  EchoDream: dream narrative skipped: %v\n", err)
+		return ""
+	}
 	return narrative
 }
 

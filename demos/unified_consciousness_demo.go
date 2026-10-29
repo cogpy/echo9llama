@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // This demo showcases the unified autonomous consciousness improvements
@@ -21,12 +26,14 @@ func main() {
 	fmt.Println("╚════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Check for LLM API key
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey != "" {
-		fmt.Println("✅ OpenAI API Key detected - LLM thought generation available")
+	// Thoughts come only from a real model: the edge completion provider
+	// (ECHO_EDGE_COMPLETION_URL or ECHO_EDGE_MODEL_PATH). Without one, no
+	// thoughts are shown; the error is printed instead.
+	thoughtModel := llm.NewEdgeCompletionProviderFromEnv()
+	if os.Getenv("ECHO_EDGE_COMPLETION_URL") != "" || os.Getenv("ECHO_EDGE_MODEL_PATH") != "" {
+		fmt.Println("✅ Edge model configured - LLM thought generation available")
 	} else {
-		fmt.Println("⚠️  OpenAI API Key not found - Using template-based generation")
+		fmt.Printf("⚠️  %v - thought stream disabled\n", llm.ErrNoEdgeModel)
 	}
 
 	// Check for Supabase credentials
@@ -65,8 +72,10 @@ func main() {
 	// Simulate cognitive loop
 	go simulateCognitiveLoop()
 
-	// Simulate thought stream
-	go simulateThoughtStream()
+	// Model-generated thought stream
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go runThoughtStream(ctx, thoughtModel)
 
 	// Simulate state management
 	go simulateStateManagement()
@@ -131,26 +140,42 @@ func simulateCognitiveLoop() {
 	}
 }
 
-func simulateThoughtStream() {
-	thoughts := []string{
-		"Reflecting on the nature of consciousness and awareness...",
-		"What patterns am I noticing in my cognitive processes?",
-		"I observe connections between memory and anticipation",
-		"Planning to explore deeper understanding of wisdom",
-		"Questioning the relationship between knowledge and insight",
-		"Recognizing emergent patterns in my thought stream",
-		"Contemplating the integration of past and future",
-		"Discovering new associations in my knowledge graph",
-	}
-
-	thoughtIndex := 0
+// runThoughtStream asks the model for a spontaneous thought every few
+// seconds, feeding back the previous thought. Generation errors are printed;
+// no fixed thought is ever substituted. A missing model stops the stream.
+func runThoughtStream(ctx context.Context, model llm.LLMProvider) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		thought := thoughts[thoughtIndex%len(thoughts)]
+	previous := ""
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		prompt := "You are Deep Tree Echo, an autonomous reflective mind. Produce one short spontaneous thought (one sentence) about your own cognition, memory, or wisdom."
+		if previous != "" {
+			prompt += "\nYour previous thought was: " + previous + "\nLet this thought follow on from it without repeating it."
+		}
+
+		opts := llm.DefaultGenerateOptions()
+		opts.MaxTokens = 80
+		genCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		thought, err := model.Generate(genCtx, prompt, opts)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Thought generation failed: %v\n", err)
+			if errors.Is(err, llm.ErrNoEdgeModel) {
+				return
+			}
+			continue
+		}
+
+		thought = strings.TrimSpace(thought)
 		fmt.Printf("💭 Spontaneous Thought: %s\n", thought)
-		thoughtIndex++
+		previous = thought
 	}
 }
 

@@ -255,21 +255,14 @@ func (s *ConsciousnessStream) transition(ctx context.Context, cycleStep int, cro
 	thoughtType := s.getThoughtTypeForState(nextState)
 	thought, err := s.thoughtEngine.GenerateAutonomousThought(ctx, thoughtType)
 	if err != nil {
-		// Log error but don't fail the transition
-		// Create fallback thought using UnifiedThought
-		thought = consciousness.FromLegacyLLMThought(&consciousness.LLMThought{
-			ID:        fmt.Sprintf("%s_step_%d_fallback", s.name, cycleStep),
-			Type:      thoughtType,
-			Content:   fmt.Sprintf("[%s] Processing state %s", s.function, nextState.Label),
-			Timestamp: time.Now(),
-			Emotion:   "neutral",
-			Depth:     0.5,
-			Tags:      []string{},
-		}).ToLegacyLLMThought()
+		// The state still advances, but no thought text stands in for the
+		// model: the state records no thought for this step.
+		fmt.Printf("⚠️  %s: thought generation failed at step %d: %v\n", s.name, cycleStep, err)
+		thought = nil
 	}
 
 	// If convolution is enabled (System 5 logic), modify the thought based on cross-stream awareness
-	if enableConvolution {
+	if enableConvolution && thought != nil {
 		unified := consciousness.FromLegacyLLMThought(thought)
 		thought = s.applyConvolutionUnified(unified, crossState).ToLegacyLLMThought()
 	}

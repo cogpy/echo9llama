@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -326,13 +325,7 @@ func (s *AutonomousV4Server) handleStatus(c *gin.Context) {
 
 // handleV4Status returns detailed V4 status
 func (s *AutonomousV4Server) handleV4Status(c *gin.Context) {
-	// TODO: Implement status retrieval from consciousness
-	c.JSON(http.StatusOK, gin.H{
-		"awake":      true,
-		"running":    true,
-		"uptime":     "5m 23s",
-		"iterations": 0,
-	})
+	notImplemented(c, "detailed V4 status")
 }
 
 // handleWake handles wake request
@@ -353,131 +346,56 @@ func (s *AutonomousV4Server) handleRest(c *gin.Context) {
 
 // handleWisdom returns wisdom metrics
 func (s *AutonomousV4Server) handleWisdom(c *gin.Context) {
-	// TODO: Implement wisdom metrics retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"wisdom_score": 0.65,
-		"dimensions": map[string]float64{
-			"knowledge":     0.7,
-			"understanding": 0.6,
-			"insight":       0.65,
-			"compassion":    0.7,
-		},
-	})
+	notImplemented(c, "wisdom metrics")
 }
 
 // handleCognitiveLoad returns cognitive load data
 func (s *AutonomousV4Server) handleCognitiveLoad(c *gin.Context) {
-	// TODO: Implement load retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"current_load":     0.45,
-		"fatigue_level":    0.32,
-		"max_load":         1.0,
-		"rest_recommended": false,
-	})
+	notImplemented(c, "cognitive load")
 }
 
 // handleConsciousnessFlow returns consciousness flow state
 func (s *AutonomousV4Server) handleConsciousnessFlow(c *gin.Context) {
-	// TODO: Implement flow state retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"continuity": 0.85,
-		"coherence":  0.78,
-		"depth":      0.72,
-		"creativity": 0.65,
-		"quality":    0.75,
-	})
+	notImplemented(c, "consciousness flow state")
 }
 
 // handleWorkingMemory returns current working memory
 func (s *AutonomousV4Server) handleWorkingMemory(c *gin.Context) {
-	// TODO: Implement working memory retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"capacity": 7,
-		"current":  3,
-		"thoughts": []string{
-			"Exploring pattern recognition",
-			"Considering analogical reasoning",
-			"Reflecting on recent experiences",
-		},
-	})
+	notImplemented(c, "working memory")
 }
 
 // handleSkills returns skill proficiency
 func (s *AutonomousV4Server) handleSkills(c *gin.Context) {
-	// TODO: Implement skills retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"skills": []map[string]interface{}{
-			{
-				"name":           "Pattern Recognition",
-				"proficiency":    0.65,
-				"last_practiced": "2 hours ago",
-			},
-			{
-				"name":           "Analogical Reasoning",
-				"proficiency":    0.58,
-				"last_practiced": "5 hours ago",
-			},
-		},
-	})
+	notImplemented(c, "skill proficiency")
 }
 
 // handleSkillPractice handles skill practice request
 func (s *AutonomousV4Server) handleSkillPractice(c *gin.Context) {
-	var req struct {
-		SkillName string `json:"skill_name"`
-	}
-
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// TODO: Implement skill practice
-	c.JSON(http.StatusOK, gin.H{
-		"status": "practicing",
-		"skill":  req.SkillName,
-	})
+	notImplemented(c, "skill practice")
 }
 
 // handleDiscussions returns active discussions
 func (s *AutonomousV4Server) handleDiscussions(c *gin.Context) {
-	// TODO: Implement discussions retrieval
-	c.JSON(http.StatusOK, gin.H{
-		"active_discussions": 0,
-		"discussions":        []interface{}{},
-	})
+	notImplemented(c, "discussions")
 }
 
 // handleStartDiscussion starts a new discussion
 func (s *AutonomousV4Server) handleStartDiscussion(c *gin.Context) {
-	var req struct {
-		Topic string `json:"topic"`
-	}
-
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	// TODO: Implement discussion start
-	c.JSON(http.StatusOK, gin.H{
-		"status": "started",
-		"topic":  req.Topic,
-	})
+	notImplemented(c, "discussion start")
 }
 
 // handleExportIdentity exports identity data
 func (s *AutonomousV4Server) handleExportIdentity(c *gin.Context) {
-	// TODO: Implement identity export
-	export := map[string]interface{}{
-		"version":      4,
-		"export_time":  time.Now(),
-		"wisdom_score": 0.65,
-		"identity":     "Echoself",
-	}
+	notImplemented(c, "identity export")
+}
 
-	data, _ := json.MarshalIndent(export, "", "  ")
-	c.Data(http.StatusOK, "application/json", data)
+// notImplemented reports that a capability is not wired to the
+// consciousness. No fabricated metrics, thoughts or skills are returned in
+// its place.
+func notImplemented(c *gin.Context, what string) {
+	c.JSON(http.StatusNotImplemented, gin.H{
+		"error": what + " is not available from the V4 consciousness",
+	})
 }
 
 // Stop gracefully shuts down the server

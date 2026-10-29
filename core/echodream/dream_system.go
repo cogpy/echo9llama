@@ -56,6 +56,10 @@ func NewDreamSystem() *DreamSystem {
 		}
 	}
 
+	if llmProv != nil {
+		echoDream.SetTextGenerator(llmProv)
+	}
+
 	return &DreamSystem{
 		ctx:              ctx,
 		cancel:           cancel,

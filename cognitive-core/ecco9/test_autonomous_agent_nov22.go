@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -11,37 +10,6 @@ import (
 	"github.com/EchoCog/echollama/core/echobeats"
 	"github.com/EchoCog/echollama/core/llm"
 )
-
-// MockLLMProvider for testing without API calls
-type MockLLMProvider struct{}
-
-func (m *MockLLMProvider) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
-	// Return mock responses based on prompt
-	if len(prompt) > 50 {
-		return "This is a thoughtful response to your query about cognitive processes and autonomous learning.", nil
-	}
-	return "Mock LLM response", nil
-}
-
-func (m *MockLLMProvider) StreamGenerate(ctx context.Context, prompt string, opts llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
-	ch := make(chan llm.StreamChunk, 1)
-	response, err := m.Generate(ctx, prompt, opts)
-	ch <- llm.StreamChunk{Content: response, Done: true, Error: err}
-	close(ch)
-	return ch, err
-}
-
-func (m *MockLLMProvider) Name() string {
-	return "mock"
-}
-
-func (m *MockLLMProvider) Available() bool {
-	return true
-}
-
-func (m *MockLLMProvider) MaxTokens() int {
-	return 4096
-}
 
 func main() {
 	fmt.Println(strings.Repeat("=", 70))
@@ -211,11 +179,9 @@ func testEnhancedScheduler() {
 }
 
 func testAutonomousAgent() {
-	// Use mock LLM provider for testing
-	mockProvider := &MockLLMProvider{}
-
-	// Check if real API key is available
-	var llmProvider llm.LLMProvider = mockProvider
+	// The agent's thoughts come only from a real model; without one the
+	// test is skipped rather than run against canned responses.
+	var llmProvider llm.LLMProvider
 	if os.Getenv("ANTHROPIC_API_KEY") != "" {
 		fmt.Println("   ℹ️  Using real Anthropic provider")
 		llmProvider = llm.NewAnthropicProvider("")
@@ -226,7 +192,8 @@ func testAutonomousAgent() {
 		fmt.Println("   ℹ️  Using real OpenAI provider")
 		llmProvider = llm.NewOpenAIProvider(apiKey)
 	} else {
-		fmt.Println("   ℹ️  Using mock LLM provider (no API key)")
+		fmt.Println("   ⚠️  Autonomous agent test SKIPPED: no LLM provider (set ANTHROPIC_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY)")
+		return
 	}
 
 	agent := core.NewAutonomousAgent(llmProvider)

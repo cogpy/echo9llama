@@ -210,6 +210,21 @@ func buildStepConfigs() []StepConfig {
 	}
 }
 
+// SetTextGenerator injects the model behind the phase processor when it
+// accepts one (e.g. DefaultPhaseProcessor).
+func (tpm *ThreePhaseManager) SetTextGenerator(gen TextGenerator) {
+	seen := map[PhaseProcessor]bool{}
+	for _, phase := range tpm.phases {
+		if phase == nil || phase.processor == nil || seen[phase.processor] {
+			continue
+		}
+		seen[phase.processor] = true
+		if p, ok := phase.processor.(interface{ SetTextGenerator(TextGenerator) }); ok {
+			p.SetTextGenerator(gen)
+		}
+	}
+}
+
 // Start begins the 3-phase concurrent cognitive loop
 func (tpm *ThreePhaseManager) Start() error {
 	tpm.mu.Lock()

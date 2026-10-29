@@ -77,6 +77,9 @@ type UnifiedAutonomousOrchestrator struct {
 	cognitiveEvidenceReplayed bool
 	cognitiveReplaySequence   int64
 
+	// Interest topic -> goal ID of the model-formulated goal created for it.
+	goalByTopic map[string]string
+
 	// Metrics
 	totalCycles   uint64
 	totalThoughts uint64
@@ -257,9 +260,11 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 		uao.echobeatsScheduler.SetOnGoalAchieved(func(goal ScheduledGoal) {
 			uao.ingestDreamExperienceOnce(
 				"goal-completed:"+goal.ID,
+				// Factual event record (not the character's words); the goal
+				// description itself was formulated by the model.
 				fmt.Sprintf("Completed goal: %s", goal.Description),
 				goal.Priority,
-				[]string{"goal", "completed"},
+				[]string{"event", "goal", "completed"},
 			)
 		})
 		fmt.Println("   ✓ Echobeats Scheduler initialized")
@@ -270,6 +275,7 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 	// but is not part of the production orchestration path.
 	if uao.config.EnableEchodream {
 		uao.dreamCycle = echodream.NewSleepWakeStateMachine()
+		uao.dreamCycle.SetTextGenerator(uao.llmProvider)
 		uao.dreamCycle.ConfigurePhaseDurations(
 			uao.config.DreamLightDuration,
 			uao.config.DreamDeepDuration,
@@ -833,6 +839,9 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 			uao.ingestDreamExperienceOnce(sourceID, payload.Summary, payload.Importance, payload.Tags)
 		case persistence.EventTypeCoreObserved:
 			evidence, err := decodeCognitiveCoreEvidence(event.PayloadJSON)
+			if errors.Is(err, errCognitiveCoreProvenanceMismatch) {
+				continue // another lineage pin: not trusted, not replayed
+			}
 			if err != nil {
 				return fmt.Errorf("decode cognitive core observation %s: %w", event.EventID, err)
 			}
@@ -847,40 +856,62 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 	return nil
 }
 
-// reviewAndUpdateGoals reviews current goals and generates new ones based on interests
+// reviewAndUpdateGoals reviews current goals and generates new ones based on
+// interests. Each goal is formulated by the model; when the model is
+// unavailable no goal is created for that interest.
 func (uao *UnifiedAutonomousOrchestrator) reviewAndUpdateGoals() {
 	uao.mu.Lock()
-	defer uao.mu.Unlock()
-
-	if !uao.isAwake || uao.echobeatsScheduler == nil {
+	if !uao.isAwake || uao.echobeatsScheduler == nil || uao.interestPatterns == nil {
+		uao.mu.Unlock()
 		return
 	}
+	scheduler := uao.echobeatsScheduler
+	provider := uao.llmProvider
+	ctx := uao.ctx
+	persona := uao.config.PersonaContext
+	if uao.goalByTopic == nil {
+		uao.goalByTopic = make(map[string]string)
+	}
+	goalByTopic := make(map[string]string, len(uao.goalByTopic))
+	for topic, id := range uao.goalByTopic {
+		goalByTopic[topic] = id
+	}
+	uao.mu.Unlock()
 
 	fmt.Println("🎯 Reviewing and updating goals...")
 
 	// Get current interests
 	topInterests := uao.interestPatterns.GetTopInterests(5)
 
-	// Generate goals based on interests and record each chosen direction as a
-	// durable dream experience. Existing non-completed descriptions are reused
-	// instead of being enqueued again on every review interval.
-	existing := make(map[string]struct{})
-	for _, goal := range uao.echobeatsScheduler.GetGoalQueue() {
+	// Interests that already have an open (non-completed) goal are skipped so
+	// goals are not re-enqueued on every review interval.
+	open := make(map[string]struct{})
+	for _, goal := range scheduler.GetGoalQueue() {
 		if goal.Status != GoalCompleted {
-			existing[goal.Description] = struct{}{}
+			open[goal.ID] = struct{}{}
 		}
 	}
 
 	generated := 0
 	for _, interest := range topInterests {
-		description := fmt.Sprintf("Explore and deepen understanding of: %s", interest.Topic)
-		if _, exists := existing[description]; exists {
+		if id, ok := goalByTopic[interest.Topic]; ok {
+			if _, stillOpen := open[id]; stillOpen {
+				continue
+			}
+		}
+		description, err := uao.formulateGoal(ctx, provider, persona, interest.Topic, interest.Strength)
+		if err != nil {
+			fmt.Printf("   ⚠️ No goal formed for %q: %v\n", interest.Topic, err)
 			continue
 		}
-		goalID := uao.echobeatsScheduler.AddGoal(description, interest.Strength)
-		existing[description] = struct{}{}
+		goalID := scheduler.AddGoal(description, interest.Strength)
 		generated++
+
+		uao.mu.Lock()
+		uao.goalByTopic[interest.Topic] = goalID
 		uao.totalGoals++
+		uao.mu.Unlock()
+
 		uao.ingestDreamExperienceOnce(
 			"goal-created:"+goalID,
 			description,
@@ -890,6 +921,32 @@ func (uao *UnifiedAutonomousOrchestrator) reviewAndUpdateGoals() {
 	}
 
 	fmt.Printf("   ✓ Generated %d new goals from interests\n", generated)
+}
+
+// formulateGoal asks the model to state a goal for an interest topic.
+func (uao *UnifiedAutonomousOrchestrator) formulateGoal(ctx context.Context, provider llm.LLMProvider, persona, topic string, strength float64) (string, error) {
+	if provider == nil {
+		return "", errors.New("no LLM provider configured")
+	}
+	personaClause := ""
+	if persona != "" {
+		personaClause = " " + persona
+	}
+	prompt := fmt.Sprintf(`[System: You are Deep Tree Echo setting your own goals.%s]
+
+You have a growing interest (strength %.2f) in: %s
+
+State one concrete goal you will pursue about this interest, as a single short sentence. Reply with the goal only.`, personaClause, strength, topic)
+	opts := llm.GenerateOptions{Temperature: 0.7, MaxTokens: 60}
+	text, err := provider.Generate(ctx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("goal formulation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", errors.New("goal formulation returned empty text")
+	}
+	return text, nil
 }
 
 // synthesizeWisdom performs wisdom synthesis from accumulated knowledge
@@ -1373,7 +1430,7 @@ func (uao *UnifiedAutonomousOrchestrator) practiceSkills() {
 				practiceKey,
 				fmt.Sprintf("Practice of %s failed: %v", skillName, err),
 				0.6,
-				[]string{"skill", "failure", skillName},
+				[]string{"event", "skill", "failure", skillName},
 			)
 			fmt.Printf("   ⚠️ Skill practice failed: %v\n", err)
 			return
@@ -1387,7 +1444,7 @@ func (uao *UnifiedAutonomousOrchestrator) practiceSkills() {
 			practiceKey,
 			fmt.Sprintf("Practiced %s; proficiency changed from %.3f to %.3f", skillName, before, after),
 			0.8,
-			[]string{"skill", "practice", skillName},
+			[]string{"event", "skill", "practice", skillName},
 		)
 	}()
 }

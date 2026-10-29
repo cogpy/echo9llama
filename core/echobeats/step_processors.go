@@ -3,8 +3,11 @@ package echobeats
 import (
 	"context"
 	"fmt"
-	"math/rand"
+	"sort"
+	"strings"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // ========== EXPRESSIVE MODE PROCESSORS (Steps 1-4) ==========
@@ -83,27 +86,73 @@ func (p *MemoryActivationProcessor) GetDescription() string {
 	return "Activate relevant memories"
 }
 
+// modelStep asks the model for one step's text. Steps that would otherwise
+// invent options, choices, scenarios, scores or claimed model updates go
+// through it; without a model, or when it fails or answers with nothing, the
+// step fails and records nothing.
+func modelStep(ctx context.Context, gen TextGenerator, step string, state *CognitiveState, instruction string) (string, error) {
+	if gen == nil {
+		return "", fmt.Errorf("%s: no model configured", step)
+	}
+	keys := make([]string, 0, len(state.WorkingMemory))
+	for key := range state.WorkingMemory {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var memory strings.Builder
+	for _, key := range keys {
+		fmt.Fprintf(&memory, "- %s: %v\n", key, state.WorkingMemory[key])
+	}
+	if memory.Len() == 0 {
+		memory.WriteString("(empty)\n")
+	}
+	goals := "(none)"
+	if len(state.ActiveGoals) > 0 {
+		goals = strings.Join(state.ActiveGoals, "; ")
+	}
+	prompt := fmt.Sprintf("You are Deep Tree Echo, in step %q of cognitive cycle %d.\nCognitive load: %.2f\nActive goals: %s\nPending actions: %v\nWorking memory:\n%s\n%s",
+		step, state.CycleNumber, state.CognitiveLoad, goals, state.PendingActions, memory.String(), instruction)
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	text, err := gen.Generate(callCtx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("%s failed: %w", step, err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("%s: model returned empty text", step)
+	}
+	return text, nil
+}
+
+// modelLines splits a model answer into its non-empty lines, without list
+// bullets or numbering.
+func modelLines(text string) []string {
+	var out []string
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "-*•0123456789.) "))
+		if line != "" {
+			out = append(out, line)
+		}
+	}
+	return out
+}
+
 // ActionGenerationProcessor - Step 3: Generate action options
-type ActionGenerationProcessor struct{}
+type ActionGenerationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *ActionGenerationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Generate possible actions based on goals and context
-	actions := make([]string, 0)
-
-	if len(state.ActiveGoals) > 0 {
-		actions = append(actions, "Pursue active goal")
+	text, err := modelStep(ctx, p.Generator, "generate action options", state,
+		"List two to four actions you could take next, one per line. Reply with only the list.")
+	if err != nil {
+		return nil, err
 	}
-
-	if state.CognitiveLoad < 0.5 {
-		actions = append(actions, "Explore new topic")
-	}
-
-	if len(state.PendingActions) > 0 {
-		actions = append(actions, "Complete pending action")
-	}
-
-	// Always have option to reflect
-	actions = append(actions, "Reflect on current state")
+	actions := modelLines(text)
 
 	return &StepResult{
 		Success: true,
@@ -125,17 +174,19 @@ func (p *ActionGenerationProcessor) GetDescription() string {
 }
 
 // ActionExecutionProcessor - Step 4: Execute selected action
-type ActionExecutionProcessor struct{}
+type ActionExecutionProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *ActionExecutionProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Select and execute an action
-	var selectedAction string
-
-	if actions, ok := state.WorkingMemory["available_actions"].([]string); ok && len(actions) > 0 {
-		// Select action (simplified - could use more sophisticated selection)
-		selectedAction = actions[rand.Intn(len(actions))]
-	} else {
-		selectedAction = "Default action"
+	actions, _ := state.WorkingMemory["available_actions"].([]string)
+	if len(actions) == 0 {
+		return nil, fmt.Errorf("execute action: no action options this cycle")
+	}
+	selectedAction, err := modelStep(ctx, p.Generator, "choose an action", state,
+		"Your options:\n- "+strings.Join(actions, "\n- ")+"\nChoose one and say in one sentence why. Reply with only that sentence.")
+	if err != nil {
+		return nil, err
 	}
 
 	return &StepResult{
@@ -177,7 +228,6 @@ func (p *RelevanceRealizationProcessor) Process(ctx context.Context, state *Cogn
 		}
 	} else {
 		// Commit to future direction
-		insights = append(insights, "Committing to next cycle direction")
 		relevanceShift = 0.2
 	}
 
@@ -215,15 +265,17 @@ func (p *RelevanceRealizationProcessor) GetDescription() string {
 // ========== REFLECTIVE MODE PROCESSORS (Steps 6-10) ==========
 
 // ScenarioSimulationProcessor - Step 6: Simulate future scenarios
-type ScenarioSimulationProcessor struct{}
+type ScenarioSimulationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *ScenarioSimulationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Simulate potential future scenarios
-	scenarios := []string{
-		"Continue current trajectory",
-		"Explore alternative approach",
-		"Consolidate recent learning",
+	text, err := modelStep(ctx, p.Generator, "simulate future scenarios", state,
+		"Imagine two or three ways the next cycles could unfold, one per line. Reply with only the list.")
+	if err != nil {
+		return nil, err
 	}
+	scenarios := modelLines(text)
 
 	return &StepResult{
 		Success: true,
@@ -244,24 +296,26 @@ func (p *ScenarioSimulationProcessor) GetDescription() string {
 }
 
 // OutcomeEvaluationProcessor - Step 7: Evaluate potential outcomes
-type OutcomeEvaluationProcessor struct{}
+type OutcomeEvaluationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *OutcomeEvaluationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Evaluate outcomes of simulated scenarios
-	evaluations := make(map[string]float64)
-
-	if scenarios, ok := state.WorkingMemory["simulated_scenarios"].([]string); ok {
-		for _, scenario := range scenarios {
-			// Simplified evaluation
-			evaluations[scenario] = 0.5 + rand.Float64()*0.5
-		}
+	scenarios, _ := state.WorkingMemory["simulated_scenarios"].([]string)
+	if len(scenarios) == 0 {
+		return nil, fmt.Errorf("evaluate outcomes: no simulated scenarios this cycle")
+	}
+	evaluation, err := modelStep(ctx, p.Generator, "evaluate outcomes", state,
+		"Scenarios:\n- "+strings.Join(scenarios, "\n- ")+"\nIn two sentences, judge which scenario is most promising and why.")
+	if err != nil {
+		return nil, err
 	}
 
 	return &StepResult{
 		Success: true,
-		Output:  evaluations,
+		Output:  evaluation,
 		StateUpdates: map[string]interface{}{
-			"scenario_evaluations": evaluations,
+			"scenario_evaluation": evaluation,
 		},
 		CognitiveLoad: 0.7,
 	}, nil
@@ -276,14 +330,17 @@ func (p *OutcomeEvaluationProcessor) GetDescription() string {
 }
 
 // ModelUpdateProcessor - Step 8: Update internal models
-type ModelUpdateProcessor struct{}
+type ModelUpdateProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *ModelUpdateProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Update internal world models based on evaluations
-	updates := []string{
-		"Updated action-outcome model",
-		"Refined goal priorities",
+	text, err := modelStep(ctx, p.Generator, "update internal models", state,
+		"State one or two things you now believe differently about how your actions lead to outcomes, one per line.")
+	if err != nil {
+		return nil, err
 	}
+	updates := modelLines(text)
 
 	return &StepResult{
 		Success: true,
@@ -305,14 +362,17 @@ func (p *ModelUpdateProcessor) GetDescription() string {
 }
 
 // LearningConsolidationProcessor - Step 9: Consolidate learning
-type LearningConsolidationProcessor struct{}
+type LearningConsolidationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *LearningConsolidationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Consolidate learning from this cycle
-	consolidations := []string{
-		"Pattern recognition strengthened",
-		"Skill refinement applied",
+	text, err := modelStep(ctx, p.Generator, "consolidate learning", state,
+		"State one or two lessons from this cycle you want to keep, one per line.")
+	if err != nil {
+		return nil, err
 	}
+	consolidations := modelLines(text)
 
 	return &StepResult{
 		Success: true,
@@ -332,19 +392,56 @@ func (p *LearningConsolidationProcessor) GetDescription() string {
 	return "Consolidate learning"
 }
 
-// InsightGenerationProcessor - Step 10: Generate insights
-type InsightGenerationProcessor struct{}
+// InsightGenerationProcessor - Step 10: Generate insights. The insight text is
+// written by Generator; without one, or when generation fails, the step
+// produces no insight.
+type InsightGenerationProcessor struct {
+	Generator TextGenerator
+}
 
 func (p *InsightGenerationProcessor) Process(ctx context.Context, state *CognitiveState) (*StepResult, error) {
-	// Generate insights from reflective processing
-	insights := []string{
-		fmt.Sprintf("Cycle %d insight: Cognitive patterns emerging", state.CycleNumber),
+	if p.Generator == nil {
+		return nil, fmt.Errorf("insight generation: no model configured")
 	}
 
-	// Add insight based on cognitive load
-	if state.CognitiveLoad > 0.7 {
-		insights = append(insights, "High cognitive load - consider rest cycle")
+	keys := make([]string, 0, len(state.WorkingMemory))
+	for key := range state.WorkingMemory {
+		keys = append(keys, key)
 	}
+	sort.Strings(keys)
+	var memory strings.Builder
+	for _, key := range keys {
+		fmt.Fprintf(&memory, "- %s: %v\n", key, state.WorkingMemory[key])
+	}
+	if memory.Len() == 0 {
+		memory.WriteString("(empty)\n")
+	}
+	goals := "(none)"
+	if len(state.ActiveGoals) > 0 {
+		goals = strings.Join(state.ActiveGoals, "; ")
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, in the reflective phase of cognitive cycle %d.
+
+Cognitive load: %.2f
+Active goals: %s
+Working memory:
+%s
+Write one concise insight (1-2 sentences) you draw from this cycle, in your own first-person voice. Reply with only the insight.`, state.CycleNumber, state.CognitiveLoad, goals, memory.String())
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	text, err := p.Generator.Generate(callCtx, prompt, opts)
+	if err != nil {
+		return nil, fmt.Errorf("insight generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return nil, fmt.Errorf("insight generation: model returned empty text")
+	}
+	insights := []string{text}
 
 	return &StepResult{
 		Success: true,
@@ -394,7 +491,8 @@ func (p *MetaCognitiveProcessor) Process(ctx context.Context, state *CognitiveSt
 			"meta_cycle_count": state.CycleNumber,
 		},
 		CognitiveLoad: 0.3,
-		Insights:      metaInsights,
+		// These are rule-derived status observations, not model-written
+		// insights, so they are not published as Insights.
 	}, nil
 }
 

@@ -98,7 +98,7 @@ func TestCapabilityRouterSelectsLocalForOfflineWorkload(t *testing.T) {
 	local.result = "local wisdom"
 	remote := newRoutingTestProvider("remote", backendcap.BackendRemoteAPI)
 	remote.result = "remote wisdom"
-	router := newRoutingTestRouter(local, remote, &SimpleFallbackProvider{})
+	router := newRoutingTestRouter(local, remote)
 
 	result, err := router.Generate(context.Background(), "reflect", GenerateOptions{
 		MaxTokens: 128,
@@ -131,7 +131,7 @@ func TestCapabilityRouterFallsBackOnLocalQueueSaturation(t *testing.T) {
 	local.err = ErrLocalGGUFQueueSaturated
 	remote := newRoutingTestProvider("remote", backendcap.BackendRemoteAPI)
 	remote.result = "remote continuity"
-	router := newRoutingTestRouter(local, remote, &SimpleFallbackProvider{})
+	router := newRoutingTestRouter(local, remote)
 
 	result, err := router.Generate(context.Background(), "continue", GenerateOptions{
 		MaxTokens: 64,
@@ -150,7 +150,7 @@ func TestCapabilityRouterFallsBackOnLocalQueueSaturation(t *testing.T) {
 }
 
 func TestCapabilityRouterRejectsFallbackForRealModelWorkload(t *testing.T) {
-	router := newRoutingTestRouter(&SimpleFallbackProvider{})
+	router := newRoutingTestRouter(newRoutingTestProvider("fallback", backendcap.BackendFallback))
 	_, err := router.Generate(context.Background(), "deep synthesis", GenerateOptions{
 		Routing: RoutingOptions{
 			TraceID:          "real-model-only",
@@ -265,7 +265,7 @@ func TestCapabilityRouterProviderModes(t *testing.T) {
 			local.result = "local"
 			remote := newRoutingTestProvider("remote", backendcap.BackendRemoteAPI)
 			remote.result = "remote"
-			router := newRoutingTestRouter(local, remote, &SimpleFallbackProvider{})
+			router := newRoutingTestRouter(local, remote)
 			router.mode = test.mode
 			result, err := router.Generate(context.Background(), "mode", GenerateOptions{Routing: RoutingOptions{TraceID: string(test.mode)}})
 			if err != nil {
@@ -285,17 +285,11 @@ func TestCapabilityRouterProviderModes(t *testing.T) {
 func TestCapabilityRouterZeroValueOptionsPreserveFallbackCompatibility(t *testing.T) {
 	remote := newRoutingTestProvider("remote", backendcap.BackendRemoteAPI)
 	remote.err = errors.New("remote unavailable")
-	router := newRoutingTestRouter(remote, &SimpleFallbackProvider{})
-	result, err := router.Generate(context.Background(), "legacy call", GenerateOptions{})
-	if err != nil {
-		t.Fatalf("zero-value legacy routing lost fallback continuity: %v", err)
-	}
-	if strings.TrimSpace(result) == "" {
-		t.Fatal("deterministic fallback returned empty cognition")
-	}
-	state := router.GetBackendState()
-	if state.SelectedKind != backendcap.BackendFallback || !state.Degraded || state.FallbackCount != 1 {
-		t.Fatalf("zero-value compatibility telemetry incorrect: %#v", state)
+	router := newRoutingTestRouter(remote)
+	// With no other provider there is nothing to answer: the router reports
+	// the failure instead of producing text without a model.
+	if result, err := router.Generate(context.Background(), "legacy call", GenerateOptions{}); err == nil {
+		t.Fatalf("expected an error without a working model, got %q", result)
 	}
 }
 
@@ -329,8 +323,8 @@ func TestNewMultiProviderLLMWiresModelPathsAndMode(t *testing.T) {
 		t.Fatalf("unexpected path configuration state: %#v", state)
 	}
 	result, err := router.Generate(context.Background(), "continue offline", GenerateOptions{})
-	if err != nil || strings.TrimSpace(result) == "" {
-		t.Fatalf("fallback continuity failed with unavailable configured models: result=%q err=%v", result, err)
+	if err == nil {
+		t.Fatalf("unavailable configured models must not produce text, got %q", result)
 	}
 	if err := router.Close(); err != nil {
 		t.Fatal(err)

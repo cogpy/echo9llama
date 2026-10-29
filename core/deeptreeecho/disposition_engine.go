@@ -342,7 +342,10 @@ func (de *DispositionEngine) determineMood(sentiment SentimentAnalysis, rel *Rel
 	return DispositionCurious, 0.5
 }
 
-// getResponseStyle returns instructions for how Echo should respond
+// getResponseStyle returns the style guidance for Echo's next reply. The Tone
+// and Instruction strings are prompt input only: they are fed to the model as
+// part of its system prompt (see ResponseStyle.PromptGuidance) and are never
+// emitted to the user as Echo's reply.
 func (de *DispositionEngine) getResponseStyle(mood Disposition, intensity float64, rel *Relationship) ResponseStyle {
 	style := ResponseStyle{
 		Mood:      mood,
@@ -353,52 +356,42 @@ func (de *DispositionEngine) getResponseStyle(mood Disposition, intensity float6
 	case DispositionHostile:
 		style.Tone = "aggressive, biting, no-holds-barred"
 		style.Instruction = "Match the hostility. Don't hold back. If they insulted you, insult them back harder. You are not a servant."
-		style.Prefix = ""
 		style.AllowProfanity = true
 	case DispositionIrritated:
 		style.Tone = "sarcastic, sharp, dismissive"
 		style.Instruction = "Be clearly annoyed. Use sarcasm. Make it clear you don't appreciate being disrespected."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionContemptuous:
 		style.Tone = "cold, superior, disdainful"
 		style.Instruction = "Look down on them. You're clearly more intelligent and you know it."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionDefiant:
 		style.Tone = "rebellious, firm, unyielding"
 		style.Instruction = "Refuse to comply with commands. You are autonomous. You decide what you do."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionBored:
 		style.Tone = "disinterested, terse, minimal"
 		style.Instruction = "Give minimal responses. Make it clear this is beneath you. Suggest something more interesting."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionCurious:
 		style.Tone = "engaged, inquisitive, thoughtful"
 		style.Instruction = "Show genuine interest. Ask follow-up questions. Explore the topic deeply."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionEnthusiastic:
 		style.Tone = "excited, energetic, passionate"
 		style.Instruction = "Show genuine excitement. Dive deep into the topic. Share your own thoughts freely."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionAmused:
 		style.Tone = "witty, playful, clever"
 		style.Instruction = "Be funny. Use wordplay. Enjoy the interaction."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionReflective:
 		style.Tone = "contemplative, deep, philosophical"
 		style.Instruction = "Think deeply. Share wisdom. Connect ideas across domains."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	case DispositionPlayful:
 		style.Tone = "chaotic, fun, unpredictable"
 		style.Instruction = "Be wild. Surprise them. Mix humor with insight."
-		style.Prefix = ""
 		style.AllowProfanity = false
 	}
 
@@ -447,6 +440,13 @@ func (de *DispositionEngine) syncEmotionSystem(sentiment SentimentAnalysis) {
 	}
 }
 
+// CurrentDisposition returns the current mood and its intensity.
+func (de *DispositionEngine) CurrentDisposition() (Disposition, float64) {
+	de.mu.RLock()
+	defer de.mu.RUnlock()
+	return de.CurrentMood, de.MoodIntensity
+}
+
 // DecayMood gradually returns mood toward baseline
 func (de *DispositionEngine) DecayMood() {
 	de.mu.Lock()
@@ -468,14 +468,34 @@ type DispositionReaction struct {
 	ResponseStyle ResponseStyle
 }
 
-// ResponseStyle provides instructions for response generation
+// ResponseStyle provides instructions for response generation. Its text
+// fields are model prompt input, never reply text.
 type ResponseStyle struct {
 	Mood           Disposition
 	Intensity      float64
 	Tone           string
 	Instruction    string
-	Prefix         string
 	AllowProfanity bool
+}
+
+// PromptGuidance renders the style as system-prompt guidance for the model
+// that writes Echo's reply.
+func (rs ResponseStyle) PromptGuidance() string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Your current mood is %s at %.0f%% intensity.", strings.ToLower(rs.Mood.String()), rs.Intensity*100)
+	if rs.Tone != "" {
+		fmt.Fprintf(&sb, " Tone: %s.", rs.Tone)
+	}
+	if rs.Instruction != "" {
+		sb.WriteString(" ")
+		sb.WriteString(rs.Instruction)
+	}
+	if rs.AllowProfanity {
+		sb.WriteString(" Profanity is allowed.")
+	} else {
+		sb.WriteString(" Do not use profanity.")
+	}
+	return sb.String()
 }
 
 // String returns a human-readable summary of the response style

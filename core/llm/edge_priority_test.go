@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -28,7 +29,7 @@ func TestBackgroundViewYieldsToForeground(t *testing.T) {
 	}()
 
 	t.Setenv("ECHO_EDGE_COMPLETION_URL", srv.URL)
-	fg := NewEdgeCompletionProviderFromEnv(nil)
+	fg := NewEdgeCompletionProviderFromEnv()
 	bg := fg.Background()
 
 	done := make(chan string, 1)
@@ -41,18 +42,15 @@ func TestBackgroundViewYieldsToForeground(t *testing.T) {
 	}
 
 	// While the foreground call holds the slot, the background view must not
-	// reach the model server: it answers from the fallback immediately.
+	// reach the model server, and it must not answer without it either.
 	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
 	defer cancel()
 	out, err := bg.Generate(ctx, "autonomous thought", DefaultGenerateOptions())
-	if err != nil || out == "" {
-		t.Fatalf("background generate = %q, %v", out, err)
+	if !errors.Is(err, ErrEdgeBusy) || out != "" {
+		t.Fatalf("background generate = %q, %v; want ErrEdgeBusy and no text", out, err)
 	}
 	if got := calls.Load(); got != 1 {
 		t.Fatalf("model server calls = %d, want 1 (background must not queue)", got)
-	}
-	if bg.Status().LastSource != "deterministic-fallback" {
-		t.Fatalf("background source = %s", bg.Status().LastSource)
 	}
 
 	close(release)
@@ -86,5 +84,30 @@ func TestBuildEdgePromptDoesNotDoubleWrapTranscripts(t *testing.T) {
 		if got := buildEdgePrompt(c.prompt, c.system); got != c.want {
 			t.Errorf("buildEdgePrompt(%q, %q) = %q, want %q", c.prompt, c.system, got, c.want)
 		}
+	}
+}
+
+func TestEdgeProviderWithoutModelNeverAnswers(t *testing.T) {
+	t.Setenv("ECHO_EDGE_COMPLETION_URL", "")
+	t.Setenv("ECHO_EDGE_MODEL_PATH", "")
+	p := NewEdgeCompletionProviderFromEnv()
+	if p.Available() {
+		t.Fatal("provider without a model must not report available")
+	}
+	out, err := p.Generate(t.Context(), "how are you feeling?", DefaultGenerateOptions())
+	if !errors.Is(err, ErrNoEdgeModel) || out != "" {
+		t.Fatalf("generate = %q, %v; want ErrNoEdgeModel and no text", out, err)
+	}
+}
+
+func TestEdgeProviderReportsUnreachableModel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "down", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	t.Setenv("ECHO_EDGE_COMPLETION_URL", srv.URL)
+	out, err := NewEdgeCompletionProviderFromEnv().Generate(t.Context(), "hello", DefaultGenerateOptions())
+	if err == nil || out != "" {
+		t.Fatalf("generate = %q, %v; want an error and no text", out, err)
 	}
 }

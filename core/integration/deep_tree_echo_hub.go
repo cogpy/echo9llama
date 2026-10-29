@@ -143,6 +143,10 @@ type HubMetrics struct {
 	ErrorCount        uint64
 	LastError         string
 	LastErrorTime     time.Time
+
+	// Integration-cycle status (numeric telemetry, not character thoughts)
+	LastGestaltAwareness float64
+	LastIntegrationAt    time.Time
 }
 
 // NewDeepTreeEchoHub creates a new integration hub
@@ -205,6 +209,7 @@ func (hub *DeepTreeEchoHub) initializeSubsystems() {
 	// Initialize state manager
 	if hub.config.EnableStateManager {
 		hub.stateManager = NewCognitiveStateManager()
+		hub.stateManager.SetLLMProvider(hub.llmProvider)
 		fmt.Println("[+] Cognitive State Manager initialized")
 	}
 
@@ -401,13 +406,16 @@ func (hub *DeepTreeEchoHub) performIntegrationCycle() {
 				}
 			}
 		}
+	}
 
-		// Generate cross-system thoughts
-		if gestaltData != nil && agentGestalt != nil {
-			content := fmt.Sprintf("Integration cycle: awareness=%.2f, gestalt coherence active",
-				gestaltData["awareness"])
-			hub.stateManager.AddThought(content, "integration", "hub", 0.6, []string{"integration", "gestalt"})
-		}
+	// Record the integration cycle as status telemetry. This is not the
+	// character's voice, so it is never added to the thought stream.
+	if gestaltData != nil && agentGestalt != nil {
+		awareness, _ := gestaltData["awareness"].(float64)
+		hub.metrics.mu.Lock()
+		hub.metrics.LastGestaltAwareness = awareness
+		hub.metrics.LastIntegrationAt = time.Now()
+		hub.metrics.mu.Unlock()
 	}
 }
 
@@ -692,6 +700,9 @@ func (hub *DeepTreeEchoHub) GetStatus() HubStatus {
 		EventsPerSecond:   hub.metrics.EventsPerSecond,
 		CommandsProcessed: hub.metrics.CommandsProcessed,
 		ErrorCount:        hub.metrics.ErrorCount,
+
+		LastGestaltAwareness: hub.metrics.LastGestaltAwareness,
+		LastIntegrationAt:    hub.metrics.LastIntegrationAt,
 	}
 	hub.metrics.mu.RUnlock()
 

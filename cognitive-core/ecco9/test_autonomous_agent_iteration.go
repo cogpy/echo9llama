@@ -19,7 +19,7 @@ func main() {
 	// Get OpenAI API key from environment
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
-		fmt.Println("⚠️  Warning: OPENAI_API_KEY not set, using fallback templates")
+		fmt.Println("⚠️  Warning: OPENAI_API_KEY not set; no thoughts will be generated (there is no template fallback)")
 		fmt.Println("   Set OPENAI_API_KEY environment variable for LLM-powered thoughts")
 		fmt.Println()
 	}

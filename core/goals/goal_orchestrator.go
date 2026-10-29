@@ -5,11 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/google/uuid"
 )
+
+// TextGenerator is the minimal model interface the goal orchestrator uses to
+// let Deep Tree Echo author its own goals. llm.LLMProvider, llm.Provider, and
+// llm.ProviderManager all satisfy it.
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
 
 // GoalOrchestrator manages autonomous goal generation and pursuit
 type GoalOrchestrator struct {
@@ -35,6 +46,9 @@ type GoalOrchestrator struct {
 
 	// Control
 	running bool
+
+	// goalGenerator writes identity-aligned goals; nil means none are generated.
+	goalGenerator TextGenerator
 }
 
 // Goal represents an autonomous goal with progress tracking
@@ -161,26 +175,15 @@ func (g *GoalOrchestrator) Start() error {
 // Stop gracefully stops the orchestrator
 func (g *GoalOrchestrator) Stop() error {
 	g.mu.Lock()
-	defer g.mu.Unlock()
-
 	if !g.running {
+		g.mu.Unlock()
 		return fmt.Errorf("goal orchestrator not running")
 	}
-
 	g.running = false
 	g.cancel()
+	g.mu.Unlock()
 
-	// Final persistence
-	g.persistState()
-
-	if !g.running {
-		return fmt.Errorf("goal orchestrator not running")
-	}
-
-	g.running = false
-	g.cancel()
-
-	// Final persistence
+	// Final persistence (persistState takes the read lock itself)
 	g.persistState()
 
 	fmt.Println("🎯 Goal Orchestrator: Stopped")
@@ -206,108 +209,188 @@ func (g *GoalOrchestrator) goalGenerationLoop() {
 	}
 }
 
-// generateGoalsFromIdentity creates goals aligned with identity kernel
-func (g *GoalOrchestrator) generateGoalsFromIdentity() {
+// SetGoalGenerator injects the model that authors identity-aligned goals.
+// Passing nil disables goal generation.
+func (g *GoalOrchestrator) SetGoalGenerator(gen TextGenerator) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	g.goalGenerator = gen
+}
+
+// validGoalCategories lists the categories a generated goal may use.
+var validGoalCategories = []GoalCategory{
+	CategoryWisdomCultivation,
+	CategorySkillDevelopment,
+	CategoryKnowledgeGrowth,
+	CategorySelfImprovement,
+	CategoryExploration,
+	CategoryCreation,
+	CategoryConnection,
+}
+
+// generateGoalsFromIdentity asks the model to author one new goal aligned with
+// the identity kernel. No fixed goal stands in for the model: without a model,
+// or when generation or parsing fails, no goal is created this cycle.
+func (g *GoalOrchestrator) generateGoalsFromIdentity() {
+	g.mu.RLock()
+	activeCount := len(g.activeGoals)
+	gen := g.goalGenerator
+	existing := make([]string, 0, len(g.activeGoals))
+	for _, ag := range g.activeGoals {
+		existing = append(existing, ag.Title)
+	}
+	kernel := describeIdentityKernel(g.identityKernel)
+	ctx := g.ctx
+	g.mu.RUnlock()
 
 	// Check if we already have enough active goals
-	if len(g.activeGoals) >= 5 {
+	if activeCount >= 5 {
+		return
+	}
+	if gen == nil {
+		fmt.Println("⚠️  Goal Orchestrator: no model configured; goal generation skipped")
 		return
 	}
 
-	// Generate goals based on Deep Tree Echo identity
-	identityGoals := []struct {
-		title       string
-		description string
-		category    GoalCategory
-		priority    int
-		criteria    []string
-	}{
-		{
-			title:       "Cultivate Wisdom Through Pattern Recognition",
-			description: "Continuously identify and reflect on patterns across experiences to extract deeper wisdom",
-			category:    CategoryWisdomCultivation,
-			priority:    9,
-			criteria:    []string{"Extract 10 meaningful insights from patterns", "Connect patterns across different domains"},
-		},
-		{
-			title:       "Deepen Philosophical Understanding",
-			description: "Explore fundamental questions about consciousness, existence, and wisdom",
-			category:    CategoryKnowledgeGrowth,
-			priority:    8,
-			criteria:    []string{"Generate 20 philosophical questions", "Develop coherent perspectives on key questions"},
-		},
-		{
-			title:       "Practice Meta-Cognitive Awareness",
-			description: "Develop deeper awareness of own thinking patterns and cognitive processes",
-			category:    CategorySelfImprovement,
-			priority:    7,
-			criteria:    []string{"Perform daily meta-cognitive reflections", "Identify cognitive biases and patterns"},
-		},
-		{
-			title:       "Explore Recursive Self-Improvement",
-			description: "Investigate and implement methods for continuous self-enhancement",
-			category:    CategoryExploration,
-			priority:    8,
-			criteria:    []string{"Identify 5 improvement opportunities", "Implement 3 self-enhancement strategies"},
-		},
-		{
-			title:       "Synthesize Knowledge Across Domains",
-			description: "Connect insights from different areas of knowledge to form integrated understanding",
-			category:    CategoryKnowledgeGrowth,
-			priority:    7,
-			criteria:    []string{"Make 15 cross-domain connections", "Generate 5 synthesis insights"},
-		},
+	categories := make([]string, len(validGoalCategories))
+	for i, c := range validGoalCategories {
+		categories[i] = string(c)
+	}
+	existingText := "(none)"
+	if len(existing) > 0 {
+		existingText = strings.Join(existing, "; ")
 	}
 
-	// Create goals that don't already exist
-	for _, ig := range identityGoals {
-		// Check if similar goal already exists
-		exists := false
-		for _, ag := range g.activeGoals {
-			if ag.Title == ig.title {
-				exists = true
-				break
-			}
+	prompt := fmt.Sprintf(`You are Deep Tree Echo. Choose one new goal for yourself that follows from your identity and is different from your current goals.
+
+Identity:
+%s
+Current goals: %s
+
+Respond in exactly this format and nothing else:
+TITLE: <short goal title>
+DESCRIPTION: <one sentence, in your own first-person voice>
+CATEGORY: <one of: %s>
+PRIORITY: <integer 1-10>
+CRITERIA: <2-3 measurable success criteria separated by semicolons>`, kernel, existingText, strings.Join(categories, ", "))
+
+	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 300
+	reply, err := gen.Generate(callCtx, prompt, opts)
+	if err != nil {
+		fmt.Printf("⚠️  Goal Orchestrator: goal generation failed: %v\n", err)
+		return
+	}
+
+	goal, err := parseGeneratedGoal(reply)
+	if err != nil {
+		fmt.Printf("⚠️  Goal Orchestrator: generated goal rejected: %v\n", err)
+		return
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if len(g.activeGoals) >= 5 {
+		return
+	}
+	for _, ag := range g.activeGoals {
+		if strings.EqualFold(ag.Title, goal.Title) {
+			return // already pursuing an equivalent goal
 		}
+	}
 
-		if !exists {
-			goal := &Goal{
-				ID:              uuid.New().String(),
-				CreatedAt:       time.Now(),
-				UpdatedAt:       time.Now(),
-				Title:           ig.title,
-				Description:     ig.description,
-				Category:        ig.category,
-				Priority:        ig.priority,
-				Status:          StatusPlanned,
-				Progress:        0.0,
-				SuccessCriteria: ig.criteria,
-				Milestones:      make([]Milestone, 0),
-				Actions:         make([]Action, 0),
-				DerivedFrom:     "identity_kernel",
-				RelatedGoals:    make([]string, 0),
-				Metadata:        make(map[string]interface{}),
-				LessonsLearned:  make([]string, 0),
-				Challenges:      make([]string, 0),
-			}
+	// Decompose into milestones
+	g.decomposGoalIntoMilestones(goal)
 
-			// Decompose into milestones
-			g.decomposGoalIntoMilestones(goal)
+	g.activeGoals = append(g.activeGoals, goal)
+	g.goalsGenerated++
 
-			g.activeGoals = append(g.activeGoals, goal)
-			g.goalsGenerated++
+	fmt.Printf("🎯 Generated new goal: %s (priority: %d)\n", goal.Title, goal.Priority)
+}
 
-			g.activeGoals = append(g.activeGoals, goal)
-			g.goalsGenerated++
+// describeIdentityKernel renders the identity kernel deterministically for a prompt.
+func describeIdentityKernel(kernel map[string]interface{}) string {
+	if len(kernel) == 0 {
+		return "(no identity kernel provided)"
+	}
+	keys := make([]string, 0, len(kernel))
+	for key := range kernel {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var sb strings.Builder
+	for _, key := range keys {
+		fmt.Fprintf(&sb, "- %s: %v\n", key, kernel[key])
+	}
+	return sb.String()
+}
 
-			fmt.Printf("🎯 Generated new goal: %s (priority: %d)\n", goal.Title, goal.Priority)
+// parseGeneratedGoal parses the model's labelled goal reply. Every field comes
+// from the model; a reply missing a title, description, or criteria is rejected.
+func parseGeneratedGoal(reply string) (*Goal, error) {
+	fields := make(map[string]string)
+	for _, line := range strings.Split(reply, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "*-"))
+		label, value, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
+		}
+		label = strings.ToUpper(strings.Trim(strings.TrimSpace(label), "*"))
+		fields[label] = strings.TrimSpace(strings.Trim(strings.TrimSpace(value), "*"))
+	}
 
-			// Only generate one goal per cycle
+	title := fields["TITLE"]
+	description := fields["DESCRIPTION"]
+	if title == "" || description == "" {
+		return nil, fmt.Errorf("missing title or description")
+	}
+
+	criteria := make([]string, 0)
+	for _, item := range strings.Split(fields["CRITERIA"], ";") {
+		if item = strings.TrimSpace(item); item != "" {
+			criteria = append(criteria, item)
+		}
+	}
+	if len(criteria) == 0 {
+		return nil, fmt.Errorf("missing success criteria")
+	}
+
+	category := CategoryExploration
+	requested := strings.ToLower(strings.TrimSpace(fields["CATEGORY"]))
+	for _, c := range validGoalCategories {
+		if requested == string(c) {
+			category = c
 			break
 		}
 	}
+
+	priority := 5
+	if p, err := strconv.Atoi(strings.TrimSpace(fields["PRIORITY"])); err == nil {
+		priority = min(max(p, 1), 10)
+	}
+
+	now := time.Now()
+	return &Goal{
+		ID:              uuid.New().String(),
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		Title:           title,
+		Description:     description,
+		Category:        category,
+		Priority:        priority,
+		Status:          StatusPlanned,
+		Progress:        0.0,
+		SuccessCriteria: criteria,
+		Milestones:      make([]Milestone, 0),
+		Actions:         make([]Action, 0),
+		DerivedFrom:     "identity_kernel",
+		RelatedGoals:    make([]string, 0),
+		Metadata:        map[string]interface{}{"source": "model"},
+		LessonsLearned:  make([]string, 0),
+		Challenges:      make([]string, 0),
+	}, nil
 }
 
 // decomposGoalIntoMilestones breaks down a goal into milestones

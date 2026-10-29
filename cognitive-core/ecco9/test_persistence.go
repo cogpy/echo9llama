@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -15,11 +16,15 @@ func main() {
 	fmt.Println(strings.Repeat("=", 80))
 	fmt.Println()
 
-	// Create test database
-	dbPath := "/home/ubuntu/echo9llama/echoself.db"
-
-	// Remove old test database if exists
-	os.Remove(dbPath)
+	// Create a throwaway test database. The fixture rows written below are
+	// test data, so they must never land in the agent's real echoself.db
+	// where they would be read back as its own thoughts and memories.
+	tmpDir, err := os.MkdirTemp("", "echoself-persistence-test-")
+	if err != nil {
+		fmt.Printf("❌ Failed to create temp dir: %v\n", err)
+		os.Exit(1)
+	}
+	dbPath := filepath.Join(tmpDir, "echoself_test.db")
 
 	// Test 1: Initialize persistence
 	fmt.Println("Test 1: Initialize Persistence Layer")

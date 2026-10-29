@@ -68,7 +68,7 @@ func (as *AutonomousServer) Initialize() error {
 	// Register Anthropic provider
 	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
 	if anthropicKey != "" {
-		anthropicProvider := llm.NewAnthropicProvider(anthropicKey)
+		anthropicProvider := llm.NewAnthropicProvider("") // reads ANTHROPIC_API_KEY; the argument is the model name
 		if err := as.llmManager.RegisterProvider(anthropicProvider); err != nil {
 			log.Printf("⚠️  Failed to register Anthropic provider: %v", err)
 		} else {
@@ -79,7 +79,7 @@ func (as *AutonomousServer) Initialize() error {
 	// Register OpenRouter provider
 	openrouterKey := os.Getenv("OPENROUTER_API_KEY")
 	if openrouterKey != "" {
-		openrouterProvider := llm.NewOpenRouterProvider(openrouterKey)
+		openrouterProvider := llm.NewOpenRouterProvider("") // reads OPENROUTER_API_KEY; the argument is the model name
 		if err := as.llmManager.RegisterProvider(openrouterProvider); err != nil {
 			log.Printf("⚠️  Failed to register OpenRouter provider: %v", err)
 		} else {
@@ -121,12 +121,14 @@ func (as *AutonomousServer) Initialize() error {
 	// Initialize EchoBeats Scheduler
 	fmt.Println("⏰ Initializing EchoBeats Scheduler...")
 	as.echobeatsScheduler = echobeats.NewEchoBeats()
+	as.echobeatsScheduler.SetThoughtGenerator(as.llmManager)
 	fmt.Println("  ✅ EchoBeats scheduler initialized")
 	fmt.Println()
 
 	// Initialize EchoDream System
 	fmt.Println("🌙 Initializing EchoDream System...")
 	as.echodreamSystem = echodream.NewEchoDream()
+	as.echodreamSystem.SetTextGenerator(as.llmManager)
 	fmt.Println("  ✅ EchoDream system initialized")
 	fmt.Println()
 
@@ -142,6 +144,7 @@ func (as *AutonomousServer) Initialize() error {
 	}
 
 	as.goalOrchestrator = goals.NewGoalOrchestrator(identityKernel, "goals_state.json")
+	as.goalOrchestrator.SetGoalGenerator(as.llmManager)
 	fmt.Println("  ✅ Goal orchestrator initialized")
 	fmt.Println()
 

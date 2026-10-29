@@ -2,9 +2,13 @@ package opencog
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 func TestAtomSpace(t *testing.T) {
@@ -200,10 +204,28 @@ func TestEchoCogSystem(t *testing.T) {
 	// Wait for some reactions
 	time.Sleep(500 * time.Millisecond)
 
-	// Process input
+	// Without a model, no response text may be produced.
+	if response, err := system.ProcessInput(ctx, "What is the nature of consciousness?"); !errors.Is(err, ErrNoResponseGenerator) || response != "" {
+		t.Fatalf("expected ErrNoResponseGenerator and no text, got %q, %v", response, err)
+	}
+
+	// Process input through a model
+	gen := &fakeResponseGenerator{reply: "model-voiced reply"}
+	system.SetResponseGenerator(gen)
 	response, err := system.ProcessInput(ctx, "What is the nature of consciousness?")
 	if err != nil {
 		t.Fatalf("Failed to process input: %v", err)
+	}
+	if response != "model-voiced reply" {
+		t.Fatalf("response = %q, want model output", response)
+	}
+	if !strings.Contains(gen.prompt, "What is the nature of consciousness?") || !strings.Contains(gen.prompt, "resonance") {
+		t.Fatalf("prompt lacks reasoning facts: %q", gen.prompt)
+	}
+
+	system.SetResponseGenerator(&fakeResponseGenerator{err: errors.New("model down")})
+	if response, err := system.ProcessInput(ctx, "again"); err == nil || response != "" {
+		t.Fatalf("expected error and no text on model failure, got %q, %v", response, err)
 	}
 
 	t.Logf("Response: %s", response)
@@ -372,4 +394,15 @@ func BenchmarkConcurrentExecution(b *testing.B) {
 
 	b.Logf("Tasks completed: %d", executor.TasksCompleted)
 	b.Logf("Average latency: %.2fms", executor.AverageLatency)
+}
+
+type fakeResponseGenerator struct {
+	reply  string
+	err    error
+	prompt string
+}
+
+func (f *fakeResponseGenerator) Generate(_ context.Context, prompt string, _ llm.GenerateOptions) (string, error) {
+	f.prompt = prompt
+	return f.reply, f.err
 }

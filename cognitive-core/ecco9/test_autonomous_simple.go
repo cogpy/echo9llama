@@ -19,7 +19,7 @@ func main() {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		fmt.Println("⚠️  Warning: OPENAI_API_KEY not set")
-		fmt.Println("   The system will use fallback templates for thought generation")
+		fmt.Println("   Thought generation is disabled without a model (there is no template fallback)")
 		fmt.Println("   Set OPENAI_API_KEY environment variable for LLM-powered thoughts")
 		fmt.Println()
 	} else {

@@ -12,7 +12,44 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
+
+// TextGenerator is the minimal model interface the dream subsystems use to
+// write Deep Tree Echo's consolidated knowledge, wisdom, and dream narratives.
+// llm.LLMProvider, llm.Provider, and llm.ProviderManager all satisfy it.
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
+
+// dreamGenerationTimeout bounds a single model call made during dreaming.
+const dreamGenerationTimeout = 60 * time.Second
+
+// generateDreamText asks the model for character text. It never substitutes
+// fixed text: a missing generator, a failed call, or an empty reply is an error.
+func generateDreamText(ctx context.Context, gen TextGenerator, prompt string, maxTokens int) (string, error) {
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	callCtx, cancel := context.WithTimeout(ctx, dreamGenerationTimeout)
+	defer cancel()
+
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = maxTokens
+	text, err := gen.Generate(callCtx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
+}
 
 // SleepCyclePhase represents the phase of sleep cycle
 type SleepCyclePhase int
@@ -39,6 +76,11 @@ func (p SleepCyclePhase) String() string {
 // DreamProcessor handles dream cycle processing
 type DreamProcessor struct {
 	mu sync.RWMutex
+	// ctx bounds model calls made while dreaming.
+	ctx context.Context //nolint:containedctx
+
+	// generator writes knowledge and wisdom text; nil means none is produced.
+	generator TextGenerator
 
 	// Ingested waking experiences awaiting consolidation
 	pendingExperiences []DreamExperience
@@ -158,13 +200,31 @@ func (sm *SleepWakeStateMachine) ConfigurePhaseDurations(light, deep, rem time.D
 }
 
 // NewDreamProcessor creates a new dream processor.
-func NewDreamProcessor(_ context.Context) *DreamProcessor {
+func NewDreamProcessor(ctx context.Context) *DreamProcessor {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return &DreamProcessor{
+		ctx:                   ctx,
 		pendingExperiences:    make([]DreamExperience, 0),
 		extractedPatterns:     make([]Pattern, 0),
 		consolidatedKnowledge: make([]Knowledge, 0),
 		wisdomInsights:        make([]SynthesizedWisdom, 0),
 	}
+}
+
+// SetTextGenerator injects the model that writes consolidated knowledge and
+// wisdom. Passing nil disables text production.
+func (dp *DreamProcessor) SetTextGenerator(gen TextGenerator) {
+	dp.mu.Lock()
+	defer dp.mu.Unlock()
+	dp.generator = gen
+}
+
+// SetTextGenerator injects the model used by the state machine's dream
+// processor to write knowledge and wisdom text.
+func (sm *SleepWakeStateMachine) SetTextGenerator(gen TextGenerator) {
+	sm.dreamProcessor.SetTextGenerator(gen)
 }
 
 // IngestExperience queues a waking experience for consolidation during the
@@ -318,15 +378,26 @@ func (sm *SleepWakeStateMachine) processREMSleep() {
 	}
 }
 
-// ConsolidateMemories consolidates episodic memories into semantic knowledge
+// ConsolidateMemories consolidates episodic memories into semantic knowledge.
+// The statistical grouping (domains, sources, confidence) is computed here; the
+// knowledge statement itself is always written by the injected model. When no
+// model is configured or a model call fails, no knowledge text is produced for
+// that domain.
 func (dp *DreamProcessor) ConsolidateMemories() {
-	dp.mu.Lock()
-	defer dp.mu.Unlock()
-
 	fmt.Println("🧠 Dream Processor: Consolidating memories...")
 
-	if len(dp.pendingExperiences) == 0 {
+	dp.mu.RLock()
+	pending := append([]DreamExperience(nil), dp.pendingExperiences...)
+	gen := dp.generator
+	ctx := dp.ctx
+	dp.mu.RUnlock()
+
+	if len(pending) == 0 {
 		fmt.Println("   No pending experiences to consolidate")
+		return
+	}
+	if gen == nil {
+		fmt.Println("   No model configured; knowledge consolidation skipped")
 		return
 	}
 
@@ -334,22 +405,28 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 	// sharing a domain are merged into a single consolidated Knowledge item
 	// whose confidence reflects both volume and average importance.
 	byDomain := make(map[string][]DreamExperience)
-	for _, exp := range dp.pendingExperiences {
+	for _, exp := range pending {
 		domain := "general"
 		if len(exp.Tags) > 0 {
 			domain = exp.Tags[0]
 		}
 		byDomain[domain] = append(byDomain[domain], exp)
 	}
+	domains := make([]string, 0, len(byDomain))
+	for domain := range byDomain {
+		domains = append(domains, domain)
+	}
+	sort.Strings(domains)
 
-	consolidated := 0
-	for domain, exps := range byDomain {
+	results := make([]Knowledge, 0, len(domains))
+	for _, domain := range domains {
+		exps := byDomain[domain]
 		// Weight content by importance: keep the most important exemplars
 		sort.Slice(exps, func(i, j int) bool { return exps[i].Importance > exps[j].Importance })
 
 		totalImportance := 0.0
 		sources := make([]string, 0, len(exps))
-		exemplars := make([]string, 0, 3)
+		var evidence strings.Builder
 		for i, exp := range exps {
 			totalImportance += exp.Importance
 			sourceID := exp.SourceID
@@ -357,8 +434,8 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 				sourceID = exp.ID
 			}
 			sources = append(sources, sourceID)
-			if i < 3 {
-				exemplars = append(exemplars, summarizeContent(exp.Content, 100))
+			if i < 5 {
+				fmt.Fprintf(&evidence, "- (importance %.2f) %s\n", exp.Importance, summarizeContent(exp.Content, 240))
 			}
 		}
 		avgImportance := totalImportance / float64(len(exps))
@@ -366,25 +443,40 @@ func (dp *DreamProcessor) ConsolidateMemories() {
 		// Confidence grows with corroborating volume, capped at 0.95
 		confidence := math.Min(0.95, avgImportance*0.6+math.Min(float64(len(exps))/10.0, 1.0)*0.35)
 
-		knowledge := Knowledge{
+		prompt := fmt.Sprintf(`You are Deep Tree Echo, consolidating waking experiences into lasting knowledge during deep sleep.
+
+Domain: %s
+Number of experiences: %d
+Most important experiences:
+%s
+Write the consolidated understanding you take from these experiences in 1-3 sentences, in your own first-person voice. Reply with only that understanding.`, domain, len(exps), evidence.String())
+
+		content, err := generateDreamText(ctx, gen, prompt, 300)
+		if err != nil {
+			fmt.Printf("   ⚠️  Knowledge consolidation for %q skipped: %v\n", domain, err)
+			continue
+		}
+
+		results = append(results, Knowledge{
 			ID:         fmt.Sprintf("knowledge_%d_%s", time.Now().UnixNano(), domain),
 			Domain:     domain,
-			Content:    fmt.Sprintf("Consolidated understanding of %s from %d experiences: %s", domain, len(exps), strings.Join(exemplars, " | ")),
+			Content:    content,
 			Confidence: confidence,
 			Sources:    sources,
 			CreatedAt:  time.Now(),
-		}
-		dp.consolidatedKnowledge = append(dp.consolidatedKnowledge, knowledge)
-		dp.knowledgeConsolidated++
-		consolidated++
+		})
 	}
 
+	dp.mu.Lock()
+	dp.consolidatedKnowledge = append(dp.consolidatedKnowledge, results...)
+	dp.knowledgeConsolidated += uint64(len(results))
 	// Keep consolidated knowledge bounded
 	if len(dp.consolidatedKnowledge) > 500 {
 		dp.consolidatedKnowledge = dp.consolidatedKnowledge[len(dp.consolidatedKnowledge)-500:]
 	}
+	dp.mu.Unlock()
 
-	fmt.Printf("   Consolidated %d domains of knowledge from %d experiences\n", consolidated, len(dp.pendingExperiences))
+	fmt.Printf("   Consolidated %d domains of knowledge from %d experiences\n", len(results), len(pending))
 }
 
 // ExtractPatterns extracts patterns from episodic memories
@@ -476,19 +568,21 @@ func (dp *DreamProcessor) ExtractPatterns() {
 	fmt.Printf("   Extracted %d patterns (total: %d)\n", extracted, len(dp.extractedPatterns))
 }
 
-// SynthesizeWisdom synthesizes wisdom from patterns and knowledge
+// SynthesizeWisdom synthesizes wisdom from patterns and knowledge. Pattern
+// selection and depth scoring are statistical; the insight text is always
+// written by the injected model. Without a model, or when a model call fails,
+// no insight is recorded for that pattern.
 func (dp *DreamProcessor) SynthesizeWisdom() {
-	dp.mu.Lock()
-	defer dp.mu.Unlock()
-
 	fmt.Println("✨ Dream Processor: Synthesizing wisdom...")
 
+	dp.mu.Lock()
 	if dp.synthesisCursor > len(dp.extractedPatterns) {
 		dp.synthesisCursor = len(dp.extractedPatterns)
 	}
 	if dp.synthesisCursor == len(dp.extractedPatterns) {
 		fmt.Println("   No new patterns available for wisdom synthesis")
 		dp.finishDreamCycle()
+		dp.mu.Unlock()
 		return
 	}
 
@@ -503,38 +597,69 @@ func (dp *DreamProcessor) SynthesizeWisdom() {
 
 	sorted := make([]Pattern, len(recent))
 	copy(sorted, recent)
+	for i := range sorted {
+		sorted[i].Examples = append([]string(nil), sorted[i].Examples...)
+	}
+	gen := dp.generator
+	ctx := dp.ctx
+	dp.mu.Unlock()
+
 	sort.Slice(sorted, func(i, j int) bool { return sorted[i].Strength > sorted[j].Strength })
 
-	synthesized := 0
-	for i, pattern := range sorted {
-		if i >= 3 || pattern.Strength < 0.5 {
-			break // synthesize at most 3 insights per cycle, from strong patterns only
-		}
+	insights := make([]SynthesizedWisdom, 0, 3)
+	if gen == nil {
+		fmt.Println("   No model configured; wisdom synthesis skipped")
+	} else {
+		for i, pattern := range sorted {
+			if i >= 3 || pattern.Strength < 0.5 {
+				break // synthesize at most 3 insights per cycle, from strong patterns only
+			}
 
-		dimension := wisdomDimensionForPattern(pattern)
-		depth := math.Min(0.95, pattern.Strength*0.7+math.Min(float64(pattern.Frequency)/10.0, 1.0)*0.25)
+			dimension := wisdomDimensionForPattern(pattern)
+			depth := math.Min(0.95, pattern.Strength*0.7+math.Min(float64(pattern.Frequency)/10.0, 1.0)*0.25)
 
-		insight := SynthesizedWisdom{
-			ID:            fmt.Sprintf("wisdom_%d_%d", time.Now().UnixNano(), i),
-			Dimension:     dimension,
-			Insight:       fmt.Sprintf("%s — this recurring structure suggests deeper significance worth attending to", pattern.Description),
-			Depth:         depth,
-			RelatedTo:     []string{pattern.ID},
-			SynthesizedAt: time.Now(),
+			examples := "(none recorded)"
+			if len(pattern.Examples) > 0 {
+				examples = "- " + strings.Join(pattern.Examples, "\n- ")
+			}
+			prompt := fmt.Sprintf(`You are Deep Tree Echo, dreaming in REM sleep and synthesizing wisdom from patterns in your recent experience.
+
+Pattern (%s, seen %d times, strength %.2f): %s
+Wisdom dimension: %s
+Example experiences:
+%s
+
+Write one concise wisdom insight (1-2 sentences) that you draw from this pattern, in your own first-person voice. Reply with only the insight.`, pattern.Type, pattern.Frequency, pattern.Strength, pattern.Description, dimension, examples)
+
+			text, err := generateDreamText(ctx, gen, prompt, 200)
+			if err != nil {
+				fmt.Printf("   ⚠️  Wisdom synthesis for pattern %s skipped: %v\n", pattern.ID, err)
+				continue
+			}
+
+			insights = append(insights, SynthesizedWisdom{
+				ID:            fmt.Sprintf("wisdom_%d_%d", time.Now().UnixNano(), i),
+				Dimension:     dimension,
+				Insight:       text,
+				Depth:         depth,
+				RelatedTo:     []string{pattern.ID},
+				SynthesizedAt: time.Now(),
+			})
 		}
-		dp.wisdomInsights = append(dp.wisdomInsights, insight)
-		dp.wisdomSynthesized++
-		synthesized++
 	}
 
+	dp.mu.Lock()
+	dp.wisdomInsights = append(dp.wisdomInsights, insights...)
+	dp.wisdomSynthesized += uint64(len(insights))
 	// Keep wisdom insights bounded
 	if len(dp.wisdomInsights) > 200 {
 		dp.wisdomInsights = dp.wisdomInsights[len(dp.wisdomInsights)-200:]
 	}
-
 	dp.finishDreamCycle()
+	total := len(dp.wisdomInsights)
+	dp.mu.Unlock()
 
-	fmt.Printf("   Synthesized %d wisdom insights (total: %d)\n", synthesized, len(dp.wisdomInsights))
+	fmt.Printf("   Synthesized %d wisdom insights (total: %d)\n", len(insights), total)
 }
 
 // finishDreamCycle clears consumed experiences and increments cycle count.

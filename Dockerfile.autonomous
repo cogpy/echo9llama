@@ -3,7 +3,7 @@
 # Note: Previous Python version archived in pyversion branch
 
 # Build stage
-FROM golang:1.25.13-alpine AS builder
+FROM golang:1.26.10-alpine AS builder
 
 # Install build dependencies. build-base is required by the existing
 # go-sqlite3 driver used for the append-only cognitive event ledger.

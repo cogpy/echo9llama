@@ -7,6 +7,7 @@ import (
 
 func TestDreamExperiencePreservesSourceEvent(t *testing.T) {
 	processor := NewDreamProcessor(context.Background())
+	processor.SetTextGenerator(&fakeDreamGenerator{reply: "consolidated by the model"})
 	processor.IngestExperienceWithSource(
 		"evaluation.recorded:event-42",
 		"A verified local artifact matched its declared hash.",

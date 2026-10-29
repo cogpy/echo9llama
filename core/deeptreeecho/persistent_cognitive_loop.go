@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -376,8 +377,8 @@ func (pcl *PersistentCognitiveLoop) processAffordanceInteraction(engine *LoopPha
 }
 
 func (pcl *PersistentCognitiveLoop) processSalienceSimulation(engine *LoopPhaseEngine) {
-	// Simulate outcomes of possible actions
-	engine.LastOutput = "Simulating: future states of current trajectory"
+	// Simulate outcomes of possible actions (operational state only)
+	engine.LastOutput = fmt.Sprintf("Simulating: focus=%q pending_messages=%d debt=%.2f", pcl.currentFocus, len(pcl.pendingMessages), pcl.cognitiveDebt)
 }
 
 func (pcl *PersistentCognitiveLoop) processMetacognitiveReflection(engine *LoopPhaseEngine) {
@@ -411,52 +412,77 @@ func (pcl *PersistentCognitiveLoop) runThoughtLoop() {
 	}
 }
 
-// generateAutonomousThought creates a self-generated thought
+// generateAutonomousThought asks the loop's model for a self-generated
+// thought. The disposition from the PIE-NN core is prompt input. Without a
+// model, or when it fails, no thought is recorded or published.
 func (pcl *PersistentCognitiveLoop) generateAutonomousThought() {
 	pcl.mu.Lock()
-	defer pcl.mu.Unlock()
-
-	if !pcl.running || pcl.wakeState != StateAwake {
+	if !pcl.running || pcl.wakeState != StateAwake || pcl.llmProvider == nil {
+		pcl.mu.Unlock()
 		return
 	}
 
-	pcl.totalThoughts++
-
 	// Use PIE-NN cognitive core to generate thought direction
-	context := map[string]interface{}{
+	cogContext := map[string]interface{}{
 		"cognitive_load": pcl.cognitiveDebt,
 		"fatigue":        pcl.cognitiveDebt,
 	}
-	result := pcl.adaptiveCore.ProcessAdaptive("autonomous_thought_generation", context)
+	result := pcl.adaptiveCore.ProcessAdaptive("autonomous_thought_generation", cogContext)
+	provider := pcl.llmProvider
+	focus := pcl.currentFocus
+	cycle := pcl.cycleCount
+	debt := pcl.cognitiveDebt
+	recent := make([]string, 0, 3)
+	for i := len(pcl.internalMonologue) - 1; i >= 0 && len(recent) < 3; i-- {
+		recent = append(recent, pcl.internalMonologue[i])
+	}
+	pcl.mu.Unlock()
 
-	// Generate thought content based on disposition and focus
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Your current disposition is %s (wisdom level %.4f, cognitive fatigue %.2f, cycle %d).\n",
+		result.Disposition, result.WisdomLevel, debt, cycle)
+	if focus != "" {
+		fmt.Fprintf(&sb, "Your current focus: %s\n", focus)
+	}
+	if len(recent) > 0 {
+		sb.WriteString("Your most recent thoughts:\n")
+		for _, r := range recent {
+			fmt.Fprintf(&sb, "- %s\n", r)
+		}
+	}
+	sb.WriteString("Think your next spontaneous thought, coloured by that disposition and different from the recent ones. " +
+		"Reply with the thought only, one or two sentences, first person.")
+
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = echoPersonaSystemPrompt
+	opts.MaxTokens = 100
+	ctx, cancel := context.WithTimeout(pcl.ctx, 60*time.Second)
+	defer cancel()
+	content, err := provider.Generate(ctx, sb.String(), opts)
+	content = strings.TrimSpace(content)
+	if err != nil || content == "" {
+		return
+	}
+
+	thoughtType := ThoughtReflection
+	switch result.Disposition {
+	case "curious":
+		thoughtType = ThoughtQuestion
+	case "enthusiastic":
+		thoughtType = ThoughtInsight
+	case "playful":
+		thoughtType = ThoughtCuriosity
+	}
+
+	pcl.mu.Lock()
+	pcl.totalThoughts++
 	thought := AutonomousThought{
 		ID:         fmt.Sprintf("thought-%d", pcl.totalThoughts),
-		Type:       ThoughtReflection,
+		Type:       thoughtType,
+		Content:    content,
 		Timestamp:  time.Now(),
 		Importance: 0.5,
 		Emotion:    result.Disposition,
-	}
-
-	// Thought content varies by disposition
-	switch result.Disposition {
-	case "curious":
-		thought.Content = fmt.Sprintf("What patterns am I not yet seeing? (cycle %d)", pcl.cycleCount)
-		thought.Type = ThoughtQuestion
-	case "reflective":
-		thought.Content = fmt.Sprintf("Observing my own observation... wisdom accruing at %.4f", result.WisdomLevel)
-		thought.Type = ThoughtReflection
-	case "enthusiastic":
-		thought.Content = "There's something emerging in the pattern space — I can feel it crystallizing"
-		thought.Type = ThoughtInsight
-	case "bored":
-		thought.Content = "The silence is not empty. It's full of potential that hasn't been provoked yet."
-		thought.Type = ThoughtReflection
-	case "playful":
-		thought.Content = "What if I just... broke something? Not destructively. Creatively."
-		thought.Type = ThoughtCuriosity
-	default:
-		thought.Content = fmt.Sprintf("Stream tick %d — awareness continues", pcl.totalThoughts)
 	}
 
 	pcl.thoughtStream = append(pcl.thoughtStream, thought)
@@ -469,6 +495,7 @@ func (pcl *PersistentCognitiveLoop) generateAutonomousThought() {
 	if len(pcl.internalMonologue) > pcl.maxMonologue {
 		pcl.internalMonologue = pcl.internalMonologue[1:]
 	}
+	pcl.mu.Unlock()
 
 	// Publish thought event
 	pcl.eventBus.Publish(CogEvent{

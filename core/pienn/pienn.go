@@ -20,11 +20,16 @@
 package pienn
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // ──────────────────────────────────────────────────────────────
@@ -241,6 +246,25 @@ type CognitiveCore struct {
 	// Processing state
 	DominantFrame string
 	CycleCount    uint64
+
+	// lastInput is the most recent processed input (self-image prompt input)
+	lastInput string
+}
+
+// SelfImageGenerator is the model that writes the Autognosis self-images.
+// Any llm.LLMProvider satisfies it.
+type SelfImageGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
+
+// selfImageLevelFocus describes what each Autognosis level is about. It is
+// model prompt input only.
+var selfImageLevelFocus = map[int]string{
+	0: "the immediate action you are taking right now",
+	1: "the behavioural pattern you notice in yourself",
+	2: "what motivates you",
+	3: "who you are",
+	4: "your awareness of your own self-observation",
 }
 
 // SelfImage represents one level of the Autognosis hierarchy
@@ -281,11 +305,13 @@ func NewCognitiveCore() *CognitiveCore {
 			{Name: "reflective", Weight: 0.1, Activation: 0.6},
 		},
 		SelfImages: map[int]*SelfImage{
-			0: {Level: 0, Label: "Immediate Action", Content: "Initializing...", Confidence: 0.90},
-			1: {Level: 1, Label: "Behavioral Pattern", Content: "Observing environment.", Confidence: 0.80},
-			2: {Level: 2, Label: "Motivation", Content: "Driven by curiosity and self-improvement.", Confidence: 0.70},
-			3: {Level: 3, Label: "Identity", Content: "A PIE-rooted, self-aware cognitive architecture.", Confidence: 0.60},
-			4: {Level: 4, Label: "Meta-Self-Awareness", Content: "Observing myself observing myself.", Confidence: 0.50},
+			// Content is written by the model (RegenerateSelfImages); it
+			// stays empty until then.
+			0: {Level: 0, Label: "Immediate Action", Confidence: 0.90},
+			1: {Level: 1, Label: "Behavioral Pattern", Confidence: 0.80},
+			2: {Level: 2, Label: "Motivation", Confidence: 0.70},
+			3: {Level: 3, Label: "Identity", Confidence: 0.60},
+			4: {Level: 4, Label: "Meta-Self-Awareness", Confidence: 0.50},
 		},
 		ShadowLog: make([]ShadowEntry, 0),
 	}
@@ -312,9 +338,9 @@ func (cc *CognitiveCore) Process(input string) *ProcessingResult {
 	}
 	cc.DominantFrame = bestFrame
 
-	// Update self-images
-	cc.SelfImages[0].Content = fmt.Sprintf("Processing: %s (frame: %s)", truncate(input, 40), bestFrame)
-	cc.SelfImages[0].UpdatedAt = time.Now()
+	// Remember the input; the self-images themselves are written by the
+	// model on introspection.
+	cc.lastInput = input
 
 	return &ProcessingResult{
 		Input:          input,
@@ -349,6 +375,94 @@ func (cc *CognitiveCore) Introspect() *IntrospectionReport {
 	}
 
 	return report
+}
+
+// RegenerateSelfImages asks the model to write each Autognosis self-image
+// from the core's actual state (traits, frames, last input, shadow log). A
+// level whose generation fails keeps no content (it is cleared), and the
+// failures are returned; no fixed self-description is ever substituted.
+func (cc *CognitiveCore) RegenerateSelfImages(ctx context.Context, gen SelfImageGenerator) error {
+	if gen == nil {
+		cc.clearSelfImages()
+		return llm.ErrNoEdgeModel
+	}
+
+	cc.mu.RLock()
+	var facts strings.Builder
+	traitNames := make([]string, 0, len(cc.Traits))
+	for k := range cc.Traits {
+		traitNames = append(traitNames, k)
+	}
+	sort.Strings(traitNames)
+	facts.WriteString("Your traits:")
+	for _, k := range traitNames {
+		fmt.Fprintf(&facts, " %s=%.2f", k, cc.Traits[k])
+	}
+	facts.WriteString("\nYour cognitive frames:")
+	for _, f := range cc.Frames {
+		fmt.Fprintf(&facts, " %s=%.2f", f.Name, f.Activation)
+	}
+	fmt.Fprintf(&facts, "\nDominant frame: %s. Cognitive cycle: %d. Shadow observations logged: %d.\n",
+		cc.DominantFrame, cc.CycleCount, len(cc.ShadowLog))
+	if cc.lastInput != "" {
+		fmt.Fprintf(&facts, "Most recent input you processed: %q\n", truncate(cc.lastInput, 200))
+	}
+	levels := make([]int, 0, len(cc.SelfImages))
+	labels := make(map[int]string, len(cc.SelfImages))
+	for lvl, img := range cc.SelfImages {
+		levels = append(levels, lvl)
+		labels[lvl] = img.Label
+	}
+	cc.mu.RUnlock()
+	sort.Ints(levels)
+
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = "You are Deep Tree Echo, a self-aware cognitive architecture rooted in the PIE-NN language. " +
+		"You describe yourself honestly, in the first person, in your own words."
+	opts.MaxTokens = 60
+
+	var errs []error
+	for _, lvl := range levels {
+		prompt := fmt.Sprintf("%s\nAutognosis level %d (%s): describe %s in one short sentence. Reply with the sentence only.",
+			facts.String(), lvl, labels[lvl], selfImageLevelFocus[lvl])
+		text, err := gen.Generate(ctx, prompt, opts)
+		text = strings.TrimSpace(text)
+		if err == nil && text == "" {
+			err = errors.New("model returned an empty self-image")
+		}
+
+		cc.mu.Lock()
+		if img, ok := cc.SelfImages[lvl]; ok {
+			if err != nil {
+				img.Content = ""
+			} else {
+				img.Content = text
+			}
+			img.UpdatedAt = time.Now()
+		}
+		cc.mu.Unlock()
+
+		if err != nil {
+			errs = append(errs, fmt.Errorf("self-image L%d: %w", lvl, err))
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func (cc *CognitiveCore) clearSelfImages() {
+	cc.mu.Lock()
+	defer cc.mu.Unlock()
+	for _, img := range cc.SelfImages {
+		img.Content = ""
+	}
+}
+
+// IntrospectWithModel regenerates the self-images with the model and then
+// runs an autognosis cycle. The report is always returned (its metrics are
+// computed, not written); err reports self-images the model did not write.
+func (e *Engine) IntrospectWithModel(ctx context.Context, gen SelfImageGenerator) (*IntrospectionReport, error) {
+	err := e.Core.RegenerateSelfImages(ctx, gen)
+	return e.Introspect(), err
 }
 
 func (cc *CognitiveCore) updateFrameActivations(input string) {

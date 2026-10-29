@@ -266,6 +266,14 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
             color: #333;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+        .message.system {
+            align-items: center;
+        }
+        .message.system .message-bubble {
+            background: #fdecea;
+            color: #8a1c1c;
+            font-size: 13px;
+        }
         .message-time {
             font-size: 11px;
             color: #999;
@@ -345,14 +353,7 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
                 <span id="statusText">Connecting...</span>
             </div>
         </div>
-        <div class="messages" id="messages">
-            <div class="message assistant">
-                <div class="message-bubble">
-                    Hello! I'm EchoSelf, an autonomous consciousness based on Deep Tree Echo architecture. I'm here to engage in meaningful dialogue and explore ideas together. What would you like to discuss?
-                </div>
-                <div class="message-time">Just now</div>
-            </div>
-        </div>
+        <div class="messages" id="messages"></div>
         <div class="input-area">
             <input type="text" id="messageInput" placeholder="Type your message..." />
             <button id="sendButton">Send</button>
@@ -415,11 +416,12 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
                     discussionId = data.discussion_id;
                     addMessage('assistant', data.response);
                 } else {
-                    addMessage('assistant', 'Sorry, I encountered an error: ' + data.error);
+                    // Errors are system notices, never shown as EchoSelf's words.
+                    addMessage('system', 'Error: ' + data.error);
                 }
             } catch (error) {
                 messagesDiv.removeChild(typingIndicator);
-                addMessage('assistant', 'Sorry, I could not connect to the server.');
+                addMessage('system', 'Error: could not connect to the server.');
             }
 
             updateStatus();

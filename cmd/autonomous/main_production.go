@@ -35,7 +35,7 @@ func main() {
 	if provider.Available() {
 		log.Printf("LLM substrate ready: %s", provider.Name())
 	} else {
-		log.Printf("No remote LLM provider is currently available; fallback cognition remains active")
+		log.Printf("No model provider is available: Echo stays silent until one is mounted (ECHO_MODEL_PATHS or an API key)")
 	}
 
 	orchestrator := newProductionOrchestrator(provider)

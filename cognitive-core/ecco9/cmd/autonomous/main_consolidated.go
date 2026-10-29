@@ -370,13 +370,15 @@ func handleThink(c *gin.Context) {
 }
 
 func handleWake(c *gin.Context) {
-	// Wake functionality would be implemented in consciousness
-	c.JSON(http.StatusOK, gin.H{"status": "wake signal sent"})
+	// The consolidated consciousness exposes no wake control; do not claim a
+	// wake signal was sent.
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "wake control is not exposed by the consolidated consciousness"})
 }
 
 func handleRest(c *gin.Context) {
-	// Rest functionality would be implemented in consciousness
-	c.JSON(http.StatusOK, gin.H{"status": "rest signal sent"})
+	// The consolidated consciousness exposes no rest control; do not claim a
+	// rest signal was sent.
+	c.JSON(http.StatusNotImplemented, gin.H{"error": "rest control is not exposed by the consolidated consciousness"})
 }
 
 func handleMetrics(c *gin.Context) {

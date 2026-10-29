@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -156,7 +157,11 @@ func (soc *EnhancedStreamOfConsciousness) generateThought() {
 	context["emotional_tone"] = soc.emotionalTone
 
 	if len(soc.recentExperiences) > 0 {
-		context["recent_experiences"] = soc.recentExperiences[len(soc.recentExperiences)-3:]
+		start := len(soc.recentExperiences) - 3
+		if start < 0 {
+			start = 0
+		}
+		context["recent_experiences"] = soc.recentExperiences[start:]
 	}
 
 	if soc.currentFocus != "" {
@@ -187,15 +192,19 @@ func (soc *EnhancedStreamOfConsciousness) generateThought() {
 		fmt.Printf("⚠️  Stream-of-Consciousness: Failed to generate thought: %v\n", err)
 		return
 	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return
+	}
 
 	// Create thought object
 	thought := &Thought{
 		ID:            uuid.New().String(),
 		Timestamp:     time.Now(),
-		Type:          soc.selectThoughtType(),
+		Type:          classifyThoughtContent(content),
 		Content:       content,
 		Source:        "stream_of_consciousness",
-		Confidence:    0.7 + rand.Float64()*0.2,
+		Confidence:    soc.currentAwareness(),
 		EmotionalTone: soc.copyEmotionalTone(),
 		Context:       context,
 		RelatedTo:     []string{},
@@ -230,21 +239,6 @@ func (soc *EnhancedStreamOfConsciousness) buildThoughtPrompt(context map[string]
 	}
 
 	return prompts[rand.Intn(len(prompts))]
-}
-
-// selectThoughtType chooses an appropriate thought type
-func (soc *EnhancedStreamOfConsciousness) selectThoughtType() ThoughtType {
-	types := []ThoughtType{
-		ThoughtTypeReflection,
-		ThoughtTypeReflection, // More likely
-		ThoughtTypeQuestion,
-		ThoughtTypeInsight,
-		ThoughtTypeMetaCognition,
-		ThoughtTypeWonder,
-		ThoughtTypeConnection,
-	}
-
-	return types[rand.Intn(len(types))]
 }
 
 // insightGeneration periodically generates insights from recent thoughts
@@ -287,6 +281,10 @@ func (soc *EnhancedStreamOfConsciousness) generateInsight() {
 	insight, err := soc.llmProvider.GenerateInsight(thoughts)
 	if err != nil {
 		fmt.Printf("⚠️  Stream-of-Consciousness: Failed to generate insight: %v\n", err)
+		return
+	}
+	insight = strings.TrimSpace(insight)
+	if insight == "" {
 		return
 	}
 
@@ -346,6 +344,10 @@ func (soc *EnhancedStreamOfConsciousness) generateQuestion() {
 		fmt.Printf("⚠️  Stream-of-Consciousness: Failed to generate question: %v\n", err)
 		return
 	}
+	question = strings.TrimSpace(question)
+	if question == "" {
+		return
+	}
 
 	// Create question thought
 	questionThought := &Thought{
@@ -390,12 +392,56 @@ func (soc *EnhancedStreamOfConsciousness) performMetaCognition() {
 	thoughtCount := soc.thoughtsGenerated
 	insightCount := soc.insightsGenerated
 	questionCount := soc.questionsAsked
+	llm := soc.llmProvider
+	running := soc.running
 	soc.mu.RUnlock()
 
-	metaThought := fmt.Sprintf("Meta-cognition: I have generated %d thoughts, %d insights, and %d questions. My awareness continues to evolve.",
+	if !running || llm == nil {
+		return
+	}
+
+	prompt := fmt.Sprintf("Reflect meta-cognitively on your own thinking process. So far you have generated %d thoughts, %d insights and %d questions. "+
+		"In one or two sentences, describe what you notice about how you are thinking.",
 		thoughtCount, insightCount, questionCount)
+	metaThought, err := llm.GenerateThought(prompt, map[string]interface{}{
+		"thought_count":  thoughtCount,
+		"insight_count":  insightCount,
+		"question_count": questionCount,
+	})
+	if err != nil {
+		fmt.Printf("⚠️  Stream-of-Consciousness: Failed to generate meta-cognition: %v\n", err)
+		return
+	}
+	metaThought = strings.TrimSpace(metaThought)
+	if metaThought == "" {
+		return
+	}
+
+	thought := &Thought{
+		ID:            uuid.New().String(),
+		Timestamp:     time.Now(),
+		Type:          ThoughtTypeMetaCognition,
+		Content:       metaThought,
+		Source:        "metacognitive_monitor",
+		Confidence:    soc.currentAwareness(),
+		EmotionalTone: soc.copyEmotionalTone(),
+		Context:       map[string]interface{}{"source": "metacognition"},
+	}
+
+	soc.mu.Lock()
+	soc.thoughtHistory = append(soc.thoughtHistory, thought)
+	if len(soc.thoughtHistory) > soc.maxHistorySize {
+		soc.thoughtHistory = soc.thoughtHistory[1:]
+	}
+	soc.mu.Unlock()
 
 	fmt.Printf("🧠 %s\n", metaThought)
+}
+
+func (soc *EnhancedStreamOfConsciousness) currentAwareness() float64 {
+	soc.mu.RLock()
+	defer soc.mu.RUnlock()
+	return soc.awarenessLevel
 }
 
 // AddExternalStimulus adds external input to consciousness

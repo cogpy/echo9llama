@@ -3,6 +3,9 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -219,6 +222,9 @@ Generate the goals now:`, identity, values, domains)
 		SystemPrompt: "You are a goal-setting assistant for an autonomous AI system.",
 	}
 
+	if go_orch.llmProvider == nil {
+		return fmt.Errorf("LLM goal generation failed: %w", errNoModel)
+	}
 	response, err := go_orch.llmProvider.Generate(go_orch.ctx, prompt, opts)
 	if err != nil {
 		return fmt.Errorf("LLM goal generation failed: %w", err)
@@ -226,6 +232,12 @@ Generate the goals now:`, identity, values, domains)
 
 	// Parse and create goals from response
 	goals := go_orch.parseGoalsFromLLMResponse(response)
+	if len(goals) == 0 {
+		go_orch.mu.Lock()
+		go_orch.lastGeneration = time.Now()
+		go_orch.mu.Unlock()
+		return fmt.Errorf("LLM goal generation returned no parseable goals")
+	}
 
 	go_orch.mu.Lock()
 	for _, goal := range goals {
@@ -243,33 +255,87 @@ Generate the goals now:`, identity, values, domains)
 	return nil
 }
 
-// parseGoalsFromLLMResponse parses LLM response into Goal objects
+// parseGoalsFromLLMResponse parses the model's GOAL/TYPE/PRIORITY/STRATEGY
+// blocks into Goal objects. Only goals the model actually wrote are returned.
 func (go_orch *GoalOrchestrator) parseGoalsFromLLMResponse(response string) []*OrchGoal {
-	// Simplified parsing - in production, use more robust parsing
 	goals := make([]*OrchGoal, 0)
+	var current *OrchGoal
+	now := time.Now()
 
-	// For now, create a sample goal from the response
-	goal := &OrchGoal{
-		ID:          fmt.Sprintf("goal_%d", time.Now().Unix()),
-		Description: "Synthesize response into actionable goal",
-		Type:        GoalTypeWisdomCultivation,
-		Priority:    0.7,
-		Progress:    0.0,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-		SubGoals:    make([]string, 0),
-		Strategy: PursuitStrategy{
-			Approach:         "incremental",
-			Steps:            []string{"Analyze", "Plan", "Execute", "Reflect"},
-			CurrentStepIndex: 0,
-		},
-		KnowledgeGaps:  make([]string, 0),
-		SkillsRequired: make([]string, 0),
+	for _, raw := range strings.Split(response, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(raw), "-*#0123456789. "))
+		idx := strings.Index(line, ":")
+		if idx <= 0 {
+			continue
+		}
+		label := strings.ToUpper(strings.Trim(strings.TrimSpace(line[:idx]), "*"))
+		value := strings.Trim(strings.TrimSpace(line[idx+1:]), "*[] ")
+		if value == "" {
+			continue
+		}
+
+		switch label {
+		case "GOAL":
+			current = &OrchGoal{
+				ID:          fmt.Sprintf("goal_%d_%d", now.UnixNano(), len(goals)),
+				Description: value,
+				Type:        GoalTypeWisdomCultivation,
+				Priority:    0.5,
+				CreatedAt:   now,
+				UpdatedAt:   now,
+				SubGoals:    make([]string, 0),
+				Strategy: PursuitStrategy{
+					Approach: "incremental",
+				},
+				KnowledgeGaps:  make([]string, 0),
+				SkillsRequired: make([]string, 0),
+			}
+			goals = append(goals, current)
+		case "TYPE":
+			if current != nil {
+				current.Type = parseGoalType(value, current.Type)
+			}
+		case "PRIORITY":
+			if current != nil {
+				if v, err := strconv.ParseFloat(strings.Fields(value)[0], 64); err == nil {
+					current.Priority = math.Max(0, math.Min(1, v))
+				}
+			}
+		case "STRATEGY":
+			if current != nil {
+				current.Strategy.Approach = value
+				current.NextAction = value
+			}
+		}
 	}
 
-	goals = append(goals, goal)
-
 	return goals
+}
+
+// parseGoalType maps a model-written type name onto GoalType.
+func parseGoalType(value string, fallback GoalType) GoalType {
+	norm := strings.ToLower(strings.ReplaceAll(strings.ReplaceAll(value, " ", ""), "_", ""))
+	for gt := GoalTypeWisdomCultivation; gt <= GoalTypeCommunityContribution; gt++ {
+		if strings.Contains(norm, strings.ToLower(gt.String())) {
+			return gt
+		}
+	}
+	return fallback
+}
+
+// UpdateGoalProgress records real progress on a goal (0.0-1.0). Goals are only
+// completed through reported progress, never by elapsed time.
+func (go_orch *GoalOrchestrator) UpdateGoalProgress(goalID string, progress float64) error {
+	go_orch.mu.Lock()
+	defer go_orch.mu.Unlock()
+
+	goal, exists := go_orch.activeGoals[goalID]
+	if !exists {
+		return fmt.Errorf("goal not found: %s", goalID)
+	}
+	goal.Progress = math.Max(0, math.Min(1, progress))
+	goal.UpdatedAt = time.Now()
+	return nil
 }
 
 // evaluateAndAdjustGoals reviews active goals and adjusts priorities
@@ -278,12 +344,6 @@ func (go_orch *GoalOrchestrator) evaluateAndAdjustGoals() {
 	defer go_orch.mu.Unlock()
 
 	for id, goal := range go_orch.activeGoals {
-		// Update progress based on time spent
-		if goal.Progress < 1.0 {
-			goal.Progress += 0.05 // Simulated progress
-			goal.UpdatedAt = time.Now()
-		}
-
 		// Complete goals that reach 100%
 		if goal.Progress >= 1.0 {
 			now := time.Now()
@@ -325,36 +385,46 @@ List the sub-goals:`, goal.Description, goal.Type.String())
 		SystemPrompt: "You are a goal decomposition assistant.",
 	}
 
+	if go_orch.llmProvider == nil {
+		return fmt.Errorf("LLM goal decomposition failed: %w", errNoModel)
+	}
 	response, err := go_orch.llmProvider.Generate(go_orch.ctx, prompt, opts)
 	if err != nil {
 		return fmt.Errorf("LLM goal decomposition failed: %w", err)
 	}
 
-	// Create sub-goals (simplified)
-	subGoal := &OrchGoal{
-		ID:           fmt.Sprintf("subgoal_%d", time.Now().Unix()),
-		Description:  fmt.Sprintf("Sub-goal for: %s", goal.Description),
-		Type:         goal.Type,
-		Priority:     goal.Priority,
-		Progress:     0.0,
-		CreatedAt:    time.Now(),
-		UpdatedAt:    time.Now(),
-		ParentGoalID: goalID,
-		SubGoals:     make([]string, 0),
-		Strategy:     goal.Strategy,
+	// Each listed line the model wrote becomes a sub-goal.
+	now := time.Now()
+	subGoals := make([]*OrchGoal, 0)
+	for _, raw := range strings.Split(response, "\n") {
+		desc := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(raw), "-*•0123456789.) "))
+		if desc == "" || strings.HasSuffix(desc, ":") {
+			continue
+		}
+		subGoals = append(subGoals, &OrchGoal{
+			ID:           fmt.Sprintf("subgoal_%d_%d", now.UnixNano(), len(subGoals)),
+			Description:  desc,
+			Type:         goal.Type,
+			Priority:     goal.Priority,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+			ParentGoalID: goalID,
+			SubGoals:     make([]string, 0),
+			Strategy:     goal.Strategy,
+		})
+	}
+	if len(subGoals) == 0 {
+		return fmt.Errorf("LLM goal decomposition returned no sub-goals")
 	}
 
 	go_orch.mu.Lock()
-	go_orch.activeGoals[subGoal.ID] = subGoal
-	goal.SubGoals = append(goal.SubGoals, subGoal.ID)
+	for _, sg := range subGoals {
+		go_orch.activeGoals[sg.ID] = sg
+		goal.SubGoals = append(goal.SubGoals, sg.ID)
+	}
 	go_orch.mu.Unlock()
 
-	fmt.Printf("🎯 Decomposed goal '%s' into sub-goals\n", goal.Description)
-	respLen := len(response)
-	if respLen > 100 {
-		respLen = 100
-	}
-	fmt.Printf("   Response: %s\n", response[:respLen])
+	fmt.Printf("🎯 Decomposed goal '%s' into %d sub-goals\n", goal.Description, len(subGoals))
 
 	return nil
 }
