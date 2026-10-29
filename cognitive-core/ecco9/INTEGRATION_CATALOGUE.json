@@ -263,31 +263,31 @@
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "6e510ca81011edbc2791c2ecf54d1fc91b77f890bd48c43dc2bb83592c2c9187"
+      "sha256": "b09301956398ade2fd534d52eb216652405c7b37738f82d20f5af3e40ab297ef"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main_consolidated.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "9a85fc1b41a4f39eb5330f200f716c2ffc98c652913432bc99e40b3a5b56872a"
+      "sha256": "06ec8f8f43b44ff83d9c53558ca987015fdf29ebea4c682268ca13394eac1405"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/autonomous/main_simple_consolidated.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "40f796df3e777f8f1e80d89630da139ff1a638d1ffb9b0bf27576512474c642a"
+      "sha256": "b5c41c11db085348d61785b41cd58cba2adfe83678bd9dfa5bc65866e0caa03f"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "cmd/autonomous_v6/main.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "749b449c141dba9111a7023461a72d50965034e1cb8b5bbb6e3625b918ebe1de"
+      "sha256": "05895ca2888ee4183fb49ebdea39b16e1b6086b926b3218e98d4795baed963a0"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/chatserver/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "690f078ebbca87ca770319b8733dae2b9ba67208e1acd13f5b6def79a61e6773"
+      "sha256": "9de7093ee94eb425feac9e583014bc5bef4e7c0caf7a8c143c4caf283f9250f9"
     },
     {
       "disposition": "preserved_divergent",
@@ -305,13 +305,13 @@
       "disposition": "preserved_unreviewed",
       "path": "cmd/ecco9-admin/main.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "480d7809a0feacc017c3b69d1f4a66c60ebcadda104075d39073cd47e05504c0"
+      "sha256": "5e9287183ca11cbe03da80fc7b38796afd358cebb795fc4f29b4d13bc679c022"
     },
     {
       "disposition": "preserved_divergent",
       "path": "cmd/echo.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "87ab96ea4aecd2c9d2a2d7d63280ca8714a929ef7445a77a9b29fe2e90e4adcd"
+      "sha256": "fb98218911bc8564c1101df42afcf85281e390875ac6bb5b6234d4e0a9c00da2"
     },
     {
       "disposition": "preserved_divergent",
@@ -1067,37 +1067,37 @@
       "disposition": "preserved_divergent",
       "path": "core/hgql/constructors.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "0f0e77c61d4d07a4426326f6ab5f3ab47754533ca704e4c82bea961c4ee476ad"
+      "sha256": "6de66371defec8dfaac17f3ccf46a34ae4f0c7cc7720ef11fe75bd0ffb221f89"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/hgql/hgql.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "73589eb53b2b5266bdded96b9bf0e6660b53d8aec16cf513c80eb5607f229368"
+      "sha256": "346a7971f2cd90ae6360787148a2c224382144cfd1253d9b75ed2f8fdcac08fe"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/hgql/runtime.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "cc6c573a777574adde82184d6eed01b93a4cba45fea3782a384ca5571fc91f5f"
+      "sha256": "e176a87c6ba94d6df1587c8b1d4b2ada7ea64efbf324eec07640069cc3e4417d"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/hgql/tensor_integration.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "8d6cc881834b0c802d0eee1a830b705f259dd7ab0fe5cc47c815d5c1b6f1c2d0"
+      "sha256": "47a7389b200581c9719348e2334127228823da50544e64f13eac78dba99cbedf"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/hgql/tensor_threading.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "db0ad61d80d052caf98daa2d7bdbfa11cc0b362896e1355d9ca72baf3b267f59"
+      "sha256": "c41989ddbb5ac1c65ae9f3e2d112dd8b8c4a14c4bc14dd9d22ce0319fefb66eb"
     },
     {
       "disposition": "preserved_divergent",
       "path": "core/hgql/types.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "7500ec2beb0f16a11d04b340009daa64a7d1ee864c29ef91b9e48e07f3117a51"
+      "sha256": "1eb8ad4653ea3aef0bf2b6e39ffd7ccf849c35f19d693c568e4a0346413838de"
     },
     {
       "disposition": "canonical_same_path_exact",
@@ -1223,7 +1223,7 @@
       "disposition": "preserved_divergent",
       "path": "core/opencog/echocog_integration.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "df66e4880940c883e0d1918debb785d210582b993a2b111c2cfbb62763063686"
+      "sha256": "155e9329e092a31051c0c4b1417998b240c5d73c795d003e1fe51a13e4db7fd3"
     },
     {
       "disposition": "preserved_divergent",
@@ -1235,7 +1235,7 @@
       "disposition": "preserved_divergent",
       "path": "core/opencog/opencog_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "7d9899167bce37cc7590a7f410d6a781ede67b377006fd43b8d37f059e4943fa"
+      "sha256": "33b0ccd68a9cd1e15603645f65602e857d4321bdb944830d06e564204a3ac3ab"
     },
     {
       "disposition": "preserved_divergent",
@@ -1535,7 +1535,7 @@
       "disposition": "preserved_divergent",
       "path": "examples/relevance_demo.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "7fde5c0684e5dde1bad3588e6455fb27d4af987f1cb094431bac7ffeb17b74db"
+      "sha256": "15c230b631e8fdeba5d2e67e3c9b3a95c0453978a5090c483d1fa4affc7241d9"
     },
     {
       "disposition": "preserved_divergent",
@@ -2447,13 +2447,13 @@
       "disposition": "preserved_unreviewed",
       "path": "org/framework_integration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "cab0028ff8aa1cca25723159603e1a585654d85abb7e12bb15f0ef7c026d6402"
+      "sha256": "76cd4def0578d8d54f54cbd57e7fccc95cfaebba80d92cf534334f3e475f8b6a"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "org/identity_framework.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "d3972e7bc34dcba8b9c93ab40e0d7704caf6269a76403c7ed0196e7fa2290fdd"
+      "sha256": "5cd69597c0bb3ccf20021b8c624c128f224fba98ef977b0f7f769b21b414c9a7"
     },
     {
       "disposition": "canonical_same_path_exact",
@@ -2669,13 +2669,13 @@
       "disposition": "preserved_divergent",
       "path": "server/autonomous/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "3d5b335836cbd7de6a7ed346d1d1fb07d28e792ef45e04f19cf287cf6cdcb5c8"
+      "sha256": "28d46aea836c6060c8676ce54f055d4ddf37da36d7e4b87fd5f3c388cf0002e5"
     },
     {
       "disposition": "preserved_divergent",
       "path": "server/autonomous/main_enhanced.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "e0f6b78a7db721dcea7d7c2733f16e980ed66460be510b51634f056db8e9bcfe"
+      "sha256": "d65b9358c2441d964ae79ba19f489a91708e3d6e04e8022dfed97817f0440616"
     },
     {
       "disposition": "preserved_divergent",
@@ -2723,7 +2723,7 @@
       "disposition": "preserved_divergent",
       "path": "server/hgql/server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "96fbfe4303875d62a661e3aa6ac8cff88fe7cc468815ea2a9084f3e1ef6ad16e"
+      "sha256": "a5e3c3df81227afd1cd958bbd9fcef1c960c2feaca6aa5bdaaa14468c4e2f20f"
     },
     {
       "disposition": "preserved_divergent",
@@ -3005,13 +3005,13 @@
       "disposition": "preserved_divergent",
       "path": "server/simple/autonomous_unified_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "c39c1208389c5113c89de4d5afa6bec9ac5ae29d0a639a08bcbf662ced851092"
+      "sha256": "9476b522d6c8a374abae3aa712f7c64ea2cb118631f3f6d660d8170b199f86b0"
     },
     {
       "disposition": "preserved_divergent",
       "path": "server/simple/autonomous_v4_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "28b0be765d19f81d3b7eec4a921afc0ee3450a9b85fb8271054ea20abdb93cf0"
+      "sha256": "39e19bfc396964fee4a6b2099ecbb62312d1c8e1ab093e097d7c27b48cd1c737"
     },
     {
       "disposition": "preserved_divergent",
@@ -3041,7 +3041,7 @@
       "disposition": "preserved_divergent",
       "path": "server/simple/enhanced_autonomous_server.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "72a4425adcd1fbf6a4d326741d503fea4642e92aaf3c88cc5fc70e98eddec4ff"
+      "sha256": "ace2a0d526da927d6ad6fcfcd3517244fc87fabe18c578c48f482ccd22937f1f"
     },
     {
       "disposition": "preserved_divergent",
@@ -3101,85 +3101,85 @@
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_agent_iteration.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "930cc64879cbbc9ffa5f1b56a00290edcda0c90d37aa889312e9962e801498c0"
+      "sha256": "4a9fe7d3c9e0238884c750359ad287406f06fd9ec34620c83cf3bd193c1edc70"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_agent_nov22.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "66b5ba9ab431f3fdfcd36332609f1d2eb326f664cba7e5106f6569d8c4cc74ca"
+      "sha256": "6b7befb1c5a88561dee4c262044f44c9f8336a43d6ed6c63b8b5a8af071af7c6"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_echoself.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "dac253096a26dd9197e29a8a74cbbaa78dc194c7bcf3bdec3306c10bb839d051"
+      "sha256": "8a983d8204401ffaa0efb3b6245fb154dd9db6b5fea6b00128ec59a6cbdefabc"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_echoself_integrated.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "ab2b78f993e4d2935bd4582e3f942388b386c4d8961f09b11c665add2919e1d9"
+      "sha256": "a9a8222e2a8609d94a7a3c1dd571d435e008595d7d2cce49df1e6f3c02e2dd2d"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_echoself_v2.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "68c20744c27b7559d8a384610fc4de1dcc1b4a636ef452deb2606d11e50361e8"
+      "sha256": "5fc3b79c2c30bb7fc2f907e1e13aca97d3b119a898d3ac9e915271905e50495b"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_evolution.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "8a9533187aa0c777eda0a501f3553c6ba5f6ac5fd23c6d5f874b280983a57464"
+      "sha256": "a38ec18e1be77edbaa0a9df01449d65596462c8461fc1e6e8aef320e3355ad17"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_llm.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "670c9ff0eb0ba124d4cd415ce271f61b34edb97cb6704fe049110799c0f11a84"
+      "sha256": "9c798e1a165618dccd4ddc820049c1e3dbaea6b3cfe542f022163e2dfe141ae8"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_simple.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "68d4e10307754551f12c808f850fec6c747026b1324cf27c327c0a2a53cf2261"
+      "sha256": "abd878929af917d06b8acbb2c0f52d29abce10b3577c3e62e0c55c2b8cbcbe28"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_v13.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "7e5fc350ddce16e43de713bd06114e2dc8ea338816ff55c11b370bf03525f121"
+      "sha256": "0df15e570d52b658615749e2ec309de77671f95e0325f8dd008fd381e263ad03"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_v3.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "0713d92cfbaeaaddd2cbb53d0573938382d5ef40f6ed92d0399b88ff0ee4e313"
+      "sha256": "af5b8c9a09a1eede311e636e3bfd7acb807ca9d54b70aaad58df262deed84614"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_v4.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "6e2aad1fa0f06d20c2250ea005aad40a0259a664776e8a7a91fcaa4a5d7608fd"
+      "sha256": "e5f5f42d12d86222390f274d5c836e461c166c70395ee3515c78b7418c12f824"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_v5.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "e3954e55ea6cce48af656f3e2e675afcdd8c4d3bf58e1b3cbe12c66b29c6fcf5"
+      "sha256": "585fab347dd3019682a7b6ae18284753ee15312d8ca72936af029663c5a07817"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_autonomous_v6.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "a7dfcf545f93c536cb5b40f72a556c4686fb08de52fcb6ba8cc4be5e8272c589"
+      "sha256": "cdbeef54c5a4140c932fbed4fddb7d9364c5f7eff9fa98d31fd1bec526da41d5"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_entelechy_ontogenesis.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "0c288d1aa0278a7ab6f621f1697baa7db30b76fa8343479e8834690396dbb5bc"
+      "sha256": "25a80f99ad81febd92e8df583ae8dbc275857626f5f28e0aef8ecbfee83ac791"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3191,37 +3191,37 @@
       "disposition": "preserved_unreviewed",
       "path": "test_evolution_phase2.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "34c9304a6fa4f3a15dcebd288a70270ffe2deb305057c04f33569e90854941b2"
+      "sha256": "f7a3bece6252d1f8360367b3638782757c536393cd2cd34af23e20f0492408c6"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_iteration5.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "ea4f47b9f24c4ffeb63b529d2c73f85c251b37e3935303ca004bf242282fa0d1"
+      "sha256": "8f663ef7e0967453fe9988fdfebbf15ab9873b84491b534b6242bdf86e85d845"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_iteration_nov21.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "9af8affa79904a448ae9ab65ad78af964c46466e5c1b688060e4f000cbcb32f4"
+      "sha256": "002a15aa32e64bb5545f47135827a20c7783c17c4d04541d7f5f9bedfcab27c5"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_llm_v6_simple.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "6b44e91bd2657939ef6c58dd9aeb52a14737f5c76c1c15286126de401cdfc5bf"
+      "sha256": "e04c3e1ee2789b942a335fc2e009ce185c3225dae1e0da0117e88add4bb4dc8c"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_new_features_simple.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "0ac02786897f537c82181ceacf8d41cd723ffa10556b9b9373519a7784da89f9"
+      "sha256": "a31f7a19eea0797f65698773becfcc28d4574860edc951f2c805075ad77f207e"
     },
     {
       "disposition": "preserved_unreviewed",
       "path": "test_persistence.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "f6e1aebb1a9a632912cb100bfb75cfaa15244a47aea188c7474a6296ff0f0bb6"
+      "sha256": "e6008dee3334e0a4403ba60cc89bede86b2a22a69f8696493e44f05ac21dc94d"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -3233,7 +3233,7 @@
       "disposition": "preserved_unreviewed",
       "path": "test_unified_autonomous.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "2ce515c9cfa04232144530f09979413a288203baf743b613c59f192973de879d"
+      "sha256": "57b9b5dd5a89d9898fee2ac4e8ca16bcabedb604e6db8cc2c304f4ee48a343b0"
     },
     {
       "disposition": "preserved_divergent",
