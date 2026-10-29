@@ -3,7 +3,7 @@
 This directory preserves **all 553 tracked Go files** from
 `https://github.com/o9nn/ecco9.git` at commit `1b22401ee8842fd1aa2769b688d588cd9f1f9ce9` plus 45 files required by Go embed
 directives and 3 applicable license files. Every imported byte is
-inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `4457602637e32fa7c1058a7e40d7ecdd7b08e398443ba8f50f6cba4ea415b6ee`).
+inventoried in `LINEAGE_MANIFEST.json` (manifest SHA-256 `d1ce16f6a68f138e93c7c2a9a95d29ece1011f432574bedf94187bd50af06e14`).
 
 The snapshot is a **nested Go module and evidence boundary**, not a second
 canonical runtime. Files retain their upstream package paths and are not copied
@@ -14,7 +14,7 @@ packages remain preserved for staged repair and promotion.
 
 `INTEGRATION_CATALOGUE.json` assigns every preserved Go file an explicit
 disposition. Current counts are `{"active_adapter_source": 6, "canonical_same_path_exact": 146, "preserved_divergent": 330, "preserved_unreviewed": 71}`;
-catalogue SHA-256 is `b388efb9e3ade5d26818701a90ea71d63843122ea0a5ac2679e9c0e69b599278`.
+catalogue SHA-256 is `53a7c8349889af8e7c27aefb1d9efa28fff991ef2aa5299c3a0135da72b053dc`.
 
 `go.mod.upstream` and `go.sum.upstream` preserve the upstream module graph. The
 minimal local `go.mod` prevents unreviewed transitive dependencies from entering
@@ -30,7 +30,7 @@ python3 scripts/sync_ecco9_cognitive_core.py /tmp/ecco9-source
 
 ## Local patches
 
-110 preserved files carry local patches and 14 Go files were added locally (model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent). Each patched record in `LINEAGE_MANIFEST.json` keeps its upstream bytes and SHA-256 in `upstream_bytes`/`upstream_sha256`. Re-pin after editing with:
+118 preserved files carry local patches and 14 Go files were added locally (model-only character text: canned, templated, random-choice and fallback output replaced by model queries; no text when the model is absent). Each patched record in `LINEAGE_MANIFEST.json` keeps its upstream bytes and SHA-256 in `upstream_bytes`/`upstream_sha256`. Re-pin after editing with:
 
 ```bash
 python3 scripts/sync_ecco9_cognitive_core.py --repin-local-patches

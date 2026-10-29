@@ -413,7 +413,7 @@ func (ewm *EnhancedWisdomMetrics) PrintWisdomReport() {
 
 	fmt.Println("\n🌟 ═══════════════════════════════════════")
 	fmt.Println("🌟 Wisdom Cultivation Report")
-	fmt.Println("🌟 ═══════════════════════════════════════\n")
+	fmt.Println("🌟 ═══════════════════════════════════════")
 
 	fmt.Printf("Overall Wisdom Score: %.2f / 1.00\n", ewm.OverallWisdom)
 	fmt.Printf("Improvement Rate: %.4f per hour\n", ewm.ImprovementRate)
@@ -441,7 +441,7 @@ func (ewm *EnhancedWisdomMetrics) PrintWisdomReport() {
 		fmt.Printf("%-25s %s %.2f (%s)\n", dim.name+":", bar, dim.value, assessment)
 	}
 
-	fmt.Println("\n🌟 ═══════════════════════════════════════\n")
+	fmt.Println("\n🌟 ═══════════════════════════════════════")
 }
 
 // createProgressBar creates a visual progress bar

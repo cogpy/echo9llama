@@ -317,7 +317,7 @@
       "disposition": "preserved_divergent",
       "path": "cmd/echoself/main.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "addf7a2f4e78b2cb5ec209228eef3ce7a7c30f1774027703cecadab5c38ab53d"
+      "sha256": "654b074d8c1e9021e30c53a233e02a7929325256217f6cb00a3c785f6517c4f2"
     },
     {
       "disposition": "preserved_divergent",
@@ -545,7 +545,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/autonomous_agent.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "691970d416169b20be1246e1521b52df465645a1c63bb3f66b5c0dcd18602248"
+      "sha256": "dd3dfdfd88606be50a6e63d2c97cfa08489e36cfe31875f8d11bf05432099a93"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -725,7 +725,7 @@
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/opponent_persona_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "5e7b23661d8dc78bf52704273fb21f6f4be7e75b019a0d6b2116eb023b4c00a6"
+      "sha256": "7af8f6c4e0f1204ba395810710f695085ed2add575502b53b94293cc335e8a4b"
     },
     {
       "disposition": "preserved_divergent",
@@ -737,7 +737,7 @@
       "disposition": "preserved_divergent",
       "path": "core/deeptreeecho/persona_manager_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "88393257fe5ec12d6c3073d25754adf1b1938999f0764f588807f6fa755b6445"
+      "sha256": "406da874bb26de95dbbff0d4b3e9aa65b15c8803188ce9b20dfb673c9f1ea897"
     },
     {
       "disposition": "preserved_divergent",
@@ -761,7 +761,7 @@
       "disposition": "preserved_unreviewed",
       "path": "core/deeptreeecho/self_assessment_test.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "a2aa94ad0c2276606a50dc9fb3052380ec185638be2c52f77b2f49e1fd36efdb"
+      "sha256": "e816392ae89839635dfe20560aad43a2d8c1eb3bdcf935fbd80a3733e650e18a"
     },
     {
       "disposition": "preserved_unreviewed",
@@ -1325,7 +1325,7 @@
       "disposition": "preserved_divergent",
       "path": "core/wisdom/metrics_enhanced.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "825c3b94319fde77fc44c69c5d1a08dc39c87e3ba36035fcc567b38cd1b769c3"
+      "sha256": "1e88fec4fd62e6c18adc318cf9a6ca4bad971f0f28ff619713d28f8339b3c790"
     },
     {
       "disposition": "preserved_divergent",
@@ -1475,7 +1475,7 @@
       "disposition": "preserved_divergent",
       "path": "examples/api_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "88974f21afeb4f394680027839458d2e61d7fac848413c8481df940dcae0daf3"
+      "sha256": "97dbe7c6223746a2db933f189d7c51690e2ffda51eff91d77812b87ea766963c"
     },
     {
       "disposition": "preserved_divergent",
@@ -1487,7 +1487,7 @@
       "disposition": "preserved_unreviewed",
       "path": "examples/ecco9_demo.go",
       "reason": "Absent from the canonical root and quarantined pending build, concurrency, evidence, and authority review.",
-      "sha256": "f5a95a4682fc58d08418d71f4d4dfea6fdf7213d47aa7aec4ad8e200ef0e067b"
+      "sha256": "fa13d72997d4df72dd9e711844b4cd1691673910f16cea6eb2544e98a5b3592d"
     },
     {
       "disposition": "preserved_divergent",
@@ -2645,7 +2645,7 @@
       "disposition": "preserved_divergent",
       "path": "sample/samplers_test.go",
       "reason": "Conflicts with a canonical implementation and requires a separate reviewed adapter or reconciliation.",
-      "sha256": "d50b8e48b89be763e2037c1cc73be3291011e383265e929bd201f981335b09f5"
+      "sha256": "d2e3d2bb99643fa5ce6f71f5872dfbf845b4f1ec3f81065931587751ac448688"
     },
     {
       "disposition": "canonical_same_path_exact",

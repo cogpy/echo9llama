@@ -15,7 +15,7 @@ func main() {
 	log.SetFlags(log.Ltime | log.Lmicroseconds)
 
 	fmt.Println("🌊 ecco9 Platform Demo - Cognitive Hardware Interaction")
-	fmt.Println("=========================================================\n")
+	fmt.Println("=========================================================")
 
 	// Create and boot platform
 	platform := ecco9.NewPlatform(ecco9.DefaultConfiguration())

@@ -152,39 +152,6 @@ func TestGrammar(t *testing.T) {
 	}
 }
 
-func TestAdvancedGrammar(t *testing.T) {
-	tokenizer := modelHelper(t)
-
-	// Test grammar with lookaheads and word boundaries
-	grammarAdvanced := `
-	root ::= sentence+
-	sentence ::= word (" " word)* ("." | "!" | "?") ws
-	word ::= [a-zA-Z]+
-	ws ::= [ \t\n]*
-	`
-
-	grammar, err := NewGrammarSampler(tokenizer, grammarAdvanced)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer grammar.Free()
-
-	// Test with quantified patterns
-	grammarQuantified := `
-	root ::= number_sequence
-	number_sequence ::= digit ("," digit)*
-	digit ::= [0-9]
-	`
-
-	grammarQ, err := NewGrammarSampler(tokenizer, grammarQuantified)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer grammarQ.Free()
-
-	t.Log("Advanced grammar features test passed")
-}
-
 func BenchmarkSample(b *testing.B) {
 	samplers := map[string]Sampler{
 		"Greedy":   NewSampler(0, 0, 0, 0, 0, nil), // Use NewSampler with temp=0 for greedy
@@ -207,4 +174,30 @@ func BenchmarkSample(b *testing.B) {
 			}
 		})
 	}
+}
+
+func TestAdvancedGrammar(t *testing.T) {
+	tokenizer := modelHelper(t)
+
+	// GBNF has no regex lookaheads or word boundaries; such grammars must be rejected.
+	grammarUnsupported := `
+	root ::= word
+	word ::= [a-zA-Z]+ (?![0-9])
+	`
+	if g, err := NewGrammarSampler(tokenizer, grammarUnsupported); err == nil {
+		g.Free()
+		t.Fatal("expected unsupported lookahead grammar to be rejected")
+	}
+
+	// Bounded repetition is supported.
+	grammarQuantified := `
+	root ::= number-sequence
+	number-sequence ::= digit{1,3} ("," digit{3})*
+	digit ::= [0-9]
+	`
+	grammarQ, err := NewGrammarSampler(tokenizer, grammarQuantified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer grammarQ.Free()
 }
