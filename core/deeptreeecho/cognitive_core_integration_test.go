@@ -80,7 +80,8 @@ func TestCognitiveCoreObservationIsDurableAndDreamProjectedOnce(t *testing.T) {
 	if _, err := decodeCognitiveCoreEvidence(tamperedPayload); err == nil {
 		t.Fatal("tampered cognitive-core catalogue provenance was accepted")
 	}
-	if observation.Provenance.SourceCommit != cognitivecore.SourceCommitSHA || observation.Provenance.ManifestSHA256 != cognitivecore.ManifestSHA256 {
+	expectedProvenance := cognitivecore.DefaultProvenance()
+	if observation.Provenance.SourceCommit != expectedProvenance.SourceCommit || observation.Provenance.ManifestSHA256 != expectedProvenance.ManifestSHA256 {
 		t.Fatalf("observation lacks immutable source binding: %+v", observation.Provenance)
 	}
 	if observation.Provenance.TrustGrade != cognitivecore.TrustGrade || len(observation.Devices) != 4 {

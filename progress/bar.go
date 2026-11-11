@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/term"
@@ -12,6 +13,7 @@ import (
 )
 
 type Bar struct {
+	mu           sync.Mutex
 	message      string
 	messageWidth int
 
@@ -62,6 +64,8 @@ func formatDuration(d time.Duration) string {
 }
 
 func (b *Bar) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	termWidth, _, err := term.GetSize(int(os.Stderr.Fd()))
 	if err != nil {
 		termWidth = defaultTermWidth
@@ -150,6 +154,8 @@ func (b *Bar) String() string {
 }
 
 func (b *Bar) Set(value int64) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 	if value >= b.maxValue {
 		value = b.maxValue
 	}

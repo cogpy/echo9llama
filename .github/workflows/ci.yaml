@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  GO_VERSION: '1.26.10'
+  GO_VERSION: '1.26.11'
   CGO_ENABLED: '1'
 
 jobs:
@@ -44,6 +44,11 @@ jobs:
       - name: Run unit tests
         run: |
           go test -v -race -coverprofile=coverage.out -covermode=atomic \
+            ./core/cognitivecore/... \
+            ./core/integration/... \
+            ./core/lampstack/... \
+            ./progress/... \
+            ./cmd/... \
             ./core/coreself/... \
             ./core/memory/... \
             ./core/echobeats/... \
@@ -253,7 +258,7 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
-          args: --timeout 10m0s -v --new-from-rev=HEAD~1 ./core/... ./cmd/...
+          args: --timeout 10m0s -v --new-from-rev=HEAD~1 ./core/... ./cmd/... ./progress/...
 
   go-mod-tidy:
     name: Go Mod Tidy

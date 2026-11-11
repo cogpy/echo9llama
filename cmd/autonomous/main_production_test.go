@@ -289,3 +289,36 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		}
 	}
 }
+
+func TestEvaluatedPracticeExplicitOptInAndPublicLearningStatus(t *testing.T) {
+	t.Setenv("ECHO_ENABLE_EVALUATED_PRACTICE", "")
+	if loadOrchestratorConfigFromEnvironment().EnableEvaluatedPractice {
+		t.Fatal("evaluated practice must default off")
+	}
+	t.Setenv("ECHO_ENABLE_EVALUATED_PRACTICE", "true")
+	if !loadOrchestratorConfigFromEnvironment().EnableEvaluatedPractice {
+		t.Fatal("explicit practice opt-in not applied")
+	}
+	t.Setenv("ECHO_STATE_DIRECTORY", t.TempDir())
+	t.Setenv("ECHO_ENABLE_CORE_SELF", "false")
+	orchestrator := newProductionOrchestrator(productionMockProvider{})
+	recorder := httptest.NewRecorder()
+	newProductionHandler(orchestrator).ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/status", nil))
+	var response map[string]json.RawMessage
+	if err := json.Unmarshal(recorder.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	var learning deeptreeecho.OutcomeLearningStatus
+	if err := json.Unmarshal(response["outcome_learning"], &learning); err != nil {
+		t.Fatal(err)
+	}
+	if !learning.Enabled || learning.ReadoutVersion != 0 || learning.MeanPrequentialLoss != nil || learning.MeanHeldOutLoss != nil {
+		t.Fatalf("empty learner invented evidence: %#v", learning)
+	}
+	public := string(response["outcome_learning"])
+	for _, private := range []string{"\"readout\":", "\"win\":", "\"wrec\":", "\"text\":", "\"recent\":"} {
+		if strings.Contains(public, private) {
+			t.Fatalf("private numerical/task content leaked: %s", private)
+		}
+	}
+}

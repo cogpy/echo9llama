@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 	"sync"
@@ -29,14 +30,50 @@ type SkillLearningSystem struct {
 
 	// Metrics
 	totalPractices uint64
-	totalMasteries uint64
 
 	// Running state
-	running    bool
-	practicing bool
+	running         bool
+	practicing      bool
+	activePractices int
 
-	// Applied evidence IDs prevent replay from awarding proficiency twice.
-	appliedEvidence map[string]struct{}
+	// IDs bind to the complete normalized payload, not just an award marker.
+	appliedEvidence map[string]skillEvidencePayload
+}
+
+const (
+	SkillCompetenceVersion   = "evaluator-ema-v1"
+	SkillCompetenceEMAWeight = 0.2
+)
+
+// SkillCompetenceEstimate summarizes only observed evaluator evidence. The EMA
+// starts at zero and uses score on a pass, zero on a failure. The Beta(1,1)
+// posterior describes pass frequency, not general ability. Neither statistic
+// certifies mastery or transfer beyond the supplied evaluator's tasks.
+type SkillCompetenceEstimate struct {
+	Version           string
+	Advisory          bool
+	Evaluations       uint64
+	Passes            uint64
+	Failures          uint64
+	ScoreSum          float64
+	MeanScore         float64
+	EffectiveScoreEMA float64
+	EMAWeight         float64
+	PassPosteriorMean float64
+}
+
+type skillEvidencePayload struct {
+	SkillName string
+	Score     float64
+	Passed    bool
+	Feedback  string
+}
+
+func newSkillCompetenceEstimate() SkillCompetenceEstimate {
+	return SkillCompetenceEstimate{
+		Version: SkillCompetenceVersion, Advisory: true,
+		EMAWeight: SkillCompetenceEMAWeight, PassPosteriorMean: 0.5,
+	}
 }
 
 // Skill represents a learnable capability
@@ -45,7 +82,8 @@ type Skill struct {
 	Name          string
 	Description   string
 	Category      SkillCategory
-	Proficiency   float64 // 0.0-1.0
+	Proficiency   float64 // Advisory evaluator EMA alias; never a mastery certificate.
+	Competence    SkillCompetenceEstimate
 	PracticeCount int
 	LastPracticed time.Time
 	CreatedAt     time.Time
@@ -91,6 +129,8 @@ type SkillAttempt struct {
 	Performance float64 // 0.0-1.0
 	Feedback    string
 	Duration    time.Duration
+	EvidenceID  string
+	Status      string // unknown (generated rehearsal), passed, or failed.
 }
 
 // SkillPracticeTask represents a scheduled practice session
@@ -110,7 +150,7 @@ func NewSkillLearningSystem(llmProvider llm.LLMProvider) *SkillLearningSystem {
 		skills:          make(map[string]*Skill),
 		practiceQueue:   make([]*SkillPracticeTask, 0),
 		llmProvider:     llmProvider,
-		appliedEvidence: make(map[string]struct{}),
+		appliedEvidence: make(map[string]skillEvidencePayload),
 	}
 	system.initializeFoundationalSkills()
 	return system
@@ -160,6 +200,7 @@ func (sls *SkillLearningSystem) ConsiderSkill(gap string, priority float64) {
 			Description:   fmt.Sprintf("Skill to address: %s", gap),
 			Category:      sls.categorizeSkill(gap),
 			Proficiency:   0.0,
+			Competence:    newSkillCompetenceEstimate(),
 			PracticeCount: 0,
 			CreatedAt:     time.Now(),
 			LearningRate:  0.1,
@@ -295,7 +336,8 @@ func (sls *SkillLearningSystem) initializeFoundationalSkills() {
 			Name:          fs.name,
 			Description:   fs.description,
 			Category:      fs.category,
-			Proficiency:   0.1, // Start with minimal proficiency
+			Proficiency:   0, // Unknown until evaluator evidence is observed.
+			Competence:    newSkillCompetenceEstimate(),
 			PracticeCount: 0,
 			CreatedAt:     time.Now(),
 			LearningRate:  0.05,
@@ -322,11 +364,17 @@ func (sls *SkillLearningSystem) PracticeSkill(skillID string) error {
 		sls.mu.Unlock()
 		return fmt.Errorf("skill not found: %s", skillID)
 	}
+	snapshot := cloneSkill(skill)
+	provider := sls.llmProvider
+	ctx, cancel := context.WithTimeout(sls.ctx, 30*time.Second)
+	defer cancel()
+	sls.activePractices++
 	sls.practicing = true
 	sls.mu.Unlock()
 	defer func() {
 		sls.mu.Lock()
-		sls.practicing = false
+		sls.activePractices--
+		sls.practicing = sls.activePractices > 0
 		sls.mu.Unlock()
 	}()
 
@@ -335,19 +383,29 @@ func (sls *SkillLearningSystem) PracticeSkill(skillID string) error {
 	// Generate practice task
 	prompt := fmt.Sprintf(`You are practicing the skill: %s
 Description: %s
-Current proficiency: %.2f
+Advisory evaluator estimate (not mastery): %.2f
 
 Generate a practice exercise for this skill and attempt to complete it.
-Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill.Proficiency)
+Provide your attempt; do not grade your own competence.`, snapshot.Name, snapshot.Description, snapshot.Proficiency)
 
 	opts := llm.GenerateOptions{
 		Temperature: 0.7,
 		MaxTokens:   300,
 	}
 
-	result, err := sls.llmProvider.Generate(context.Background(), prompt, opts)
+	if provider == nil {
+		return fmt.Errorf("practice provider unavailable")
+	}
+	result, err := provider.Generate(ctx, prompt, opts)
 	if err != nil {
 		return fmt.Errorf("practice generation failed: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("practice generation cancelled: %w", err)
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return fmt.Errorf("practice generation returned empty output")
 	}
 
 	// A generated rehearsal is useful context, but it is not outcome evidence.
@@ -359,6 +417,7 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 		Performance: 0,
 		Feedback:    "unverified rehearsal candidate: " + result,
 		Duration:    time.Since(startTime),
+		Status:      "unknown",
 	}
 
 	sls.mu.Lock()
@@ -370,7 +429,7 @@ Provide your attempt and self-assessment.`, skill.Name, skill.Description, skill
 	sls.mu.Unlock()
 
 	fmt.Printf("🎯 Rehearsed: %s (Proficiency unchanged at %.2f; awaiting evaluator evidence)\n",
-		skill.Name, proficiency)
+		snapshot.Name, proficiency)
 
 	return nil
 }
@@ -388,16 +447,20 @@ func (sls *SkillLearningSystem) ApplyEvaluatorEvidence(
 	if skillName == "" || evidenceID == "" {
 		return false, fmt.Errorf("skill name and evidence ID are required")
 	}
-	if score < 0 || score > 1 {
-		return false, fmt.Errorf("evaluator score must be between 0 and 1")
+	if math.IsNaN(score) || math.IsInf(score, 0) || score < 0 || score > 1 {
+		return false, fmt.Errorf("evaluator score must be finite and between 0 and 1")
 	}
+	payload := skillEvidencePayload{skillName, score, passed, strings.TrimSpace(feedback)}
 
 	sls.mu.Lock()
 	defer sls.mu.Unlock()
 	if sls.appliedEvidence == nil {
-		sls.appliedEvidence = make(map[string]struct{})
+		sls.appliedEvidence = make(map[string]skillEvidencePayload)
 	}
-	if _, exists := sls.appliedEvidence[evidenceID]; exists {
+	if previous, exists := sls.appliedEvidence[evidenceID]; exists {
+		if previous != payload {
+			return false, fmt.Errorf("evidence ID %q conflicts with its recorded payload", evidenceID)
+		}
 		return false, nil
 	}
 
@@ -410,6 +473,7 @@ func (sls *SkillLearningSystem) ApplyEvaluatorEvidence(
 			Description:   "Evidence-grounded capability: " + skillName,
 			Category:      SkillCategoryTechnical,
 			Proficiency:   0,
+			Competence:    newSkillCompetenceEstimate(),
 			CreatedAt:     time.Now(),
 			LearningRate:  0.1,
 			Difficulty:    0.5,
@@ -418,26 +482,44 @@ func (sls *SkillLearningSystem) ApplyEvaluatorEvidence(
 		}
 		sls.skills[skillID] = skill
 	}
+	if skill.Name != skillName {
+		return false, fmt.Errorf("skill name %q collides with registry entry %q", skillName, skill.Name)
+	}
 
-	wasMastered := skill.Proficiency >= 0.9
 	attempt := SkillAttempt{
 		Timestamp:   time.Now(),
 		Success:     passed,
 		Performance: score,
-		Feedback:    fmt.Sprintf("evidence=%s: %s", evidenceID, strings.TrimSpace(feedback)),
+		Feedback:    fmt.Sprintf("evidence=%s: %s", evidenceID, payload.Feedback),
+		EvidenceID:  evidenceID,
+		Status:      "failed",
+	}
+	if passed {
+		attempt.Status = "passed"
 	}
 	skill.Attempts = append(skill.Attempts, attempt)
 	skill.PracticeCount++
 	skill.LastPracticed = attempt.Timestamp
+	if skill.Competence.Version != SkillCompetenceVersion {
+		// Legacy proficiency is not evidence and cannot seed the estimator.
+		skill.Competence = newSkillCompetenceEstimate()
+	}
+	estimate := &skill.Competence
+	estimate.Evaluations++
+	estimate.ScoreSum += score
+	estimate.MeanScore = estimate.ScoreSum / float64(estimate.Evaluations)
+	effectiveScore := 0.0
 	if passed {
-		improvement := skill.LearningRate * (1.0 - skill.Proficiency) * score
-		skill.Proficiency = min(1.0, skill.Proficiency+improvement)
+		estimate.Passes++
+		effectiveScore = score
+	} else {
+		estimate.Failures++
 	}
+	estimate.EffectiveScoreEMA = (1-SkillCompetenceEMAWeight)*estimate.EffectiveScoreEMA + SkillCompetenceEMAWeight*effectiveScore
+	estimate.PassPosteriorMean = (1 + float64(estimate.Passes)) / (2 + float64(estimate.Evaluations))
+	skill.Proficiency = estimate.EffectiveScoreEMA
 	sls.totalPractices++
-	if !wasMastered && skill.Proficiency >= 0.9 {
-		sls.totalMasteries++
-	}
-	sls.appliedEvidence[evidenceID] = struct{}{}
+	sls.appliedEvidence[evidenceID] = payload
 	return true, nil
 }
 
@@ -472,7 +554,7 @@ func (sls *SkillLearningSystem) schedulePractice() {
 		// Prioritize skills with low proficiency
 		if skill.Proficiency < lowestProficiency {
 			lowestProficiency = skill.Proficiency
-			selectedSkill = skill
+			selectedSkill = cloneSkill(skill)
 		}
 	}
 	sls.mu.RUnlock()
@@ -535,10 +617,12 @@ func (sls *SkillLearningSystem) GetMetrics() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"total_skills":    len(sls.skills),
-		"total_practices": sls.totalPractices,
-		"total_masteries": sls.totalMasteries,
-		"avg_proficiency": avgProficiency,
+		"total_skills":        len(sls.skills),
+		"total_practices":     sls.totalPractices,
+		"total_masteries":     uint64(0), // Retained for compatibility; evaluations do not certify mastery.
+		"avg_proficiency":     avgProficiency,
+		"competence_version":  SkillCompetenceVersion,
+		"competence_advisory": true,
 	}
 }
 
@@ -550,17 +634,13 @@ func (sls *SkillLearningSystem) GetSkillProfile() string {
 	profile := "Current Skill Profile:\n"
 
 	for _, skill := range sls.skills {
-		status := "Learning"
-		if skill.Proficiency >= 0.9 {
-			status = "Mastered"
-		} else if skill.Proficiency >= 0.7 {
-			status = "Proficient"
-		} else if skill.Proficiency >= 0.4 {
-			status = "Developing"
+		status := "Unknown; no evaluator evidence"
+		if skill.Competence.Evaluations > 0 {
+			status = "Advisory evaluator estimate; transfer unverified"
 		}
 
-		profile += fmt.Sprintf("- %s: %.2f (%s) [%d practices]\n",
-			skill.Name, skill.Proficiency, status, skill.PracticeCount)
+		profile += fmt.Sprintf("- %s: %.2f (%s) [%d practices; %d passes, %d failures]\n",
+			skill.Name, skill.Proficiency, status, skill.PracticeCount, skill.Competence.Passes, skill.Competence.Failures)
 	}
 
 	return profile
@@ -583,9 +663,8 @@ func (sls *SkillLearningSystem) GetSkillsNeedingPractice() []*Skill {
 
 	needing := make([]*Skill, 0, len(sls.skills))
 	for _, skill := range sls.skills {
-		if skill.Proficiency < 0.9 {
-			needing = append(needing, cloneSkill(skill))
-		}
+		// Even high evaluator scores do not establish universal mastery.
+		needing = append(needing, cloneSkill(skill))
 	}
 
 	// Priority = (1 - proficiency) + staleness bonus
