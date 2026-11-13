@@ -37,7 +37,9 @@ func TestImporterSourceIdentityCannotBeOverridden(t *testing.T) {
 	}
 	for _, required := range []string{
 		`DEFAULT_SOURCE_REPOSITORY = "https://github.com/o9nn/ecco9.git"`,
-		`DEFAULT_SOURCE_COMMIT = "1b22401ee8842fd1aa2769b688d588cd9f1f9ce9"`,
+		`DEFAULT_SOURCE_COMMIT = "` + SourceCommitSHA + `"`,
+		`RETAINED_RUNTIME_COMMIT = "` + RetainedRuntimeSourceCommitSHA + `"`,
+		`--refresh-source-snapshot`,
 		`commit != DEFAULT_SOURCE_COMMIT`,
 		`canonical_repository(repository) != canonical_repository(DEFAULT_SOURCE_REPOSITORY)`,
 	} {

@@ -64,9 +64,13 @@ func TestEvaluatorEvidenceAwardsOnce(t *testing.T) {
 		t.Fatalf("passing deterministic evidence did not improve proficiency: %f", first.Proficiency)
 	}
 
-	applied, err = system.ApplyEvaluatorEvidence(skillName, evidenceID, 1, true, "replayed evidence")
+	applied, err = system.ApplyEvaluatorEvidence(skillName, evidenceID, 1, true, "atomic create and hash verification passed")
 	if err != nil || applied {
 		t.Fatalf("evidence replay should be an idempotent no-op: applied=%v err=%v", applied, err)
+	}
+	applied, err = system.ApplyEvaluatorEvidence(skillName, evidenceID, 1, true, "replayed evidence")
+	if err == nil || applied {
+		t.Fatalf("changed evidence payload should be rejected: applied=%v err=%v", applied, err)
 	}
 	second, _ := system.GetSkillByID(stableSkillID(skillName))
 	if second.Proficiency != first.Proficiency || second.PracticeCount != first.PracticeCount {

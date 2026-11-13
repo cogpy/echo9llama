@@ -111,8 +111,8 @@ func TestWakeRestManagerRoundTripIntegratesDreamWisdomOnce(t *testing.T) {
 	if !status.IsAwake || status.WakeRestState != StateAwake.String() {
 		t.Fatalf("wake round trip did not synchronize state: %#v", status)
 	}
-	if status.TotalWisdom == 0 || status.WisdomDepth <= 0 {
-		t.Fatalf("dream wisdom was not integrated: %#v", status)
+	if status.TotalWisdom != 0 || status.WisdomDepth != 0 || status.DreamWisdom == 0 {
+		t.Fatalf("dream hypotheses must be retained without awarding earned wisdom: %#v", status)
 	}
 	if status.PendingExperiences != 0 {
 		t.Fatalf("dream cycle did not consume pending experiences: %d", status.PendingExperiences)
@@ -242,5 +242,25 @@ func TestPersistentInterestContinuityAcrossRestart(t *testing.T) {
 	t.Cleanup(func() { _ = second.interestPatterns.Stop() })
 	if got := second.interestPatterns.GetInterestLevel("recursive_wisdom_practice"); got < 0.90 {
 		t.Fatalf("core-interest initialization overwrote restored strength: %.3f", got)
+	}
+}
+
+func TestStateSyncDoesNotReplaceCuriosityWithWisdomCounter(t *testing.T) {
+	orchestrator := newCanonicalOrchestratorForTest(t)
+	stateDirectory := t.TempDir()
+	state, err := NewPersistentConsciousnessState(stateDirectory, "curiosity-unit-fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = state.Stop() })
+	orchestrator.config.EnablePersistence = true
+	orchestrator.config.StateDirectory = stateDirectory
+	orchestrator.persistentState = state
+	orchestrator.persistentState.mu.Lock()
+	orchestrator.persistentState.state.CuriosityLevel = 0.37
+	orchestrator.persistentState.mu.Unlock()
+	orchestrator.syncPersistentState()
+	if got := orchestrator.persistentState.GetState().CuriosityLevel; got != 0.37 {
+		t.Fatalf("independent curiosity was replaced by unvalidated wisdom counter: %g", got)
 	}
 }

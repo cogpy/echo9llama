@@ -31,23 +31,34 @@ type UnifiedAutonomousOrchestrator struct {
 	cancel context.CancelFunc
 
 	// Core cognitive subsystems
-	streamOfConsciousness *StreamOfConsciousness
-	echobeatsScheduler    *EchobeatsScheduler
-	dreamCycle            *echodream.SleepWakeStateMachine
-	wakeRestCycle         *AutonomousWakeRestManager
-	interestPatterns      *InterestPatternSystem
-	skillLearning         *SkillLearningSystem
-	discussionMonitor     *ConversationMonitor
-	discussionAutonomy    *DiscussionAutonomySystem
-	globalTelemetry       *GlobalTelemetryShell
-	wisdomSynthesis       *WisdomSynthesis
-	cognitiveCore         *cognitivecore.Bridge
-	cognitiveCoreInitErr  error
-	coreSelf              *coreself.Kernel
-	coreSelfInitErr       error
-	coreSelfRequired      bool
-	eventStore            *persistence.CognitiveEventStore
-	enactionPipeline      *EnactionPipeline
+	streamOfConsciousness        *StreamOfConsciousness
+	echobeatsScheduler           *EchobeatsScheduler
+	dreamCycle                   *echodream.SleepWakeStateMachine
+	wakeRestCycle                *AutonomousWakeRestManager
+	interestPatterns             *InterestPatternSystem
+	skillLearning                *SkillLearningSystem
+	discussionMonitor            *ConversationMonitor
+	discussionAutonomy           *DiscussionAutonomySystem
+	globalTelemetry              *GlobalTelemetryShell
+	wisdomSynthesis              *WisdomSynthesis
+	cognitiveCore                *cognitivecore.Bridge
+	cognitiveCoreInitErr         error
+	coreSelf                     *coreself.Kernel
+	coreSelfInitErr              error
+	coreSelfRequired             bool
+	eventStore                   *persistence.CognitiveEventStore
+	enactionPipeline             *EnactionPipeline
+	outcomeLearner               *cognitivecore.OutcomeLearner
+	learningMu                   sync.Mutex
+	learningCursor               int64
+	learningRejected             uint64
+	practiceMu                   sync.Mutex
+	practiceTasks                map[string]ArtifactPracticeTask
+	practiceTerminal             map[string]bool
+	practiceIndex                int64
+	practiceTerminalOrder        []string
+	lastPracticeTerminalSequence int64
+	lastOrdinaryEnactionSequence int64
 
 	// LLM provider and optional native local-runtime lifecycle owned by it.
 	llmProvider  llm.LLMProvider
@@ -124,6 +135,7 @@ type OrchestratorConfig struct {
 	EnableWisdomSynthesis       bool
 	EnableCognitiveCore         bool
 	EnableCoreSelf              bool
+	EnableEvaluatedPractice     bool
 	EnableEnaction              bool
 	EnactionMode                EnactionMode
 	ActionTimeout               time.Duration
@@ -234,6 +246,7 @@ func NewUnifiedAutonomousOrchestrator(llmProvider llm.LLMProvider, config Orches
 	// Initialize cognitive subsystems
 	orchestrator.initializeSubsystems()
 	orchestrator.initializeCognitiveCore()
+	orchestrator.initializeOutcomeLearning()
 	orchestrator.initializePersistence()
 	orchestrator.initializeCoreSelf()
 
@@ -380,6 +393,13 @@ func (uao *UnifiedAutonomousOrchestrator) initializePersistence() {
 	uao.eventStore = eventStore
 	if err := uao.replayCognitiveEvidence(context.Background()); err != nil {
 		fmt.Printf("⚠️  Cognitive evidence replay incomplete: %v\n", err)
+		uao.config.EnableEnaction = false
+		return
+	}
+	if err := uao.replayOutcomeLearning(context.Background()); err != nil {
+		fmt.Printf("Auxiliary learning replay failed closed: %v\n", err)
+		uao.config.EnableEnaction = false
+		return
 	}
 	if !uao.config.EnableEnaction {
 		fmt.Printf("   ✓ Cognitive event ledger ready at %s (enaction disabled)\n", eventPath)
@@ -597,7 +617,7 @@ func (uao *UnifiedAutonomousOrchestrator) Awaken() error {
 	// Start main autonomous orchestration loop
 	go uao.runAutonomousLoop()
 
-	fmt.Println("✨ Echo is now fully autonomous and aware")
+	fmt.Println("✨ Echo autonomous event loops started; general wisdom and consciousness are not established by runtime status.")
 
 	return nil
 }
@@ -676,6 +696,9 @@ func (uao *UnifiedAutonomousOrchestrator) performCognitiveCycle() {
 	// Echo is awake instead of being bulk-replayed on every rest cycle.
 	uao.captureThoughtExperiences()
 	uao.observeCognitiveCore(cycle)
+	if err := uao.replayOutcomeLearning(uao.ctx); err != nil {
+		fmt.Printf("Auxiliary learning projection failed closed: %v\n", err)
+	}
 	uao.maintainLocalRuntime()
 
 	// Cognitive load is the fatigue signal used by the sole wake/rest authority.
@@ -730,9 +753,21 @@ func (uao *UnifiedAutonomousOrchestrator) runEnactionCycle() (string, bool) {
 		ctx, cancel = context.WithTimeout(uao.ctx, timeout)
 	}
 	defer cancel()
+	uao.practiceMu.Lock()
+	var practice *ArtifactPracticeTask
+	if task, ok := uao.practiceTasks[goal.ID]; ok {
+		if !uao.config.EnableEvaluatedPractice {
+			uao.practiceMu.Unlock()
+			return "evaluated practice disabled at execution boundary", false
+		}
+		copyTask := task
+		practice = &copyTask
+	}
+	uao.practiceMu.Unlock()
 	outcome, err := pipeline.RunGoal(ctx, EnactionRequest{
 		IdentityID: identityID, SessionID: sessionID, GoalID: goal.ID,
 		Goal: goal.Description, TopInterests: interests, RecentContext: recentContext,
+		Practice: practice,
 	})
 	if err != nil {
 		fmt.Printf("⚠️  E1 enaction failed closed for %s [%s]: %v\n", goal.ID, outcome.ErrorCategory, err)
@@ -748,8 +783,23 @@ func (uao *UnifiedAutonomousOrchestrator) runEnactionCycle() (string, bool) {
 			return "evidence projection failed", false
 		}
 	}
+	if projectErr := uao.replayOutcomeLearning(uao.ctx); projectErr != nil {
+		fmt.Printf("Auxiliary outcome projection failed closed: %v\n", projectErr)
+		return "learning projection failed", false
+	}
 	if outcome.Summary == "" {
 		outcome.Summary = "bounded enaction produced no verified effect"
+	}
+	if practice != nil {
+		events, queryErr := uao.eventStore.Query(uao.ctx, persistence.CognitiveEventQuery{ActionID: outcome.ActionID, EventType: persistence.EventTypePracticeEvaluated, Limit: 1})
+		if queryErr != nil || len(events) != 1 {
+			return "practice trial has no admitted correctness outcome", false
+		}
+		result, _, validationErr := uao.validatedPractice(uao.ctx, events[0])
+		if validationErr != nil || result.Passed == nil {
+			return "practice trial closed with unknown correctness", false
+		}
+		return "practice trial independently evaluated: " + result.Reason, *result.Passed
 	}
 	return outcome.Summary, outcome.Verified
 }
@@ -796,7 +846,38 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 			continue
 		}
 		switch event.EventType {
+		case persistence.EventTypeContextRetrieved:
+			if event.PolicyVersion == EnactionPolicyVersion && event.ActionID != "" && event.EventID == stageEventID(event.ActionID, "context") && !strings.HasPrefix(event.GoalID, "practice-goal:") {
+				uao.practiceMu.Lock()
+				if event.Sequence > uao.lastOrdinaryEnactionSequence {
+					uao.lastOrdinaryEnactionSequence = event.Sequence
+				}
+				uao.practiceMu.Unlock()
+			}
+		case persistence.EventTypeGoalCreated:
+			if err := uao.projectPracticeGoal(event); err != nil {
+				if errors.Is(err, errRejectedPracticeEvidence) {
+					uao.learningMu.Lock()
+					uao.learningRejected++
+					uao.learningMu.Unlock()
+					continue
+				}
+				return err
+			}
+		case persistence.EventTypePracticeEvaluated:
+			if err := uao.projectPracticeTerminal(event); err != nil {
+				if errors.Is(err, errRejectedPracticeEvidence) {
+					uao.learningMu.Lock()
+					uao.learningRejected++
+					uao.learningMu.Unlock()
+					continue
+				}
+				return err
+			}
 		case persistence.EventTypeGoalProgressed:
+			if strings.HasPrefix(event.GoalID, "practice-goal:") {
+				continue
+			} // File publication is not arithmetic-goal achievement.
 			var payload struct {
 				Delta       float64 `json:"delta"`
 				Description string  `json:"description"`
@@ -951,40 +1032,38 @@ State one concrete goal you will pursue about this interest, as a single short s
 
 // synthesizeWisdom performs wisdom synthesis from accumulated knowledge
 func (uao *UnifiedAutonomousOrchestrator) synthesizeWisdom() {
-	uao.mu.Lock()
-	defer uao.mu.Unlock()
-
+	uao.mu.RLock()
 	if !uao.isAwake || uao.wisdomSynthesis == nil {
+		uao.mu.RUnlock()
 		return
 	}
-
-	fmt.Println("🌟 Synthesizing wisdom from experiences...")
-
-	// Collect recent thoughts for wisdom synthesis
+	synthesis := uao.wisdomSynthesis
+	stream := uao.streamOfConsciousness
+	ctx := uao.ctx
+	uao.mu.RUnlock()
 	var recentThoughts []string
-	if uao.streamOfConsciousness != nil {
-		thoughts := uao.streamOfConsciousness.GetRecentThoughts(20)
+	if stream != nil {
+		thoughts := stream.GetRecentThoughts(20)
 		for _, thought := range thoughts {
 			recentThoughts = append(recentThoughts, thought.Content)
 		}
 	}
-
-	// Synthesize wisdom
-	if len(recentThoughts) > 5 {
-		wisdom, err := uao.wisdomSynthesis.SynthesizeWisdom(uao.ctx, recentThoughts)
-		if err == nil && wisdom != nil {
-			uao.wisdomDepth += wisdom.Depth
-			uao.totalWisdom++
-			uao.ingestDreamExperienceOnce(
-				fmt.Sprintf("waking-wisdom:%d", time.Now().UnixNano()),
-				wisdom.Insight,
-				wisdom.Depth,
-				[]string{"wisdom", "waking-reflection"},
-			)
-			fmt.Printf("   ✨ Wisdom synthesized: %s (depth: %.2f)\n",
-				truncate(wisdom.Insight, 80), wisdom.Depth)
-		}
+	if len(recentThoughts) <= 5 {
+		return
 	}
+	bounded, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	wisdom, err := synthesis.SynthesizeWisdom(bounded, recentThoughts)
+	if err != nil || wisdom == nil || bounded.Err() != nil {
+		return
+	}
+	uao.mu.RLock()
+	defer uao.mu.RUnlock()
+	if !uao.isAwake || !uao.running {
+		return
+	}
+	// Model-generated reflection is a candidate, never earned competence/wisdom.
+	uao.ingestDreamExperienceOnce(fmt.Sprintf("waking-hypothesis:%d", time.Now().UnixNano()), wisdom.Insight, 0.5, []string{"hypothesis", "unvalidated", "waking-reflection"})
 }
 
 // syncPersistentState saves current cognitive state to persistent storage
@@ -1041,7 +1120,7 @@ func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 		persistentState.state.TotalThoughts = totalThoughts
 		persistentState.state.TotalGoals = totalGoals
 		persistentState.state.TotalInsights = totalWisdom
-		persistentState.state.CuriosityLevel = wisdomDepth
+		// Curiosity is an independent trait, not an unvalidated profundity counter.
 		persistentState.state.InterestTopics = interestTopics
 	}
 	persistentState.mu.Unlock()
@@ -1049,6 +1128,9 @@ func (uao *UnifiedAutonomousOrchestrator) syncPersistentState() {
 	if err := persistentState.Save(); err != nil {
 		fmt.Printf("⚠️  State sync failed at %s: %v\n", now.Format("15:04:05"), err)
 		return
+	}
+	if err := uao.saveOutcomeCheckpoint(); err != nil {
+		fmt.Printf("Auxiliary checkpoint failed: %v\n", err)
 	}
 
 	fmt.Printf("💾 State synced at %s (cycles: %d, thoughts: %d, wisdom: %.2f, state: %s)\n",
@@ -1298,10 +1380,7 @@ func (uao *UnifiedAutonomousOrchestrator) integrateDreamWisdom() (integrated, re
 			uao.streamOfConsciousness.AddInterest(insight.Insight, insight.Depth)
 		}
 
-		uao.mu.Lock()
-		uao.wisdomDepth += insight.Depth
-		uao.totalWisdom++
-		uao.mu.Unlock()
+		// Generated dream hypotheses suggest attention, not earned wisdom.
 		integrated++
 	}
 	return integrated, reinforced
@@ -1405,6 +1484,12 @@ func (uao *UnifiedAutonomousOrchestrator) shouldPracticeSkills() bool {
 // practiceSkills engages in skill practice, selecting the skill with the
 // highest practice priority (low proficiency, long time since practice).
 func (uao *UnifiedAutonomousOrchestrator) practiceSkills() {
+	if uao.config.EnableEvaluatedPractice {
+		if err := uao.queueEvaluatedPractice(); err != nil {
+			fmt.Printf("Evaluated practice admission failed closed: %v\n", err)
+		}
+		return
+	}
 	if uao.skillLearning == nil {
 		return
 	}
@@ -1615,6 +1700,7 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 		status.CoreSelfReady = true
 		status.CoreSelf = coreSelf.Status()
 	}
+	status.OutcomeLearning = uao.outcomeLearningStatus()
 
 	uao.experienceMu.Lock()
 	status.ExperienceLedgerSize = len(uao.experienceOrder)
@@ -1652,6 +1738,7 @@ type OrchestratorStatus struct {
 	EventCount           int64
 	CognitiveCoreEnabled bool
 	CognitiveCore        cognitivecore.Status
+	OutcomeLearning      OutcomeLearningStatus
 	CoreSelfEnabled      bool
 	CoreSelfReady        bool
 	CoreSelf             coreself.Status

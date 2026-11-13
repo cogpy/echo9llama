@@ -1,9 +1,9 @@
 module github.com/cogpy/echo9llama
 
-// Deep Tree Echo - Go 1.25 language baseline; secure toolchain pinned below
+// Deep Tree Echo - Go 1.26 language baseline; secure toolchain pinned below
 go 1.26.0
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/containerd/console v1.0.3
@@ -50,8 +50,6 @@ require (
 	github.com/google/flatbuffers v24.3.25+incompatible // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/labstack/gommon v0.4.2 // indirect
-	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
@@ -62,12 +60,10 @@ require (
 	github.com/supabase-community/gotrue-go v1.2.0 // indirect
 	github.com/supabase-community/storage-go v0.7.0 // indirect
 	github.com/tomnomnom/linkheader v0.0.0-20180905144013-02ca5825eb80 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/xtgo/set v1.0.0 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	go4.org/unsafe/assume-no-moving-gc v0.0.0-20231121144256-b99613f794b6 // indirect
-	golang.org/x/time v0.14.0 // indirect
+	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gorgonia.org/vecf32 v0.9.0 // indirect
@@ -108,7 +104,7 @@ require (
 require (
 	github.com/EchoCog/echollama v0.0.0
 	github.com/dgraph-io/dgo/v230 v230.0.1
-	github.com/labstack/echo/v4 v4.15.0
+	github.com/labstack/echo/v5 v5.4.4
 	github.com/minio/selfupdate v0.6.0
 	github.com/pdevine/tensor v0.0.0-20250402003834-09d804610a08
 	google.golang.org/grpc v1.83.2

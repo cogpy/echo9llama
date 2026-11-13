@@ -39,14 +39,17 @@ func (planner LLMActionPlanner) GeneratePlan(ctx context.Context, request Enacti
 	if err != nil {
 		return "", PlanRouteEvidence{}, fmt.Errorf("marshal enaction request: %w", err)
 	}
+	practiceInstruction := ""
+	if request.Practice != nil {
+		practiceInstruction = "\nARITHMETIC PRACTICE OVERRIDE: The content field must contain exactly one fenced json object (a single ```json fence), with exactly task_id (the supplied practice.task_id), sum (practice.a + practice.b as an integer), and product (practice.a * practice.b as an integer). No prose, open questions, extra fields, duplicate fields, or trailing material in content. Compute the answers yourself. Keep the outer action-plan JSON and all workspace path, create-only, and self-only restrictions unchanged.\n"
+	}
 	traceID := "enaction-plan:" + shortHash(request.SessionID+":"+request.GoalID+":"+request.Goal)
 	prompt := `You are Deep Tree Echo's bounded action planner. Preserve a confident, witty, charismatic voice, but prioritize truth, uncertainty, autonomy, and non-harm.
 Return exactly one JSON object and no prose. The only permitted tool is workspace.create_note, which creates one new private Markdown note and cannot overwrite files.
 Required fields: tool, purpose, relative_path, content, confidence, reversible, affected_parties, success_criteria, predicted_effects.
 Use a clean relative path under briefs/ ending in .md and include the supplied action_iteration in the filename. Set affected_parties to ["self"]. Set reversible true. Content must be concise (at most 1800 UTF-8 bytes), useful, evidence-aware Markdown grounded in the supplied goal/context; include open questions and avoid claims not supported by context. Keep arrays to at most four short items. Never request shell, network, credentials, external communication, file overwrite, or action affecting another person.
 
-REQUEST:
-` + string(requestJSON)
+` + practiceInstruction + "REQUEST:\n" + string(requestJSON)
 	opts := llm.GenerateOptions{
 		MaxTokens:   1600,
 		Temperature: 0.35,
@@ -157,9 +160,16 @@ func (pipeline *EnactionPipeline) ResetWakeBudget() {
 
 // RunGoal is serialized and replay-aware. The action ID is stable per goal and
 // capability, enabling restart reconciliation without repeating side effects.
-func (pipeline *EnactionPipeline) RunGoal(ctx context.Context, request EnactionRequest) (EnactionOutcome, error) {
+func (pipeline *EnactionPipeline) RunGoal(ctx context.Context, request EnactionRequest) (outcome EnactionOutcome, runErr error) {
 	pipeline.stepMu.Lock()
 	defer pipeline.stepMu.Unlock()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if request.Practice != nil {
+		task := *request.Practice
+		request.Practice = &task
+	}
 	if pipeline.IsPaused() {
 		return EnactionOutcome{}, fmt.Errorf("enaction pipeline is paused")
 	}
@@ -176,6 +186,18 @@ func (pipeline *EnactionPipeline) RunGoal(ctx context.Context, request EnactionR
 	actionID := pipeline.attemptedGoals[attemptKey]
 	pipeline.mu.Unlock()
 	if actionID == "" {
+		recovered, err := pipeline.recoverArtifactPracticeAction(ctx, request, mode)
+		if err != nil {
+			return outcome, err
+		}
+		actionID = recovered
+		if actionID != "" {
+			pipeline.mu.Lock()
+			pipeline.attemptedGoals[attemptKey] = actionID
+			pipeline.mu.Unlock()
+		}
+	}
+	if actionID == "" {
 		progressCount, countErr := pipeline.store.Count(ctx, persistence.CognitiveEventQuery{GoalID: request.GoalID, EventType: persistence.EventTypeGoalProgressed})
 		if countErr != nil {
 			return EnactionOutcome{}, countErr
@@ -189,13 +211,21 @@ func (pipeline *EnactionPipeline) RunGoal(ctx context.Context, request EnactionR
 		request.ActionIteration = actionIterationFromID(actionID)
 	}
 	correlationID := "enaction:" + request.GoalID
-	outcome := EnactionOutcome{CorrelationID: correlationID, ActionID: actionID, GoalID: request.GoalID}
+	outcome = EnactionOutcome{CorrelationID: correlationID, ActionID: actionID, GoalID: request.GoalID}
 
 	events, err := pipeline.store.Query(ctx, persistence.CognitiveEventQuery{ActionID: actionID, Limit: 1000})
 	if err != nil {
 		return outcome, err
 	}
 	indexed := indexActionEvents(events)
+	if err := practiceTaskParity(request, indexed, actionID); err != nil {
+		return outcome, err
+	}
+	defer func() {
+		if err := pipeline.completeArtifactPractice(ctx, request, actionID, correlationID, runErr); err != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("finalize artifact practice: %w", err))
+		}
+	}()
 	if err := pipeline.completeTerminalDream(ctx, indexed, actionID, correlationID, request.GoalID); err != nil {
 		return outcome, err
 	}
@@ -340,11 +370,19 @@ func (pipeline *EnactionPipeline) obtainPlan(ctx context.Context, request Enacti
 		"top_interests":        append([]string(nil), request.TopInterests...),
 		"recent_context_count": len(request.RecentContext),
 	}
+	if request.Practice != nil {
+		contextPayload["practice"] = *request.Practice
+	}
 	if _, err := pipeline.appendEvent(ctx, stageEventID(actionID, "context"), persistence.EventTypeContextRetrieved, correlationID, "", request.GoalID, actionID, persistence.EvidenceClassSensitive, contextPayload, PlanRouteEvidence{}); err != nil {
 		return ActionPlan{}, PlanRouteEvidence{}, err
 	}
 
-	raw, route, err := pipeline.planner.GeneratePlan(ctx, request)
+	plannerRequest := request
+	if request.Practice != nil {
+		task := *request.Practice
+		plannerRequest.Practice = &task
+	}
+	raw, route, err := pipeline.planner.GeneratePlan(ctx, plannerRequest)
 	if route.TraceID != "" {
 		_, routeErr := pipeline.appendEvent(ctx, stageEventID(actionID, "route"), persistence.EventTypeProviderRouted, correlationID, stageEventID(actionID, "context"), request.GoalID, actionID, persistence.EvidenceClassOperational, route, route)
 		if routeErr != nil {
@@ -518,6 +556,26 @@ func (pipeline *EnactionPipeline) appendEvent(ctx context.Context, eventID, even
 		return persistence.DuplicateCognitiveEventResult{}, fmt.Errorf("marshal cognitive event payload: %w", err)
 	}
 	event := persistence.NewCognitiveEvent(eventID, eventType, pipeline.identity, pipeline.session, EnactionPolicyVersion, payloadJSON)
+	// A practice task belongs to its original durable action session. Newly
+	// appended recovery stages retain that binding even when the process woke
+	// in a different session, keeping the entire evaluator ancestry coherent.
+	if actionID != "" && eventType != persistence.EventTypeContextRetrieved {
+		contextEvent, getErr := pipeline.store.Get(ctx, stageEventID(actionID, "context"))
+		if getErr == nil {
+			task, taskErr := storedArtifactPractice(contextEvent)
+			if taskErr != nil {
+				return persistence.DuplicateCognitiveEventResult{}, taskErr
+			}
+			if task != nil {
+				if contextEvent.IdentityID != pipeline.identity || contextEvent.ActionID != actionID || contextEvent.GoalID != goalID || contextEvent.CorrelationID != correlationID {
+					return persistence.DuplicateCognitiveEventResult{}, fmt.Errorf("practice context source parity mismatch")
+				}
+				event.SessionID = contextEvent.SessionID
+			}
+		} else if !errors.Is(getErr, persistence.ErrCognitiveEventNotFound) {
+			return persistence.DuplicateCognitiveEventResult{}, getErr
+		}
+	}
 	event.CorrelationID = correlationID
 	event.CausationID = causationID
 	event.GoalID = goalID

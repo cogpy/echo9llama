@@ -50,7 +50,7 @@ func TestImportedLineageManifestVerifiesEveryGoFile(t *testing.T) {
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		t.Fatalf("decode lineage manifest: %v", err)
 	}
-	if manifest.SchemaVersion != 1 || manifest.SourceCommit != SourceCommitSHA {
+	if manifest.SchemaVersion != 1 || manifest.SourceCommit != RetainedRuntimeSourceCommitSHA {
 		t.Fatalf("unexpected source identity: version=%d commit=%s", manifest.SchemaVersion, manifest.SourceCommit)
 	}
 	if manifest.GoFileCount != PreservedGoFileCount {

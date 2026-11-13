@@ -3,19 +3,18 @@ package progress
 import (
 	"fmt"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type Spinner struct {
+	mu           sync.Mutex
 	message      atomic.Value
 	messageWidth int
 
 	parts []string
 
-	value int
-
-	ticker  *time.Ticker
 	started time.Time
 	stopped time.Time
 }
@@ -28,7 +27,6 @@ func NewSpinner(message string) *Spinner {
 		started: time.Now(),
 	}
 	s.SetMessage(message)
-	go s.start()
 	return s
 }
 
@@ -37,6 +35,8 @@ func (s *Spinner) SetMessage(message string) {
 }
 
 func (s *Spinner) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var sb strings.Builder
 
 	if message, ok := s.message.Load().(string); ok && len(message) > 0 {
@@ -53,26 +53,19 @@ func (s *Spinner) String() string {
 		sb.WriteString(" ")
 	}
 
-	if s.stopped.IsZero() {
-		spinner := s.parts[s.value]
-		sb.WriteString(spinner)
+	if s.stopped.IsZero() && len(s.parts) > 0 {
+		// Derive animation from time rather than a detached ticker goroutine.
+		frame := int(time.Since(s.started)/(100*time.Millisecond)) % len(s.parts)
+		sb.WriteString(s.parts[frame])
 		sb.WriteString(" ")
 	}
 
 	return sb.String()
 }
 
-func (s *Spinner) start() {
-	s.ticker = time.NewTicker(100 * time.Millisecond)
-	for range s.ticker.C {
-		s.value = (s.value + 1) % len(s.parts)
-		if !s.stopped.IsZero() {
-			return
-		}
-	}
-}
-
 func (s *Spinner) Stop() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.stopped.IsZero() {
 		s.stopped = time.Now()
 	}
