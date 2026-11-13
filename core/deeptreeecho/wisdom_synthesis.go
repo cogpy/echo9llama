@@ -38,6 +38,8 @@ type WisdomSynthesis struct {
 	// Wisdom levels
 	wisdomLevel     float64 // Advisory observed-effectiveness aggregate, not profundity.
 	appliedFeedback map[string]wisdomFeedbackPayload
+	// callerOutcomeSequence numbers RecordWisdomOutcome evidence; guarded by mu.
+	callerOutcomeSequence uint64
 
 	// Integration with other systems
 	echoDream *EchoDreamKnowledgeIntegration
@@ -72,12 +74,16 @@ type WisdomPrinciple struct {
 	ApplyCount      int
 	EvolutionCount  int
 	ParentPrinciple string
+	EpistemicStatus string // "hypothesis" until independently evaluated; generation never promotes it.
 }
 
 const (
 	WisdomFeedbackVersion   = "observed-effectiveness-ema-v1"
 	wisdomFeedbackEMAWeight = 0.2
 	wisdomProviderTimeout   = 30 * time.Second
+
+	// wisdomEpistemicHypothesis labels model-generated principles and insights.
+	wisdomEpistemicHypothesis = "hypothesis"
 )
 
 // WisdomFeedbackEstimate describes local observed outcomes, not universal
@@ -407,15 +413,16 @@ Do not rate your own profundity, confidence, or effectiveness.`, patternText)
 	}
 
 	principle := &WisdomPrinciple{
-		ID:             fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-		Content:        wisdom,
-		Domain:         domain,
-		Depth:          depth,
-		Confidence:     0,
-		Feedback:       newWisdomFeedbackEstimate(),
-		SourcePatterns: patternIDs,
-		Applications:   make([]WisdomApplication, 0),
-		CreatedAt:      time.Now(),
+		ID:              fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Content:         wisdom,
+		Domain:          domain,
+		Depth:           depth,
+		Confidence:      0,
+		Feedback:        newWisdomFeedbackEstimate(),
+		SourcePatterns:  patternIDs,
+		Applications:    make([]WisdomApplication, 0),
+		CreatedAt:       time.Now(),
+		EpistemicStatus: wisdomEpistemicHypothesis,
 	}
 
 	return principle
@@ -612,6 +619,7 @@ Provide the evolved wisdom principle:`, principle.Content, appContext)
 		ApplyCount:      principle.ApplyCount,
 		EvolutionCount:  principle.EvolutionCount + 1,
 		ParentPrinciple: principle.ID,
+		EpistemicStatus: wisdomEpistemicHypothesis,
 	}
 
 	return evolved
@@ -781,6 +789,20 @@ func (ws *WisdomSynthesis) ApplyObservedWisdomFeedback(
 
 // updateObservedWisdomLevel requires ws.mu. Generated candidates are excluded
 // rather than awarded points (or allowed to dilute observed evidence).
+// RecordWisdomOutcome is the E4 caller-supplied outcome API. It is retained as a
+// compatibility entry point and delegates to ApplyObservedWisdomFeedback so a
+// single advisory estimator owns Confidence and the wisdom level. Each call is
+// treated as new evidence; callers that need idempotent replay must use
+// ApplyObservedWisdomFeedback with a stable evidence ID.
+func (ws *WisdomSynthesis) RecordWisdomOutcome(principleID, applicationContext, outcome string, effectiveness float64) error {
+	ws.mu.Lock()
+	ws.callerOutcomeSequence++
+	evidenceID := fmt.Sprintf("caller-outcome:%s:%d", strings.TrimSpace(principleID), ws.callerOutcomeSequence)
+	ws.mu.Unlock()
+	_, err := ws.ApplyObservedWisdomFeedback(principleID, evidenceID, applicationContext, outcome, effectiveness)
+	return err
+}
+
 func (ws *WisdomSynthesis) updateObservedWisdomLevel() {
 	total, evaluated := 0.0, 0
 	for _, principle := range ws.wisdomPrinciples {
@@ -966,8 +988,9 @@ func parseDomain(s string) WisdomDomain {
 // WisdomInsightFull represents a provisional generated insight. Depth remains
 // zero because neither verbosity nor self-appraisal measures wisdom.
 type WisdomInsightFull struct {
-	Insight string
-	Depth   float64
+	Insight         string
+	Depth           float64
+	EpistemicStatus string
 }
 
 // SynthesizeWisdom is the compatibility wrapper for the bounded-context API.
@@ -1024,8 +1047,9 @@ Do not rate your own profundity, confidence, or effectiveness.`, thoughtsText)
 	ws.mu.Unlock()
 
 	return &WisdomInsightFull{
-		Insight: content,
-		Depth:   0,
+		Insight:         content,
+		Depth:           0,
+		EpistemicStatus: wisdomEpistemicHypothesis,
 	}, nil
 }
 

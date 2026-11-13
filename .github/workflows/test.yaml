@@ -63,6 +63,7 @@ jobs:
             ./core/lampstack/... \
             ./progress/... \
             ./cmd/... \
+            ./core/metacognition/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/consciousness/... \

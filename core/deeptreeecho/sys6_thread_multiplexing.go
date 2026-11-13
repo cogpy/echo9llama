@@ -211,6 +211,16 @@ type Sys6ThreadWorker struct {
 	processed uint64
 }
 
+// recordProcessed records a completed worker operation.
+//
+// A worker may participate in both MP1 and MP2 of a triadic cycle at the
+// same time, so its counter must use the worker lock shared with GetMetrics.
+func (worker *Sys6ThreadWorker) recordProcessed() {
+	worker.mu.Lock()
+	worker.processed++
+	worker.mu.Unlock()
+}
+
 // NewSys6ThreadMultiplexer creates a new thread multiplexer
 func NewSys6ThreadMultiplexer(ctx context.Context) *Sys6ThreadMultiplexer {
 	muxCtx, cancel := context.WithCancel(ctx)
@@ -272,9 +282,6 @@ func (tm *Sys6ThreadMultiplexer) Stop() error {
 		return nil
 	}
 	tm.running = false
-	tm.mu.Unlock()
-
-	tm.cancel()
 
 	// Deactivate all workers
 	for _, worker := range tm.workers {
@@ -283,9 +290,17 @@ func (tm *Sys6ThreadMultiplexer) Stop() error {
 		worker.mu.Unlock()
 	}
 
+	// Snapshot metrics while the cycle lock excludes new cycle execution.
+	// Log after releasing the lock so callers are never blocked on output.
+	multiplexCycles := tm.multiplexCycles
+	entanglements := tm.entanglements
+	tm.mu.Unlock()
+
+	tm.cancel()
+
 	fmt.Println("🔄 Thread Multiplexer stopped")
-	fmt.Printf("   Total multiplex cycles: %d\n", tm.multiplexCycles)
-	fmt.Printf("   Total entanglements: %d\n", tm.entanglements)
+	fmt.Printf("   Total multiplex cycles: %d\n", multiplexCycles)
+	fmt.Printf("   Total entanglements: %d\n", entanglements)
 
 	return nil
 }
@@ -316,7 +331,7 @@ func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, flo
 		newVal := (current + input) / 2
 		state.Write(1, newVal)
 		result1 = newVal
-		tm.workers[perm.P1-1].processed++
+		tm.workers[perm.P1-1].recordProcessed()
 	}()
 
 	// Process 2 accesses P2 (entangled - simultaneous)
@@ -327,7 +342,7 @@ func (tm *Sys6ThreadMultiplexer) ExecuteDyadicCycle(input float64) (float64, flo
 		newVal := (current + input) / 2
 		state.Write(2, newVal)
 		result2 = newVal
-		tm.workers[perm.P2-1].processed++
+		tm.workers[perm.P2-1].recordProcessed()
 	}()
 
 	wg.Wait()
@@ -374,18 +389,20 @@ func (tm *Sys6ThreadMultiplexer) ExecuteTriadicCycle(input float64) [3]float64 {
 			// worker group, so re-entering tm.mu here deadlocks the Sys6 engine.
 			result[idx] = newVal
 
-			tm.workers[particularSet-1].processed++
+			tm.workers[particularSet-1].recordProcessed()
 		}(i, p)
 	}
 
 	// Execute MP2 triad (complementary, entangled with MP1)
+	wg.Add(3)
 	for _, p := range []int{perm2.P1, perm2.P2, perm2.P3} {
 		go func(particularSet int) {
+			defer wg.Done()
 			state := tm.particularStates[particularSet-1]
 			current := state.Read(2).(float64)
 			newVal := (current + input*0.5) / 2
 			state.Write(2, newVal)
-			tm.workers[particularSet-1].processed++
+			tm.workers[particularSet-1].recordProcessed()
 		}(p)
 	}
 

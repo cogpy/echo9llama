@@ -50,6 +50,7 @@ jobs:
             ./progress/... \
             ./cmd/... \
             ./core/coreself/... \
+            ./core/metacognition/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/persistence/... \

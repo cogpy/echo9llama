@@ -14,6 +14,7 @@ import (
 	"github.com/cogpy/echo9llama/core/coreself"
 	"github.com/cogpy/echo9llama/core/echodream"
 	"github.com/cogpy/echo9llama/core/llm"
+	"github.com/cogpy/echo9llama/core/metacognition"
 	"github.com/cogpy/echo9llama/core/persistence"
 	"github.com/cogpy/echo9llama/core/tools"
 )
@@ -87,6 +88,21 @@ type UnifiedAutonomousOrchestrator struct {
 	replayMu                  sync.Mutex
 	cognitiveEvidenceReplayed bool
 	cognitiveReplaySequence   int64
+
+	// Bounded E4 reflection state; inference never holds the state/status lock.
+	reflectionMu                 sync.Mutex
+	reflectionStatusMu           sync.RWMutex
+	reflectionSequence           int64
+	reflectionRecords            []metacognition.Evidence
+	reflectionReport             metacognition.Report
+	reflectionProposed           uint64
+	reflectionErrors             uint64
+	reflectionTelemetry          ReflectionStatus
+	lastReflectionDigest         string
+	reflectionCounterSequence    int64
+	reflectionQuarantined        uint64
+	reflectionErrorSequence      int64
+	reflectionQuarantineSequence int64
 
 	// Interest topic -> goal ID of the model-formulated goal created for it.
 	goalByTopic map[string]string
@@ -280,6 +296,7 @@ func (uao *UnifiedAutonomousOrchestrator) initializeSubsystems() {
 				[]string{"event", "goal", "completed"},
 			)
 		})
+		uao.echobeatsScheduler.SetOnReflection(uao.runEvidenceReflection)
 		fmt.Println("   ✓ Echobeats Scheduler initialized")
 	}
 
@@ -830,6 +847,9 @@ func (uao *UnifiedAutonomousOrchestrator) replayCognitiveEvidence(ctx context.Co
 			if err := uao.projectEnactionEvents([]persistence.StoredCognitiveEvent{event}); err != nil {
 				return err
 			}
+			if err := uao.replayReflectionSource(ctx, event); err != nil {
+				return fmt.Errorf("replay metacognitive source %s: %w", event.EventID, err)
+			}
 			uao.cognitiveReplaySequence = event.Sequence
 			after = event.Sequence
 		}
@@ -846,6 +866,15 @@ func (uao *UnifiedAutonomousOrchestrator) projectEnactionEvents(events []persist
 			continue
 		}
 		switch event.EventType {
+		case persistence.EventTypeReflectionProposed:
+			if err := uao.projectReflection(uao.ctx, event); err != nil {
+				if errors.Is(err, persistence.ErrInvalidCognitiveEvent) {
+					return err
+				}
+				if err := uao.quarantineReflectionSource(uao.ctx, event); err != nil {
+					return err
+				}
+			}
 		case persistence.EventTypeContextRetrieved:
 			if event.PolicyVersion == EnactionPolicyVersion && event.ActionID != "" && event.EventID == stageEventID(event.ActionID, "context") && !strings.HasPrefix(event.GoalID, "practice-goal:") {
 				uao.practiceMu.Lock()
@@ -1705,6 +1734,7 @@ func (uao *UnifiedAutonomousOrchestrator) GetStatus() OrchestratorStatus {
 	uao.experienceMu.Lock()
 	status.ExperienceLedgerSize = len(uao.experienceOrder)
 	uao.experienceMu.Unlock()
+	status.Reflection = uao.reflectionStatus()
 	return status
 }
 
@@ -1742,6 +1772,7 @@ type OrchestratorStatus struct {
 	CoreSelfEnabled      bool
 	CoreSelfReady        bool
 	CoreSelf             coreself.Status
+	Reflection           ReflectionStatus
 }
 
 // GlobalState is declared in global_telemetry_shell.go and shared with the

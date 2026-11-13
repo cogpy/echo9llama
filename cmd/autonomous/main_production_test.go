@@ -214,6 +214,18 @@ func TestProductionHealthAndStatusReflectLifecycle(t *testing.T) {
 	if statusPayload["iteration"] != productionIteration {
 		t.Fatalf("status endpoint reported wrong iteration: %#v", statusPayload)
 	}
+	reflectionStatus, ok := statusPayload["evidence_reflection"].(map[string]interface{})
+	if !ok || reflectionStatus["version"] != "evidence-metacognition-v1" {
+		t.Fatalf("status omitted metacognition contract: %#v", reflectionStatus)
+	}
+	for _, private := range []string{"evidence", "lesson", "source_event_ids", "artifact_brier_score"} {
+		if _, exposed := reflectionStatus[private]; exposed {
+			t.Fatalf("empty reflection status exposed/invented %q: %#v", private, reflectionStatus)
+		}
+	}
+	if !strings.Contains(statusPayload["wisdom_epistemic_status"].(string), "hypotheses") {
+		t.Fatal("legacy wisdom status lacks epistemic qualification")
+	}
 	coreStatus, ok := statusPayload["cognitive_core"].(map[string]interface{})
 	if !ok || coreStatus["started"] != true {
 		t.Fatalf("status endpoint omitted active cognitive core: %#v", statusPayload)
@@ -283,6 +295,8 @@ func TestProductionStatusScrubsBackendPathsAndExportsMetrics(t *testing.T) {
 		"echo_cognitive_core_ready 0",
 		"echo_core_self_ready 1",
 		"echo_core_self_events_total 1",
+		"echo_reflection_evaluations 0",
+		"echo_reflection_calibration_samples 0",
 	} {
 		if !strings.Contains(metrics, expected) {
 			t.Fatalf("metrics missing %q:\n%s", expected, metrics)
