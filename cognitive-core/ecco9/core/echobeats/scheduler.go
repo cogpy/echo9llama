@@ -4,8 +4,12 @@ import (
 	"container/heap"
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // EchoBeats is the goal-directed scheduling system for Deep Tree Echo
@@ -36,6 +40,10 @@ type EchoBeats struct {
 	// Running state
 	running   bool
 	heartbeat *time.Ticker
+
+	// thoughtGenerator writes autonomous thoughts; nil means none are produced.
+	thoughtGenerator TextGenerator
+	recentThoughts   []string
 }
 
 // SchedulerState represents the scheduler's current state
@@ -398,19 +406,34 @@ func (eb *EchoBeats) autonomousThoughtGenerator() {
 	}
 }
 
-// generateAutonomousThought creates a spontaneous thought
+// SetThoughtGenerator injects the model that writes autonomous thoughts.
+// Passing nil disables autonomous thought generation.
+func (eb *EchoBeats) SetThoughtGenerator(gen TextGenerator) {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+	eb.thoughtGenerator = gen
+}
+
+// generateAutonomousThought asks the model for a spontaneous thought and
+// schedules it. When no model is configured or the call fails, no thought is
+// scheduled.
 func (eb *EchoBeats) generateAutonomousThought() {
 	eb.taskGenerator.mu.RLock()
 	curiosity := eb.taskGenerator.curiosityLevel
 	eb.taskGenerator.mu.RUnlock()
 
-	// Generate thought based on curiosity and current goals
+	content, err := eb.generateThoughtContent()
+	if err != nil {
+		fmt.Printf("⚠️  EchoBeats: autonomous thought skipped: %v\n", err)
+		return
+	}
+
 	thought := &CognitiveEvent{
 		ID:          generateID(),
 		Type:        EventThought,
 		Priority:    50,
 		ScheduledAt: time.Now(),
-		Payload:     eb.generateThoughtContent(),
+		Payload:     content,
 		Context: map[string]interface{}{
 			"autonomous": true,
 			"curiosity":  curiosity,
@@ -424,20 +447,72 @@ func (eb *EchoBeats) generateAutonomousThought() {
 	eb.metrics.mu.Unlock()
 }
 
-// generateThoughtContent generates content for autonomous thoughts
-func (eb *EchoBeats) generateThoughtContent() string {
-	thoughts := []string{
-		"What patterns am I noticing in my recent experiences?",
-		"How can I improve my understanding of this domain?",
-		"What connections exist between these concepts?",
-		"What should I explore next?",
-		"How does this relate to my goals?",
-		"What have I learned today?",
-		"What questions remain unanswered?",
-		"How can I better serve my purpose?",
+// generateThoughtContent asks the injected model for an autonomous thought
+// grounded in the scheduler's current state, goals, interests, and recent
+// thoughts. It never substitutes fixed text.
+func (eb *EchoBeats) generateThoughtContent() (string, error) {
+	eb.mu.RLock()
+	gen := eb.thoughtGenerator
+	state := eb.state
+	recent := append([]string(nil), eb.recentThoughts...)
+	eb.mu.RUnlock()
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
 	}
 
-	return thoughts[time.Now().Unix()%int64(len(thoughts))]
+	eb.taskGenerator.mu.RLock()
+	curiosity := eb.taskGenerator.curiosityLevel
+	goals := make([]string, 0, len(eb.taskGenerator.activeGoals))
+	for _, goal := range eb.taskGenerator.activeGoals {
+		goals = append(goals, fmt.Sprintf("%s (progress %.0f%%)", goal.Name, goal.Progress*100))
+	}
+	interests := make([]string, 0, len(eb.taskGenerator.interestPatterns))
+	for name, weight := range eb.taskGenerator.interestPatterns {
+		interests = append(interests, fmt.Sprintf("%s (%.2f)", name, weight))
+	}
+	eb.taskGenerator.mu.RUnlock()
+	sort.Strings(interests)
+
+	listOrNone := func(items []string) string {
+		if len(items) == 0 {
+			return "(none)"
+		}
+		return strings.Join(items, "; ")
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, an autonomous cognitive architecture with a continuous stream of consciousness.
+
+Current state: %s
+Curiosity level: %.2f
+Active goals: %s
+Interests: %s
+Your recent thoughts: %s
+
+Think your next spontaneous thought. It should follow naturally from your state and recent thoughts without repeating them. Reply with only the thought, in first person, in one or two sentences.`,
+		state, curiosity, listOrNone(goals), listOrNone(interests), listOrNone(recent))
+
+	ctx, cancel := context.WithTimeout(eb.ctx, 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	opts.Temperature = 0.8
+	text, err := gen.Generate(ctx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty thought")
+	}
+
+	eb.mu.Lock()
+	eb.recentThoughts = append(eb.recentThoughts, text)
+	if len(eb.recentThoughts) > 5 {
+		eb.recentThoughts = eb.recentThoughts[len(eb.recentThoughts)-5:]
+	}
+	eb.mu.Unlock()
+
+	return text, nil
 }
 
 // cycleManagement handles wake/rest cycles

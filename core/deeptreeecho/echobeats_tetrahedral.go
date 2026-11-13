@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -480,19 +481,29 @@ func (sched *EchobeatsTetrahedralScheduler) relevanceRealizationTetrahedral(ques
 	fullPrompt := fmt.Sprintf("[System: You are Engine %d (%s) performing relevance realization. Be concise and focused.]\n\n%s",
 		engine.ID, engine.specialization, question)
 	result, err := sched.llmProvider.Generate(context.Background(), fullPrompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = "Unable to determine relevance at this time."
+		result = ""
 	}
 
 	now := time.Now()
 	task.CompletionTime = &now
 	task.Result = result
-	task.Success = true
+	task.Success = err == nil
 
 	engine.mu.Lock()
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
+
+	if err != nil {
+		// No model output: commitment unchanged, nothing sent to other engines.
+		fmt.Printf("      → relevance realization skipped: %v\n", err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.presentCommitment = result
@@ -558,20 +569,31 @@ func (sched *EchobeatsTetrahedralScheduler) affordanceInteractionTetrahedral(ste
 	}
 
 	result, err := sched.llmProvider.Generate(context.Background(), prompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = fmt.Sprintf("Action step %d in progress", stepNum-1)
+		result = ""
 	}
 
 	now := time.Now()
 	task.CompletionTime = &now
 	task.Result = result
-	task.Success = true
+	task.Success = err == nil
 
 	engine.mu.Lock()
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
-	engine.performance = min(1.0, engine.performance+0.02)
+	if err == nil {
+		engine.performance = min(1.0, engine.performance+0.02)
+	}
 	engine.mu.Unlock()
+
+	if err != nil {
+		fmt.Printf("      [Engine %d - %s] → affordance step skipped: %v\n", engine.ID, engine.specialization, err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.pastPerformance = append(sched.pastPerformance, result)
@@ -613,19 +635,28 @@ func (sched *EchobeatsTetrahedralScheduler) salienceSimulationTetrahedral(stepNu
 	}
 
 	result, err := sched.llmProvider.Generate(context.Background(), prompt, opts)
+	result = strings.TrimSpace(result)
+	if err == nil && result == "" {
+		err = errModelReturnedNoText
+	}
 	if err != nil {
-		result = fmt.Sprintf("Future scenario %d under consideration", stepNum)
+		result = ""
 	}
 
 	now := time.Now()
 	task.CompletionTime = &now
 	task.Result = result
-	task.Success = true
+	task.Success = err == nil
 
 	engine.mu.Lock()
 	engine.taskHistory = append(engine.taskHistory, *task)
 	engine.currentTask = nil
 	engine.mu.Unlock()
+
+	if err != nil {
+		fmt.Printf("      [Engine %d - %s] → salience simulation skipped: %v\n", engine.ID, engine.specialization, err)
+		return
+	}
 
 	sched.mu.Lock()
 	sched.futureAnticipation = append(sched.futureAnticipation, result)

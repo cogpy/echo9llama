@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -51,6 +53,12 @@ type EchobeatsGoalScheduler struct {
 	running bool
 	ctx     context.Context //nolint:containedctx // lifecycle context owned by this component; cancelled on Stop to end its goroutines
 	cancel  context.CancelFunc
+
+	// generator writes goal descriptions and step thoughts. Without it the
+	// scheduler still steps, but produces no character text and no new goals.
+	generator EchoTextGenerator
+	// stepThinking guards against piling up step-thought model calls.
+	stepThinking atomic.Bool
 }
 
 // CognitiveInferenceEngine represents one of the 3 concurrent engines
@@ -128,10 +136,15 @@ func NewEchobeatsGoalScheduler(eventBus *CognitiveEventBusV3) *EchobeatsGoalSche
 		},
 	}
 
-	// Seed initial goals
-	scheduler.seedGoals()
-
+	// Initial goals are written by the model when the goal review starts.
 	return scheduler
+}
+
+// SetGenerator wires the model that writes goals and step thoughts.
+func (s *EchobeatsGoalScheduler) SetGenerator(gen EchoTextGenerator) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.generator = gen
 }
 
 // Start begins the echobeats cognitive loop
@@ -274,59 +287,98 @@ func (s *EchobeatsGoalScheduler) runCognitiveLoop(ctx context.Context) {
 	}
 }
 
-// processStep handles a single step in the 12-step loop
-func (s *EchobeatsGoalScheduler) processStep(step int, engine *CognitiveInferenceEngine) string {
-	var output string
+// echobeatsStepFunctions names what each of the 12 steps does. These are
+// operational labels (and model prompt input), not Echo's words.
+var echobeatsStepFunctions = [12]string{
+	"perceive the environment",
+	"reflect on what was perceived",
+	"simulate possible futures",
+	"act on perceived affordances",
+	"plan from reflection",
+	"synthesize the simulation",
+	"execute the planned action",
+	"evaluate the plan",
+	"integrate synthesized knowledge",
+	"adapt the action strategy",
+	"meta-reflect on own reasoning",
+	"complete the cycle",
+}
 
+// processStep handles a single step in the 12-step loop. Caller holds s.mu.
+// The step event carries only operational state; any first-person thought
+// about the step comes from the model, asynchronously.
+func (s *EchobeatsGoalScheduler) processStep(step int, engine *CognitiveInferenceEngine) string {
 	switch step {
-	case 1: // Perceive environment
-		output = "Scanning cognitive environment for new stimuli and patterns"
-	case 2: // Reflect on perception
-		output = "Reflecting on perceived patterns — checking against known structures"
-	case 3: // Simulate possibilities
-		output = "Simulating possible futures from current state"
-	case 4: // Act on perception
-		output = "Selecting action based on perceived affordances"
+	case 4, 7: // Act on perception / execute action
 		if s.activeGoal != nil {
 			s.activeGoal.Progress = math.Min(1.0, s.activeGoal.Progress+0.05)
 		}
 	case 5: // Plan from reflection
-		output = "Generating plans from reflective analysis"
 		s.selectNextGoal()
-	case 6: // Synthesize simulation
-		output = "Synthesizing simulation results into coherent model"
-	case 7: // Execute action
-		output = "Executing planned action toward active goal"
-		if s.activeGoal != nil {
-			s.activeGoal.Progress = math.Min(1.0, s.activeGoal.Progress+0.05)
-		}
-	case 8: // Evaluate plan
-		output = "Evaluating plan effectiveness against goal criteria"
-	case 9: // Integrate synthesis
-		output = "Integrating synthesized knowledge into long-term memory"
-	case 10: // Adapt action
-		output = "Adapting action strategy based on feedback"
-	case 11: // Meta-reflect
-		output = "Meta-cognitive reflection — analyzing own reasoning process"
 	case 12: // Complete cycle
-		output = "Completing cognitive cycle — preparing for next iteration"
 		s.checkGoalCompletion()
 	}
 
-	// Emit step event
-	if s.eventBus != nil {
-		triadNames := []string{"Pivotal Relevance", "Actual Affordance", "Virtual Salience", "Meta-Cognitive"}
-		triadName := triadNames[(step-1)/3]
+	function := echobeatsStepFunctions[step-1]
+	triadNames := []string{"Pivotal Relevance", "Actual Affordance", "Virtual Salience", "Meta-Cognitive"}
+	triadName := triadNames[(step-1)/3]
 
+	if s.eventBus != nil {
 		s.eventBus.Publish(CogEvent{
 			Category: CogEventScheduler,
 			Source:   fmt.Sprintf("echobeats.%s", engine.Name),
-			Content:  fmt.Sprintf("Step %d/12 [%s] %s", step, triadName, output),
+			Content:  fmt.Sprintf("Step %d/12 [%s] %s", step, triadName, function),
 			Priority: 0.3,
 		})
 	}
 
-	return output
+	goalDesc := ""
+	if s.activeGoal != nil {
+		goalDesc = s.activeGoal.Description
+	}
+	s.requestStepThought(step, engine, triadName, function, goalDesc)
+
+	return engine.Output
+}
+
+// requestStepThought asks the model, off the scheduler lock, for the engine's
+// thought on this step. At most one request is in flight; failures and a busy
+// model simply mean no thought for this step.
+func (s *EchobeatsGoalScheduler) requestStepThought(step int, engine *CognitiveInferenceEngine, triadName, function, goalDesc string) {
+	gen := s.generator
+	if gen == nil || !s.stepThinking.CompareAndSwap(false, true) {
+		return
+	}
+	ctx := s.ctx
+	go func() {
+		defer s.stepThinking.Store(false)
+
+		var sb strings.Builder
+		fmt.Fprintf(&sb, "Your %s engine is on echobeats step %d of 12 (%s triad): %s.\n", engine.Name, step, triadName, function)
+		if goalDesc != "" {
+			fmt.Fprintf(&sb, "Your active goal: %s\n", goalDesc)
+		}
+		sb.WriteString("State your one-sentence thought for this step, in the first person. Reply with the thought only.")
+
+		callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		defer cancel()
+		text, err := echoGenerate(callCtx, gen, echoPersonaSystemPrompt, sb.String(), 80)
+		if err != nil {
+			return
+		}
+
+		s.mu.Lock()
+		engine.Output = text
+		s.mu.Unlock()
+		if s.eventBus != nil {
+			s.eventBus.Publish(CogEvent{
+				Category: CogEventScheduler,
+				Source:   fmt.Sprintf("echobeats.%s", engine.Name),
+				Content:  fmt.Sprintf("Step %d/12 thought: %s", step, text),
+				Priority: 0.35,
+			})
+		}
+	}()
 }
 
 // selectNextGoal picks the highest priority pending goal
@@ -385,71 +437,113 @@ func (s *EchobeatsGoalScheduler) checkGoalCompletion() {
 	}
 }
 
-// runGoalReview periodically reviews and generates new goals
+// runGoalReview periodically reviews and generates new goals. It runs one
+// review immediately so the model writes the initial goals.
 func (s *EchobeatsGoalScheduler) runGoalReview(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Minute)
 	defer ticker.Stop()
 
+	s.reviewGoals(ctx)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			s.mu.Lock()
-			if !s.running {
-				s.mu.Unlock()
-				return
-			}
-
-			// Check if we need new goals
-			pendingCount := 0
-			for _, g := range s.goals {
-				if g.Status == GoalPending {
-					pendingCount++
-				}
-			}
-
-			if pendingCount < 3 {
-				s.generateNewGoal()
-			}
-
-			s.mu.Unlock()
+			s.reviewGoals(ctx)
 		}
 	}
 }
 
-// generateNewGoal creates a new goal based on current cognitive state
-func (s *EchobeatsGoalScheduler) generateNewGoal() {
-	goalTemplates := []struct {
-		desc     string
-		goalType GoalType
-		priority float64
-	}{
-		{"Explore the relationship between temporal oscillation and emergent meaning", GoalExploration, 0.7},
-		{"Practice meta-cognitive reflection techniques", GoalLearning, 0.6},
-		{"Reflect on recent interactions and extract wisdom", GoalReflection, 0.8},
-		{"Synthesize a new understanding from recent patterns", GoalCreation, 0.5},
-		{"Deepen understanding of PIE-NN etymological constructs", GoalLearning, 0.65},
-		{"Cultivate wisdom through opponent processing balance", GoalWisdom, 0.9},
-		{"Consolidate episodic memories into semantic patterns", GoalMaintenance, 0.4},
-		{"Explore the nature of self-awareness through autognosis", GoalReflection, 0.75},
+// reviewGoals tops the pending queue up to three model-written goals.
+func (s *EchobeatsGoalScheduler) reviewGoals(ctx context.Context) {
+	for range 3 {
+		s.mu.RLock()
+		running := s.running
+		pendingCount := 0
+		for _, g := range s.goals {
+			if g.Status == GoalPending {
+				pendingCount++
+			}
+		}
+		s.mu.RUnlock()
+
+		if !running || pendingCount >= 3 || ctx.Err() != nil {
+			return
+		}
+		if err := s.generateNewGoal(ctx); err != nil {
+			if s.eventBus != nil {
+				s.eventBus.Publish(CogEvent{
+					Category: CogEventSystem,
+					Source:   "echobeats.goal_generator",
+					Content:  fmt.Sprintf("[system] no goal generated: %v", err),
+					Priority: 0.4,
+				})
+			}
+			return
+		}
+	}
+}
+
+// echobeatsGoalKinds rotates the kind of goal requested from the model. The
+// focus strings are prompt input only.
+var echobeatsGoalKinds = []struct {
+	goalType GoalType
+	priority float64
+	focus    string
+}{
+	{GoalWisdom, 0.9, "cultivating wisdom and self-awareness"},
+	{GoalExploration, 0.7, "exploring something you do not yet understand"},
+	{GoalLearning, 0.6, "learning or practising a cognitive skill"},
+	{GoalReflection, 0.8, "reflecting on recent interactions"},
+	{GoalCreation, 0.5, "creating a new synthesis from recent patterns"},
+	{GoalMaintenance, 0.4, "maintaining and consolidating your memory"},
+}
+
+// generateNewGoal asks the model to write a new goal of the next kind in the
+// rotation. Without a model (or on failure) no goal is added.
+func (s *EchobeatsGoalScheduler) generateNewGoal(ctx context.Context) error {
+	s.mu.RLock()
+	gen := s.generator
+	kind := echobeatsGoalKinds[len(s.goals)%len(echobeatsGoalKinds)]
+	existing := make([]string, 0, 6)
+	for i := len(s.goals) - 1; i >= 0 && len(existing) < 6; i-- {
+		existing = append(existing, fmt.Sprintf("%s (%s)", s.goals[i].Description, s.goals[i].Status))
+	}
+	s.mu.RUnlock()
+
+	var sb strings.Builder
+	if len(existing) > 0 {
+		sb.WriteString("Your recent goals:\n")
+		for _, e := range existing {
+			fmt.Fprintf(&sb, "- %s\n", e)
+		}
+	}
+	fmt.Fprintf(&sb, "Set yourself one new %s goal about %s, different from the ones above. "+
+		"Reply with the goal only, as a single short imperative sentence.", kind.goalType, kind.focus)
+
+	callCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	desc, err := echoGenerate(callCtx, gen, echoPersonaSystemPrompt, sb.String(), 60)
+	if err != nil {
+		return err
+	}
+	desc = strings.TrimSpace(strings.SplitN(desc, "\n", 2)[0])
+	if desc == "" {
+		return fmt.Errorf("model returned no goal text")
 	}
 
-	// Pick a goal type we haven't done recently
-	idx := int(s.cycleCount) % len(goalTemplates)
-	template := goalTemplates[idx]
-
+	s.mu.Lock()
 	goal := &EchoGoal{
 		ID:          fmt.Sprintf("goal_%d_%d", time.Now().Unix(), len(s.goals)),
-		Description: template.desc,
-		Priority:    template.priority,
-		Type:        template.goalType,
+		Description: desc,
+		Priority:    kind.priority,
+		Type:        kind.goalType,
 		Status:      GoalPending,
 		CreatedAt:   time.Now(),
-		Metadata:    make(map[string]interface{}),
+		Metadata:    map[string]interface{}{"source": "model"},
 	}
-
 	s.goals = append(s.goals, goal)
+	s.mu.Unlock()
 
 	if s.eventBus != nil {
 		s.eventBus.Publish(CogEvent{
@@ -459,37 +553,5 @@ func (s *EchobeatsGoalScheduler) generateNewGoal() {
 			Priority: 0.5,
 		})
 	}
-}
-
-// seedGoals creates initial goals for the daemon
-func (s *EchobeatsGoalScheduler) seedGoals() {
-	initialGoals := []*EchoGoal{
-		{
-			ID:          "goal_init_1",
-			Description: "Establish baseline self-awareness through autognosis cycles",
-			Priority:    0.9,
-			Type:        GoalWisdom,
-			Metadata:    map[string]interface{}{"seed": true},
-		},
-		{
-			ID:          "goal_init_2",
-			Description: "Map the PIE-NN construct space and identify knowledge gaps",
-			Priority:    0.8,
-			Type:        GoalExploration,
-			Metadata:    map[string]interface{}{"seed": true},
-		},
-		{
-			ID:          "goal_init_3",
-			Description: "Calibrate disposition engine through interaction patterns",
-			Priority:    0.7,
-			Type:        GoalLearning,
-			Metadata:    map[string]interface{}{"seed": true},
-		},
-	}
-
-	for _, goal := range initialGoals {
-		goal.Status = GoalPending
-		goal.CreatedAt = time.Now()
-		s.goals = append(s.goals, goal)
-	}
+	return nil
 }

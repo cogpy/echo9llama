@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"syscall"
+	"text/tabwriter"
 	"time"
 
 	"github.com/containerd/console"
@@ -1792,17 +1793,11 @@ func CreateAgentHandler(cmd *cobra.Command, args []string) error {
 		Config:      make(map[string]interface{}),
 	}
 
-	// Make API call to create agent
-	// For now, we'll just simulate this since we need proper HTTP client setup
-	fmt.Printf("Creating agent '%s' with models: %v\n", name, models)
-	if description != "" {
-		fmt.Printf("Description: %s\n", description)
+	agent, err := client.CreateAgent(cmd.Context(), &req)
+	if err != nil {
+		return err
 	}
-
-	// TODO: Make actual HTTP request to /api/orchestration/agents
-	_ = req
-	_ = client
-
+	fmt.Printf("Created agent %s (%s) with models: %v\n", agent.ID, agent.Name, agent.Models)
 	return nil
 }
 
@@ -1812,13 +1807,20 @@ func ListAgentsHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/agents
-	_ = client
-
-	fmt.Println("Listing orchestration agents:")
-	fmt.Println("(No agents found - this is a placeholder)")
-
-	return nil
+	resp, err := client.ListAgents(cmd.Context())
+	if err != nil {
+		return err
+	}
+	if len(resp.Agents) == 0 {
+		fmt.Println("No orchestration agents.")
+		return nil
+	}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+	fmt.Fprintln(w, "ID\tNAME\tMODELS\tDESCRIPTION")
+	for _, a := range resp.Agents {
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", a.ID, a.Name, strings.Join(a.Models, ","), a.Description)
+	}
+	return w.Flush()
 }
 
 func DeleteAgentHandler(cmd *cobra.Command, args []string) error {
@@ -1827,14 +1829,10 @@ func DeleteAgentHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	agentID := args[0]
-
-	// TODO: Make actual HTTP request to DELETE /api/orchestration/agents/{id}
-	_ = client
-
-	fmt.Printf("Deleting agent: %s\n", agentID)
-	fmt.Println("(This is a placeholder)")
-
+	if err := client.DeleteAgent(cmd.Context(), args[0]); err != nil {
+		return err
+	}
+	fmt.Printf("Deleted agent %s\n", args[0])
 	return nil
 }
 
@@ -1880,23 +1878,22 @@ func RunTasksHandler(cmd *cobra.Command, args []string) error {
 		req.KeepAlive = &api.Duration{Duration: d}
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/tasks
-	_ = client
-	_ = req
-
-	fmt.Printf("Running %d tasks for agent %s\n", len(tasks), agentID)
-	if sequential {
-		fmt.Println("Tasks will be run sequentially")
-	} else {
-		fmt.Println("Tasks will be run in parallel")
+	resp, err := client.Orchestrate(cmd.Context(), &req)
+	if err != nil {
+		return err
 	}
-
-	for i, task := range tasks {
-		fmt.Printf("Task %d: %s - %s\n", i+1, task.Type, task.Input)
+	for i, task := range resp.Tasks {
+		fmt.Printf("Task %d (%s): %s\n", i+1, task.Type, task.Status)
+		if task.Error != "" {
+			fmt.Printf("  error: %s\n", task.Error)
+		}
+		if task.Output != "" {
+			fmt.Println(task.Output)
+		}
 	}
-
-	fmt.Println("(This is a placeholder)")
-
+	if resp.Error != "" {
+		return fmt.Errorf("orchestration failed: %s", resp.Error)
+	}
 	return nil
 }
 
@@ -1927,22 +1924,21 @@ func RunWorkflowHandler(cmd *cobra.Command, args []string) error {
 		})
 	}
 
-	req := api.WorkflowRequest{
-		AgentID: agentID,
-		Steps:   steps,
+	resp, err := client.RunWorkflow(cmd.Context(), &api.WorkflowRequest{AgentID: agentID, Steps: steps})
+	if err != nil {
+		return err
 	}
-
-	// TODO: Make actual HTTP request to /api/orchestration/workflows
-	_ = client
-	_ = req
-
-	fmt.Printf("Running workflow with %d steps for agent %s\n", len(steps), agentID)
-
-	for i, step := range steps {
-		fmt.Printf("Step %d: %s (%s) - %s\n", i+1, step.Name, step.Type, step.Input)
+	for i, step := range resp.Steps {
+		fmt.Printf("Step %d: %s (%s)\n", i+1, step.Name, step.Type)
+		if step.Error != "" {
+			fmt.Printf("  error: %s\n", step.Error)
+		}
+		if step.Output != "" {
+			fmt.Println(step.Output)
+		}
 	}
-
-	fmt.Println("(This is a placeholder)")
-
+	if !resp.Success {
+		return fmt.Errorf("workflow failed: %s", resp.Error)
+	}
 	return nil
 }

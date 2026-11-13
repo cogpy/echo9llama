@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/EchoCog/echollama/core/echobeats"
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 var fiveChannelManager *echobeats.FiveChannelManager
@@ -26,6 +28,8 @@ func main() {
 
 	// Create 5-channel manager
 	fiveChannelManager = echobeats.NewFiveChannelManager(processor, integrator)
+
+	fiveChannelManager.SetTextGenerator(fiveChannelModels())
 
 	// Start the 5-channel system
 	if err := fiveChannelManager.Start(); err != nil {
@@ -408,4 +412,34 @@ func handleStop(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "5-channel system stopped",
 	})
+}
+
+// fiveChannelModels builds a model provider manager from the API keys in the environment.
+// Every idea, plan and narrative in the cognitive loop is written by these
+// models; with no keys set, those steps produce nothing.
+func fiveChannelModels() *llm.ProviderManager {
+	mgr := llm.NewProviderManager()
+	if os.Getenv("ANTHROPIC_API_KEY") != "" {
+		if err := mgr.RegisterProvider(llm.NewAnthropicProvider("")); err != nil {
+			log.Printf("Failed to register Anthropic provider: %v", err)
+		}
+	}
+	if os.Getenv("OPENROUTER_API_KEY") != "" {
+		if err := mgr.RegisterProvider(llm.NewOpenRouterProvider("")); err != nil {
+			log.Printf("Failed to register OpenRouter provider: %v", err)
+		}
+	}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		if err := mgr.RegisterProvider(llm.NewOpenAIProvider(key)); err != nil {
+			log.Printf("Failed to register OpenAI provider: %v", err)
+		}
+	}
+	if providers := mgr.ListProviders(); len(providers) > 0 {
+		if err := mgr.SetFallbackChain(providers); err != nil {
+			log.Printf("Failed to set provider chain: %v", err)
+		}
+	} else {
+		log.Println("No LLM API keys set: model-written steps will produce no output")
+	}
+	return mgr
 }

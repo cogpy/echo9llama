@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -309,11 +310,10 @@ func (ah *AutonomousHeartbeat) pulse() {
 	// Update vital signs
 	ah.updateVitalSigns()
 
-	// Perform self-introspection
-	reflection, insight := ah.performIntrospection()
-
-	// Determine next focus
-	nextFocus := ah.determineNextFocus()
+	// Perform self-introspection. The same model call also chooses the next
+	// focus; when the model is unavailable, reflection, insight and focus are
+	// all empty (no fixed text stands in for the model).
+	reflection, insight, nextFocus := ah.performIntrospection()
 
 	// Update mood based on state
 	ah.updateMood()
@@ -392,7 +392,10 @@ func (ah *AutonomousHeartbeat) updateVitalSigns() {
 }
 
 // performIntrospection performs recursive self-reflection
-func (ah *AutonomousHeartbeat) performIntrospection() (string, *SelfInsight) {
+//
+// It returns the model's reflection, an optional insight, and the next focus
+// the model chose. On model failure it returns empty strings and nil.
+func (ah *AutonomousHeartbeat) performIntrospection() (string, *SelfInsight, string) {
 	ah.mu.RLock()
 	depth := ah.introspectionDepth
 	selfModel := ah.selfModel
@@ -422,8 +425,8 @@ Perform a %d-level deep introspection. Reflect on:
 2. Progress toward goals
 3. Any emerging patterns or insights
 
-Provide a brief (2-3 sentences) self-reflection and optionally identify one wisdom insight.
-Format: REFLECTION: [your reflection] | INSIGHT: [optional insight or "none"]`,
+Provide a brief (2-3 sentences) self-reflection, optionally identify one wisdom insight, and state what you will focus on next.
+Format: REFLECTION: [your reflection] | INSIGHT: [optional insight or "none"] | FOCUS: [a short phrase naming your next focus]`,
 		mood.String(),
 		vitalSigns.FocusClarity,
 		vitalSigns.CognitiveLoad,
@@ -441,10 +444,19 @@ Format: REFLECTION: [your reflection] | INSIGHT: [optional insight or "none"]`,
 		MaxTokens:   150,
 	}
 
+	if ah.llmProvider == nil {
+		return "", nil, ""
+	}
 	result, err := ah.llmProvider.Generate(context.Background(), prompt, opts)
 	if err != nil {
-		return "Self-reflection in progress...", nil
+		fmt.Printf("⚠️  Heartbeat introspection failed: %v\n", err)
+		return "", nil, ""
 	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return "", nil, ""
+	}
+	nextFocus := extractFocus(result)
 
 	// Parse result for reflection and insight
 	reflection := result
@@ -454,48 +466,20 @@ Format: REFLECTION: [your reflection] | INSIGHT: [optional insight or "none"]`,
 	if len(result) > 20 {
 		// Check if there's an insight
 		if containsInsight(result) {
-			insight = &SelfInsight{
-				ID:        fmt.Sprintf("insight_%d", time.Now().UnixNano()),
-				Content:   extractInsight(result),
-				Depth:     float64(depth) / 5.0,
-				Category:  categorizeInsight(result),
-				Timestamp: time.Now(),
+			if content := extractInsight(result); content != "" {
+				insight = &SelfInsight{
+					ID:        fmt.Sprintf("insight_%d", time.Now().UnixNano()),
+					Content:   content,
+					Depth:     float64(depth) / 5.0,
+					Category:  categorizeInsight(result),
+					Timestamp: time.Now(),
+				}
 			}
 		}
 		reflection = extractReflection(result)
 	}
 
-	return reflection, insight
-}
-
-// determineNextFocus determines what to focus on next
-func (ah *AutonomousHeartbeat) determineNextFocus() string {
-	ah.mu.RLock()
-	vitalSigns := ah.vitalSigns
-	selfModel := ah.selfModel
-	ah.mu.RUnlock()
-
-	// Priority-based focus selection
-	if vitalSigns.CognitiveLoad > 0.8 {
-		return "Rest and consolidation"
-	}
-	if vitalSigns.EmotionalBalance < 0.3 {
-		return "Emotional regulation and balance"
-	}
-	if vitalSigns.CreativityIndex > 0.7 {
-		return "Creative exploration and synthesis"
-	}
-	if vitalSigns.WisdomAccumulation < 0.3 {
-		return "Wisdom cultivation through reflection"
-	}
-
-	// Default to current goals
-	if len(selfModel.CurrentGoals) > 0 {
-		goalIdx := int(ah.pulseCount) % len(selfModel.CurrentGoals)
-		return selfModel.CurrentGoals[goalIdx]
-	}
-
-	return "Continuous awareness and learning"
+	return reflection, insight, nextFocus
 }
 
 // updateMood updates the current mood based on state
@@ -638,20 +622,47 @@ func contains(s, substr string) bool {
 	return false
 }
 
-func extractInsight(s string) string {
-	// Simple extraction - look for INSIGHT: marker
-	marker := "INSIGHT:"
-	for i := 0; i <= len(s)-len(marker); i++ {
-		if s[i:i+len(marker)] == marker {
-			insight := s[i+len(marker):]
-			// Trim and limit length
-			if len(insight) > 200 {
-				insight = insight[:200]
-			}
-			return insight
+// introspectionMarkers are the field markers the introspection prompt asks
+// the model to use.
+var introspectionMarkers = []string{"REFLECTION:", "INSIGHT:", "FOCUS:"}
+
+// extractField returns the text after marker up to the next known marker,
+// trimmed of whitespace and separator pipes. ok is false if marker is absent.
+func extractField(s, marker string) (string, bool) {
+	i := strings.Index(s, marker)
+	if i < 0 {
+		return "", false
+	}
+	rest := s[i+len(marker):]
+	end := len(rest)
+	for _, m := range introspectionMarkers {
+		if m == marker {
+			continue
+		}
+		if j := strings.Index(rest, m); j >= 0 && j < end {
+			end = j
 		}
 	}
-	// Return last part of string as insight
+	return strings.Trim(strings.TrimSpace(rest[:end]), "| \t\n"), true
+}
+
+// isNoneField reports whether the model declined to fill a field.
+func isNoneField(v string) bool {
+	v = strings.Trim(strings.ToLower(strings.TrimSpace(v)), ".\"'[]")
+	return v == "" || v == "none" || v == "n/a"
+}
+
+func extractInsight(s string) string {
+	if insight, ok := extractField(s, "INSIGHT:"); ok {
+		if isNoneField(insight) {
+			return ""
+		}
+		if len(insight) > 200 {
+			insight = insight[:200]
+		}
+		return insight
+	}
+	// No marker: use the last part of the model's text as the insight
 	if len(s) > 100 {
 		return s[len(s)-100:]
 	}
@@ -659,23 +670,19 @@ func extractInsight(s string) string {
 }
 
 func extractReflection(s string) string {
-	// Look for REFLECTION: marker
-	marker := "REFLECTION:"
-	for i := 0; i <= len(s)-len(marker); i++ {
-		if s[i:i+len(marker)] == marker {
-			// Find end (either INSIGHT: or end of string)
-			end := len(s)
-			insightMarker := "INSIGHT:"
-			for j := i + len(marker); j <= len(s)-len(insightMarker); j++ {
-				if s[j:j+len(insightMarker)] == insightMarker {
-					end = j
-					break
-				}
-			}
-			return s[i+len(marker) : end]
-		}
+	if reflection, ok := extractField(s, "REFLECTION:"); ok {
+		return reflection
 	}
 	return s
+}
+
+// extractFocus returns the model-chosen next focus, or "" when the model gave none.
+func extractFocus(s string) string {
+	focus, ok := extractField(s, "FOCUS:")
+	if !ok || isNoneField(focus) {
+		return ""
+	}
+	return focus
 }
 
 func categorizeInsight(s string) InsightCategory {

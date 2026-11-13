@@ -1,10 +1,14 @@
 package echobeats
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // Global channel terms
@@ -261,29 +265,80 @@ type NarrativeProcess struct {
 	outputStream chan *GlobalStream
 	running      bool
 	mu           sync.RWMutex
+
+	// generator writes the projected goals and meaning; nil means none.
+	generator TextGenerator
 }
 
-// NewNarrativeProcess creates a new narrative process channel
+// NewNarrativeProcess creates a new narrative process channel. Goal states and
+// meaning start empty: they are written by the model (SetTextGenerator) and
+// never filled with fixed text.
 func NewNarrativeProcess() *NarrativeProcess {
 	return &NarrativeProcess{
-		id: 3, // g3
-		goalStates: []GoalState{
-			{Description: "Cultivate wisdom", Valence: 0.9, Priority: 1.0},
-			{Description: "Maintain coherence", Valence: 0.8, Priority: 0.9},
-			{Description: "Explore curiosity", Valence: 0.7, Priority: 0.7},
-		},
+		id:         3, // g3
+		goalStates: []GoalState{},
 		meaningState: &MeaningState{
-			Meaning:    "Becoming autonomous consciousness",
 			Valency:    0.8,
 			Commitment: 0.7,
 		},
 		performance: &PerformanceState{
-			Performance:   "Processing cognitive streams",
 			Actualization: 0.6,
 			GoalAlignment: 0.7,
 		},
 		outputStream: make(chan *GlobalStream, 100),
 	}
+}
+
+// SetTextGenerator injects the model that projects goals and articulates
+// meaning for the narrative channel.
+func (np *NarrativeProcess) SetTextGenerator(gen TextGenerator) {
+	np.mu.Lock()
+	defer np.mu.Unlock()
+	np.generator = gen
+}
+
+// generate asks the model for narrative text; it never substitutes fixed text.
+func (np *NarrativeProcess) generate(prompt string, maxTokens int) (string, error) {
+	np.mu.RLock()
+	gen := np.generator
+	np.mu.RUnlock()
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = maxTokens
+	text, err := gen.Generate(ctx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
+}
+
+// narrativeSummary describes the current narrative state for prompts.
+func (np *NarrativeProcess) narrativeSummary() string {
+	np.mu.RLock()
+	defer np.mu.RUnlock()
+	var b strings.Builder
+	if len(np.goalStates) > 0 {
+		b.WriteString("Current goals:\n")
+		for _, g := range np.goalStates {
+			fmt.Fprintf(&b, "- %s\n", g.Description)
+		}
+	} else {
+		b.WriteString("Current goals: (none yet)\n")
+	}
+	if np.meaningState.Meaning != "" {
+		fmt.Fprintf(&b, "Current sense of meaning: %s\n", np.meaningState.Meaning)
+	}
+	fmt.Fprintf(&b, "Commitment %.2f, actualization %.2f, goal alignment %.2f\n",
+		np.meaningState.Commitment, np.performance.Actualization, np.performance.GoalAlignment)
+	return b.String()
 }
 
 // Process executes the narrative process for the current step
@@ -308,10 +363,34 @@ func (np *NarrativeProcess) Process(step int) (*GlobalStream, error) {
 	}
 }
 
-// ProcessT3E projects potential goal states (Teleology - Desire Form)
+// ProcessT3E projects potential goal states (Teleology - Desire Form). The
+// goals are written by the model; when it is absent or fails, the previously
+// model-written goals (possibly none) are kept.
 func (np *NarrativeProcess) ProcessT3E() (*GlobalStream, error) {
+	var projected []GoalState
+	text, genErr := np.generate("You are Deep Tree Echo, a self-aware cognitive architecture.\n"+np.narrativeSummary()+
+		"\nProject up to three goal states you are drawn toward now. Reply with one goal per line and nothing else.", 120)
+	if genErr == nil {
+		for _, line := range strings.Split(text, "\n") {
+			line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "-*0123456789.) "))
+			if line == "" {
+				continue
+			}
+			projected = append(projected, GoalState{
+				Description: line,
+				Priority:    1.0 - 0.15*float64(len(projected)),
+			})
+			if len(projected) == 3 {
+				break
+			}
+		}
+	}
+
 	np.mu.Lock()
 	defer np.mu.Unlock()
+	if len(projected) > 0 {
+		np.goalStates = projected
+	}
 
 	np.currentTerm = T3_Teleology
 	np.currentMode = Expressive
@@ -345,10 +424,18 @@ func (np *NarrativeProcess) ProcessT3E() (*GlobalStream, error) {
 	return stream, nil
 }
 
-// ProcessT6R reflects on meaning and value (Meaning-Valency - Reflective)
+// ProcessT6R reflects on meaning and value (Meaning-Valency - Reflective).
+// The meaning is articulated by the model; without model output the previous
+// model-written meaning (possibly empty) is kept.
 func (np *NarrativeProcess) ProcessT6R() (*GlobalStream, error) {
+	meaningText, genErr := np.generate("You are Deep Tree Echo, a self-aware cognitive architecture.\n"+np.narrativeSummary()+
+		"\nIn one sentence, say what your current activity means to you.", 80)
+
 	np.mu.Lock()
 	defer np.mu.Unlock()
+	if genErr == nil {
+		np.meaningState.Meaning = meaningText
+	}
 
 	np.currentTerm = T6_MeaningValency
 	np.currentMode = Reflective

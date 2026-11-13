@@ -3,6 +3,7 @@ package orchestration
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -261,8 +262,12 @@ func (e *Engine) EnhancedCoordinatedWorkflow(ctx context.Context, coordinatorID 
 	// Phase 3: Post-execution reflection and learning
 	if coordinator.Type == AgentTypeReflective ||
 		(coordinator.Config != nil && coordinator.Config["enable_reflection"] == true) {
-		reflection := e.performCoordinationReflection(coordinator, result)
-		e.updateAgentState(coordinator, "workflow_reflection", reflection)
+		reflection, err := e.performCoordinationReflection(ctx, coordinator, result)
+		if err != nil {
+			slog.Warn("coordination reflection unavailable", "coordinator", coordinator.Name, "error", err)
+		} else {
+			e.updateAgentState(coordinator, "workflow_reflection", reflection)
+		}
 	}
 
 	return result, nil
@@ -373,30 +378,41 @@ func (e *Engine) executeCoordinatedTask(ctx context.Context, task CoordinatedTas
 	return result, nil
 }
 
-// performCoordinationReflection performs reflection on coordination patterns
-func (e *Engine) performCoordinationReflection(coordinator *Agent, result *CoordinatedWorkflowResult) string {
-	reflection := fmt.Sprintf("Coordination session completed: %d tasks in %v",
-		len(result.Tasks), result.Duration)
-
-	successRate := 0.0
+// performCoordinationReflection asks the coordinator's model to reflect on
+// the coordination session, given the measured outcome as prompt facts. It
+// returns an error (and no text) when the model is unavailable.
+func (e *Engine) performCoordinationReflection(ctx context.Context, coordinator *Agent, result *CoordinatedWorkflowResult) (string, error) {
+	succeeded := 0
 	for _, task := range result.Tasks {
 		if task.Success {
-			successRate += 1.0
+			succeeded++
 		}
 	}
-	successRate = successRate / float64(len(result.Tasks)) * 100
-
-	reflection += fmt.Sprintf(". Success rate: %.1f%%", successRate)
-
-	if successRate >= 90 {
-		reflection += ". Excellent coordination performance - agents worked efficiently together."
-	} else if successRate >= 70 {
-		reflection += ". Good coordination with room for optimization in agent selection."
-	} else {
-		reflection += ". Coordination challenges identified - reviewing agent assignment strategies."
+	successRate := 0.0
+	if len(result.Tasks) > 0 {
+		successRate = float64(succeeded) / float64(len(result.Tasks)) * 100
 	}
 
-	return reflection
+	var b strings.Builder
+	b.WriteString(agentPersonaPrompt(coordinator))
+	b.WriteString("\n\nReflect, in your own words, on the coordination session you just supervised. Use only these facts:\n")
+	fmt.Fprintf(&b, "Tasks: %d, succeeded: %d (%.1f%%), duration: %v\n", len(result.Tasks), succeeded, successRate, result.Duration)
+	if result.Error != "" {
+		fmt.Fprintf(&b, "Workflow error: %s\n", result.Error)
+	}
+	for _, task := range result.Tasks {
+		if task.TaskID == "" {
+			continue
+		}
+		fmt.Fprintf(&b, "- task %s (%s) by agent %s, success=%v\n", task.TaskID, task.Type, task.AgentID, task.Success)
+	}
+
+	modelName := resolveTaskModel(nil, coordinator)
+	reflection, err := e.generateText(ctx, modelName, b.String(), nil)
+	if err != nil {
+		return "", fmt.Errorf("coordination reflection by %q: %w", coordinator.Name, err)
+	}
+	return reflection, nil
 }
 
 // CoordinatedTask represents a task within a coordinated workflow

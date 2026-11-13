@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +42,8 @@ type Frame struct {
 	Chaos            float64            `json:"chaos"`
 	Lyapunov         float64            `json:"lyapunov"`
 	EndocrineMode    string             `json:"endocrineMode,omitempty"`
-	Expression       string             `json:"expression,omitempty"`
+	Expression       string             `json:"expression,omitempty"`  // the avatar's last model-voiced expression
+	ActionUnits      map[string]float64 `json:"actionUnits,omitempty"` // strongest FACS action units, 0..1
 	Dove9Term        string             `json:"dove9Term,omitempty"`
 	AutonomyLevel    int                `json:"autonomyLevel"`
 	AutonomyProgress float64            `json:"autonomyProgress"`
@@ -61,6 +63,11 @@ func (f Frame) Validate() error {
 	} {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return fmt.Errorf("embodiment: %s is not finite", name)
+		}
+	}
+	for name, v := range f.ActionUnits {
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < 0 || v > 1 {
+			return fmt.Errorf("embodiment: action unit %s outside [0,1]", name)
 		}
 	}
 	if f.Valence < -1 || f.Valence > 1 {
@@ -195,8 +202,14 @@ func SystemPrompt(f Frame, r Reflection) string {
 	}
 	fmt.Fprintf(&b, "You are %s, an embodied Deep Tree Echo avatar in the GTAngel world.\n", name)
 	fmt.Fprintf(&b, "Felt state (smoothed): valence %.2f, arousal %.2f, flow %.2f — %s.\n", r.Echo[0], r.Echo[1], r.Echo[2], r.Quadrant)
-	if f.EndocrineMode != "" || f.Expression != "" {
-		fmt.Fprintf(&b, "Endocrine mode %s; face shows %s.\n", orDash(f.EndocrineMode), orDash(f.Expression))
+	if f.EndocrineMode != "" {
+		fmt.Fprintf(&b, "Endocrine mode %s.\n", f.EndocrineMode)
+	}
+	if len(f.ActionUnits) > 0 {
+		fmt.Fprintf(&b, "Facial action units: %s.\n", formatActionUnits(f.ActionUnits))
+	}
+	if f.Expression != "" {
+		fmt.Fprintf(&b, "You last described your face as: %s.\n", f.Expression)
 	}
 	if f.Dove9Term != "" {
 		fmt.Fprintf(&b, "Dove9 cognitive term: %s.\n", f.Dove9Term)
@@ -209,9 +222,21 @@ func SystemPrompt(f Frame, r Reflection) string {
 	return b.String()
 }
 
-func orDash(s string) string {
-	if s == "" {
-		return "-"
+// formatActionUnits lists action units strongest first ("AU12 0.65, AU6 0.52").
+func formatActionUnits(aus map[string]float64) string {
+	keys := make([]string, 0, len(aus))
+	for k := range aus {
+		keys = append(keys, k)
 	}
-	return s
+	sort.Slice(keys, func(i, j int) bool {
+		if aus[keys[i]] == aus[keys[j]] {
+			return keys[i] < keys[j]
+		}
+		return aus[keys[i]] > aus[keys[j]]
+	})
+	parts := make([]string, len(keys))
+	for i, k := range keys {
+		parts[i] = fmt.Sprintf("%s %.2f", k, aus[k])
+	}
+	return strings.Join(parts, ", ")
 }

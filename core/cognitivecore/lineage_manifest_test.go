@@ -20,7 +20,13 @@ type lineageManifest struct {
 		Kind   string `json:"kind"`
 		Bytes  int64  `json:"bytes"`
 		SHA256 string `json:"sha256"`
+		// Local patches keep the upstream identity next to the patched bytes.
+		UpstreamSHA256 string `json:"upstream_sha256"`
+		UpstreamBytes  int64  `json:"upstream_bytes"`
+		LocalPatch     string `json:"local_patch"`
 	} `json:"files"`
+	LocalPatchCount    int `json:"local_patch_count"`
+	LocalAdditionCount int `json:"local_addition_count"`
 }
 
 type integrationCatalogue struct {
@@ -44,11 +50,33 @@ func TestImportedLineageManifestVerifiesEveryGoFile(t *testing.T) {
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		t.Fatalf("decode lineage manifest: %v", err)
 	}
-	if manifest.SchemaVersion != 1 || manifest.SourceCommit != SourceCommitSHA {
+	if manifest.SchemaVersion != 1 || manifest.SourceCommit != RetainedRuntimeSourceCommitSHA {
 		t.Fatalf("unexpected source identity: version=%d commit=%s", manifest.SchemaVersion, manifest.SourceCommit)
 	}
 	if manifest.GoFileCount != PreservedGoFileCount {
 		t.Fatalf("go_file_count = %d, want %d", manifest.GoFileCount, PreservedGoFileCount)
+	}
+
+	patched, added := 0, 0
+	for _, record := range manifest.Files {
+		if record.Kind == "local_go" {
+			added++
+			if record.LocalPatch == "" || record.UpstreamSHA256 != "" {
+				t.Fatalf("local addition %s must name its patch and has no upstream identity", record.Path)
+			}
+			continue
+		}
+		if record.LocalPatch == "" && record.UpstreamSHA256 == "" {
+			continue
+		}
+		patched++
+		if record.LocalPatch == "" || len(record.UpstreamSHA256) != 64 || record.UpstreamSHA256 == record.SHA256 || record.UpstreamBytes <= 0 {
+			t.Fatalf("patched record %s must keep a distinct upstream SHA-256 and size and name its patch", record.Path)
+		}
+	}
+	if patched != manifest.LocalPatchCount || added != manifest.LocalAdditionCount {
+		t.Fatalf("local_patch_count = %d (records %d), local_addition_count = %d (records %d)",
+			manifest.LocalPatchCount, patched, manifest.LocalAdditionCount, added)
 	}
 
 	verifiedGo := 0
@@ -73,6 +101,8 @@ func TestImportedLineageManifestVerifiesEveryGoFile(t *testing.T) {
 			verifiedAssets++
 		case "license":
 			verifiedLicenses++
+		case "local_go":
+			// counted above; hash and size verified like every record
 		default:
 			t.Fatalf("unknown lineage record kind %q", record.Kind)
 		}

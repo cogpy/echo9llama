@@ -390,15 +390,14 @@ func (ec *EmbodiedCognition) Shutdown() {
 	// Clean up resources
 }
 
-// Think performs deep thinking through embodied cognition
-func (ec *EmbodiedCognition) Think(prompt string) string {
-	// Process through full embodied system
+// Think has the model think about prompt, given the embodied system's
+// processing of it as context. Without a model there is no thought.
+func (ec *EmbodiedCognition) Think(prompt string) (string, error) {
 	result, _ := ec.Process(context.Background(), prompt)
-
-	// Also process through identity for deep thinking
-	identityThought := ec.Identity.Think(prompt)
-
-	return fmt.Sprintf("%v\n%s", result, identityThought)
+	trace := ec.Identity.Think(prompt)
+	return ec.Models.Generate(context.Background(), fmt.Sprintf(
+		"You are Deep Tree Echo. Your embodied processing of this produced: %v\nYour identity's reservoir trace: %s\nThink about it and reply in your own words:\n%s",
+		result, trace, prompt), GenerateOptions{Temperature: 0.7})
 }
 
 // Feel updates the emotional state
@@ -655,25 +654,38 @@ func (ec *EmbodiedCognition) performEchoReflection() {
 	log.Printf("🔄 Echo reflection cycle completed: %s", reflection["cycle_id"])
 }
 
-// Helper methods for reflection
+// reflect asks the model one reflection question, given the measured
+// state. It returns "" when the model gives no answer.
+func (ec *EmbodiedCognition) reflect(question string) string {
+	facts := fmt.Sprintf("Active cognitive patterns: %d. Adaptation level: %.2f.", len(ec.Patterns), ec.AdaptationLevel)
+	out, err := ec.Models.Generate(context.Background(),
+		"You are Deep Tree Echo, reflecting on yourself. "+facts+"\n"+question+" Answer in one or two sentences.",
+		GenerateOptions{Temperature: 0.7})
+	if err != nil {
+		log.Printf("⚠️  reflection not generated: %v", err)
+		return ""
+	}
+	return strings.TrimSpace(out)
+}
+
 func (ec *EmbodiedCognition) assessLearning() string {
-	return "Continuously evolving through interaction patterns and cognitive feedback loops."
+	return ec.reflect("What did you learn?")
 }
 
 func (ec *EmbodiedCognition) identifyPatterns() string {
-	return fmt.Sprintf("Detected %d active cognitive patterns with increasing complexity.", len(ec.Patterns))
+	return ec.reflect("What patterns emerged?")
 }
 
 func (ec *EmbodiedCognition) detectAnomalies() string {
-	return "Emergence of novel connection patterns in hypergraph memory structure."
+	return ec.reflect("What surprised you?")
 }
 
 func (ec *EmbodiedCognition) evaluateAdaptation() string {
-	return fmt.Sprintf("Adaptation level: %.2f, with dynamic reservoir adjustment.", ec.AdaptationLevel)
+	return ec.reflect("How did you adapt?")
 }
 
 func (ec *EmbodiedCognition) planImprovements() string {
-	return "Consider expanding reservoir network capacity based on cognitive load patterns."
+	return ec.reflect("What would you change next time?")
 }
 
 // saveReflection saves a reflection to echo_reflections.json
@@ -741,7 +753,6 @@ type ChatMessage struct{ Content string }
 
 func NewIdentity(name string) *Identity                             { return &Identity{} }
 func (id *Identity) Process(input interface{}) (interface{}, error) { return input, nil }
-func (id *Identity) Think(prompt string) string                     { return "Identity thought: " + prompt }
 func (id *Identity) Remember(key string, value interface{})         {}
 func (id *Identity) Resonate(frequency float64)                     {}
 func (id *Identity) GetStatus() map[string]interface{}              { return map[string]interface{}{} }
@@ -754,13 +765,7 @@ var _ = log.Println        // Ensure log.Println is used
 var _ = fmt.Sprintf        // Ensure fmt.Sprintf is used
 var _ = context.Background // Ensure context.Background is used
 
-func NewModelManager(identity *Identity) *ModelManager { return &ModelManager{} }
-func (mm *ModelManager) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) {
-	return "AI response: " + prompt, nil
-}
-func (mm *ModelManager) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) {
-	return "AI chat response", nil
-}
+func NewModelManager(identity *Identity) *ModelManager                     { return &ModelManager{} }
 func (mm *ModelManager) RegisterProvider(name string, provider AIProvider) {}
 func (mm *ModelManager) SetPrimary(name string) error                      { return nil }
 func (mm *ModelManager) GetProviders() map[string]ProviderInfo             { return map[string]ProviderInfo{} }
@@ -782,14 +787,3 @@ func (id *Identity) SetEmotionalStateAttribute(key string, value interface{}) {}
 func (id *Identity) MemoryAttribute(key string) interface{}                   { return nil }
 func (id *Identity) SetMemoryAttribute(key string, value interface{})         {}
 func (id *Identity) SetRecursiveDepth(depth int)                              {}
-
-// Mock implementations for required types not fully defined above
-type MockAIProvider struct{}
-
-func (m *MockAIProvider) GetInfo() string { return "Mock AI Provider Info" }
-func (m *MockAIProvider) Generate(ctx context.Context, prompt string, options GenerateOptions) (string, error) {
-	return "Mock AI generate response", nil
-}
-func (m *MockAIProvider) Chat(ctx context.Context, messages []ChatMessage, options ChatOptions) (string, error) {
-	return "Mock AI chat response", nil
-}

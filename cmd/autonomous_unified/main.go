@@ -4,7 +4,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -21,29 +20,27 @@ func main() {
 	fmt.Println("═══════════════════════════════════════════════════════")
 	fmt.Println()
 	
-	// Get API keys from environment
-	anthropicKey := os.Getenv("ANTHROPIC_API_KEY")
-	openrouterKey := os.Getenv("OPENROUTER_API_KEY")
-	
+	// Every response comes from a real model: a locally served one
+	// (ECHO_EDGE_COMPLETION_URL / ECHO_EDGE_MODEL_PATH) or a hosted provider
+	// whose key is set. Without one the test does not run.
 	var llmProvider llm.LLMProvider
 	var providerName string
-	
-	if anthropicKey != "" {
-		fmt.Println("✓ Using Anthropic Claude API")
-		llmProvider = llm.NewAnthropicProvider("")
-		providerName = "Anthropic"
-	} else if openrouterKey != "" {
-		fmt.Println("✓ Using OpenRouter API")
-		// OpenRouter provider needs to be implemented or use a different approach
-		fmt.Println("⚠️  OpenRouter provider not yet integrated. Using mock provider.")
-		llmProvider = &MockLLMProvider{}
-		providerName = "Mock"
-	} else {
-		fmt.Println("⚠️  No API keys found. Using mock provider.")
-		llmProvider = &MockLLMProvider{}
-		providerName = "Mock"
+	for _, p := range []llm.LLMProvider{
+		llm.NewEdgeCompletionProviderFromEnv(),
+		llm.NewAnthropicProvider(""),
+		llm.NewOpenRouterProvider(""),
+	} {
+		if p.Available() {
+			llmProvider, providerName = p, p.Name()
+			break
+		}
 	}
-	
+	if llmProvider == nil {
+		fmt.Println("❌ No model available: serve one locally (ECHO_EDGE_COMPLETION_URL or ECHO_EDGE_MODEL_PATH) or set ANTHROPIC_API_KEY / OPENROUTER_API_KEY")
+		os.Exit(1)
+	}
+	fmt.Println("✓ Model available")
+
 	fmt.Printf("   Provider: %s\n", providerName)
 	fmt.Println()
 	
@@ -80,11 +77,11 @@ func main() {
 	fmt.Println("   Press Ctrl+C to stop")
 	fmt.Println()
 	
-	// Simulate some external interactions
+	// Send the agent two test messages; its replies are the model's
 	go func() {
 		time.Sleep(15 * time.Second)
 		
-		fmt.Println("\n📨 Simulating external interaction...")
+		fmt.Println("\n📨 Sending a test message...")
 		response, err := agent.ProcessExternalMessage(
 			"What are your thoughts on consciousness and emergence?",
 		)
@@ -96,7 +93,7 @@ func main() {
 		
 		time.Sleep(30 * time.Second)
 		
-		fmt.Println("\n📨 Simulating another interaction...")
+		fmt.Println("\n📨 Sending another test message...")
 		response, err = agent.ProcessExternalMessage(
 			"How do you cultivate wisdom through your experiences?",
 		)
@@ -144,50 +141,4 @@ func main() {
 	fmt.Println("\n═══════════════════════════════════════════════════════")
 	fmt.Println("🌳 Test Complete. Goodbye.")
 	fmt.Println("═══════════════════════════════════════════════════════")
-}
-
-// MockLLMProvider provides mock responses when no API key is available
-type MockLLMProvider struct{}
-
-func (m *MockLLMProvider) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
-	// Return contextual mock responses
-	responses := []string{
-		"I am considering the patterns that emerge from my experiences.",
-		"Wisdom grows through reflection and integration of knowledge.",
-		"The interconnection of ideas reveals deeper understanding.",
-		"I am exploring new dimensions of thought and awareness.",
-		"Each moment offers an opportunity for growth and learning.",
-	}
-	
-	// Simple hash to get consistent but varied responses
-	hash := 0
-	for _, c := range prompt {
-		hash += int(c)
-	}
-	
-	return responses[hash%len(responses)], nil
-}
-
-func (m *MockLLMProvider) StreamGenerate(ctx context.Context, prompt string, opts llm.GenerateOptions) (<-chan llm.StreamChunk, error) {
-	ch := make(chan llm.StreamChunk, 1)
-	result, err := m.Generate(ctx, prompt, opts)
-	if err != nil {
-		ch <- llm.StreamChunk{Error: err}
-	} else {
-		ch <- llm.StreamChunk{Content: result, Done: true}
-	}
-	close(ch)
-	return ch, err
-}
-
-func (m *MockLLMProvider) Name() string {
-	return "Mock"
-}
-
-func (m *MockLLMProvider) Available() bool {
-	return true
-}
-
-func (m *MockLLMProvider) MaxTokens() int {
-	return 4096
 }

@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -76,7 +77,18 @@ func (n5 *N5CognitiveSystem) Stop() {
 	n5.cancel()
 }
 
-// ProcessWithMetaCognition processes a task with full meta-cognitive awareness
+// SetTextGenerator injects the model into every N+5 component that produces
+// Deep Tree Echo's words (meta-thoughts, reasoning, wisdom). Passing nil
+// disables them.
+func (n5 *N5CognitiveSystem) SetTextGenerator(gen TextGenerator) {
+	n5.metacognitiveMonitor.SetTextGenerator(gen)
+	n5.advancedReasoning.SetTextGenerator(gen)
+	n5.wisdomApplication.SetTextGenerator(gen)
+}
+
+// ProcessWithMetaCognition processes a task with full meta-cognitive awareness.
+// The reasoning and the meta-insight come from the model; when it is missing
+// or fails, the process is marked failed and Success is false.
 func (n5 *N5CognitiveSystem) ProcessWithMetaCognition(task string) *MetaCognitiveResult {
 	n5.mu.Lock()
 	n5.totalOperations++
@@ -94,40 +106,54 @@ func (n5 *N5CognitiveSystem) ProcessWithMetaCognition(task string) *MetaCognitiv
 	strategy := n5.metacognitiveMonitor.SelectStrategy(ProcessProblemSolving, map[string]interface{}{
 		"accuracy_required": true,
 	})
-	result.StrategyUsed = strategy.Name
+	if strategy != nil {
+		result.StrategyUsed = strategy.Name
+	}
 
 	// 3. Find relevant wisdom
 	wisdomMatches := n5.wisdomApplication.FindRelevantWisdom(task, 3)
 	result.WisdomApplied = len(wisdomMatches)
 
-	// 4. Perform advanced reasoning
+	// 4. Perform model-backed reasoning
 	chainID := n5.advancedReasoning.StartReasoningChain(fmt.Sprintf("Solve: %s", task))
+	thoughtChain := n5.advancedReasoning.ChainOfThought(task)
+	if thoughtChain == nil {
+		n5.advancedReasoning.mu.Lock()
+		if chain, ok := n5.advancedReasoning.activeChains[chainID]; ok {
+			chain.Status = ChainFailed
+			chain.CompletionTime = time.Now()
+			delete(n5.advancedReasoning.activeChains, chainID)
+		}
+		n5.advancedReasoning.mu.Unlock()
+		n5.metacognitiveMonitor.UpdateProcess(processID, 0, StatusFailed)
+		result.EndTime = time.Now()
+		return result
+	}
+	for i, thought := range thoughtChain.Thoughts {
+		why := ""
+		if i < len(thoughtChain.Reasoning) {
+			why = thoughtChain.Reasoning[i]
+		}
+		n5.advancedReasoning.AddReasoningStep(chainID, StepDeduction, task, why, thought, thoughtChain.Confidence)
+	}
+	n5.advancedReasoning.CompleteReasoningChain(chainID, thoughtChain.Answer, thoughtChain.Confidence)
+	result.Answer = thoughtChain.Answer
 
-	// Add reasoning steps
-	n5.advancedReasoning.AddReasoningStep(chainID, StepDeduction,
-		"Task requires systematic approach",
-		"Breaking down into components",
-		"Identified sub-problems", 0.8)
-
-	n5.advancedReasoning.AddReasoningStep(chainID, StepAbduction,
-		"Need to find best solution",
-		"Exploring alternatives",
-		"Generated candidate solutions", 0.7)
-
-	// Complete reasoning
-	conclusion := fmt.Sprintf("Completed analysis of '%s' using %s strategy", task, strategy.Name)
-	n5.advancedReasoning.CompleteReasoningChain(chainID, conclusion, 0.75)
-
-	// 5. Update process status
-	n5.metacognitiveMonitor.UpdateProcess(processID, 1.0, StatusCompleted)
-
-	// 6. Generate meta-thought about the process
+	// 5. Model-written meta-thought about how the task was processed
 	metaThought := n5.metacognitiveMonitor.GenerateMetaThought(
 		"task_processing",
-		fmt.Sprintf("Reflected on how I processed '%s'", task),
+		fmt.Sprintf("Task: %s\nStrategy: %s\nMy reasoning: %s\nMy answer: %s",
+			task, result.StrategyUsed, strings.Join(thoughtChain.Thoughts, " / "), thoughtChain.Answer),
 		0,
 	)
+	if metaThought == nil {
+		n5.metacognitiveMonitor.UpdateProcess(processID, 1.0, StatusFailed)
+		result.EndTime = time.Now()
+		return result
+	}
 	result.MetaInsight = metaThought.Insight
+
+	n5.metacognitiveMonitor.UpdateProcess(processID, 1.0, StatusCompleted)
 
 	result.EndTime = time.Now()
 	result.Success = true
@@ -157,11 +183,10 @@ func (n5 *N5CognitiveSystem) LearnFromEngagement(topic string, duration time.Dur
 	_ = outcome
 }
 
-// ReasonAboutProblem uses advanced reasoning for a problem
+// ReasonAboutProblem uses advanced reasoning for a problem. The answer, the
+// causal conclusion and the alternative scenario are produced by the model;
+// whatever the model could not produce is left empty.
 func (n5 *N5CognitiveSystem) ReasonAboutProblem(problem string, problemType ProblemType) *ReasoningResult {
-	n5.mu.RLock()
-	defer n5.mu.RUnlock()
-
 	result := &ReasoningResult{
 		Problem:   problem,
 		StartTime: time.Now(),
@@ -171,38 +196,42 @@ func (n5 *N5CognitiveSystem) ReasonAboutProblem(problem string, problemType Prob
 	decomposed := n5.advancedReasoning.DecomposeProblem(problem, problemType)
 	result.SubProblems = len(decomposed.SubProblems)
 
-	// Perform causal reasoning
-	evidence := []string{"observed pattern", "historical data", "theoretical foundation"}
-	inference := n5.advancedReasoning.PerformCausalReasoning(
-		fmt.Sprintf("Solving %s requires addressing root causes", problem),
-		evidence,
-	)
-	result.CausalConclusion = inference.Conclusion
-
-	// Generate counterfactual
-	counterfactual := n5.advancedReasoning.GenerateCounterfactual(
-		problem,
-		"If we had approached this differently",
-	)
-	result.AlternativeScenarios = 1
-	result.BestAlternative = counterfactual.PredictedOutcome
-
 	// Chain of thought reasoning
 	thoughtChain := n5.advancedReasoning.ChainOfThought(problem)
-	result.ReasoningSteps = len(thoughtChain.Thoughts)
-	result.Answer = thoughtChain.Answer
-	result.Confidence = thoughtChain.Confidence
+	if thoughtChain != nil {
+		result.ReasoningSteps = len(thoughtChain.Thoughts)
+		result.Answer = thoughtChain.Answer
+		result.Confidence = thoughtChain.Confidence
+
+		// Causal reasoning over the model's own reasoning steps
+		inference := n5.advancedReasoning.PerformCausalReasoning(
+			fmt.Sprintf("Solving %s requires addressing its root causes", problem),
+			thoughtChain.Thoughts,
+		)
+		if inference != nil {
+			result.CausalConclusion = inference.Conclusion
+		}
+	}
+
+	// Counterfactual
+	counterfactual := n5.advancedReasoning.GenerateCounterfactual(
+		problem,
+		"The problem is approached in a substantially different way",
+	)
+	if counterfactual != nil {
+		result.AlternativeScenarios = 1
+		result.BestAlternative = counterfactual.PredictedOutcome
+	}
 
 	result.EndTime = time.Now()
 
 	return result
 }
 
-// ApplyWisdomToContext finds and applies relevant wisdom
+// ApplyWisdomToContext finds relevant wisdom and has the model apply it. No
+// feedback is fabricated: the application stays pending until real feedback
+// arrives via the wisdom engine's ProvideFeedback.
 func (n5 *N5CognitiveSystem) ApplyWisdomToContext(context string) *WisdomApplicationResult {
-	n5.mu.RLock()
-	defer n5.mu.RUnlock()
-
 	result := &WisdomApplicationResult{
 		Context:   context,
 		StartTime: time.Now(),
@@ -213,25 +242,20 @@ func (n5 *N5CognitiveSystem) ApplyWisdomToContext(context string) *WisdomApplica
 	result.WisdomFound = len(matches)
 
 	if len(matches) > 0 {
-		// Apply best match
 		bestMatch := matches[0]
-		application := n5.wisdomApplication.ApplyWisdom(bestMatch.WisdomID, context)
-
 		result.WisdomApplied = bestMatch.Wisdom.Content
 		result.Relevance = bestMatch.RelevanceScore
-		result.Effectiveness = application.Effectiveness
-		result.Success = application.Outcome == OutcomeSuccess
 
-		// Provide feedback
-		rating := application.Effectiveness
-		n5.wisdomApplication.ProvideFeedback(application.ID, rating, "Automated feedback")
+		if application := n5.wisdomApplication.ApplyWisdom(bestMatch.WisdomID, context); application != nil {
+			result.Guidance = application.Guidance
+			result.Success = true
+		}
 	}
 
 	// Try synthesizing new wisdom if we found multiple matches
 	if len(matches) >= 2 {
 		sourceIDs := []string{matches[0].WisdomID, matches[1].WisdomID}
-		synthesized := n5.wisdomApplication.SynthesizeWisdom(sourceIDs)
-		if synthesized != nil {
+		if synthesized := n5.wisdomApplication.SynthesizeWisdom(sourceIDs); synthesized != nil {
 			result.SynthesizedWisdom = synthesized.Content
 		}
 	}
@@ -273,22 +297,26 @@ func (n5 *N5CognitiveSystem) autonomousCognitiveLoop() {
 
 // autonomousCognitiveCycle performs one cycle of autonomous cognition
 func (n5 *N5CognitiveSystem) autonomousCognitiveCycle() {
-	n5.mu.Lock()
-	defer n5.mu.Unlock()
-
-	if !n5.running {
+	n5.mu.RLock()
+	running := n5.running
+	n5.mu.RUnlock()
+	if !running {
 		return
 	}
 
-	// Generate meta-thought about system state
+	// Model-written meta-thought about the current system state (none if the
+	// model is unavailable)
+	awareness := n5.metacognitiveMonitor.GetSelfAwareness()
 	n5.metacognitiveMonitor.GenerateMetaThought(
 		"system_state",
-		"Reflecting on current cognitive state and capabilities",
+		fmt.Sprintf("My current state: awareness %v, confidence %v, processes monitored %v, decisions reviewed %v, meta-thoughts %v",
+			awareness["awareness_level"], awareness["confidence_level"], awareness["total_processes"],
+			awareness["total_decisions"], awareness["meta_thoughts"]),
 		0,
 	)
 
-	// Perform self-assessment
-	awareness := n5.metacognitiveMonitor.GetSelfAwareness()
+	n5.mu.Lock()
+	defer n5.mu.Unlock()
 
 	// Update metrics
 	n5.integrationMetrics["last_autonomous_cycle"] = time.Now()
@@ -306,6 +334,7 @@ type MetaCognitiveResult struct {
 	EndTime       time.Time
 	StrategyUsed  string
 	WisdomApplied int
+	Answer        string
 	MetaInsight   string
 	Success       bool
 }
@@ -333,6 +362,7 @@ type WisdomApplicationResult struct {
 	WisdomApplied     string
 	Relevance         float64
 	Effectiveness     float64
+	Guidance          string
 	Success           bool
 	SynthesizedWisdom string
 }

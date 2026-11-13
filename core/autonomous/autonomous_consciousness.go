@@ -106,6 +106,7 @@ func NewAutonomousConsciousness(config *AutonomousConfig) (*AutonomousConsciousn
 	identityKernel["name"] = config.IdentityContext
 	identityKernel["purpose"] = "wisdom cultivation"
 	goalOrchestrator := goals.NewGoalOrchestrator(identityKernel, "./echo_goals")
+	goalOrchestrator.SetGoalGenerator(llmManager)
 	memorySystem := memory.NewHypergraphMemory(nil)
 
 	ac := &AutonomousConsciousness{
@@ -429,4 +430,10 @@ func (ac *AutonomousConsciousness) IsAwake() bool {
 // GetThoughtStream returns the thought stream channel
 func (ac *AutonomousConsciousness) GetThoughtStream() <-chan *consciousness.Thought {
 	return ac.thoughtStream
+}
+
+// LLMManager returns the provider manager used for all model-written text,
+// so callers can wire companion subsystems to the same model.
+func (ac *AutonomousConsciousness) LLMManager() *llm.ProviderManager {
+	return ac.llmManager
 }

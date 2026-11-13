@@ -53,6 +53,7 @@ func (uao *UnifiedAutonomousOrchestrator) rehydrateCognitiveCore(ctx context.Con
 
 	inputs := make([]cognitivecore.Input, 0, maxCognitiveCoreReplayInputs)
 	afterSequence := int64(0)
+	skipped := 0
 	for {
 		events, err := store.Query(ctx, persistence.CognitiveEventQuery{
 			AfterSequence: afterSequence,
@@ -68,6 +69,11 @@ func (uao *UnifiedAutonomousOrchestrator) rehydrateCognitiveCore(ctx context.Con
 		}
 		for _, event := range events {
 			evidence, err := decodeCognitiveCoreEvidence(event.PayloadJSON)
+			if errors.Is(err, errCognitiveCoreProvenanceMismatch) {
+				skipped++
+				afterSequence = event.Sequence
+				continue
+			}
 			if err != nil {
 				return fmt.Errorf("decode cognitive core replay event %s: %w", event.EventID, err)
 			}
@@ -81,6 +87,9 @@ func (uao *UnifiedAutonomousOrchestrator) rehydrateCognitiveCore(ctx context.Con
 		if len(events) < 1000 {
 			break
 		}
+	}
+	if skipped > 0 {
+		fmt.Printf("   ⚠️  ecco9 Cognitive Core: %d evidence event(s) from another lineage pin not replayed\n", skipped)
 	}
 	if len(inputs) == 0 {
 		return nil
@@ -205,6 +214,12 @@ func cognitiveCoreSessionKey(sessionID string) string {
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(sessionID)))
 }
 
+// errCognitiveCoreProvenanceMismatch marks evidence recorded under a different
+// lineage pin (or tampered provenance). It is never trusted or replayed into
+// the current reservoir, but it does not stop Echo from starting: a
+// legitimate re-pin of the ecco9 snapshot changes the manifest hash.
+var errCognitiveCoreProvenanceMismatch = errors.New("cognitive core evidence provenance mismatch")
+
 func decodeCognitiveCoreEvidence(payload []byte) (cognitiveCoreEvidence, error) {
 	var evidence cognitiveCoreEvidence
 	if err := json.Unmarshal(payload, &evidence); err != nil {
@@ -224,7 +239,7 @@ func decodeCognitiveCoreEvidence(payload []byte) (cognitiveCoreEvidence, error) 
 		actualProvenance.AdapterVersion != expectedProvenance.AdapterVersion ||
 		actualProvenance.TrustGrade != expectedProvenance.TrustGrade ||
 		!slices.Equal(actualProvenance.SourcePaths, expectedProvenance.SourcePaths) {
-		return evidence, fmt.Errorf("cognitive core evidence provenance mismatch")
+		return evidence, errCognitiveCoreProvenanceMismatch
 	}
 	encodedInput, err := json.Marshal(evidence.Input)
 	if err != nil {

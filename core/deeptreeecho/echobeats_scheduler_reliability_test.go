@@ -96,8 +96,8 @@ func TestEchobeatsSchedulerRecordsProviderFailuresWithoutSyntheticThought(t *tes
 		if task.Success {
 			t.Fatalf("provider failure was marked successful: %#v", task)
 		}
-		if task.Result != "generation failed: provider unavailable" {
-			t.Fatalf("provider failure result = %q, want explicit failure record", task.Result)
+		if task.Result != "" {
+			t.Fatalf("provider failure result = %q, want no model-free text", task.Result)
 		}
 		if strings.Contains(task.Result, "in progress") || strings.Contains(task.Result, "under consideration") {
 			t.Fatalf("provider failure retained success-like fallback prose: %#v", task)

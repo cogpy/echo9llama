@@ -1,3 +1,6 @@
+//go:build examples
+// +build examples
+
 package hgql
 
 import "github.com/EchoCog/echollama/core/deeptreeecho"

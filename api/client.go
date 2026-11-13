@@ -438,3 +438,46 @@ func (c *Client) BaseURL() *url.URL {
 func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	return c.http.Do(req)
 }
+
+// CreateAgent creates an orchestration agent on the server.
+func (c *Client) CreateAgent(ctx context.Context, req *CreateAgentRequest) (*AgentResponse, error) {
+	var resp AgentResponse
+	if err := c.do(ctx, http.MethodPost, "/api/orchestration/agents", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// ListAgents lists the server's orchestration agents.
+func (c *Client) ListAgents(ctx context.Context) (*ListAgentsResponse, error) {
+	var resp ListAgentsResponse
+	if err := c.do(ctx, http.MethodGet, "/api/orchestration/agents", nil, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// DeleteAgent deletes an orchestration agent.
+func (c *Client) DeleteAgent(ctx context.Context, id string) error {
+	return c.do(ctx, http.MethodDelete, "/api/orchestration/agents/"+url.PathEscape(id), nil, nil)
+}
+
+// Orchestrate runs tasks on an orchestration agent and returns their results.
+func (c *Client) Orchestrate(ctx context.Context, req *OrchestrationRequest) (*OrchestrationResponse, error) {
+	stream := false
+	req.Stream = &stream
+	var resp OrchestrationResponse
+	if err := c.do(ctx, http.MethodPost, "/api/orchestration/tasks", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}
+
+// RunWorkflow runs a multi-step workflow on an orchestration agent.
+func (c *Client) RunWorkflow(ctx context.Context, req *WorkflowRequest) (*WorkflowResponse, error) {
+	var resp WorkflowResponse
+	if err := c.do(ctx, http.MethodPost, "/api/orchestration/workflows", req, &resp); err != nil {
+		return nil, err
+	}
+	return &resp, nil
+}

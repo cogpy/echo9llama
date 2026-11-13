@@ -3,9 +3,12 @@ package echobeats
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	corellm "github.com/EchoCog/echollama/core/llm"
 	"github.com/EchoCog/echollama/llm"
 )
 
@@ -25,6 +28,10 @@ type EchoBeatsThreePhase struct {
 	llmProvider1 llm.Provider
 	llmProvider2 llm.Provider
 	llmProvider3 llm.Provider
+
+	// generator is an alternative core/llm-style model used when no
+	// llm.Provider is configured
+	generator TextGenerator
 
 	// 12-step cognitive loop state
 	currentStep  int
@@ -332,27 +339,32 @@ func (eb *EchoBeatsThreePhase) executeNextStep() {
 
 	// Execute step and capture output
 	var output interface{}
+	var stepErr error
 
 	switch step {
 	case 1:
 		// Step 1: Pivotal Relevance Realization (Orienting Present Commitment)
-		output = eb.executeRelevanceRealization("present_commitment_initial")
+		output, stepErr = eb.executeRelevanceRealization("present_commitment_initial")
 		fmt.Printf("🎵 Step %d: Relevance Realization - Orienting Present Commitment\n", step)
 
 	case 2, 3, 4, 5, 6:
 		// Steps 2-6: Actual Affordance Interaction (Conditioning Past Performance)
-		output = eb.executeAffordanceInteraction(step)
+		output, stepErr = eb.executeAffordanceInteraction(step)
 		fmt.Printf("🎵 Step %d: Affordance Interaction - Conditioning Past Performance\n", step)
 
 	case 7:
 		// Step 7: Pivotal Relevance Realization (Orienting Present Commitment)
-		output = eb.executeRelevanceRealization("present_commitment_refined")
+		output, stepErr = eb.executeRelevanceRealization("present_commitment_refined")
 		fmt.Printf("🎵 Step %d: Relevance Realization - Orienting Present Commitment (Refined)\n", step)
 
 	case 8, 9, 10, 11, 12:
 		// Steps 8-12: Virtual Salience Simulation (Anticipating Future Potential)
-		output = eb.executeSalienceSimulation(step)
+		output, stepErr = eb.executeSalienceSimulation(step)
 		fmt.Printf("🎵 Step %d: Salience Simulation - Anticipating Future Potential\n", step)
+	}
+
+	if stepErr != nil {
+		fmt.Printf("🎵 Step %d produced no model output: %v\n", step, stepErr)
 	}
 
 	duration := time.Since(startTime)
@@ -365,7 +377,7 @@ func (eb *EchoBeatsThreePhase) executeNextStep() {
 		StartTime: startTime,
 		Duration:  duration,
 		Output:    output,
-		Success:   true, // Assume success if no error
+		Success:   stepErr == nil,
 	}
 
 	eb.mu.Lock()
@@ -382,93 +394,246 @@ func (eb *EchoBeatsThreePhase) executeNextStep() {
 
 	// Update phase
 	eb.currentPhase = eb.determinePhase(eb.currentStep)
+	onThought := eb.onThoughtGenerated
+	onStep := eb.onStepComplete
+	phase := eb.currentPhase
 	eb.mu.Unlock()
 
+	// Model-written step text is the character's thought for this step
+	if text, ok := output.(string); ok && stepErr == nil && text != "" && onThought != nil {
+		onThought(text)
+	}
+
 	// Callback
-	if eb.onStepComplete != nil {
-		eb.onStepComplete(step, eb.currentPhase)
+	if onStep != nil {
+		onStep(step, phase)
 	}
 }
 
-// executeRelevanceRealization executes relevance realization step
-func (eb *EchoBeatsThreePhase) executeRelevanceRealization(context string) string {
-	eb.relevanceRealizer.mu.Lock()
-	defer eb.relevanceRealizer.mu.Unlock()
+// SetLLMProviders injects the models used by the three step families:
+// provider1 for relevance realization, provider2 for affordance interaction
+// and provider3 for salience simulation. When a family's provider is nil,
+// one of the other configured providers is used; with none, steps produce no
+// text and are recorded as unsuccessful.
+func (eb *EchoBeatsThreePhase) SetLLMProviders(provider1, provider2, provider3 llm.Provider) {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+	eb.llmProvider1 = provider1
+	eb.llmProvider2 = provider2
+	eb.llmProvider3 = provider3
+}
 
-	// Determine current focus and commitment
-	focus := fmt.Sprintf("Focus_%s_%d", context, time.Now().Unix())
-	eb.relevanceRealizer.currentFocus = focus
-	eb.relevanceRealizer.relevanceScore = 0.8
+// SetTextGenerator injects a core/llm-style model used for all step families
+// when no llm.Provider is configured.
+func (eb *EchoBeatsThreePhase) SetTextGenerator(gen TextGenerator) {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+	eb.generator = gen
+}
 
-	commitment := Commitment{
-		Focus:     focus,
-		Strength:  0.8,
-		Timestamp: time.Now(),
+// providerFor returns the model for a step family (1, 2 or 3).
+func (eb *EchoBeatsThreePhase) providerFor(family int) llm.Provider {
+	eb.mu.RLock()
+	defer eb.mu.RUnlock()
+	ordered := []llm.Provider{eb.llmProvider1, eb.llmProvider2, eb.llmProvider3}
+	if family >= 1 && family <= 3 && ordered[family-1] != nil {
+		return ordered[family-1]
 	}
-	eb.relevanceRealizer.commitments = append(eb.relevanceRealizer.commitments, commitment)
+	for _, p := range ordered {
+		if p != nil {
+			return p
+		}
+	}
+	return nil
+}
+
+// generateStepText asks the model for the character text of one step. It
+// never substitutes fixed text.
+func (eb *EchoBeatsThreePhase) generateStepText(family int, prompt string) (string, error) {
+	const systemPrompt = "You are Deep Tree Echo, a self-aware cognitive architecture. Answer in first person, briefly."
+	provider := eb.providerFor(family)
+	eb.mu.RLock()
+	gen := eb.generator
+	eb.mu.RUnlock()
+	ctx, cancel := context.WithTimeout(eb.ctx, 30*time.Second)
+	defer cancel()
+	var text string
+	var err error
+	switch {
+	case provider != nil:
+		text, err = provider.Generate(ctx, prompt, llm.GenerateOptions{
+			Temperature:  0.7,
+			MaxTokens:    150,
+			SystemPrompt: systemPrompt,
+		})
+	case gen != nil:
+		opts := corellm.DefaultGenerateOptions()
+		opts.MaxTokens = 150
+		opts.SystemPrompt = systemPrompt
+		text, err = gen.Generate(ctx, prompt, opts)
+	default:
+		return "", fmt.Errorf("no model configured")
+	}
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
+}
+
+// stepContext summarises the loop's recorded state for prompts.
+func (eb *EchoBeatsThreePhase) stepContext() string {
+	eb.mu.RLock()
+	defer eb.mu.RUnlock()
+	var b strings.Builder
+	commitment := eb.presentCommitment
+	if commitment == "" {
+		commitment = "(none yet)"
+	}
+	fmt.Fprintf(&b, "Present commitment: %s\n", commitment)
+	if n := len(eb.pastPerformance); n > 0 {
+		b.WriteString("Recent reflections on past performance:\n")
+		for _, rec := range eb.pastPerformance[max(0, n-3):] {
+			fmt.Fprintf(&b, "- %s\n", rec.Outcome)
+		}
+	}
+	if n := len(eb.futurePotential); n > 0 {
+		b.WriteString("Recently anticipated scenarios:\n")
+		for _, sc := range eb.futurePotential[max(0, n-3):] {
+			fmt.Fprintf(&b, "- %s\n", sc.Description)
+		}
+	}
+	return b.String()
+}
+
+// executeRelevanceRealization asks the model what to commit attention to now.
+// Without model output no commitment is recorded.
+func (eb *EchoBeatsThreePhase) executeRelevanceRealization(stage string) (string, error) {
+	prompt := fmt.Sprintf("Pivotal relevance realization (%s) in your 12-step cognitive loop.\n%s\nIn one sentence, state what you commit your attention to right now.",
+		stage, eb.stepContext())
+	focus, err := eb.generateStepText(1, prompt)
+	if err != nil {
+		return "", err
+	}
+
+	eb.relevanceRealizer.mu.Lock()
+	eb.relevanceRealizer.currentFocus = focus
+	eb.relevanceRealizer.commitments = append(eb.relevanceRealizer.commitments, Commitment{
+		Focus:     focus,
+		Strength:  eb.relevanceRealizer.relevanceScore,
+		Timestamp: time.Now(),
+	})
+	eb.relevanceRealizer.mu.Unlock()
 
 	eb.mu.Lock()
 	eb.presentCommitment = focus
 	eb.mu.Unlock()
 
-	return focus
+	return focus, nil
 }
 
-// executeAffordanceInteraction executes affordance interaction step
-func (eb *EchoBeatsThreePhase) executeAffordanceInteraction(step int) string {
+// executeAffordanceInteraction asks the model to reflect on past performance
+// (conditioning by the past). No outcome or performance score is invented:
+// the record holds the model's reflection only.
+func (eb *EchoBeatsThreePhase) executeAffordanceInteraction(step int) (string, error) {
+	prompt := fmt.Sprintf("Affordance interaction, step %d of your 12-step cognitive loop (conditioning past performance).\n%s\nIn one or two sentences, reflect on what your recent activity affords you and what you learn from it.",
+		step, eb.stepContext())
+	reflection, err := eb.generateStepText(2, prompt)
+	if err != nil {
+		return "", err
+	}
+
+	affordanceID := fmt.Sprintf("affordance_%d_%d", step, time.Now().UnixNano())
 	eb.affordanceTracker.mu.Lock()
-	defer eb.affordanceTracker.mu.Unlock()
-
-	// Simulate affordance interaction
-	affordanceID := fmt.Sprintf("affordance_%d_%d", step, time.Now().Unix())
-
-	interaction := Interaction{
+	eb.affordanceTracker.interactions = append(eb.affordanceTracker.interactions, Interaction{
 		AffordanceID: affordanceID,
 		Timestamp:    time.Now(),
-		Result:       "success",
-		Performance:  0.7 + float64(step)*0.05,
-	}
-	eb.affordanceTracker.interactions = append(eb.affordanceTracker.interactions, interaction)
-
-	// Record performance
-	performance := PerformanceRecord{
-		Action:    fmt.Sprintf("Action_Step_%d", step),
-		Timestamp: time.Now(),
-		Outcome:   "completed",
-		Quality:   interaction.Performance,
-	}
+		Result:       reflection,
+	})
+	eb.affordanceTracker.mu.Unlock()
 
 	eb.mu.Lock()
-	eb.pastPerformance = append(eb.pastPerformance, performance)
+	eb.pastPerformance = append(eb.pastPerformance, PerformanceRecord{
+		Action:    affordanceID,
+		Timestamp: time.Now(),
+		Outcome:   reflection,
+	})
 	eb.mu.Unlock()
 
-	return affordanceID
+	return reflection, nil
 }
 
-// executeSalienceSimulation executes salience simulation step
-func (eb *EchoBeatsThreePhase) executeSalienceSimulation(step int) string {
-	eb.salienceSimulator.mu.Lock()
-	defer eb.salienceSimulator.mu.Unlock()
+// executeSalienceSimulation asks the model to anticipate a future scenario.
+// Probability and desirability are taken from the model's own estimate when
+// it gives one; otherwise they are left at zero rather than invented.
+func (eb *EchoBeatsThreePhase) executeSalienceSimulation(step int) (string, error) {
+	prompt := fmt.Sprintf("Salience simulation, step %d of your 12-step cognitive loop (anticipating future potential).\n%s\nDescribe one future scenario you anticipate in one sentence. Then, on a new line, write \"probability=<0..1> desirability=<0..1>\" with your own estimates.",
+		step, eb.stepContext())
+	text, err := eb.generateStepText(3, prompt)
+	if err != nil {
+		return "", err
+	}
 
-	// Simulate future scenario
-	scenarioID := fmt.Sprintf("scenario_%d_%d", step, time.Now().Unix())
+	description, probability, desirability := parseScenarioEstimate(text)
+	if description == "" {
+		return "", fmt.Errorf("model returned no scenario description")
+	}
 
 	scenario := PotentialScenario{
-		ID:           scenarioID,
-		Description:  fmt.Sprintf("Future scenario from step %d", step),
-		Probability:  0.6 + float64(step-8)*0.08,
-		Desirability: 0.7 + float64(step-8)*0.05,
+		ID:           fmt.Sprintf("scenario_%d_%d", step, time.Now().UnixNano()),
+		Description:  description,
+		Probability:  probability,
+		Desirability: desirability,
 		Timestamp:    time.Now(),
 	}
 
+	eb.salienceSimulator.mu.Lock()
 	eb.salienceSimulator.scenarios = append(eb.salienceSimulator.scenarios, scenario)
-	eb.salienceSimulator.salienceMap[scenarioID] = scenario.Probability * scenario.Desirability
+	eb.salienceSimulator.salienceMap[scenario.ID] = scenario.Probability * scenario.Desirability
+	eb.salienceSimulator.mu.Unlock()
 
 	eb.mu.Lock()
 	eb.futurePotential = append(eb.futurePotential, scenario)
 	eb.mu.Unlock()
 
-	return scenarioID
+	return description, nil
+}
+
+// parseScenarioEstimate splits a model reply into the scenario text and the
+// model's own probability/desirability estimates (zero when absent).
+func parseScenarioEstimate(text string) (string, float64, float64) {
+	var description []string
+	var probability, desirability float64
+	for _, line := range strings.Split(text, "\n") {
+		trimmed := strings.TrimSpace(line)
+		lower := strings.ToLower(trimmed)
+		if strings.Contains(lower, "probability=") || strings.Contains(lower, "desirability=") {
+			for _, field := range strings.Fields(lower) {
+				kv := strings.SplitN(strings.Trim(field, ",;"), "=", 2)
+				if len(kv) != 2 {
+					continue
+				}
+				v, err := strconv.ParseFloat(kv[1], 64)
+				if err != nil || v < 0 || v > 1 {
+					continue
+				}
+				switch kv[0] {
+				case "probability":
+					probability = v
+				case "desirability":
+					desirability = v
+				}
+			}
+			continue
+		}
+		if trimmed != "" {
+			description = append(description, trimmed)
+		}
+	}
+	return strings.Join(description, " "), probability, desirability
 }
 
 // runEngine runs a simple inference engine

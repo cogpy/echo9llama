@@ -16,12 +16,17 @@ const (
 	defaultTermHeight = 24
 )
 
-type State interface{ String() string }
+type State interface {
+	String() string
+}
 
 type Progress struct {
-	mu      sync.Mutex
-	w       *bufio.Writer
-	pos     int
+	mu sync.Mutex
+	// buffer output to minimize flickering on all terminals
+	w *bufio.Writer
+
+	pos int
+
 	ticker  *time.Ticker
 	states  []State
 	done    chan struct{}
@@ -30,7 +35,12 @@ type Progress struct {
 }
 
 func NewProgress(w io.Writer) *Progress {
-	p := &Progress{w: bufio.NewWriter(w), ticker: time.NewTicker(100 * time.Millisecond), done: make(chan struct{}), exited: make(chan struct{})}
+	p := &Progress{
+		w:      bufio.NewWriter(w),
+		ticker: time.NewTicker(100 * time.Millisecond),
+		done:   make(chan struct{}),
+		exited: make(chan struct{}),
+	}
 	go p.start()
 	return p
 }
@@ -48,6 +58,7 @@ func (p *Progress) stopLocked() bool {
 			spinner.Stop()
 		}
 	}
+
 	p.renderLocked()
 	return true
 }
@@ -69,6 +80,7 @@ func (p *Progress) StopAndClear() bool {
 	stopped := p.stopLocked()
 	if stopped {
 		fmt.Fprint(p.w, "\033[?25l")
+		// clear all progress lines
 		for i := range p.pos {
 			if i > 0 {
 				fmt.Fprint(p.w, "\033[A")
@@ -86,6 +98,7 @@ func (p *Progress) StopAndClear() bool {
 func (p *Progress) Add(key string, state State) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+
 	if p.stopped {
 		if spinner, ok := state.(*Spinner); ok {
 			spinner.Stop()
@@ -108,15 +121,23 @@ func (p *Progress) renderLocked() {
 	if err != nil {
 		termHeight = defaultTermHeight
 	}
+
 	defer p.w.Flush()
+
+	// eliminate flickering on terminals that support synchronized output
 	fmt.Fprint(p.w, "\033[?2026h")
 	defer fmt.Fprint(p.w, "\033[?2026l")
+
 	fmt.Fprint(p.w, "\033[?25l")
 	defer fmt.Fprint(p.w, "\033[?25h")
+
+	// move the cursor back to the beginning
 	for range p.pos - 1 {
 		fmt.Fprint(p.w, "\033[A")
 	}
 	fmt.Fprint(p.w, "\033[1G")
+
+	// render progress lines
 	maxHeight := min(len(p.states), termHeight)
 	for i := len(p.states) - maxHeight; i < len(p.states); i++ {
 		fmt.Fprint(p.w, p.states[i].String(), "\033[K")
@@ -124,6 +145,7 @@ func (p *Progress) renderLocked() {
 			fmt.Fprint(p.w, "\n")
 		}
 	}
+
 	p.pos = len(p.states)
 }
 

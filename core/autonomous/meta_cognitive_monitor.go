@@ -3,6 +3,7 @@ package autonomous
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -310,9 +311,6 @@ func (mcm *MetaCognitiveMonitor) runMonitoringLoop() {
 			// Check for alerts
 			mcm.checkAlerts()
 
-			// Simulate gradual state changes (in production, these would come from real observations)
-			mcm.simulateStateChanges()
-
 			mcm.mu.Unlock()
 		}
 	}
@@ -457,23 +455,6 @@ func (mcm *MetaCognitiveMonitor) isAlertResolved(alert *CognitiveAlert) bool {
 	return false
 }
 
-// simulateStateChanges simulates gradual state changes for demo
-func (mcm *MetaCognitiveMonitor) simulateStateChanges() {
-	// Gradual fatigue increase
-	mcm.cognitiveState.AttentionFatigue += 0.001
-
-	// Gradual energy decrease
-	mcm.cognitiveState.EnergyLevel -= 0.0005
-
-	// Keep values in bounds
-	if mcm.cognitiveState.AttentionFatigue > 1.0 {
-		mcm.cognitiveState.AttentionFatigue = 1.0
-	}
-	if mcm.cognitiveState.EnergyLevel < 0.0 {
-		mcm.cognitiveState.EnergyLevel = 0.0
-	}
-}
-
 // PerformSelfAssessment conducts a comprehensive self-assessment
 func (mcm *MetaCognitiveMonitor) PerformSelfAssessment() *SelfAssessment {
 	mcm.mu.Lock()
@@ -503,7 +484,10 @@ Current Metrics:
 Active Alerts: %d
 
 Perform a brief self-assessment. What is going well? What could be improved? What actions should be taken?
-Respond in first person, be honest and introspective.`,
+Respond in first person, be honest and introspective. After your reflection, add these three lines (items separated by semicolons):
+STRENGTHS: ...
+CHALLENGES: ...
+RECOMMENDATIONS: ...`,
 		state.FocusLevel,
 		state.ProcessingLoad,
 		state.ThoughtClarity,
@@ -523,10 +507,23 @@ Respond in first person, be honest and introspective.`,
 		MaxTokens:   300,
 	}
 
-	reflection, err := mcm.llmProvider.Generate(context.Background(), prompt, opts)
-	if err != nil {
-		reflection = "Self-assessment pending..."
+	if mcm.llmProvider == nil {
+		fmt.Println("⚠️  Self-assessment skipped: no model configured")
+		return nil
 	}
+	reflection, err := mcm.llmProvider.Generate(context.Background(), prompt, opts)
+	if err == nil {
+		reflection = strings.TrimSpace(reflection)
+		if reflection == "" {
+			err = fmt.Errorf("model returned empty self-assessment")
+		}
+	}
+	if err != nil {
+		// No placeholder reflection stands in for the model.
+		fmt.Printf("⚠️  Self-assessment skipped: %v\n", err)
+		return nil
+	}
+	reflection, sections := splitAssessmentSections(reflection)
 
 	// Create assessment
 	assessment := SelfAssessment{
@@ -541,10 +538,10 @@ Respond in first person, be honest and introspective.`,
 		Reflection:       reflection,
 	}
 
-	// Extract strengths and challenges from the reflection (simplified)
-	assessment.Strengths = []string{"Maintained coherence", "Active curiosity"}
-	assessment.Challenges = []string{"Managing fatigue", "Balancing exploration and focus"}
-	assessment.Recommendations = []string{"Take rest periods", "Pursue high-interest topics"}
+	// Strengths, challenges, and recommendations come only from the model's reply
+	assessment.Strengths = sections["STRENGTHS"]
+	assessment.Challenges = sections["CHALLENGES"]
+	assessment.Recommendations = sections["RECOMMENDATIONS"]
 
 	mcm.mu.Lock()
 	mcm.lastAssessment = &assessment
@@ -570,6 +567,36 @@ Respond in first person, be honest and introspective.`,
 	fmt.Printf("═══════════════════════════════════════════════════════════════════\n\n")
 
 	return &assessment
+}
+
+// splitAssessmentSections separates the model's labelled STRENGTHS /
+// CHALLENGES / RECOMMENDATIONS lines from its free-form reflection.
+func splitAssessmentSections(reply string) (string, map[string][]string) {
+	sections := make(map[string][]string)
+	kept := make([]string, 0)
+	for _, line := range strings.Split(reply, "\n") {
+		trimmed := strings.TrimSpace(line)
+		matched := false
+		for _, label := range []string{"STRENGTHS", "CHALLENGES", "RECOMMENDATIONS"} {
+			if strings.HasPrefix(strings.ToUpper(trimmed), label+":") {
+				matched = true
+				value := strings.TrimSpace(trimmed[len(label)+1:])
+				for _, item := range strings.Split(value, ";") {
+					if item = strings.TrimSpace(item); item != "" {
+						sections[label] = append(sections[label], item)
+					}
+				}
+			}
+		}
+		if !matched {
+			kept = append(kept, line)
+		}
+	}
+	reflection := strings.TrimSpace(strings.Join(kept, "\n"))
+	if reflection == "" {
+		reflection = strings.TrimSpace(reply)
+	}
+	return reflection, sections
 }
 
 // getActiveAlerts returns currently active alerts

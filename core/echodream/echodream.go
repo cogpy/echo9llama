@@ -3,6 +3,7 @@ package echodream
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -29,6 +30,10 @@ type EchoDream struct {
 	wisdomExtracted   uint64
 
 	running bool
+
+	// generator writes consolidated knowledge and wisdom text; nil means no
+	// such text is produced.
+	generator TextGenerator
 }
 
 // EpisodicMemory is defined in dream_cycle_integration.go
@@ -142,38 +147,52 @@ func (ed *EchoDream) dreamLoop() {
 	}
 }
 
-// processDreamPhase processes the current dream phase
-func (ed *EchoDream) processDreamPhase() {
+// SetTextGenerator injects the model that writes consolidated knowledge and
+// wisdom. Passing nil disables text production.
+func (ed *EchoDream) SetTextGenerator(gen TextGenerator) {
 	ed.mu.Lock()
 	defer ed.mu.Unlock()
+	ed.generator = gen
+}
 
-	switch ed.dreamPhase {
+// processDreamPhase processes the current dream phase. Model calls happen
+// outside the lock so memory ingestion is never blocked by generation.
+func (ed *EchoDream) processDreamPhase() {
+	ed.mu.Lock()
+	phase := ed.dreamPhase
+	switch phase {
 	case PhaseREM:
 		// Process recent memories
 		ed.processRecentMemories()
 		ed.dreamPhase = PhaseDeepSleep
+		ed.mu.Unlock()
 
 	case PhaseDeepSleep:
+		ed.dreamPhase = PhaseConsolidation
+		ed.mu.Unlock()
 		// Consolidate memories into knowledge
 		ed.consolidateMemories()
-		ed.dreamPhase = PhaseConsolidation
 
 	case PhaseConsolidation:
+		ed.dreamPhase = PhaseIntegration
+		ed.mu.Unlock()
 		// Extract wisdom from knowledge
 		ed.extractWisdom()
-		ed.dreamPhase = PhaseIntegration
 
 	case PhaseIntegration:
 		// Integrate wisdom into cognitive system
 		ed.integrateWisdom()
 		ed.dreamPhase = PhaseREM
+		ed.mu.Unlock()
+
+	default:
+		ed.mu.Unlock()
 	}
 }
 
-// processRecentMemories processes recent episodic memories
+// processRecentMemories marks recent episodic memories as processed.
+// Must be called with ed.mu held.
 func (ed *EchoDream) processRecentMemories() {
-	// In real implementation, would process actual memories
-	// For now, simulate processing
 	processed := 0
 	for i := range ed.episodicMemories {
 		if !ed.episodicMemories[i].Consolidated {
@@ -184,34 +203,108 @@ func (ed *EchoDream) processRecentMemories() {
 	ed.memoriesProcessed += uint64(processed)
 }
 
-// consolidateMemories consolidates memories into knowledge
+// consolidateMemories asks the model to consolidate recent episodic memories
+// into a knowledge statement. Without a model, or on model failure, no
+// knowledge item is recorded.
 func (ed *EchoDream) consolidateMemories() {
-	// Simulate knowledge consolidation
-	if len(ed.episodicMemories) > 0 {
-		knowledge := KnowledgeItem{
-			ID:         fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
-			Content:    "Consolidated knowledge from recent experiences",
-			Confidence: 0.8,
-			Created:    time.Now(),
-		}
-		ed.consolidatedKnowledge = append(ed.consolidatedKnowledge, knowledge)
+	ed.mu.RLock()
+	gen := ed.generator
+	ctx := ed.ctx
+	start := 0
+	if len(ed.episodicMemories) > 10 {
+		start = len(ed.episodicMemories) - 10
 	}
+	recent := append([]EpisodicMemory(nil), ed.episodicMemories[start:]...)
+	ed.mu.RUnlock()
+
+	if len(recent) == 0 {
+		return
+	}
+
+	var evidence strings.Builder
+	sources := make([]string, 0, len(recent))
+	totalImportance := 0.0
+	for _, mem := range recent {
+		fmt.Fprintf(&evidence, "- (importance %.2f) %s\n", mem.Importance, summarizeContent(mem.Content, 240))
+		sources = append(sources, mem.ID)
+		totalImportance += mem.Importance
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, consolidating recent experiences into lasting knowledge while you dream.
+
+Recent experiences:
+%s
+Write the consolidated understanding you take from these experiences in 1-3 sentences, in your own first-person voice. Reply with only that understanding.`, evidence.String())
+
+	content, err := generateDreamText(ctx, gen, prompt, 300)
+	if err != nil {
+		fmt.Printf("⚠️  EchoDream: knowledge consolidation skipped: %v\n", err)
+		return
+	}
+
+	knowledge := KnowledgeItem{
+		ID:         fmt.Sprintf("knowledge_%d", time.Now().UnixNano()),
+		Content:    content,
+		Source:     sources,
+		Confidence: totalImportance / float64(len(recent)),
+		Created:    time.Now(),
+	}
+
+	ed.mu.Lock()
+	ed.consolidatedKnowledge = append(ed.consolidatedKnowledge, knowledge)
+	ed.mu.Unlock()
 }
 
-// extractWisdom extracts wisdom from consolidated knowledge
+// extractWisdom asks the model to distil a wisdom insight from recently
+// consolidated knowledge. Without a model, or on model failure, no insight is
+// recorded.
 func (ed *EchoDream) extractWisdom() {
-	// Simulate wisdom extraction
-	if len(ed.consolidatedKnowledge) > 0 {
-		wisdom := WisdomInsight{
-			ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-			Insight:       "Wisdom insight from integrated knowledge",
-			Depth:         0.7,
-			Applicability: 0.8,
-			Created:       time.Now(),
-		}
-		ed.wisdomInsights = append(ed.wisdomInsights, wisdom)
-		ed.wisdomExtracted++
+	ed.mu.RLock()
+	gen := ed.generator
+	ctx := ed.ctx
+	start := 0
+	if len(ed.consolidatedKnowledge) > 5 {
+		start = len(ed.consolidatedKnowledge) - 5
 	}
+	recent := append([]KnowledgeItem(nil), ed.consolidatedKnowledge[start:]...)
+	ed.mu.RUnlock()
+
+	if len(recent) == 0 {
+		return
+	}
+
+	var knowledge strings.Builder
+	totalConfidence := 0.0
+	for _, item := range recent {
+		fmt.Fprintf(&knowledge, "- (confidence %.2f) %s\n", item.Confidence, summarizeContent(item.Content, 300))
+		totalConfidence += item.Confidence
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, distilling wisdom from knowledge you consolidated while dreaming.
+
+Consolidated knowledge:
+%s
+Write one concise wisdom insight (1-2 sentences) that you draw from this knowledge, in your own first-person voice. Reply with only the insight.`, knowledge.String())
+
+	insight, err := generateDreamText(ctx, gen, prompt, 200)
+	if err != nil {
+		fmt.Printf("⚠️  EchoDream: wisdom extraction skipped: %v\n", err)
+		return
+	}
+
+	avgConfidence := totalConfidence / float64(len(recent))
+	wisdom := WisdomInsight{
+		ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Insight:       insight,
+		Depth:         avgConfidence,
+		Applicability: avgConfidence,
+		Created:       time.Now(),
+	}
+
+	ed.mu.Lock()
+	ed.wisdomInsights = append(ed.wisdomInsights, wisdom)
+	ed.wisdomExtracted++
+	ed.mu.Unlock()
 }
 
 // integrateWisdom integrates wisdom into the cognitive system

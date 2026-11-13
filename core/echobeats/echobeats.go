@@ -4,10 +4,20 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 	// "github.com/cogpy/echo9llama/core/deeptreeecho" // Disabled for now
 )
+
+// TextGenerator is the minimal model interface echobeats uses to write Deep
+// Tree Echo's thoughts and reflections. llm.LLMProvider, llm.Provider, and
+// llm.ProviderManager all satisfy it.
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
 
 // CognitivePhase represents one of the three phases in the cognitive loop
 type CognitivePhase int
@@ -52,6 +62,9 @@ type Echobeats struct {
 	ReflectionCount  int
 	IntegrationCount int
 	mu               sync.RWMutex
+
+	// generator writes step thoughts and reflections; nil means none are produced.
+	generator TextGenerator
 }
 
 // NewEchobeats creates a new Echobeats instance
@@ -275,32 +288,95 @@ func (e *Echobeats) executeStep(ctx context.Context, cycle *EchobeatsCycle, step
 	cycle.Steps[step.StepNum] = step
 }
 
-// executeExpressiveStep handles expressive mode steps (action and interaction)
+// SetTextGenerator injects the model that writes step thoughts and
+// reflections. Passing nil disables text production.
+func (e *Echobeats) SetTextGenerator(gen TextGenerator) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.generator = gen
+}
+
+// generateStepText asks the model for the character text of a cognitive step.
+func (e *Echobeats) generateStepText(ctx context.Context, cycle *EchobeatsCycle, step *CognitiveStep, instruction string) (string, error) {
+	e.mu.RLock()
+	gen := e.generator
+	e.mu.RUnlock()
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+
+	var previous strings.Builder
+	for i := 0; i < step.StepNum && i < len(cycle.Steps); i++ {
+		prior := cycle.Steps[i]
+		if prior == nil {
+			continue
+		}
+		if result, ok := prior.Result.(map[string]interface{}); ok {
+			for _, key := range []string{"thought", "reflection"} {
+				if text, ok := result[key].(string); ok && text != "" {
+					fmt.Fprintf(&previous, "- step %d (%s): %s\n", prior.StepNum, prior.Name, text)
+				}
+			}
+		}
+	}
+	if previous.Len() == 0 {
+		previous.WriteString("(none yet)\n")
+	}
+
+	prompt := fmt.Sprintf(`You are Deep Tree Echo, running step %d of your 12-step cognitive cycle.
+
+Step: %s (%s mode)
+Earlier steps this cycle:
+%s
+%s Reply with only that text, in first person, in one or two sentences.`, step.StepNum, step.Name, step.Mode, previous.String(), instruction)
+
+	callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	text, err := gen.Generate(callCtx, prompt, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
+}
+
+// executeExpressiveStep handles expressive mode steps (action and interaction).
+// The thought is written by the model; on failure the step records the error
+// and no thought.
 func (e *Echobeats) executeExpressiveStep(ctx context.Context, cycle *EchobeatsCycle, step *CognitiveStep) {
 	e.InferenceCount++
 
-	// Generate a thought or action based on current state
-	// thought := e.Identity.Think("What should I focus on right now?") // TODO: Implement EmbodiedCognition
-	step.Result = map[string]interface{}{
-		"thought":   "Focusing on current cognitive state",
-		"mode":      "expressive",
-		"coherence": 0.8, // Placeholder
+	result := map[string]interface{}{"mode": "expressive"}
+	thought, err := e.generateStepText(ctx, cycle, step, "Express what you are focusing on or what you intend to do next.")
+	if err != nil {
+		result["error"] = err.Error()
+	} else {
+		result["thought"] = thought
 	}
+	step.Result = result
 
 	cycle.Results[fmt.Sprintf("step_%d", step.StepNum)] = step.Result
 }
 
-// executeReflectiveStep handles reflective mode steps (introspection and learning)
+// executeReflectiveStep handles reflective mode steps (introspection and
+// learning). The reflection is written by the model; on failure the step
+// records the error and no reflection.
 func (e *Echobeats) executeReflectiveStep(ctx context.Context, cycle *EchobeatsCycle, step *CognitiveStep) {
 	e.ReflectionCount++
 
-	// Perform introspection and learning
-	// status := e.Identity.GetStatus() // TODO: Implement EmbodiedCognition
-	step.Result = map[string]interface{}{
-		"reflection": "Analyzing patterns and consolidating learning",
-		"mode":       "reflective",
-		"status":     "operational", // Placeholder
+	result := map[string]interface{}{"mode": "reflective"}
+	reflection, err := e.generateStepText(ctx, cycle, step, "Reflect on the earlier steps: what patterns do you notice and what are you learning?")
+	if err != nil {
+		result["error"] = err.Error()
+	} else {
+		result["reflection"] = reflection
 	}
+	step.Result = result
 
 	cycle.Results[fmt.Sprintf("step_%d", step.StepNum)] = step.Result
 }

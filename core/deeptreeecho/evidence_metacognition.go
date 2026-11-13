@@ -211,6 +211,12 @@ func (uao *UnifiedAutonomousOrchestrator) measuredReflectionEvidence(ctx context
 	if event.IdentityID != uao.identityID || event.PolicyVersion != EnactionPolicyVersion || event.ActionID == "" {
 		return record, false, nil
 	}
+	// E5 practice trials carry their own context contract and evaluator. They are
+	// not E1 artifact evidence, so they are out of scope here rather than
+	// quarantined as malformed E1 chains.
+	if strings.HasPrefix(event.GoalID, "practice-goal:") {
+		return record, false, nil
+	}
 	if event.EventType == persistence.EventTypeEvaluationRecorded || event.EventType == persistence.EventTypeActionFailed || (event.EventType == persistence.EventTypeErrorRecorded && event.EventID == stageEventID(event.ActionID, "error-planning")) {
 		if err := validateReflectionActionChain(ctx, uao.eventStore, event); err != nil {
 			return record, false, err

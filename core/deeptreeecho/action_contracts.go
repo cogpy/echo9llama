@@ -88,13 +88,14 @@ type ActionEvaluation struct {
 // EnactionRequest carries a bounded goal and only explicit, inspectable context
 // into the planner. It intentionally excludes hidden chain-of-thought.
 type EnactionRequest struct {
-	IdentityID      string   `json:"identity_id"`
-	SessionID       string   `json:"session_id"`
-	GoalID          string   `json:"goal_id"`
-	Goal            string   `json:"goal"`
-	ActionIteration int64    `json:"action_iteration"`
-	TopInterests    []string `json:"top_interests"`
-	RecentContext   []string `json:"recent_context"`
+	IdentityID      string                `json:"identity_id"`
+	SessionID       string                `json:"session_id"`
+	GoalID          string                `json:"goal_id"`
+	Goal            string                `json:"goal"`
+	ActionIteration int64                 `json:"action_iteration"`
+	TopInterests    []string              `json:"top_interests"`
+	RecentContext   []string              `json:"recent_context"`
+	Practice        *ArtifactPracticeTask `json:"practice,omitempty"`
 }
 
 // EnactionOutcome is the terminal result returned to the orchestrator.
@@ -203,6 +204,11 @@ func (request EnactionRequest) Validate() error {
 	}
 	if strings.TrimSpace(request.GoalID) == "" || strings.TrimSpace(request.Goal) == "" {
 		return fmt.Errorf("goal identity and description are required")
+	}
+	if request.Practice != nil {
+		if err := request.Practice.Validate(); err != nil {
+			return fmt.Errorf("invalid artifact practice: %w", err)
+		}
 	}
 	return nil
 }

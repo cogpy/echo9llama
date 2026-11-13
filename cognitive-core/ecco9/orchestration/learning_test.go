@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/EchoCog/echollama/api"
 )
 
 func TestNewLearningSystem(t *testing.T) {
@@ -268,7 +266,7 @@ func TestAdaptationEngine(t *testing.T) {
 }
 
 func TestLearningSystemIntegrationWithEngine(t *testing.T) {
-	client := api.Client{}
+	client := newFakeModelClient(t, "model-generated reflection", nil)
 	engine := NewEngine(client)
 	ctx := context.Background()
 

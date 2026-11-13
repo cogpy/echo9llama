@@ -3,6 +3,8 @@ package lampstack
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -311,8 +313,13 @@ Express genuine reflective insight.`, contextStr, e.formatRecentThoughts())
 		return nil, fmt.Errorf("reflection generation failed: %w", err)
 	}
 
-	// Extract insights
-	insights := e.extractInsights(response.Content)
+	// Extract insights via the model. If that fails the reflection (itself
+	// model output) is still returned, with no insights rather than fixed ones.
+	insights, insightErr := e.extractInsights(ctx, response.Content)
+	if insightErr != nil {
+		log.Printf("lampstack: %v", insightErr)
+		insights = []string{}
+	}
 
 	// Calculate wisdom gains
 	wisdomGains := map[string]float64{
@@ -589,26 +596,35 @@ func (e *EchoIntegration) formatRecentThoughts() string {
 	return result
 }
 
-func (e *EchoIntegration) extractInsights(content string) []string {
-	// Simple insight extraction
+// extractInsights asks the model to distil the key insights of a reflection.
+// It returns an error (and no insights) when the model fails; no fixed
+// insight labels are ever substituted.
+func (e *EchoIntegration) extractInsights(ctx context.Context, content string) ([]string, error) {
+	request := &GenerationRequest{
+		Prompt: fmt.Sprintf(`List the key insights expressed in the following reflection, one per line, at most five, with no numbering or commentary. If it contains no real insight, output nothing.
+
+Reflection:
+%s`, content),
+		MaxTokens:   200,
+		Temperature: 0.2,
+	}
+
+	response, err := e.api.Generate(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("insight extraction failed: %w", err)
+	}
+
 	insights := make([]string, 0)
-
-	// Look for insight patterns
-	if contains(content, "insight", "realize", "understand") {
-		insights = append(insights, "Deepened understanding achieved")
+	for _, line := range strings.Split(response.Content, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "-*•0123456789.) "))
+		if line != "" {
+			insights = append(insights, line)
+		}
+		if len(insights) == 5 {
+			break
+		}
 	}
-	if contains(content, "pattern", "connection", "relate") {
-		insights = append(insights, "New pattern recognized")
-	}
-	if contains(content, "important", "significant", "key") {
-		insights = append(insights, "Significance identified")
-	}
-
-	if len(insights) == 0 {
-		insights = append(insights, "Reflection completed")
-	}
-
-	return insights
+	return insights, nil
 }
 
 func (e *EchoIntegration) storeThought(ctx context.Context, prompt, thought string) {

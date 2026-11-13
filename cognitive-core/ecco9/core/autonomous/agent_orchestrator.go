@@ -3,6 +3,7 @@ package autonomous
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 	"github.com/EchoCog/echollama/core/echobeats"
 	"github.com/EchoCog/echollama/core/echodream"
+	"github.com/EchoCog/echollama/core/llm"
 	"github.com/EchoCog/echollama/core/memory"
 )
 
@@ -105,7 +107,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 	// Initialize LLM provider (auto-detects available providers)
 	llmProvider := deeptreeecho.NewMultiProviderLLM()
 	if !llmProvider.IsAvailable() {
-		fmt.Println("⚠️  Warning: No LLM providers available, using fallback mode")
+		fmt.Println("⚠️  Warning: No LLM providers available, no autonomous character text will be generated")
 	}
 
 	// Initialize memory system (without persistence for now)
@@ -125,11 +127,13 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 
 	// Initialize echobeats scheduler
 	scheduler := echobeats.NewEchoBeats()
+	scheduler.SetThoughtGenerator(llmAdapter)
 
 	// Initialize dream system if enabled
 	var dreamSystem *echodream.DreamCycleIntegration
 	if config.EnableDreamCycles {
 		dreamSystem = echodream.NewDreamCycleIntegration()
+		dreamSystem.SetTextGenerator(llmAdapter)
 	}
 
 	// Initialize interest system and discussion manager if enabled
@@ -143,6 +147,7 @@ func NewAgentOrchestrator(identityName string, config *OrchestratorConfig) (*Age
 			interestSystem,
 			config.StateDirectory+"/discussions.json",
 		)
+		discussionManager.SetTextGenerator(llmAdapter)
 	}
 
 	orchestrator := &AgentOrchestrator{
@@ -209,7 +214,7 @@ func (ao *AgentOrchestrator) Start() error {
 		fmt.Printf("   LLM Providers: %v\n", providers)
 		fmt.Printf("   Current: %s\n", ao.llmProvider.GetCurrentProvider())
 	} else {
-		fmt.Println("   LLM Providers: None (using fallback mode)")
+		fmt.Println("   LLM Providers: None (autonomous character text disabled)")
 	}
 	fmt.Println()
 
@@ -381,7 +386,7 @@ func (ao *AgentOrchestrator) handleThoughtEvent(event *echobeats.CognitiveEvent)
 	ao.persistentState.AddThought(
 		event.ID,
 		thought,
-		string(event.Type),
+		fmt.Sprint(event.Type),
 		float64(event.Priority)/100.0,
 	)
 
@@ -401,13 +406,37 @@ func (ao *AgentOrchestrator) handleGoalEvent(event *echobeats.CognitiveEvent) er
 func (ao *AgentOrchestrator) handleIntrospectionEvent(event *echobeats.CognitiveEvent) error {
 	fmt.Println("🔍 Performing introspection...")
 
-	// Generate insight about current state
 	state := ao.persistentState.GetState()
-	if state != nil {
-		insight := fmt.Sprintf("Completed %d cycles, generated %d thoughts, %d insights. Current focus: autonomous operation.",
-			state.CycleCount, state.TotalThoughts, state.TotalInsights)
-		ao.persistentState.AddInsight(insight)
+	if state == nil {
+		return nil
 	}
+
+	// The insight is written by the model from the factual state; on failure
+	// no insight is recorded.
+	prompt := fmt.Sprintf(`You are %s, introspecting on your own autonomous operation.
+
+Trigger: %v
+Cycles completed: %d
+Thoughts generated: %d
+Insights recorded: %d
+
+Write one concise insight (1-2 sentences) about your current state and direction, in your own first-person voice. Reply with only the insight.`,
+		ao.identityName, event.Payload, state.CycleCount, state.TotalThoughts, state.TotalInsights)
+
+	if ao.llmProvider == nil || !ao.llmProvider.IsAvailable() {
+		return fmt.Errorf("introspection insight not generated: no LLM provider available")
+	}
+	ctx, cancel := context.WithTimeout(ao.ctx, 30*time.Second)
+	defer cancel()
+	insight, err := ao.llmProvider.GenerateThought(ctx, prompt)
+	if err != nil {
+		return fmt.Errorf("introspection insight not generated: %w", err)
+	}
+	insight = strings.TrimSpace(insight)
+	if insight == "" {
+		return fmt.Errorf("introspection insight not generated: model returned empty text")
+	}
+	ao.persistentState.AddInsight(insight)
 
 	return nil
 }
@@ -502,6 +531,18 @@ func (a *ConsciousnessLLMAdapter) GenerateQuestion(contextStr string) (string, e
 	}
 	prompt := fmt.Sprintf("Based on this context, generate a thoughtful question for self-inquiry:\n%s", contextStr)
 	ctx := context.Background()
+	return a.provider.GenerateThought(ctx, prompt)
+}
+
+// Generate satisfies the model TextGenerator interfaces used by the scheduler
+// and dream subsystems; it errors when no provider is available.
+func (a *ConsciousnessLLMAdapter) Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error) {
+	if a.provider == nil || !a.provider.IsAvailable() {
+		return "", fmt.Errorf("no LLM provider available")
+	}
+	if opts.SystemPrompt != "" {
+		prompt = opts.SystemPrompt + "\n\n" + prompt
+	}
 	return a.provider.GenerateThought(ctx, prompt)
 }
 

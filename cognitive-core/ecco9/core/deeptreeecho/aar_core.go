@@ -160,7 +160,7 @@ func NewAARCore(ctx context.Context, dimensions int) *AARCore {
 			coherence:          0.5,
 			stability:          0.5,
 			awareness:          0.5,
-			narrative:          "I am becoming aware...",
+			narrative:          "", // written via UpdateNarrative (model output); none until then
 		},
 		feedbackLoops: make([]*FeedbackLoop, 0),
 		selfVector:    make([]float64, dimensions),

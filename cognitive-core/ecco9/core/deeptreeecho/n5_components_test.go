@@ -1,9 +1,39 @@
 package deeptreeecho
 
 import (
+	"context"
+	"errors"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
+
+// fakeN5Model answers N+5 prompts in the formats the components ask for.
+type fakeN5Model struct{ err error }
+
+func (f fakeN5Model) Generate(_ context.Context, prompt string, _ llm.GenerateOptions) (string, error) {
+	if f.err != nil {
+		return "", f.err
+	}
+	switch {
+	case strings.Contains(prompt, "ANSWER:"):
+		return "THOUGHT: model step one\nWHY: model why one\nTHOUGHT: model step two\nWHY: model why two\nANSWER: model answer", nil
+	case strings.Contains(prompt, "OUTCOME:"):
+		return "OUTCOME: model outcome\nPLAUSIBILITY: 0.6\nUTILITY: 0.4\nALTERNATIVE: model alt | 0.3 | 0.8 | 0.5", nil
+	default:
+		return "model text", nil
+	}
+}
+
+func seededWisdomEngine() *WisdomApplicationEngine {
+	wae := NewWisdomApplicationEngine()
+	wae.SetTextGenerator(fakeN5Model{})
+	wae.AddWisdom("model wisdom one", "learning", []string{"learning", "decisions"}, 0.8)
+	wae.AddWisdom("model wisdom two", "strategy", []string{"learning", "problem"}, 0.8)
+	return wae
+}
 
 // Test MetaCognitiveMonitor
 
@@ -82,6 +112,7 @@ func TestMetaCognitiveMonitor_StrategySelection(t *testing.T) {
 
 func TestMetaCognitiveMonitor_MetaThoughts(t *testing.T) {
 	mcm := NewMetaCognitiveMonitor()
+	mcm.SetTextGenerator(fakeN5Model{})
 
 	// Generate meta-thought
 	thought := mcm.GenerateMetaThought(
@@ -98,14 +129,25 @@ func TestMetaCognitiveMonitor_MetaThoughts(t *testing.T) {
 		t.Errorf("Expected depth 0, got %d", thought.Depth)
 	}
 
-	if thought.Insight == "" {
-		t.Error("Expected insight to be generated")
+	if thought.Insight != "model text" {
+		t.Errorf("Expected model-written insight, got %q", thought.Insight)
 	}
 
 	// Check recursive thinking
 	awareness := mcm.GetSelfAwareness()
 	if metaThoughts, ok := awareness["meta_thoughts"].(int); !ok || metaThoughts < 1 {
 		t.Errorf("Expected at least 1 meta-thought, got %v", awareness["meta_thoughts"])
+	}
+}
+
+func TestMetaCognitiveMonitor_NoModelNoMetaThought(t *testing.T) {
+	mcm := NewMetaCognitiveMonitor()
+	if thought := mcm.GenerateMetaThought("x", "y", 0); thought != nil {
+		t.Fatalf("expected no meta-thought without a model, got %+v", thought)
+	}
+	mcm.SetTextGenerator(fakeN5Model{err: errors.New("down")})
+	if thought := mcm.GenerateMetaThought("x", "y", 0); thought != nil {
+		t.Fatalf("expected no meta-thought on model error, got %+v", thought)
 	}
 }
 
@@ -169,6 +211,7 @@ func TestAdvancedReasoning_ProblemDecomposition(t *testing.T) {
 
 func TestAdvancedReasoning_CausalInference(t *testing.T) {
 	are := NewAdvancedReasoningEngine()
+	are.SetTextGenerator(fakeN5Model{})
 
 	// Perform causal reasoning
 	evidence := []string{
@@ -197,6 +240,7 @@ func TestAdvancedReasoning_CausalInference(t *testing.T) {
 
 func TestAdvancedReasoning_Counterfactual(t *testing.T) {
 	are := NewAdvancedReasoningEngine()
+	are.SetTextGenerator(fakeN5Model{})
 
 	// Generate counterfactual
 	counterfactual := are.GenerateCounterfactual(
@@ -215,6 +259,7 @@ func TestAdvancedReasoning_Counterfactual(t *testing.T) {
 
 func TestAdvancedReasoning_ChainOfThought(t *testing.T) {
 	are := NewAdvancedReasoningEngine()
+	are.SetTextGenerator(fakeN5Model{})
 
 	// Perform chain-of-thought reasoning
 	chain := are.ChainOfThought("How can I improve my learning efficiency?")
@@ -231,8 +276,8 @@ func TestAdvancedReasoning_ChainOfThought(t *testing.T) {
 		t.Error("Expected reasoning steps to be generated")
 	}
 
-	if chain.Answer == "" {
-		t.Error("Expected answer to be provided")
+	if chain.Answer != "model answer" {
+		t.Errorf("Expected model answer, got %q", chain.Answer)
 	}
 
 	if chain.Confidence <= 0 || chain.Confidence > 1 {
@@ -240,10 +285,17 @@ func TestAdvancedReasoning_ChainOfThought(t *testing.T) {
 	}
 }
 
+func TestAdvancedReasoning_NoModelNoReasoning(t *testing.T) {
+	are := NewAdvancedReasoningEngine()
+	if are.ChainOfThought("q") != nil || are.PerformCausalReasoning("h", []string{"e"}) != nil || are.GenerateCounterfactual("b", "a") != nil {
+		t.Fatal("expected no reasoning output without a model")
+	}
+}
+
 // Test WisdomApplicationEngine
 
 func TestWisdomApplication_FindRelevant(t *testing.T) {
-	wae := NewWisdomApplicationEngine()
+	wae := seededWisdomEngine()
 
 	// Find relevant wisdom
 	matches := wae.FindRelevantWisdom("learning from experience", 3)
@@ -269,7 +321,7 @@ func TestWisdomApplication_FindRelevant(t *testing.T) {
 }
 
 func TestWisdomApplication_Apply(t *testing.T) {
-	wae := NewWisdomApplicationEngine()
+	wae := seededWisdomEngine()
 
 	// Find wisdom
 	matches := wae.FindRelevantWisdom("making decisions", 1)
@@ -284,8 +336,12 @@ func TestWisdomApplication_Apply(t *testing.T) {
 		t.Fatal("Expected wisdom application to be created")
 	}
 
-	if application.Effectiveness <= 0 {
-		t.Error("Expected positive effectiveness")
+	if application.Guidance != "model text" {
+		t.Errorf("Expected model-written guidance, got %q", application.Guidance)
+	}
+
+	if application.Outcome != OutcomePending {
+		t.Errorf("Expected pending outcome before feedback, got %s", application.Outcome)
 	}
 
 	// Check metrics
@@ -296,7 +352,7 @@ func TestWisdomApplication_Apply(t *testing.T) {
 }
 
 func TestWisdomApplication_Synthesis(t *testing.T) {
-	wae := NewWisdomApplicationEngine()
+	wae := seededWisdomEngine()
 
 	// Find multiple wisdom entries
 	matches := wae.FindRelevantWisdom("learning and adaptation", 5)
@@ -322,7 +378,7 @@ func TestWisdomApplication_Synthesis(t *testing.T) {
 }
 
 func TestWisdomApplication_Feedback(t *testing.T) {
-	wae := NewWisdomApplicationEngine()
+	wae := seededWisdomEngine()
 
 	// Apply wisdom
 	matches := wae.FindRelevantWisdom("problem solving", 1)
@@ -339,6 +395,14 @@ func TestWisdomApplication_Feedback(t *testing.T) {
 	metrics := wae.GetWisdomMetrics()
 	if feedback, ok := metrics["feedback_entries"].(int); !ok || feedback != 1 {
 		t.Errorf("Expected 1 feedback entry, got %v", metrics["feedback_entries"])
+	}
+}
+
+func TestN5Integration_NoModelNoSuccess(t *testing.T) {
+	n5 := NewN5CognitiveSystem()
+	result := n5.ProcessWithMetaCognition("task")
+	if result.Success || result.MetaInsight != "" || result.Answer != "" {
+		t.Fatalf("expected failure without a model, got %+v", result)
 	}
 }
 
@@ -385,6 +449,7 @@ func TestN5Integration_StartStop(t *testing.T) {
 
 func TestN5Integration_MetaCognitiveProcessing(t *testing.T) {
 	n5 := NewN5CognitiveSystem()
+	n5.SetTextGenerator(fakeN5Model{})
 
 	// Process a task with meta-cognition
 	result := n5.ProcessWithMetaCognition("Optimize learning strategy")
@@ -408,6 +473,7 @@ func TestN5Integration_MetaCognitiveProcessing(t *testing.T) {
 
 func TestN5Integration_AdvancedReasoning(t *testing.T) {
 	n5 := NewN5CognitiveSystem()
+	n5.SetTextGenerator(fakeN5Model{})
 
 	// Reason about a problem
 	result := n5.ReasonAboutProblem(
@@ -434,6 +500,8 @@ func TestN5Integration_AdvancedReasoning(t *testing.T) {
 
 func TestN5Integration_WisdomApplication(t *testing.T) {
 	n5 := NewN5CognitiveSystem()
+	n5.SetTextGenerator(fakeN5Model{})
+	n5.wisdomApplication.AddWisdom("model wisdom", "learning", []string{"learning"}, 0.8)
 
 	// Apply wisdom to context
 	result := n5.ApplyWisdomToContext("learning new cognitive strategies")

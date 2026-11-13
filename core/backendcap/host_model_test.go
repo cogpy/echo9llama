@@ -210,3 +210,11 @@ func mustWrite(t *testing.T, writer *os.File, value []byte) {
 		t.Fatal(err)
 	}
 }
+
+func TestProbeEstimatesMemoryForRuntimeContextWindow(t *testing.T) {
+	full := estimateModelMemory(1<<28, 32768)
+	windowed := estimateModelMemory(1<<28, 4096)
+	if windowed >= full {
+		t.Fatalf("windowed estimate %d should be below full-context estimate %d", windowed, full)
+	}
+}

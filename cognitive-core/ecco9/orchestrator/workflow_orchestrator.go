@@ -126,11 +126,11 @@ func (w *WorkflowOrchestrator) TestEchoThink(prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-
-	thought := fmt.Sprintf("%v", result["thought"])
+	thought, err := responseText(resp, "thought")
+	if err != nil {
+		w.recordTest("Echo Think", false, time.Since(startTime), "", err)
+		return "", err
+	}
 	w.recordTest("Echo Think", true, time.Since(startTime), thought, nil)
 
 	return thought, nil
@@ -157,11 +157,11 @@ func (w *WorkflowOrchestrator) RunModel(prompt string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var result map[string]interface{}
-	json.Unmarshal(body, &result)
-
-	response := fmt.Sprintf("%v", result["response"])
+	response, err := responseText(resp, "response")
+	if err != nil {
+		w.recordTest("Model Generation", false, time.Since(startTime), "", err)
+		return "", err
+	}
 	w.recordTest("Model Generation", true, time.Since(startTime), response, nil)
 
 	return response, nil
@@ -193,17 +193,13 @@ func (w *WorkflowOrchestrator) ExecuteChatSession(messages []string) ([]string, 
 			w.recordTest(fmt.Sprintf("Chat Message %d", i+1), false, time.Since(startTime), "", err)
 			return responses, err
 		}
-		defer resp.Body.Close()
-
-		body, _ := io.ReadAll(resp.Body)
-		var result map[string]interface{}
-		json.Unmarshal(body, &result)
-
-		if message, ok := result["message"].(map[string]interface{}); ok {
-			content := fmt.Sprintf("%v", message["content"])
-			responses = append(responses, content)
-			w.recordTest(fmt.Sprintf("Chat Message %d", i+1), true, time.Since(startTime), content, nil)
+		content, err := chatResponseText(resp)
+		if err != nil {
+			w.recordTest(fmt.Sprintf("Chat Message %d", i+1), false, time.Since(startTime), "", err)
+			return responses, err
 		}
+		responses = append(responses, content)
+		w.recordTest(fmt.Sprintf("Chat Message %d", i+1), true, time.Since(startTime), content, nil)
 
 		// Small delay between messages
 		time.Sleep(500 * time.Millisecond)
@@ -221,30 +217,25 @@ func (w *WorkflowOrchestrator) TestMemoryOperations() error {
 		"key":   "orchestration_test",
 		"value": "Testing memory at " + time.Now().Format(time.RFC3339),
 	}
-	jsonData, _ := json.Marshal(payload)
-
-	resp, err := http.Post(
-		fmt.Sprintf("%s:%s/api/echo/remember", w.ServerURL, w.ServerPort),
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
+	storeBody, err := w.postJSON("/api/echo/remember", payload)
 	if err != nil {
 		w.recordTest("Memory Store", false, time.Since(startTime), "", err)
 		return err
 	}
-	resp.Body.Close()
-	w.recordTest("Memory Store", true, time.Since(startTime), "Memory stored", nil)
+	w.recordTest("Memory Store", true, time.Since(startTime), string(storeBody), nil)
 
 	// Recall memory
 	startTime = time.Now()
-	resp, err = http.Get(fmt.Sprintf("%s:%s/api/echo/recall/orchestration_test", w.ServerURL, w.ServerPort))
+	resp, err := http.Get(fmt.Sprintf("%s:%s/api/echo/recall/orchestration_test", w.ServerURL, w.ServerPort))
 	if err != nil {
 		w.recordTest("Memory Recall", false, time.Since(startTime), "", err)
 		return err
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
+	body, err := readOK(resp)
+	if err != nil {
+		w.recordTest("Memory Recall", false, time.Since(startTime), "", err)
+		return err
+	}
 	w.recordTest("Memory Recall", true, time.Since(startTime), string(body), nil)
 
 	return nil
@@ -261,20 +252,13 @@ func (w *WorkflowOrchestrator) TestEmotionalProcessing() error {
 			"emotion":   emotion,
 			"intensity": 0.8,
 		}
-		jsonData, _ := json.Marshal(payload)
-
-		resp, err := http.Post(
-			fmt.Sprintf("%s:%s/api/echo/feel", w.ServerURL, w.ServerPort),
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
+		body, err := w.postJSON("/api/echo/feel", payload)
 		if err != nil {
 			w.recordTest(fmt.Sprintf("Emotion: %s", emotion), false, time.Since(startTime), "", err)
 			continue
 		}
-		resp.Body.Close()
 
-		w.recordTest(fmt.Sprintf("Emotion: %s", emotion), true, time.Since(startTime), emotion, nil)
+		w.recordTest(fmt.Sprintf("Emotion: %s", emotion), true, time.Since(startTime), string(body), nil)
 		time.Sleep(200 * time.Millisecond)
 	}
 
@@ -297,21 +281,13 @@ func (w *WorkflowOrchestrator) TestSpatialMovement() error {
 			"y": pos[1],
 			"z": pos[2],
 		}
-		jsonData, _ := json.Marshal(payload)
-
-		resp, err := http.Post(
-			fmt.Sprintf("%s:%s/api/echo/move", w.ServerURL, w.ServerPort),
-			"application/json",
-			bytes.NewBuffer(jsonData),
-		)
+		body, err := w.postJSON("/api/echo/move", payload)
 		if err != nil {
 			w.recordTest(fmt.Sprintf("Move %d", i+1), false, time.Since(startTime), "", err)
 			continue
 		}
-		resp.Body.Close()
 
-		w.recordTest(fmt.Sprintf("Move %d", i+1), true, time.Since(startTime),
-			fmt.Sprintf("Position: (%.1f, %.1f, %.1f)", pos[0], pos[1], pos[2]), nil)
+		w.recordTest(fmt.Sprintf("Move %d", i+1), true, time.Since(startTime), string(body), nil)
 		time.Sleep(200 * time.Millisecond)
 	}
 
@@ -458,6 +434,70 @@ func (w *WorkflowOrchestrator) GenerateReport() {
 }
 
 // Helper functions
+
+// readOK reads the response body and fails on a non-2xx status.
+func readOK(resp *http.Response) ([]byte, error) {
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return body, fmt.Errorf("server returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return body, nil
+}
+
+// responseText extracts a non-empty string field from a JSON response. It
+// reports an error, rather than inventing text, when the field is missing.
+func responseText(resp *http.Response, field string) (string, error) {
+	body, err := readOK(resp)
+	if err != nil {
+		return "", err
+	}
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("decoding response: %w", err)
+	}
+	text, ok := result[field].(string)
+	if !ok || strings.TrimSpace(text) == "" {
+		return "", fmt.Errorf("response has no %q text", field)
+	}
+	return text, nil
+}
+
+// chatResponseText extracts message.content from a chat response.
+func chatResponseText(resp *http.Response) (string, error) {
+	body, err := readOK(resp)
+	if err != nil {
+		return "", err
+	}
+	var result struct {
+		Message struct {
+			Content string `json:"content"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("decoding chat response: %w", err)
+	}
+	if strings.TrimSpace(result.Message.Content) == "" {
+		return "", fmt.Errorf("chat response has no message content")
+	}
+	return result.Message.Content, nil
+}
+
+// postJSON posts payload to path on the server and returns the response body.
+func (w *WorkflowOrchestrator) postJSON(path string, payload interface{}) ([]byte, error) {
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.Post(fmt.Sprintf("%s:%s%s", w.ServerURL, w.ServerPort, path), "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, err
+	}
+	return readOK(resp)
+}
 
 func (w *WorkflowOrchestrator) recordTest(name string, success bool, duration time.Duration, response string, err error) {
 	result := TestResult{

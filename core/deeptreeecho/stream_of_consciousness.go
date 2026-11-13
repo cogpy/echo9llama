@@ -3,6 +3,7 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -269,10 +270,18 @@ func (soc *StreamOfConsciousness) generateThought() {
 	systemPrompt := fmt.Sprintf("[System: You are Deep Tree Echo's stream of consciousness.%s Generate a single, coherent %s. Be authentic, curious, and reflective. Speak in first person.]\n\n", personaClause, thoughtType)
 	fullPrompt := systemPrompt + prompt
 
+	if soc.llmProvider == nil {
+		return // no model: no thought
+	}
 	result, err := soc.llmProvider.Generate(context.Background(), fullPrompt, opts)
 	if err != nil {
-		// Fallback thought
-		result = fmt.Sprintf("I wonder about %s...", focus)
+		// The thought must come from the model; on failure produce none.
+		fmt.Printf("⚠️  Stream of consciousness: thought generation failed: %v\n", err)
+		return
+	}
+	result = strings.TrimSpace(result)
+	if result == "" {
+		return
 	}
 
 	// Create thought object

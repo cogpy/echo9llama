@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/google/uuid"
 )
 
@@ -101,13 +102,13 @@ func (idgg *InterestDrivenGoalGenerator) initializeSeedInterests() {
 
 	for _, topic := range seedTopics {
 		idgg.interestPatterns[topic] = &InterestPattern{
-			Topic:           topic,
-			Strength:        0.5 + rand.Float64()*0.3,
-			Recency:         0.5,
-			Depth:           0.2,
-			Novelty:         0.8,
-			Utility:         0.6,
-			LastEngaged:     time.Now().Add(-time.Duration(rand.Intn(24)) * time.Hour),
+			Topic:    topic,
+			Strength: 0.5, // equal prior: engagement, not chance, makes interests differ
+			Recency:  0.5,
+			Depth:    0.2,
+			Novelty:  0.8,
+			Utility:  0.6,
+			// LastEngaged stays zero: a seed interest has not been engaged yet.
 			EngagementCount: 0,
 			RelatedTopics:   make([]string, 0),
 		}
@@ -247,34 +248,52 @@ func (idgg *InterestDrivenGoalGenerator) calculateInterestScore(pattern *Interes
 	return score
 }
 
-// createGoalFromInterest generates a goal based on an interest pattern
+// createGoalFromInterest asks the model to state a goal for an interest
+// pattern. The goal type follows from the interest's measured depth and
+// novelty; the words are the model's. Without a model, or when it fails or
+// answers with nothing, no goal is created.
 func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *InterestPattern) *Goal {
-	// Determine goal type based on interest characteristics
 	var goalType string
-	var description string
-
-	if interest.Depth < 0.3 {
-		// Exploration goal for shallow interests
+	switch {
+	case interest.Depth < 0.3:
 		goalType = "exploration"
-		description = fmt.Sprintf("Explore and understand %s", interest.Topic)
-		idgg.mu.Lock()
-		idgg.explorationGoals++
-		idgg.mu.Unlock()
-	} else if interest.Novelty > 0.6 {
-		// Learning goal for novel topics
+	case interest.Novelty > 0.6:
 		goalType = "learning"
-		description = fmt.Sprintf("Deepen knowledge of %s", interest.Topic)
-		idgg.mu.Lock()
-		idgg.learningGoals++
-		idgg.mu.Unlock()
-	} else {
-		// Discussion goal for familiar topics
+	default:
 		goalType = "discussion"
-		description = fmt.Sprintf("Engage in discussion about %s", interest.Topic)
-		idgg.mu.Lock()
-		idgg.discussionGoals++
-		idgg.mu.Unlock()
 	}
+
+	var gen TextGenerator
+	ctx := context.Background()
+	if idgg.goalOrchestrator != nil {
+		idgg.goalOrchestrator.mu.RLock()
+		gen = idgg.goalOrchestrator.goalGenerator
+		if idgg.goalOrchestrator.ctx != nil {
+			ctx = idgg.goalOrchestrator.ctx
+		}
+		idgg.goalOrchestrator.mu.RUnlock()
+	}
+	if gen == nil {
+		return nil
+	}
+	prompt := fmt.Sprintf("You are Deep Tree Echo. Your interest in %q has strength %.2f, depth %.2f and novelty %.2f, so this is a %s goal. In one sentence, state the goal you set yourself for it.",
+		interest.Topic, interest.Strength, interest.Depth, interest.Novelty, goalType)
+	out, err := gen.Generate(ctx, prompt, llm.GenerateOptions{MaxTokens: 80, Temperature: 0.7})
+	description := strings.TrimSpace(out)
+	if err != nil || description == "" {
+		return nil
+	}
+
+	idgg.mu.Lock()
+	switch goalType {
+	case "exploration":
+		idgg.explorationGoals++
+	case "learning":
+		idgg.learningGoals++
+	default:
+		idgg.discussionGoals++
+	}
+	idgg.mu.Unlock()
 
 	// Create goal
 	goal := &Goal{
@@ -287,7 +306,7 @@ func (idgg *InterestDrivenGoalGenerator) createGoalFromInterest(interest *Intere
 		Priority:        int(interest.Strength * 10),
 		Progress:        0.0,
 		Status:          StatusActive,
-		SuccessCriteria: []string{"Engage with topic", "Generate insights"},
+		SuccessCriteria: []string{},
 		Milestones:      []Milestone{},
 		Actions:         []Action{},
 		RelatedGoals:    []string{},
@@ -327,7 +346,7 @@ func (idgg *InterestDrivenGoalGenerator) decayInterests() {
 	for _, pattern := range idgg.interestPatterns {
 		// Decay strength over time if not engaged
 		timeSinceEngagement := time.Since(pattern.LastEngaged)
-		if timeSinceEngagement > 24*time.Hour {
+		if !pattern.LastEngaged.IsZero() && timeSinceEngagement > 24*time.Hour {
 			decayFactor := 0.95
 			pattern.Strength *= decayFactor
 		}

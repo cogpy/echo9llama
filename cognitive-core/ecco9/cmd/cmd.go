@@ -1774,6 +1774,63 @@ func renderToolCalls(toolCalls []api.ToolCall, plainText bool) string {
 }
 
 // Orchestration Handlers
+//
+// These handlers call the server's /api/orchestration endpoints. Task and
+// workflow outputs come from the models the server runs; nothing is printed
+// in their place when the server or the model fails.
+
+// orchestrationCall sends a JSON request to an orchestration endpoint and
+// decodes the JSON response into out (when out is non-nil).
+func orchestrationCall(ctx context.Context, client *api.Client, method, path string, body, out any) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	var reader io.Reader
+	if body != nil {
+		data, err := json.Marshal(body)
+		if err != nil {
+			return err
+		}
+		reader = strings.NewReader(string(data))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, client.BaseURL().JoinPath(path).String(), reader)
+	if err != nil {
+		return err
+	}
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("orchestration request %s %s failed: %w", method, path, err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		var apiErr struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(respBody, &apiErr) == nil && apiErr.Error != "" {
+			return fmt.Errorf("orchestration %s %s: %s", method, path, apiErr.Error)
+		}
+		return fmt.Errorf("orchestration %s %s: server returned status %d", method, path, resp.StatusCode)
+	}
+
+	if out != nil && len(respBody) > 0 {
+		if err := json.Unmarshal(respBody, out); err != nil {
+			return fmt.Errorf("orchestration %s %s: decoding response: %w", method, path, err)
+		}
+	}
+	return nil
+}
 
 func CreateAgentHandler(cmd *cobra.Command, args []string) error {
 	client, err := api.ClientFromEnvironment()
@@ -1792,16 +1849,15 @@ func CreateAgentHandler(cmd *cobra.Command, args []string) error {
 		Config:      make(map[string]interface{}),
 	}
 
-	// Make API call to create agent
-	// For now, we'll just simulate this since we need proper HTTP client setup
-	fmt.Printf("Creating agent '%s' with models: %v\n", name, models)
-	if description != "" {
-		fmt.Printf("Description: %s\n", description)
+	var agent api.AgentResponse
+	if err := orchestrationCall(cmd.Context(), client, http.MethodPost, "/api/orchestration/agents", req, &agent); err != nil {
+		return err
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/agents
-	_ = req
-	_ = client
+	fmt.Printf("Created agent '%s' (id %s) with models: %v\n", agent.Name, agent.ID, agent.Models)
+	if agent.Description != "" {
+		fmt.Printf("Description: %s\n", agent.Description)
+	}
 
 	return nil
 }
@@ -1812,11 +1868,20 @@ func ListAgentsHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/agents
-	_ = client
+	var resp api.ListAgentsResponse
+	if err := orchestrationCall(cmd.Context(), client, http.MethodGet, "/api/orchestration/agents", nil, &resp); err != nil {
+		return err
+	}
 
-	fmt.Println("Listing orchestration agents:")
-	fmt.Println("(No agents found - this is a placeholder)")
+	if len(resp.Agents) == 0 {
+		fmt.Println("No orchestration agents found")
+		return nil
+	}
+
+	fmt.Println("Orchestration agents:")
+	for _, agent := range resp.Agents {
+		fmt.Printf("  %s\t%s\tmodels: %v\n", agent.ID, agent.Name, agent.Models)
+	}
 
 	return nil
 }
@@ -1829,11 +1894,11 @@ func DeleteAgentHandler(cmd *cobra.Command, args []string) error {
 
 	agentID := args[0]
 
-	// TODO: Make actual HTTP request to DELETE /api/orchestration/agents/{id}
-	_ = client
+	if err := orchestrationCall(cmd.Context(), client, http.MethodDelete, "/api/orchestration/agents/"+agentID, nil, nil); err != nil {
+		return err
+	}
 
-	fmt.Printf("Deleting agent: %s\n", agentID)
-	fmt.Println("(This is a placeholder)")
+	fmt.Printf("Deleted agent: %s\n", agentID)
 
 	return nil
 }
@@ -1880,22 +1945,24 @@ func RunTasksHandler(cmd *cobra.Command, args []string) error {
 		req.KeepAlive = &api.Duration{Duration: d}
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/tasks
-	_ = client
-	_ = req
-
-	fmt.Printf("Running %d tasks for agent %s\n", len(tasks), agentID)
-	if sequential {
-		fmt.Println("Tasks will be run sequentially")
-	} else {
-		fmt.Println("Tasks will be run in parallel")
+	var resp api.OrchestrationResponse
+	if err := orchestrationCall(cmd.Context(), client, http.MethodPost, "/api/orchestration/tasks", req, &resp); err != nil {
+		return err
 	}
 
-	for i, task := range tasks {
-		fmt.Printf("Task %d: %s - %s\n", i+1, task.Type, task.Input)
+	fmt.Printf("Orchestration %s for agent %s: %s\n", resp.ID, resp.AgentID, resp.Status)
+	for i, task := range resp.Tasks {
+		fmt.Printf("Task %d: %s - %s [%s]\n", i+1, task.Type, task.Input, task.Status)
+		if task.Error != "" {
+			fmt.Printf("  error: %s\n", task.Error)
+		}
 	}
-
-	fmt.Println("(This is a placeholder)")
+	for _, result := range resp.Results {
+		fmt.Printf("\n--- %s (model %s) ---\n%s\n", result.TaskID, result.ModelUsed, result.Output)
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("orchestration failed: %s", resp.Error)
+	}
 
 	return nil
 }
@@ -1932,17 +1999,26 @@ func RunWorkflowHandler(cmd *cobra.Command, args []string) error {
 		Steps:   steps,
 	}
 
-	// TODO: Make actual HTTP request to /api/orchestration/workflows
-	_ = client
-	_ = req
-
-	fmt.Printf("Running workflow with %d steps for agent %s\n", len(steps), agentID)
-
-	for i, step := range steps {
-		fmt.Printf("Step %d: %s (%s) - %s\n", i+1, step.Name, step.Type, step.Input)
+	var resp api.WorkflowResponse
+	if err := orchestrationCall(cmd.Context(), client, http.MethodPost, "/api/orchestration/workflows", req, &resp); err != nil {
+		return err
 	}
 
-	fmt.Println("(This is a placeholder)")
+	for i, step := range resp.Steps {
+		fmt.Printf("Step %d: %s (%s), model %s, success=%v\n", i+1, step.Name, step.Type, step.ModelUsed, step.Success)
+		if step.Error != "" {
+			fmt.Printf("  error: %s\n", step.Error)
+		}
+		if step.Output != "" {
+			fmt.Printf("%s\n\n", step.Output)
+		}
+	}
+	if !resp.Success {
+		if resp.Error != "" {
+			return fmt.Errorf("workflow failed: %s", resp.Error)
+		}
+		return fmt.Errorf("workflow failed")
+	}
 
 	return nil
 }

@@ -3,6 +3,7 @@ package echobeats
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -35,6 +36,7 @@ type AutonomousDiscussionManager struct {
 
 	// Response generation (injected by the orchestrator; typically LLM-backed)
 	responseGenerator ResponseGenerator
+	openingGenerator  OpeningGenerator
 
 	// Metrics
 	discussionsInitiated  uint64
@@ -57,6 +59,10 @@ type InterestScorer interface {
 // discussion manager can generate genuine LLM-backed responses without
 // creating a dependency on any specific provider.
 type ResponseGenerator func(ctx context.Context, topic, content string) (string, error)
+
+// OpeningGenerator produces the opening message for a discussion Deep Tree
+// Echo initiates on a topic. Injected by higher layers (typically LLM-backed).
+type OpeningGenerator func(ctx context.Context, topic string) (string, error)
 
 // Discussion represents an active discussion
 type Discussion struct {
@@ -235,11 +241,11 @@ func (adm *AutonomousDiscussionManager) shouldEngageInDiscussion(topic string, r
 	return relevanceScore >= adjustedThreshold
 }
 
-// engageInDiscussion engages in a discussion
+// engageInDiscussion engages in a discussion. The reply is written by the
+// injected response generator; when none is configured or generation fails, no
+// reply is sent.
 func (adm *AutonomousDiscussionManager) engageInDiscussion(msg IncomingMessage) {
 	adm.mu.Lock()
-	defer adm.mu.Unlock()
-
 	// Check if discussion already exists
 	if discussion, exists := adm.activeDiscussions[msg.Topic]; exists {
 		// Continue existing discussion
@@ -271,9 +277,15 @@ func (adm *AutonomousDiscussionManager) engageInDiscussion(msg IncomingMessage) 
 	if adm.discussionFatigue > 1.0 {
 		adm.discussionFatigue = 1.0
 	}
+	gen := adm.responseGenerator
+	adm.mu.Unlock()
 
-	// Generate response (placeholder - would integrate with LLM)
-	response := adm.generateResponse(msg)
+	// Generate the reply outside the lock so slow models do not block the manager
+	response, err := adm.generateResponse(gen, msg)
+	if err != nil {
+		fmt.Printf("   ⚠️  No response sent on '%s': %v\n", msg.Topic, err)
+		return
+	}
 
 	// Queue outgoing message
 	outgoing := OutgoingMessage{
@@ -299,38 +311,69 @@ func (adm *AutonomousDiscussionManager) SetResponseGenerator(gen ResponseGenerat
 	adm.responseGenerator = gen
 }
 
-// generateResponse generates a response to a message using the injected
-// generator when available, falling back to a reflective acknowledgment.
-func (adm *AutonomousDiscussionManager) generateResponse(msg IncomingMessage) string {
-	gen := adm.responseGenerator
-	if gen != nil {
-		ctx, cancel := context.WithTimeout(adm.ctx, 30*time.Second)
-		defer cancel()
-		if response, err := gen(ctx, msg.Topic, msg.Content); err == nil && response != "" {
-			return response
-		}
-	}
-	// Fallback: reflective acknowledgment keeps the discussion alive even
-	// without a generator, preserving autonomous responsiveness.
-	return fmt.Sprintf("Interesting point about %s. Let me reflect on that...", msg.Topic)
-}
-
-// InitiateDiscussion autonomously starts a discussion on a topic of interest
-func (adm *AutonomousDiscussionManager) InitiateDiscussion(topic string, destination string) error {
+// SetOpeningGenerator injects the function (LLM-backed) that writes the
+// opening message of a discussion Deep Tree Echo initiates.
+func (adm *AutonomousDiscussionManager) SetOpeningGenerator(gen OpeningGenerator) {
 	adm.mu.Lock()
 	defer adm.mu.Unlock()
+	adm.openingGenerator = gen
+}
 
+// generateResponse generates a reply with the injected generator. It never
+// substitutes fixed text: a missing generator, failed call, or empty reply is
+// an error.
+func (adm *AutonomousDiscussionManager) generateResponse(gen ResponseGenerator, msg IncomingMessage) (string, error) {
+	if gen == nil {
+		return "", fmt.Errorf("no response generator configured")
+	}
+	ctx, cancel := context.WithTimeout(adm.ctx, 30*time.Second)
+	defer cancel()
+	response, err := gen(ctx, msg.Topic, msg.Content)
+	if err != nil {
+		return "", fmt.Errorf("response generation failed: %w", err)
+	}
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return "", fmt.Errorf("response generator returned empty text")
+	}
+	return response, nil
+}
+
+// InitiateDiscussion autonomously starts a discussion on a topic of interest.
+// The opening message is written by the injected opening generator; if none
+// is configured or generation fails, no discussion is started.
+func (adm *AutonomousDiscussionManager) InitiateDiscussion(topic string, destination string) error {
+	adm.mu.RLock()
 	// Check interest level
 	interestScore := adm.interestScorer.GetInterestScore("topic", topic)
+	initiationThreshold := adm.initiationThreshold
+	fatigue := adm.discussionFatigue
+	terminationThreshold := adm.terminationThreshold
+	gen := adm.openingGenerator
+	adm.mu.RUnlock()
 
-	if interestScore < adm.initiationThreshold {
+	if interestScore < initiationThreshold {
 		return fmt.Errorf("interest too low to initiate discussion (%.2f < %.2f)",
-			interestScore, adm.initiationThreshold)
+			interestScore, initiationThreshold)
 	}
 
 	// Check fatigue
-	if adm.discussionFatigue > adm.terminationThreshold {
-		return fmt.Errorf("too fatigued to initiate discussion (%.2f)", adm.discussionFatigue)
+	if fatigue > terminationThreshold {
+		return fmt.Errorf("too fatigued to initiate discussion (%.2f)", fatigue)
+	}
+
+	if gen == nil {
+		return fmt.Errorf("no opening generator configured")
+	}
+	ctx, cancel := context.WithTimeout(adm.ctx, 30*time.Second)
+	defer cancel()
+	opening, err := gen(ctx, topic)
+	if err != nil {
+		return fmt.Errorf("opening generation failed: %w", err)
+	}
+	opening = strings.TrimSpace(opening)
+	if opening == "" {
+		return fmt.Errorf("opening generator returned empty text")
 	}
 
 	// Create new discussion
@@ -345,12 +388,6 @@ func (adm *AutonomousDiscussionManager) InitiateDiscussion(topic string, destina
 		FatigueLevel:  0.0,
 		Status:        DiscussionActive,
 	}
-
-	adm.activeDiscussions[topic] = discussion
-	adm.discussionsInitiated++
-
-	// Generate opening message
-	opening := fmt.Sprintf("I've been thinking about %s and would like to discuss it.", topic)
 
 	// Queue outgoing message
 	outgoing := OutgoingMessage{
@@ -367,6 +404,11 @@ func (adm *AutonomousDiscussionManager) InitiateDiscussion(topic string, destina
 	default:
 		return fmt.Errorf("outgoing queue full")
 	}
+
+	adm.mu.Lock()
+	adm.activeDiscussions[topic] = discussion
+	adm.discussionsInitiated++
+	adm.mu.Unlock()
 
 	return nil
 }

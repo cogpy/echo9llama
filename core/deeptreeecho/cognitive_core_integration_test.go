@@ -80,7 +80,8 @@ func TestCognitiveCoreObservationIsDurableAndDreamProjectedOnce(t *testing.T) {
 	if _, err := decodeCognitiveCoreEvidence(tamperedPayload); err == nil {
 		t.Fatal("tampered cognitive-core catalogue provenance was accepted")
 	}
-	if observation.Provenance.SourceCommit != cognitivecore.SourceCommitSHA || observation.Provenance.ManifestSHA256 != cognitivecore.ManifestSHA256 {
+	expectedProvenance := cognitivecore.DefaultProvenance()
+	if observation.Provenance.SourceCommit != expectedProvenance.SourceCommit || observation.Provenance.ManifestSHA256 != expectedProvenance.ManifestSHA256 {
 		t.Fatalf("observation lacks immutable source binding: %+v", observation.Provenance)
 	}
 	if observation.Provenance.TrustGrade != cognitivecore.TrustGrade || len(observation.Devices) != 4 {
@@ -98,6 +99,21 @@ func TestCognitiveCoreObservationIsDurableAndDreamProjectedOnce(t *testing.T) {
 	}
 	if got := orchestrator.GetStatus().PendingExperiences; got != 1 {
 		t.Fatalf("replay duplicated EchoDream input: got %d pending experiences", got)
+	}
+
+	// Evidence recorded under another lineage pin is not trusted or replayed,
+	// and it does not block replay or a restart.
+	foreign := persistence.NewCognitiveEvent("cognitive-core:foreign-lineage:cycle-99", persistence.EventTypeCoreObserved,
+		events[0].IdentityID, events[0].SessionID, events[0].PolicyVersion, tamperedPayload)
+	foreign.EvidenceClass = persistence.EvidenceClassSensitive
+	if _, err := orchestrator.eventStore.Append(context.Background(), foreign); err != nil {
+		t.Fatalf("append foreign-lineage evidence: %v", err)
+	}
+	if err := orchestrator.replayCognitiveEvidence(context.Background()); err != nil {
+		t.Fatalf("replay with foreign-lineage evidence: %v", err)
+	}
+	if got := orchestrator.GetStatus().PendingExperiences; got != 1 {
+		t.Fatalf("foreign-lineage evidence was ingested: %d pending experiences", got)
 	}
 
 	if err := orchestrator.Sleep(); err != nil {

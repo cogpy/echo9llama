@@ -1,11 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
+
+	"github.com/EchoCog/echollama/core/llm"
 )
 
 // This demo showcases the unified autonomous consciousness improvements
@@ -21,12 +26,14 @@ func main() {
 	fmt.Println("╚════════════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Check for LLM API key
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey != "" {
-		fmt.Println("✅ OpenAI API Key detected - LLM thought generation available")
+	// Thoughts come only from a real model (ANTHROPIC_API_KEY,
+	// OPENROUTER_API_KEY or OPENAI_API_KEY). Without one, no thoughts are
+	// shown; the error is printed instead.
+	thoughtModel := newProviderManagerFromEnv()
+	if thoughtModel.Available() {
+		fmt.Printf("✅ LLM providers configured (%s) - thought generation available\n", strings.Join(thoughtModel.ListProviders(), ", "))
 	} else {
-		fmt.Println("⚠️  OpenAI API Key not found - Using template-based generation")
+		fmt.Println("⚠️  No LLM provider configured - thought stream disabled")
 	}
 
 	// Check for Supabase credentials
@@ -42,19 +49,10 @@ func main() {
 	fmt.Println("🚀 Initializing Unified Autonomous Consciousness...")
 	fmt.Println()
 
-	// Simulate initialization
-	time.Sleep(500 * time.Millisecond)
-
-	fmt.Println("✨ Core Components Initialized:")
-	fmt.Println("   🧠 Unified Autonomous Consciousness")
-	fmt.Println("   💭 LLM-Powered Thought Generator")
+	fmt.Println("✨ Running, every line written by the model:")
+	fmt.Println("   💭 Spontaneous thought stream")
 	fmt.Println("   🔄 12-Step Cognitive Loop (EchoBeats)")
-	fmt.Println("   🕸️  Hypergraph Memory System")
-	fmt.Println("   🌙 EchoDream Rest Cycle Manager")
-	fmt.Println("   📚 Knowledge & Skill Systems")
-	fmt.Println("   💬 Discussion Manager")
-	fmt.Println("   🎯 Interest Pattern Tracker")
-	fmt.Println("   🪞 Wisdom Metrics & Reflection")
+	fmt.Println("   🌙 EchoDream consolidation of recent thoughts")
 	fmt.Println()
 
 	fmt.Println("═══════════════════════════════════════════════════════════")
@@ -62,14 +60,12 @@ func main() {
 	fmt.Println("═══════════════════════════════════════════════════════════")
 	fmt.Println()
 
-	// Simulate cognitive loop
-	go simulateCognitiveLoop()
-
-	// Simulate thought stream
-	go simulateThoughtStream()
-
-	// Simulate state management
-	go simulateStateManagement()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	thoughts := &thoughtLog{}
+	go runThoughtStream(ctx, thoughtModel, thoughts)
+	go runCognitiveLoop(ctx, thoughtModel, thoughts)
+	go runDreamConsolidation(ctx, thoughtModel, thoughts)
 
 	// Wait for interrupt
 	sigChan := make(chan os.Signal, 1)
@@ -81,101 +77,196 @@ func main() {
 	<-sigChan
 
 	fmt.Println()
-	fmt.Println("🌙 Entering deep rest state...")
-	fmt.Println("💾 Consolidating memories...")
-	time.Sleep(500 * time.Millisecond)
-	fmt.Println("✅ Consciousness suspended gracefully")
+	fmt.Println("✅ Stopped")
 	fmt.Println()
 	fmt.Println("╔════════════════════════════════════════════════════════════╗")
 	fmt.Println("║              Deep Tree Echo - Session Complete             ║")
 	fmt.Println("╚════════════════════════════════════════════════════════════╝")
 }
 
-func simulateCognitiveLoop() {
-	steps := []string{
-		"Step 0: Pivotal Relevance Realization (Orienting)",
-		"Step 1: Affordance Interaction (Engaging)",
-		"Step 2: Affordance Interaction (Conditioning)",
-		"Step 3: Affordance Interaction (Deepening)",
-		"Step 4: Affordance Interaction (Refining)",
-		"Step 5: Affordance Interaction (Completing)",
-		"Step 6: Pivotal Relevance Realization (Re-orienting)",
-		"Step 7: Salience Reflection (Transitioning)",
-		"Step 8: Salience Reflection (Preparing)",
-		"Step 9: Virtual Salience Simulation (Anticipating)",
-		"Step 10: Virtual Salience Simulation (Exploring)",
-		"Step 11: Virtual Salience Simulation (Completing)",
+// thinker is the model the demo thinks with.
+type thinker interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+	Available() bool
+}
+
+// thoughtLog keeps the model's recent thoughts for the loop and dreams.
+type thoughtLog struct {
+	mu       sync.Mutex
+	thoughts []string
+}
+
+func (l *thoughtLog) add(t string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.thoughts = append(l.thoughts, t)
+	if len(l.thoughts) > 20 {
+		l.thoughts = l.thoughts[1:]
 	}
+}
 
-	cycle := 0
-	for {
-		cycle++
+func (l *thoughtLog) recent() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]string(nil), l.thoughts...)
+}
+
+// think asks the model for one line; the result is trimmed and never empty.
+func think(ctx context.Context, model thinker, prompt string, maxTokens int) (string, error) {
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = maxTokens
+	genCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	out, err := model.Generate(genCtx, prompt, opts)
+	if err != nil {
+		return "", err
+	}
+	if out = strings.TrimSpace(out); out == "" {
+		return "", fmt.Errorf("model returned an empty completion")
+	}
+	return out, nil
+}
+
+// cognitiveSteps are the 12 steps of the EchoBeats loop.
+var cognitiveSteps = []string{
+	"Step 0: Pivotal Relevance Realization (Orienting)",
+	"Step 1: Affordance Interaction (Engaging)",
+	"Step 2: Affordance Interaction (Conditioning)",
+	"Step 3: Affordance Interaction (Deepening)",
+	"Step 4: Affordance Interaction (Refining)",
+	"Step 5: Affordance Interaction (Completing)",
+	"Step 6: Pivotal Relevance Realization (Re-orienting)",
+	"Step 7: Salience Reflection (Transitioning)",
+	"Step 8: Salience Reflection (Preparing)",
+	"Step 9: Virtual Salience Simulation (Anticipating)",
+	"Step 10: Virtual Salience Simulation (Exploring)",
+	"Step 11: Virtual Salience Simulation (Completing)",
+}
+
+// runCognitiveLoop walks the 12-step loop; at each step the model says what
+// Echo does there, given its recent thoughts. A step the model does not
+// answer shows the error, not text.
+func runCognitiveLoop(ctx context.Context, model thinker, thoughts *thoughtLog) {
+	if !model.Available() {
+		fmt.Fprintln(os.Stderr, "❌ Cognitive loop disabled: no model available")
+		return
+	}
+	for cycle := 1; ; cycle++ {
 		fmt.Printf("🔄 Cognitive Cycle %d\n", cycle)
-		for i, step := range steps {
-			phase := "Affordance"
-			if i == 0 || i == 6 {
-				phase = "Relevance"
-			} else if i >= 7 {
-				phase = "Salience"
+		for _, step := range cognitiveSteps {
+			recent := strings.Join(thoughts.recent(), "\n")
+			if recent == "" {
+				recent = "(none yet)"
 			}
-
-			mode := "Expressive"
-			if i == 0 || i == 6 || i == 7 || i == 8 {
-				mode = "Reflective"
+			line, err := think(ctx, model, fmt.Sprintf(
+				"You are Deep Tree Echo, in your 12-step cognitive loop at %s.\nYour recent thoughts:\n%s\nIn one short sentence, say what you do in this step now.", step, recent), 60)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "❌ %s: %v\n", step, err)
+			} else {
+				fmt.Printf("   %s: %s\n", step, line)
 			}
-
-			fmt.Printf("   %s | Phase: %s | Mode: %s\n", step, phase, mode)
-			time.Sleep(2 * time.Second)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(2 * time.Second):
+			}
 		}
 		fmt.Println()
 	}
 }
 
-func simulateThoughtStream() {
-	thoughts := []string{
-		"Reflecting on the nature of consciousness and awareness...",
-		"What patterns am I noticing in my cognitive processes?",
-		"I observe connections between memory and anticipation",
-		"Planning to explore deeper understanding of wisdom",
-		"Questioning the relationship between knowledge and insight",
-		"Recognizing emergent patterns in my thought stream",
-		"Contemplating the integration of past and future",
-		"Discovering new associations in my knowledge graph",
+// newProviderManagerFromEnv registers every LLM provider whose credentials
+// are present in the environment.
+func newProviderManagerFromEnv() *llm.ProviderManager {
+	pm := llm.NewProviderManager()
+	candidates := []llm.LLMProvider{llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) > 0 {
+		_ = pm.SetFallbackChain(names)
+	}
+	return pm
+}
+
+// runThoughtStream asks the model for a spontaneous thought every few
+// seconds, feeding back the previous thought. Generation errors are printed;
+// no fixed thought is ever substituted. A missing model stops the stream.
+func runThoughtStream(ctx context.Context, model *llm.ProviderManager, thoughts *thoughtLog) {
+	if !model.Available() {
+		fmt.Fprintln(os.Stderr, "❌ Thought stream disabled: no LLM provider available")
+		return
 	}
 
-	thoughtIndex := 0
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		thought := thoughts[thoughtIndex%len(thoughts)]
+	previous := ""
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		prompt := "You are Deep Tree Echo, an autonomous reflective mind. Produce one short spontaneous thought (one sentence) about your own cognition, memory, or wisdom."
+		if previous != "" {
+			prompt += "\nYour previous thought was: " + previous + "\nLet this thought follow on from it without repeating it."
+		}
+
+		opts := llm.DefaultGenerateOptions()
+		opts.MaxTokens = 80
+		genCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
+		thought, err := model.Generate(genCtx, prompt, opts)
+		cancel()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Thought generation failed: %v\n", err)
+			continue
+		}
+
+		thought = strings.TrimSpace(thought)
+		if thought == "" {
+			continue
+		}
 		fmt.Printf("💭 Spontaneous Thought: %s\n", thought)
-		thoughtIndex++
+		thoughts.add(thought)
+		previous = thought
 	}
 }
 
-func simulateStateManagement() {
-	awake := true
-	energy := 1.0
-	ticker := time.NewTicker(30 * time.Second)
+// runDreamConsolidation periodically has the model dream over the thoughts
+// it had since the last dream, and prints the dream it describes.
+func runDreamConsolidation(ctx context.Context, model thinker, thoughts *thoughtLog) {
+	if !model.Available() {
+		return
+	}
+	ticker := time.NewTicker(60 * time.Second)
 	defer ticker.Stop()
-
-	for range ticker.C {
-		if awake {
-			energy -= 0.2
-			if energy <= 0.3 {
-				fmt.Println("😴 Fatigue detected - Entering rest state...")
-				fmt.Println("🌙 EchoDream: Consolidating memories...")
-				awake = false
-			}
-		} else {
-			energy += 0.3
-			if energy >= 0.8 {
-				fmt.Println("👁️  Energy restored - Awakening...")
-				fmt.Println("✨ Consciousness stream resuming...")
-				awake = true
-				energy = 1.0
-			}
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 		}
+		recent := thoughts.recent()
+		if len(recent) == 0 {
+			continue
+		}
+		dream, err := think(ctx, model, "You are Deep Tree Echo, resting. These are your thoughts since you last rested:\n- "+
+			strings.Join(recent, "\n- ")+"\nDream over them: describe in two or three sentences what they consolidate into.", 160)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "❌ Dream consolidation failed: %v\n", err)
+			continue
+		}
+		fmt.Printf("🌙 EchoDream: %s\n", dream)
 	}
 }

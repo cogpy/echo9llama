@@ -384,7 +384,7 @@ func TestEnhancedTaskExecution(t *testing.T) {
 }
 
 func TestReflectiveAgent(t *testing.T) {
-	client := api.Client{}
+	client := newFakeModelClient(t, "model-generated reflection", nil)
 	engine := NewEngine(client)
 	ctx := context.Background()
 

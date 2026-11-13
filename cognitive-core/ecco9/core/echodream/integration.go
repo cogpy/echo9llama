@@ -414,13 +414,20 @@ func (ed *EchoDreamAdvanced) synthesizePatterns() {
 			continue
 		}
 
+		// Novelty is measured from the graph: pairs that are not yet
+		// connected are fully novel; existing links reduce novelty.
+		strength := (nodes[idx1].Strength + nodes[idx2].Strength) / 2
+		novelty := 1.0 - nodes[idx1].Connections[nodes[idx2].ID]
+		if novelty < 0 {
+			novelty = 0
+		}
 		pattern := &SynthesizedPattern{
 			ID:        generatePatternID(),
 			Type:      "associative",
 			Elements:  []string{nodes[idx1].ID, nodes[idx2].ID},
-			Strength:  (nodes[idx1].Strength + nodes[idx2].Strength) / 2,
-			Novelty:   rand.Float64(),
-			Utility:   rand.Float64(),
+			Strength:  strength,
+			Novelty:   novelty,
+			Utility:   strength,
 			Timestamp: time.Now(),
 		}
 

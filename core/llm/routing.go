@@ -95,9 +95,14 @@ func parseProviderMode(value string) ProviderMode {
 func normalizeRouting(options RoutingOptions, maxOutput int, mode ProviderMode) backendcap.Workload {
 	allowRemote := options.AllowRemote
 	allowFallback := options.AllowFallback
+	allowQueue := options.AllowQueue
 	if !options.PolicyExplicit {
 		allowRemote = true
 		allowFallback = true
+		// Without an explicit policy, a busy single-slot local model is waited
+		// for (bounded by its QueueWait) rather than treated as unavailable:
+		// no stand-in answers exist, so rejecting would leave Echo silent.
+		allowQueue = true
 	}
 	needOffline := options.NeedOffline || mode == ProviderModeOffline
 	if needOffline {
@@ -122,7 +127,7 @@ func normalizeRouting(options RoutingOptions, maxOutput int, mode ProviderMode) 
 		RequireRealModel:      options.RequireRealModel,
 		AllowRemote:           allowRemote,
 		AllowFallback:         allowFallback,
-		AllowQueue:            options.AllowQueue,
+		AllowQueue:            allowQueue,
 		MinMemoryTier:         backendcap.MemoryConstrained,
 		RequiredContextTokens: options.RequiredContextTokens,
 		ExpectedOutputTokens:  maxOutput,

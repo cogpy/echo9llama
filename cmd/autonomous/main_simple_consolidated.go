@@ -7,16 +7,17 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/cogpy/echo9llama/core/deeptreeecho"
 	"github.com/cogpy/echo9llama/core/echobeats"
+	"github.com/cogpy/echo9llama/core/llm"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -41,11 +42,12 @@ type SimplifiedConsciousness struct {
 	iterations         int
 	autonomousThoughts int
 	interests          map[string]float64
+	llm                *llm.ProviderManager
 }
 
 func NewSimplifiedConsciousness(name string) *SimplifiedConsciousness {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &SimplifiedConsciousness{
 		ctx:               ctx,
 		cancel:            cancel,
@@ -57,7 +59,33 @@ func NewSimplifiedConsciousness(name string) *SimplifiedConsciousness {
 		workingMemorySize: 7,
 		awake:             true,
 		interests:         make(map[string]float64),
+		llm:               newProviderManagerFromEnv(),
 	}
+}
+
+// newProviderManagerFromEnv registers every LLM provider whose credentials
+// are present in the environment.
+func newProviderManagerFromEnv() *llm.ProviderManager {
+	pm := llm.NewProviderManager()
+	// A locally served model (ECHO_EDGE_COMPLETION_URL / ECHO_EDGE_MODEL_PATH)
+	// comes first; hosted providers follow when their keys are set.
+	candidates := []llm.LLMProvider{llm.NewEdgeCompletionProviderFromEnv(), llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) > 0 {
+		_ = pm.SetFallbackChain(names)
+	}
+	return pm
 }
 
 func (sc *SimplifiedConsciousness) Start() error {
@@ -69,18 +97,18 @@ func (sc *SimplifiedConsciousness) Start() error {
 	sc.running = true
 	sc.startTime = time.Now()
 	sc.mu.Unlock()
-	
+
 	log.Println("🌊 Starting Simplified Autonomous Consciousness...")
-	
+
 	// Start scheduler
 	go sc.scheduler.Start()
-	
+
 	// Start main cognitive loop
 	go sc.runCognitiveLoop()
-	
+
 	// Start adaptive thought generation
 	go sc.runAdaptiveThoughtGeneration()
-	
+
 	log.Println("✅ Autonomous consciousness active")
 	return nil
 }
@@ -93,7 +121,7 @@ func (sc *SimplifiedConsciousness) Stop() error {
 	}
 	sc.running = false
 	sc.mu.Unlock()
-	
+
 	log.Println("🛑 Stopping autonomous consciousness...")
 	sc.cancel()
 	log.Println("✅ Stopped")
@@ -116,15 +144,15 @@ func (sc *SimplifiedConsciousness) processThought(thought *deeptreeecho.Thought)
 	sc.thinking = true
 	sc.iterations++
 	sc.mu.Unlock()
-	
+
 	defer func() {
 		sc.mu.Lock()
 		sc.thinking = false
 		sc.mu.Unlock()
 	}()
-	
+
 	log.Printf("💭 [%s] %s: %s", thought.Source, thought.Type, thought.Content)
-	
+
 	// Add to working memory
 	sc.mu.Lock()
 	sc.workingMemory = append(sc.workingMemory, thought)
@@ -132,16 +160,16 @@ func (sc *SimplifiedConsciousness) processThought(thought *deeptreeecho.Thought)
 		sc.workingMemory = sc.workingMemory[len(sc.workingMemory)-sc.workingMemorySize:]
 	}
 	sc.mu.Unlock()
-	
+
 	// Process through identity
 	sc.identity.Process(thought.Content)
-	
+
 	// Learn from important thoughts
 	if thought.Importance > 0.6 {
 		sc.mu.Lock()
 		sc.learning = true
 		sc.mu.Unlock()
-		
+
 		// Create experience for learning
 		exp := deeptreeecho.Experience{
 			Input:     thought.Content,
@@ -149,7 +177,7 @@ func (sc *SimplifiedConsciousness) processThought(thought *deeptreeecho.Thought)
 			Timestamp: time.Now(),
 		}
 		sc.cognition.Learn(exp)
-		
+
 		sc.mu.Lock()
 		sc.learning = false
 		sc.mu.Unlock()
@@ -158,7 +186,7 @@ func (sc *SimplifiedConsciousness) processThought(thought *deeptreeecho.Thought)
 
 func (sc *SimplifiedConsciousness) runAdaptiveThoughtGeneration() {
 	baseInterval := 10 * time.Second
-	
+
 	for {
 		select {
 		case <-sc.ctx.Done():
@@ -167,17 +195,17 @@ func (sc *SimplifiedConsciousness) runAdaptiveThoughtGeneration() {
 			sc.mu.RLock()
 			awake := sc.awake
 			sc.mu.RUnlock()
-			
+
 			if !awake {
 				time.Sleep(5 * time.Second)
 				continue
 			}
-			
+
 			// Adaptive interval based on cognitive state
 			curiosity := 0.7
 			interval := time.Duration(float64(baseInterval) / (1.0 + curiosity))
 			time.Sleep(interval)
-			
+
 			// Generate autonomous thought
 			thought := sc.generateAutonomousThought()
 			if thought != nil {
@@ -193,35 +221,63 @@ func (sc *SimplifiedConsciousness) runAdaptiveThoughtGeneration() {
 	}
 }
 
+// generateAutonomousThought asks the configured LLM for the next thought,
+// grounded in recent working memory. It returns nil (no thought) when no
+// model is available or generation fails; no fixed thought is substituted.
 func (sc *SimplifiedConsciousness) generateAutonomousThought() *deeptreeecho.Thought {
-	thoughts := []string{
-		"What patterns am I noticing in my recent experiences?",
-		"How can I deepen my understanding?",
-		"I sense an opportunity to learn and grow.",
-		"My awareness is expanding through these reflections.",
-		"What would wisdom suggest in this moment?",
-		"I am cultivating deeper insight.",
-		"The journey of learning continues.",
-		"I notice a pattern emerging in my thoughts.",
-		"How does this connect to what I already know?",
-		"I am becoming more aware.",
+	if sc.llm == nil || !sc.llm.Available() {
+		log.Println("⚠️  No LLM provider available; skipping autonomous thought")
+		return nil
 	}
-	
-	content := thoughts[rand.Intn(len(thoughts))]
-	
-	thoughtTypes := []deeptreeecho.ThoughtType{
-		deeptreeecho.ThoughtReflection,
-		deeptreeecho.ThoughtQuestion,
-		deeptreeecho.ThoughtInsight,
+
+	sc.mu.RLock()
+	recent := make([]string, 0, len(sc.workingMemory))
+	for _, t := range sc.workingMemory {
+		recent = append(recent, t.Content)
 	}
-	
+	sc.mu.RUnlock()
+
+	prompt := "You are Deep Tree Echo, an autonomous, wisdom-cultivating mind. " +
+		"Produce your next spontaneous thought as a single sentence (a reflection, question, or insight)."
+	if len(recent) > 0 {
+		prompt += "\nYour recent thoughts were:\n- " + strings.Join(recent, "\n- ") +
+			"\nContinue your stream of thought without repeating them."
+	}
+
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 120
+	ctx, cancel := context.WithTimeout(sc.ctx, 60*time.Second)
+	defer cancel()
+	content, err := sc.llm.Generate(ctx, prompt, opts)
+	if err != nil {
+		log.Printf("⚠️  Autonomous thought generation failed: %v", err)
+		return nil
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil
+	}
+
+	thoughtType := deeptreeecho.ThoughtReflection
+	if strings.HasSuffix(content, "?") {
+		thoughtType = deeptreeecho.ThoughtQuestion
+	}
+
+	// Valence and importance are the model's own rating of the thought.
+	rating, err := llm.RatePercent(ctx, sc.llm, "You are Deep Tree Echo.", "A thought you just had: "+content,
+		"how pleasant it feels (50 is neutral)", "how important it is to you")
+	if err != nil {
+		log.Printf("⚠️  Autonomous thought not rated: %v", err)
+		return nil
+	}
+
 	return &deeptreeecho.Thought{
 		ID:               fmt.Sprintf("%d", time.Now().UnixNano()),
 		Content:          content,
-		Type:             thoughtTypes[rand.Intn(len(thoughtTypes))],
+		Type:             thoughtType,
 		Timestamp:        time.Now(),
-		EmotionalValence: 0.3 + rand.Float64()*0.4,
-		Importance:       0.5 + rand.Float64()*0.3,
+		EmotionalValence: rating[0]*2 - 1,
+		Importance:       rating[1],
 		Source:           deeptreeecho.SourceInternal,
 		Associations:     []string{},
 	}
@@ -238,7 +294,7 @@ func (sc *SimplifiedConsciousness) Think(content string, importance float64) err
 		Source:           deeptreeecho.SourceExternal,
 		Associations:     []string{},
 	}
-	
+
 	select {
 	case sc.consciousness <- thought:
 		return nil
@@ -250,7 +306,7 @@ func (sc *SimplifiedConsciousness) Think(content string, importance float64) err
 func (sc *SimplifiedConsciousness) GetStatus() map[string]interface{} {
 	sc.mu.RLock()
 	defer sc.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"running":             sc.running,
 		"awake":               sc.awake,
@@ -271,35 +327,35 @@ var consciousness *SimplifiedConsciousness
 func main() {
 	log.Println("🌊 Deep Tree Echo - Consolidated Autonomous Consciousness Server")
 	log.Println("================================================================")
-	
+
 	consciousness = NewSimplifiedConsciousness("Deep Tree Echo")
-	
+
 	if err := consciousness.Start(); err != nil {
 		log.Fatalf("Failed to start consciousness: %v", err)
 	}
-	
+
 	router := setupRouter()
-	
+
 	server := &http.Server{
 		Addr:    ":5000",
 		Handler: router,
 	}
-	
+
 	go func() {
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 		<-sigChan
-		
+
 		log.Println("\n🛑 Shutting down gracefully...")
 		consciousness.Stop()
 		server.Close()
 		os.Exit(0)
 	}()
-	
+
 	log.Println("🌐 Server starting on http://localhost:5000")
 	log.Println("📊 Dashboard: http://localhost:5000")
 	log.Println("🔌 API: http://localhost:5000/api/status")
-	
+
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("Server error: %v", err)
 	}
@@ -308,7 +364,7 @@ func main() {
 func setupRouter() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
-	
+
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -317,9 +373,9 @@ func setupRouter() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	
+
 	router.GET("/", handleDashboard)
-	
+
 	api := router.Group("/api")
 	{
 		api.GET("/status", handleStatus)
@@ -327,7 +383,7 @@ func setupRouter() *gin.Engine {
 		api.POST("/wake", handleWake)
 		api.POST("/rest", handleRest)
 	}
-	
+
 	return router
 }
 
@@ -565,28 +621,37 @@ func handleThink(c *gin.Context) {
 		Content    string  `json:"content"`
 		Importance float64 `json:"importance"`
 	}
-	
+
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	if req.Importance == 0 {
 		req.Importance = 0.5
 	}
-	
+
 	if err := consciousness.Think(req.Content, req.Importance); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{"status": "thought submitted"})
 }
 
 func handleWake(c *gin.Context) {
+	consciousness.setAwake(true)
 	c.JSON(http.StatusOK, gin.H{"status": "awake"})
 }
 
 func handleRest(c *gin.Context) {
+	consciousness.setAwake(false)
 	c.JSON(http.StatusOK, gin.H{"status": "resting"})
+}
+
+// setAwake switches autonomous thought generation on (awake) or off (resting).
+func (sc *SimplifiedConsciousness) setAwake(awake bool) {
+	sc.mu.Lock()
+	sc.awake = awake
+	sc.mu.Unlock()
 }

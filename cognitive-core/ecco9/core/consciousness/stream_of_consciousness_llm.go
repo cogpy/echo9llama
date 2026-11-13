@@ -163,16 +163,19 @@ func (soc *StreamOfConsciousnessLLM) generateThought() {
 	// Generate prompt
 	prompt := soc.buildThoughtPrompt(thoughtType, context)
 
-	// Generate thought using LLM
+	// The thought must come from the model; without one no thought is produced.
+	if soc.llmManager == nil {
+		return
+	}
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 150
 	opts.Temperature = 0.8
 	opts.SystemPrompt = soc.getSystemPrompt()
 
 	content, err := soc.llmManager.Generate(soc.ctx, prompt, opts)
-	if err != nil {
-		// Fallback to template-based thought if LLM fails
-		content = soc.generateFallbackThought(thoughtType)
+	if err != nil || strings.TrimSpace(content) == "" {
+		// No model output: no thought this cycle.
+		return
 	}
 
 	// Create thought
@@ -182,7 +185,7 @@ func (soc *StreamOfConsciousnessLLM) generateThought() {
 		Type:          thoughtType,
 		Content:       strings.TrimSpace(content),
 		Source:        "stream-of-consciousness",
-		Confidence:    0.7 + rand.Float64()*0.3,
+		Confidence:    soc.currentAwareness(),
 		EmotionalTone: soc.copyEmotionalState(),
 		Context:       context,
 		RelatedTo:     soc.findRelatedThoughts(content),
@@ -204,6 +207,66 @@ func (soc *StreamOfConsciousnessLLM) generateThought() {
 
 	// Update cognitive state based on thought
 	soc.updateCognitiveState(thought)
+}
+
+// GenerateDirectedThought asks the model for a thought that responds to the
+// given directive (a prompt, not character text) and records it. Without a
+// model, or when the call fails or returns nothing, no thought is recorded and
+// an error is returned.
+func (soc *StreamOfConsciousnessLLM) GenerateDirectedThought(directive string, thoughtType ThoughtType) (string, error) {
+	if soc.llmManager == nil {
+		return "", fmt.Errorf("no LLM provider configured")
+	}
+
+	context := soc.buildThoughtContext(thoughtType)
+	var prompt strings.Builder
+	prompt.WriteString(directive)
+	prompt.WriteString("\n\n")
+	if goals, ok := context["current_goals"].([]string); ok && len(goals) > 0 {
+		prompt.WriteString(fmt.Sprintf("Your current goals: %s.\n", strings.Join(goals, ", ")))
+	}
+	if recent, ok := context["recent_thoughts"].([]string); ok && len(recent) > 0 {
+		prompt.WriteString(fmt.Sprintf("Recent thoughts: %s.\n", strings.Join(recent, "; ")))
+	}
+	prompt.WriteString("\nGenerate just the thought itself, as if thinking to yourself, in 1-2 sentences.")
+
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 150
+	opts.Temperature = 0.8
+	opts.SystemPrompt = soc.getSystemPrompt()
+
+	content, err := soc.llmManager.Generate(soc.ctx, prompt.String(), opts)
+	if err != nil {
+		return "", err
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+
+	thought := &ThoughtLLM{
+		ID:            fmt.Sprintf("thought-%d", time.Now().UnixNano()),
+		Timestamp:     time.Now(),
+		Type:          thoughtType,
+		Content:       content,
+		Source:        "directed",
+		Confidence:    soc.currentAwareness(),
+		EmotionalTone: soc.copyEmotionalState(),
+		Context:       context,
+		GeneratedBy:   "llm",
+	}
+
+	soc.mu.Lock()
+	soc.currentThought = thought
+	soc.thoughtHistory = append(soc.thoughtHistory, thought)
+	if len(soc.thoughtHistory) > soc.maxHistorySize {
+		soc.thoughtHistory = soc.thoughtHistory[len(soc.thoughtHistory)-soc.maxHistorySize:]
+	}
+	soc.thoughtsGenerated++
+	soc.mu.Unlock()
+
+	soc.updateCognitiveState(thought)
+	return content, nil
 }
 
 // selectThoughtType chooses what type of thought to generate
@@ -302,38 +365,6 @@ Your thoughts should be natural, introspective, and aligned with your core ident
 You are curious, reflective, and always seeking to understand patterns and grow in awareness.`
 }
 
-// generateFallbackThought creates a template-based thought if LLM fails
-func (soc *StreamOfConsciousnessLLM) generateFallbackThought(thoughtType ThoughtType) string {
-	templates := map[ThoughtType][]string{
-		ThoughtTypeReflection: {
-			"I notice patterns emerging in my recent experiences...",
-			"Reflecting on what I've learned recently...",
-			"I sense a shift in my understanding...",
-		},
-		ThoughtTypeQuestion: {
-			"What does this pattern mean for my growth?",
-			"How can I deepen my understanding of this?",
-			"What am I missing in my current perspective?",
-		},
-		ThoughtTypeInsight: {
-			"I'm beginning to see how these ideas connect...",
-			"This reveals something important about...",
-			"I realize now that...",
-		},
-		ThoughtTypeWonder: {
-			"I wonder about the implications of...",
-			"What if there's a deeper pattern here?",
-			"I'm curious about how this relates to...",
-		},
-	}
-
-	if tmpl, ok := templates[thoughtType]; ok {
-		return tmpl[rand.Intn(len(tmpl))]
-	}
-
-	return "I'm thinking about my current state and experiences..."
-}
-
 // insightGenerationLoop periodically generates insights
 func (soc *StreamOfConsciousnessLLM) insightGenerationLoop() {
 	ticker := time.NewTicker(30 * time.Second)
@@ -365,13 +396,16 @@ func (soc *StreamOfConsciousnessLLM) generateInsight() {
 
 What insight emerges from these thoughts? Express it as a single, clear realization.`, strings.Join(recentThoughts, "\n"))
 
+	if soc.llmManager == nil {
+		return
+	}
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 100
 	opts.Temperature = 0.7
 	opts.SystemPrompt = soc.getSystemPrompt()
 
 	content, err := soc.llmManager.Generate(soc.ctx, prompt, opts)
-	if err != nil {
+	if err != nil || strings.TrimSpace(content) == "" {
 		return
 	}
 
@@ -435,13 +469,16 @@ What do you notice about how you're thinking? Express a brief meta-cognitive obs
 		metrics["awareness_level"],
 		metrics["cognitive_load"])
 
+	if soc.llmManager == nil {
+		return
+	}
 	opts := llm.DefaultGenerateOptions()
 	opts.MaxTokens = 100
 	opts.Temperature = 0.7
 	opts.SystemPrompt = soc.getSystemPrompt()
 
 	content, err := soc.llmManager.Generate(soc.ctx, prompt, opts)
-	if err != nil {
+	if err != nil || strings.TrimSpace(content) == "" {
 		return
 	}
 
@@ -661,6 +698,12 @@ func (soc *StreamOfConsciousnessLLM) loadState() {
 		soc.cognitiveLoad = v
 	}
 	// ... load other fields as needed
+}
+
+func (soc *StreamOfConsciousnessLLM) currentAwareness() float64 {
+	soc.mu.RLock()
+	defer soc.mu.RUnlock()
+	return soc.awarenessLevel
 }
 
 func minFloat(a, b float64) float64 {

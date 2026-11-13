@@ -1,7 +1,11 @@
 package live2d
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -249,83 +253,111 @@ func lerpColor(a, b Color, t float64) Color {
 	}
 }
 
-// EnvironmentalStorytellingEngine generates narrative elements from environment state
+// TextGenerator produces text from a prompt using a language model. Any
+// model provider can be adapted with TextGeneratorFunc, e.g.
+//
+//	live2d.TextGeneratorFunc(func(ctx context.Context, p string) (string, error) {
+//		return provider.Generate(ctx, p, llm.DefaultGenerateOptions())
+//	})
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string) (string, error)
+}
+
+// TextGeneratorFunc adapts a function to TextGenerator.
+type TextGeneratorFunc func(ctx context.Context, prompt string) (string, error)
+
+// Generate calls f.
+func (f TextGeneratorFunc) Generate(ctx context.Context, prompt string) (string, error) {
+	return f(ctx, prompt)
+}
+
+// ErrNoNarrativeGenerator is returned when narration is requested but no
+// model-backed generator has been configured.
+var ErrNoNarrativeGenerator = errors.New("live2d: no narrative generator configured")
+
+// EnvironmentalStorytellingEngine narrates the environment via a model. It
+// holds no fixed narration: without a generator, or when the model fails,
+// no narrative is produced.
 type EnvironmentalStorytellingEngine struct {
 	mu               sync.RWMutex
+	generator        TextGenerator
 	currentNarrative string
 	narrativeHistory []string
 	historySize      int
 }
 
-// NewEnvironmentalStorytellingEngine creates a new storytelling engine
-func NewEnvironmentalStorytellingEngine() *EnvironmentalStorytellingEngine {
-	return &EnvironmentalStorytellingEngine{
+// NewEnvironmentalStorytellingEngine creates a new storytelling engine.
+// generator may be nil; narration then fails until SetGenerator is called.
+func NewEnvironmentalStorytellingEngine(generator ...TextGenerator) *EnvironmentalStorytellingEngine {
+	ese := &EnvironmentalStorytellingEngine{
 		currentNarrative: "",
 		narrativeHistory: make([]string, 0),
 		historySize:      20,
 	}
+	if len(generator) > 0 {
+		ese.generator = generator[0]
+	}
+	return ese
 }
 
-// GenerateNarrative creates a narrative description from environment state
-func (ese *EnvironmentalStorytellingEngine) GenerateNarrative(envState EnvironmentState, avatarState AvatarState) string {
+// SetGenerator sets the model-backed generator used for narration.
+func (ese *EnvironmentalStorytellingEngine) SetGenerator(generator TextGenerator) {
 	ese.mu.Lock()
 	defer ese.mu.Unlock()
+	ese.generator = generator
+}
 
-	narrative := ""
+// buildNarrativePrompt renders the environment and avatar state as prompt
+// facts for the model.
+func buildNarrativePrompt(envState EnvironmentState, avatarState AvatarState) string {
+	return fmt.Sprintf(`Narrate, in two or three vivid sentences, the virtual environment surrounding the avatar. Use only these facts:
+- lighting intensity: %.2f (0-1)
+- lighting color RGB: %.2f, %.2f, %.2f
+- particles: type %q, intensity %.2f
+- reality distortion: %.2f
+- ambient audio: %.2f
+- environment mood: %q
+- avatar emotion: valence %.2f, arousal %.2f, curiosity %.2f, confidence %.2f
+- avatar cognition: awareness %.2f, attention %.2f, load %.2f, mode %q
+Return only the narration.`,
+		envState.LightingIntensity,
+		envState.LightingColor.R, envState.LightingColor.G, envState.LightingColor.B,
+		envState.ParticleType, envState.ParticleIntensity,
+		envState.RealityDistortion, envState.AudioAmbience, envState.EnvironmentMood,
+		avatarState.Emotional.Valence, avatarState.Emotional.Arousal,
+		avatarState.Emotional.Curiosity, avatarState.Emotional.Confidence,
+		avatarState.Cognitive.Awareness, avatarState.Cognitive.Attention,
+		avatarState.Cognitive.CognitiveLoad, avatarState.Cognitive.ProcessingMode)
+}
 
-	// Describe lighting
-	if envState.LightingIntensity > 0.8 {
-		narrative += "The space is bathed in brilliant light. "
-	} else if envState.LightingIntensity < 0.3 {
-		narrative += "Shadows dance in the dim ambience. "
+// GenerateNarrative asks the model to narrate the environment state. On any
+// failure it returns an error and records nothing.
+func (ese *EnvironmentalStorytellingEngine) GenerateNarrative(ctx context.Context, envState EnvironmentState, avatarState AvatarState) (string, error) {
+	ese.mu.RLock()
+	generator := ese.generator
+	ese.mu.RUnlock()
+
+	if generator == nil {
+		return "", ErrNoNarrativeGenerator
 	}
 
-	// Describe color mood
-	if envState.LightingColor.R > 0.8 && envState.LightingColor.G > 0.7 {
-		narrative += "Warm golden hues fill the air. "
-	} else if envState.LightingColor.B > 0.8 {
-		narrative += "Cool azure tones create a serene atmosphere. "
+	narrative, err := generator.Generate(ctx, buildNarrativePrompt(envState, avatarState))
+	if err != nil {
+		return "", fmt.Errorf("live2d: narrative generation failed: %w", err)
+	}
+	narrative = strings.TrimSpace(narrative)
+	if narrative == "" {
+		return "", errors.New("live2d: model returned an empty narrative")
 	}
 
-	// Describe particles
-	if envState.ParticleIntensity > 0.6 {
-		switch envState.ParticleType {
-		case "thoughts":
-			narrative += "Streams of thought-particles swirl around, visualizing the depth of contemplation. "
-		case "energy":
-			narrative += "Crackling energy particles pulse with vitality. "
-		case "sparkles":
-			narrative += "Sparkling motes of light dance playfully. "
-		case "emotions":
-			narrative += "Emotional resonances manifest as shimmering particles. "
-		}
-	}
-
-	// Describe reality distortion
-	if envState.RealityDistortion > 0.5 {
-		narrative += "Reality itself seems to bend and warp, responding to the intensity of thought. "
-	}
-
-	// Describe overall mood
-	switch envState.EnvironmentMood {
-	case "energetic":
-		narrative += "The environment pulses with dynamic energy. "
-	case "contemplative":
-		narrative += "A profound stillness invites deep reflection. "
-	case "mysterious":
-		narrative += "An enigmatic atmosphere surrounds everything. "
-	case "calm":
-		narrative += "Tranquility permeates the space. "
-	}
-
-	// Add to history
+	ese.mu.Lock()
+	defer ese.mu.Unlock()
 	ese.narrativeHistory = append(ese.narrativeHistory, narrative)
 	if len(ese.narrativeHistory) > ese.historySize {
 		ese.narrativeHistory = ese.narrativeHistory[1:]
 	}
-
 	ese.currentNarrative = narrative
-	return narrative
+	return narrative, nil
 }
 
 // GetCurrentNarrative returns the current narrative description

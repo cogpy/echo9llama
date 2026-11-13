@@ -21,7 +21,7 @@ import (
 	"github.com/cogpy/echo9llama/core/llm"
 )
 
-const productionIteration = "2026-10-11-e4-evidence-metacognition"
+const productionIteration = "2026-11-11-e5-evaluated-practice"
 
 func main() {
 	fmt.Println()
@@ -35,7 +35,7 @@ func main() {
 	if provider.Available() {
 		log.Printf("LLM substrate ready: %s", provider.Name())
 	} else {
-		log.Printf("No remote LLM provider is currently available; fallback cognition remains active")
+		log.Printf("No model provider is available: Echo stays silent until one is mounted (ECHO_MODEL_PATHS or an API key)")
 	}
 
 	orchestrator := newProductionOrchestrator(provider)
@@ -125,6 +125,7 @@ func loadOrchestratorConfigFromEnvironment() deeptreeecho.OrchestratorConfig {
 	applyBoolEnv("ECHO_ENABLE_COGNITIVE_CORE", &config.EnableCognitiveCore)
 	applyBoolEnv("ECHO_ENABLE_CORE_SELF", &config.EnableCoreSelf)
 	applyBoolEnv("ECHO_ENABLE_ENACTION", &config.EnableEnaction)
+	applyBoolEnv("ECHO_ENABLE_EVALUATED_PRACTICE", &config.EnableEvaluatedPractice)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACT_BYTES", &config.MaxArtifactBytes)
 	applyPositiveIntEnv("ECHO_MAX_ARTIFACTS_PER_WAKE", &config.MaxArtifactsPerWake)
 
@@ -261,6 +262,8 @@ func newProductionHandler(orchestrator *deeptreeecho.UnifiedAutonomousOrchestrat
 			"cognitive_events":        status.EventCount,
 			"cognitive_core_enabled":  status.CognitiveCoreEnabled,
 			"cognitive_core":          status.CognitiveCore,
+			"outcome_learning":        status.OutcomeLearning,
+			"wisdom_metric_status":    "legacy counters; generated hypotheses do not prove wisdom",
 			"core_self_enabled":       status.CoreSelfEnabled,
 			"core_self_ready":         status.CoreSelfReady,
 			"core_self":               status.CoreSelf,

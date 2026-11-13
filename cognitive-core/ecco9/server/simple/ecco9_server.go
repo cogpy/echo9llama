@@ -31,8 +31,12 @@ func main() {
 		log.Fatalf("Failed to boot ecco9 platform: %v", err)
 	}
 
-	// Create LLM provider manager
-	providerManager := llm.NewProviderManager()
+	// Create LLM provider manager with every provider configured in the
+	// environment. Text generation is answered only by these models.
+	providerManager := newProviderManagerFromEnv()
+	if !providerManager.Available() {
+		log.Println("⚠️  No LLM provider configured (ANTHROPIC_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY); /api/generate will return errors")
+	}
 
 	// Register all drivers
 	allDrivers := []struct {
@@ -197,21 +201,32 @@ func setupRouter(platform *ecco9.Platform, providerManager *llm.ProviderManager)
 				return
 			}
 
-			// Use ecco9 platform for generation
-			response := fmt.Sprintf(
-				"🌊 ecco9 Cognitive Platform Response\n\n"+
-					"Platform: %s\n"+
-					"Firmware: %s\n"+
-					"Devices: %d active\n"+
-					"Prompt: %s\n\n"+
-					"This is a demonstration of the ecco9 virtual cognitive hardware platform. "+
-					"The platform provides device drivers, firmware interfaces, and hardware "+
-					"simulation for Deep Tree Echo's embodied cognition architecture.\n",
-				"ecco9",
-				platform.Firmware.Version,
-				len(platform.Devices),
-				req.Prompt,
+			if req.Prompt == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "prompt is required"})
+				return
+			}
+
+			// Generation is answered by the configured LLM providers only;
+			// when none is available or all fail, an error is returned and
+			// no text is produced. "model" selects a registered provider
+			// (anthropic, openrouter, openai) to try first.
+			opts := llm.DefaultGenerateOptions()
+			var (
+				response string
+				err      error
 			)
+			if req.Model != "" {
+				response, err = providerManager.GenerateWithProvider(c.Request.Context(), req.Model, req.Prompt, opts)
+			} else {
+				response, err = providerManager.Generate(c.Request.Context(), req.Prompt, opts)
+			}
+			if err != nil {
+				c.JSON(http.StatusServiceUnavailable, gin.H{
+					"error":    fmt.Sprintf("generation failed: %v", err),
+					"platform": "ecco9",
+				})
+				return
+			}
 
 			c.JSON(http.StatusOK, gin.H{
 				"response": response,
@@ -221,6 +236,29 @@ func setupRouter(platform *ecco9.Platform, providerManager *llm.ProviderManager)
 	}
 
 	return router
+}
+
+// newProviderManagerFromEnv registers every LLM provider whose credentials
+// are present in the environment.
+func newProviderManagerFromEnv() *llm.ProviderManager {
+	pm := llm.NewProviderManager()
+	candidates := []llm.LLMProvider{llm.NewAnthropicProvider(""), llm.NewOpenRouterProvider("")}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		candidates = append(candidates, llm.NewOpenAIProvider(key))
+	}
+	var names []string
+	for _, p := range candidates {
+		if !p.Available() {
+			continue
+		}
+		if err := pm.RegisterProvider(p); err == nil {
+			names = append(names, p.Name())
+		}
+	}
+	if len(names) > 0 {
+		_ = pm.SetFallbackChain(names)
+	}
+	return pm
 }
 
 func generateDashboardHTML(platform *ecco9.Platform) string {
@@ -250,7 +288,7 @@ func generateDashboardHTML(platform *ecco9.Platform) string {
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%s, #764ba2 100%s);
+            background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
             color: #fff;
             margin: 0;
             padding: 20px;

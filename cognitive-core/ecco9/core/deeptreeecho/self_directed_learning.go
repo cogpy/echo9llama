@@ -3,6 +3,9 @@ package deeptreeecho
 import (
 	"context"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -243,35 +246,76 @@ Identify the gaps:`, identity, domains)
 		SystemPrompt: "You are a self-reflective AI analyzing your own knowledge gaps.",
 	}
 
+	if sdl.llmProvider == nil {
+		return fmt.Errorf("LLM gap identification failed: %w", errNoModel)
+	}
 	response, err := sdl.llmProvider.Generate(sdl.ctx, prompt, opts)
 	if err != nil {
 		return fmt.Errorf("LLM gap identification failed: %w", err)
 	}
 
-	// Parse gaps from response (simplified)
-	gap := &KnowledgeGap{
-		ID:           fmt.Sprintf("gap_%d", time.Now().Unix()),
-		Domain:       "General",
-		Description:  "Knowledge gap identified from self-reflection",
-		Severity:     0.6,
-		IdentifiedAt: time.Now(),
-		AddressedBy:  make([]string, 0),
-		Status:       GapStatusIdentified,
+	// Only gaps the model actually described are recorded.
+	gaps := parseKnowledgeGaps(response)
+	if len(gaps) == 0 {
+		return fmt.Errorf("LLM gap identification returned no parseable gaps")
 	}
 
 	sdl.mu.Lock()
-	sdl.knowledgeGaps[gap.ID] = gap
-	sdl.totalGapsIdentified++
+	for _, gap := range gaps {
+		sdl.knowledgeGaps[gap.ID] = gap
+		sdl.totalGapsIdentified++
+	}
 	sdl.mu.Unlock()
 
-	fmt.Printf("📚 Identified knowledge gap: %s (Severity: %.2f)\n", gap.Description, gap.Severity)
-	respLen := len(response)
-	if respLen > 100 {
-		respLen = 100
+	for _, gap := range gaps {
+		fmt.Printf("📚 Identified knowledge gap: %s (Severity: %.2f)\n", gap.Description, gap.Severity)
 	}
-	fmt.Printf("   LLM Response: %s\n", response[:respLen])
 
 	return nil
+}
+
+// parseKnowledgeGaps parses the model's GAP/DOMAIN/SEVERITY blocks.
+func parseKnowledgeGaps(response string) []*KnowledgeGap {
+	gaps := make([]*KnowledgeGap, 0)
+	var current *KnowledgeGap
+	now := time.Now()
+
+	for _, raw := range strings.Split(response, "\n") {
+		line := strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(raw), "-*#0123456789. "))
+		idx := strings.Index(line, ":")
+		if idx <= 0 {
+			continue
+		}
+		label := strings.ToUpper(strings.Trim(strings.TrimSpace(line[:idx]), "*"))
+		value := strings.Trim(strings.TrimSpace(line[idx+1:]), "*[] ")
+		if value == "" {
+			continue
+		}
+		switch label {
+		case "GAP":
+			current = &KnowledgeGap{
+				ID:           fmt.Sprintf("gap_%d_%d", now.UnixNano(), len(gaps)),
+				Domain:       "General",
+				Description:  value,
+				Severity:     0.5,
+				IdentifiedAt: now,
+				AddressedBy:  make([]string, 0),
+				Status:       GapStatusIdentified,
+			}
+			gaps = append(gaps, current)
+		case "DOMAIN":
+			if current != nil {
+				current.Domain = value
+			}
+		case "SEVERITY":
+			if current != nil {
+				if v, err := strconv.ParseFloat(strings.Fields(value)[0], 64); err == nil {
+					current.Severity = math.Max(0, math.Min(1, v))
+				}
+			}
+		}
+	}
+	return gaps
 }
 
 // generateLearningGoals creates learning goals for knowledge gaps
@@ -311,43 +355,55 @@ func (sdl *SelfDirectedLearningSystem) generateLearningGoals() {
 	}
 }
 
-// schedulePractice schedules practice sessions for skills
+// schedulePractice reports skills whose practice is due. It never records a
+// practice session that did not happen; real sessions are recorded with
+// RecordPracticeSession.
 func (sdl *SelfDirectedLearningSystem) schedulePractice() {
-	sdl.mu.Lock()
-	defer sdl.mu.Unlock()
+	sdl.mu.RLock()
+	defer sdl.mu.RUnlock()
 
 	for _, skill := range sdl.skillsInProgress {
-		// Check if practice is due
 		if time.Since(skill.LastPracticed) > 24*time.Hour {
-			session := &LearningPracticeSession{
-				ID:              fmt.Sprintf("practice_%d", time.Now().Unix()),
-				SkillID:         skill.ID,
-				StartTime:       time.Now(),
-				EndTime:         time.Now().Add(30 * time.Minute),
-				Duration:        30 * time.Minute,
-				Effectiveness:   0.7,
-				Notes:           "Scheduled practice session",
-				ProficiencyGain: 0.05,
-			}
-
-			sdl.practiceSessions = append(sdl.practiceSessions, session)
-			skill.LastPracticed = time.Now()
-			skill.PracticeCount++
-			skill.Proficiency = min(1.0, skill.Proficiency+session.ProficiencyGain)
-
-			// Record proficiency
-			skill.ProficiencyHistory = append(skill.ProficiencyHistory, ProficiencyRecord{
-				Timestamp:   time.Now(),
-				Proficiency: skill.Proficiency,
-				Notes:       "Practice session completed",
-			})
-
-			sdl.totalPracticeSessions++
-
-			fmt.Printf("📚 Practice session for skill '%s' (Proficiency: %.2f)\n",
+			fmt.Printf("📚 Practice due for skill '%s' (Proficiency: %.2f)\n",
 				skill.SkillName, skill.Proficiency)
 		}
 	}
+}
+
+// RecordPracticeSession records a practice session that actually took place,
+// with its measured effectiveness and proficiency gain.
+func (sdl *SelfDirectedLearningSystem) RecordPracticeSession(skillID string, start time.Time, duration time.Duration, effectiveness, proficiencyGain float64, notes string) error {
+	sdl.mu.Lock()
+	defer sdl.mu.Unlock()
+
+	skill, ok := sdl.skillsInProgress[skillID]
+	if !ok {
+		return fmt.Errorf("skill not found: %s", skillID)
+	}
+
+	session := &LearningPracticeSession{
+		ID:              fmt.Sprintf("practice_%d", time.Now().UnixNano()),
+		SkillID:         skillID,
+		StartTime:       start,
+		EndTime:         start.Add(duration),
+		Duration:        duration,
+		Effectiveness:   effectiveness,
+		Notes:           notes,
+		ProficiencyGain: proficiencyGain,
+	}
+
+	sdl.practiceSessions = append(sdl.practiceSessions, session)
+	skill.LastPracticed = session.EndTime
+	skill.PracticeCount++
+	skill.Proficiency = min(1.0, skill.Proficiency+proficiencyGain)
+	skill.ProficiencyHistory = append(skill.ProficiencyHistory, ProficiencyRecord{
+		Timestamp:   session.EndTime,
+		Proficiency: skill.Proficiency,
+		Notes:       notes,
+	})
+	sdl.totalPracticeSessions++
+
+	return nil
 }
 
 // AddSkill adds a new skill to develop

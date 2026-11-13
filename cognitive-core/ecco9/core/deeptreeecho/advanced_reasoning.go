@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,6 +40,10 @@ type AdvancedReasoningEngine struct {
 	totalProblemsProcessed uint64
 	totalInferences        uint64
 	totalCounterfactuals   uint64
+
+	// Model that carries out inference, counterfactuals and chains of thought;
+	// nil disables them.
+	gen TextGenerator
 
 	// Running state
 	running bool
@@ -358,108 +364,170 @@ func (are *AdvancedReasoningEngine) DecomposeProblem(problemDesc string, problem
 	return problem
 }
 
-// PerformCausalReasoning makes causal inferences
-func (are *AdvancedReasoningEngine) PerformCausalReasoning(hypothesis string, evidence []string) *CausalInference {
+// SetTextGenerator injects the model that performs the engine's reasoning.
+// Passing nil disables model-backed reasoning.
+func (are *AdvancedReasoningEngine) SetTextGenerator(gen TextGenerator) {
 	are.mu.Lock()
 	defer are.mu.Unlock()
+	are.gen = gen
+}
 
-	// Analyze causal structure
-	confidence := assessCausalEvidence(evidence)
-	conclusion := generateCausalConclusion(hypothesis, evidence, confidence)
+func (are *AdvancedReasoningEngine) generator() (context.Context, TextGenerator) {
+	are.mu.RLock()
+	defer are.mu.RUnlock()
+	return are.ctx, are.gen
+}
+
+// PerformCausalReasoning makes causal inferences. The conclusion is written by
+// the model from the hypothesis and evidence; without a model, or when the
+// call fails, no inference is made and nil is returned.
+func (are *AdvancedReasoningEngine) PerformCausalReasoning(hypothesis string, evidence []string) *CausalInference {
+	ctx, gen := are.generator()
+
+	prompt := fmt.Sprintf(`Assess this causal hypothesis against the evidence.
+
+Hypothesis: %s
+Evidence:
+%s
+
+Reply with only your conclusion in one or two sentences, stating how strongly the evidence supports the hypothesis and why.`, hypothesis, bulletList(evidence))
+	conclusion, err := generateModelText(ctx, gen, prompt, 200)
+	if err != nil {
+		return nil
+	}
 
 	inference := &CausalInference{
 		ID:         generateInferenceID(),
 		Hypothesis: hypothesis,
 		Evidence:   evidence,
 		Conclusion: conclusion,
-		Confidence: confidence,
+		Confidence: assessCausalEvidence(evidence),
 		Method:     "causal_inference",
 		Timestamp:  time.Now(),
 	}
 
+	are.mu.Lock()
 	are.causalInferences = append(are.causalInferences, inference)
 	are.totalInferences++
+	are.mu.Unlock()
 
 	return inference
 }
 
-// GenerateCounterfactual creates "what if" scenarios
+// GenerateCounterfactual creates "what if" scenarios. The predicted outcome,
+// its plausibility and utility, and the alternate outcomes are all produced by
+// the model; without a model, or when the call fails or the reply has no
+// outcome, nil is returned.
 func (are *AdvancedReasoningEngine) GenerateCounterfactual(baseScenario, alteration string) *CounterfactualScenario {
-	are.mu.Lock()
-	defer are.mu.Unlock()
+	ctx, gen := are.generator()
 
-	// Predict outcome under alteration
-	predictedOutcome := simulateCounterfactual(baseScenario, alteration)
-	plausibility := assessPlausibility(alteration)
-	utility := assessUtility(predictedOutcome)
+	prompt := fmt.Sprintf(`Reason counterfactually.
+
+Base scenario: %s
+Alteration: %s
+
+Reply using exactly these labelled lines:
+OUTCOME: <the predicted outcome under the alteration>
+PLAUSIBILITY: <number from 0 to 1>
+UTILITY: <number from 0 to 1, how desirable the outcome is>
+ALTERNATIVE: <an alternate outcome> | <probability 0-1> | <desirability 0-1> | <feasibility 0-1>
+(give two or three ALTERNATIVE lines)`, baseScenario, alteration)
+	reply, err := generateModelText(ctx, gen, prompt, 400)
+	if err != nil {
+		return nil
+	}
+
+	fields := parseLabelledLines(reply)
+	outcomes := fields["OUTCOME"]
+	if len(outcomes) == 0 || outcomes[0] == "" {
+		return nil
+	}
 
 	counterfactual := &CounterfactualScenario{
 		ID:               generateCounterfactualID(),
 		BaseScenario:     baseScenario,
 		Alteration:       alteration,
-		PredictedOutcome: predictedOutcome,
-		Plausibility:     plausibility,
-		Utility:          utility,
+		PredictedOutcome: outcomes[0],
+		Plausibility:     firstUnitFloat(fields["PLAUSIBILITY"]),
+		Utility:          firstUnitFloat(fields["UTILITY"]),
 		Timestamp:        time.Now(),
 	}
 
+	alternates := make([]*AlternateOutcome, 0)
+	for _, line := range fields["ALTERNATIVE"] {
+		parts := strings.Split(line, "|")
+		desc := strings.TrimSpace(parts[0])
+		if desc == "" {
+			continue
+		}
+		alt := &AlternateOutcome{Scenario: desc, Description: desc}
+		if len(parts) > 1 {
+			alt.Probability = parseUnitFloat(parts[1])
+		}
+		if len(parts) > 2 {
+			alt.Desirability = parseUnitFloat(parts[2])
+		}
+		if len(parts) > 3 {
+			alt.Feasibility = parseUnitFloat(parts[3])
+		}
+		alternates = append(alternates, alt)
+	}
+
+	are.mu.Lock()
 	are.counterfactuals = append(are.counterfactuals, counterfactual)
 	are.totalCounterfactuals++
-
-	// Generate alternate outcomes
-	alternates := generateAlternateOutcomes(baseScenario, alteration)
 	are.alternateOutcomes[counterfactual.ID] = alternates
+	are.mu.Unlock()
 
 	return counterfactual
 }
 
-// ChainOfThought performs explicit step-by-step reasoning
+// ChainOfThought performs explicit step-by-step reasoning. Every step and the
+// answer are written by the model; without a model, or when the call fails or
+// yields no answer, nil is returned.
 func (are *AdvancedReasoningEngine) ChainOfThought(question string) *ThoughtChain {
-	are.mu.Lock()
-	defer are.mu.Unlock()
+	ctx, gen := are.generator()
+
+	are.mu.RLock()
+	maxSteps := are.maxChainLength
+	are.mu.RUnlock()
+
+	prompt := fmt.Sprintf(`Think through this question step by step, in your own first-person voice.
+
+Question: %s
+
+Reply using labelled lines only (at most %d steps):
+THOUGHT: <a reasoning step>
+WHY: <what that step accomplishes>
+(repeat THOUGHT/WHY for each step)
+ANSWER: <your final answer>`, question, maxSteps)
+	reply, err := generateModelText(ctx, gen, prompt, 600)
+	if err != nil {
+		return nil
+	}
+
+	fields := parseLabelledLines(reply)
+	answers := fields["ANSWER"]
+	if len(answers) == 0 || answers[0] == "" {
+		return nil
+	}
 
 	chain := &ThoughtChain{
 		ID:        generateThoughtChainID(),
 		Question:  question,
-		Thoughts:  make([]string, 0),
-		Reasoning: make([]string, 0),
+		Thoughts:  fields["THOUGHT"],
+		Reasoning: fields["WHY"],
+		Answer:    answers[0],
 		Timestamp: time.Now(),
 	}
-
-	// Generate thought steps
-	// In practice, this would use LLM to generate intermediate steps
-	steps := []struct {
-		thought   string
-		reasoning string
-	}{
-		{
-			thought:   "First, I need to understand what is being asked",
-			reasoning: "Breaking down the question into components",
-		},
-		{
-			thought:   "Next, I'll identify what information I have",
-			reasoning: "Gathering relevant knowledge and context",
-		},
-		{
-			thought:   "Then, I'll work through the logic step by step",
-			reasoning: "Applying systematic reasoning to reach conclusion",
-		},
-		{
-			thought:   "Finally, I'll verify my answer makes sense",
-			reasoning: "Checking consistency and plausibility",
-		},
+	if len(chain.Thoughts) > maxSteps {
+		chain.Thoughts = chain.Thoughts[:maxSteps]
 	}
-
-	for _, step := range steps {
-		chain.Thoughts = append(chain.Thoughts, step.thought)
-		chain.Reasoning = append(chain.Reasoning, step.reasoning)
-	}
-
-	// Generate final answer
-	chain.Answer = synthesizeAnswer(question, chain.Thoughts, chain.Reasoning)
 	chain.Confidence = calculateAnswerConfidence(chain)
 
+	are.mu.Lock()
 	are.thoughtChains = append(are.thoughtChains, chain)
+	are.mu.Unlock()
 
 	return chain
 }
@@ -574,60 +642,59 @@ func assessCausalEvidence(evidence []string) float64 {
 	return baseConfidence + evidenceBonus
 }
 
-func generateCausalConclusion(hypothesis string, evidence []string, confidence float64) string {
-	if confidence > 0.7 {
-		return fmt.Sprintf("Strong evidence supports: %s", hypothesis)
-	} else if confidence > 0.4 {
-		return fmt.Sprintf("Moderate evidence suggests: %s", hypothesis)
+// bulletList formats items as a bulleted list for prompts.
+func bulletList(items []string) string {
+	if len(items) == 0 {
+		return "- (none)"
 	}
-	return fmt.Sprintf("Weak evidence for: %s", hypothesis)
-}
-
-func simulateCounterfactual(baseScenario, alteration string) string {
-	// In practice, would use causal model to simulate
-	return fmt.Sprintf("If %s, then predicted outcome changes from base scenario", alteration)
-}
-
-func assessPlausibility(alteration string) float64 {
-	// Simple heuristic
-	return 0.6
-}
-
-func assessUtility(outcome string) float64 {
-	// Simple heuristic
-	return 0.5
-}
-
-func generateAlternateOutcomes(baseScenario, alteration string) []*AlternateOutcome {
-	return []*AlternateOutcome{
-		{
-			Scenario:     "Optimistic outcome",
-			Probability:  0.3,
-			Desirability: 0.9,
-			Feasibility:  0.6,
-			Description:  "Best case scenario under alteration",
-		},
-		{
-			Scenario:     "Realistic outcome",
-			Probability:  0.5,
-			Desirability: 0.6,
-			Feasibility:  0.8,
-			Description:  "Most likely scenario under alteration",
-		},
-		{
-			Scenario:     "Pessimistic outcome",
-			Probability:  0.2,
-			Desirability: 0.3,
-			Feasibility:  0.7,
-			Description:  "Worst case scenario under alteration",
-		},
+	var b strings.Builder
+	for _, it := range items {
+		b.WriteString("- ")
+		b.WriteString(it)
+		b.WriteString("\n")
 	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
-func synthesizeAnswer(question string, thoughts, reasoning []string) string {
-	// Combine thoughts and reasoning into answer
-	return fmt.Sprintf("Based on analysis of '%s', the answer is derived from %d reasoning steps",
-		question, len(thoughts))
+// parseLabelledLines collects "LABEL: value" lines from a model reply, keyed by
+// upper-case label, in order of appearance.
+func parseLabelledLines(reply string) map[string][]string {
+	out := make(map[string][]string)
+	for _, line := range strings.Split(reply, "\n") {
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "-*0123456789. "))
+		idx := strings.Index(line, ":")
+		if idx <= 0 {
+			continue
+		}
+		label := strings.ToUpper(strings.TrimSpace(line[:idx]))
+		value := strings.TrimSpace(line[idx+1:])
+		if value == "" {
+			continue
+		}
+		out[label] = append(out[label], value)
+	}
+	return out
+}
+
+// parseUnitFloat parses a number in [0,1] from model text; unparseable values
+// yield 0.
+func parseUnitFloat(s string) float64 {
+	s = strings.TrimSpace(s)
+	if f := strings.Fields(s); len(f) > 0 {
+		s = strings.TrimRight(f[0], ",;.%")
+	}
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil || math.IsNaN(v) {
+		return 0
+	}
+	return math.Max(0, math.Min(1, v))
+}
+
+func firstUnitFloat(values []string) float64 {
+	if len(values) == 0 {
+		return 0
+	}
+	return parseUnitFloat(values[0])
 }
 
 func calculateAnswerConfidence(chain *ThoughtChain) float64 {

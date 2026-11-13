@@ -58,28 +58,22 @@ func TestWisdomCandidatesDoNotCreateFabricatedApplications(t *testing.T) {
 	ws.wisdomPrinciples = append(ws.wisdomPrinciples, *candidate)
 	ws.mu.Unlock()
 
-	applied := make(chan WisdomPrinciple, 1)
-	ws.SetCallbacks(nil, func(principle WisdomPrinciple, _ string) { applied <- principle }, nil)
 	ws.applyWisdom()
 
 	principles := ws.GetWisdomPrinciples()
 	if len(principles) != 1 {
 		t.Fatalf("expected one candidate, got %d", len(principles))
 	}
-	if principles[0].ApplyCount != 0 || len(principles[0].Applications) != 0 || !principles[0].LastApplied.IsZero() {
-		t.Fatalf("candidate selection fabricated an application: %#v", principles[0])
+	// A generated application is retained only as an unobserved proposal: it
+	// carries no effectiveness and contributes no observed feedback.
+	if len(principles[0].Applications) != 1 || principles[0].Applications[0].Observed || principles[0].Applications[0].Effectiveness != 0 {
+		t.Fatalf("candidate selection fabricated an observed application: %#v", principles[0])
 	}
-	metrics := ws.GetMetrics()
-	if applications := metrics["total_applications"].(uint64); applications != 0 {
-		t.Fatalf("candidate selection increased applications: %d", applications)
+	if principles[0].Confidence != 0 || principles[0].Feedback.Observations != 0 {
+		t.Fatalf("application proposal earned confidence or feedback: %#v", principles[0])
 	}
 	if level := ws.GetWisdomLevel(); level != 0 {
 		t.Fatalf("candidate selection increased outcome-calibrated wisdom level: %.2f", level)
-	}
-	select {
-	case <-applied:
-		t.Fatal("candidate selection invoked an application callback")
-	case <-time.After(30 * time.Millisecond):
 	}
 }
 
@@ -108,10 +102,13 @@ func TestWisdomRecordOutcomeCalibratesOnlyFromObservedInput(t *testing.T) {
 	if got := principle.Applications[0]; got.Context != "practice run" || got.Outcome != "artifact passed verification" || got.Effectiveness != 0.8 {
 		t.Fatalf("outcome was not preserved exactly: %#v", got)
 	}
-	if principle.Confidence != 0.8 {
+	if principle.Feedback.Observations != 1 || principle.Feedback.MeanEffectiveness != 0.8 {
+		t.Fatalf("feedback did not derive from the recorded outcome: %#v", principle.Feedback)
+	}
+	if principle.Confidence <= 0 || principle.Confidence != principle.Feedback.EffectivenessEMA {
 		t.Fatalf("confidence did not derive from the recorded outcome: %.2f", principle.Confidence)
 	}
-	if level := ws.GetWisdomLevel(); level != 0.8 {
+	if level := ws.GetWisdomLevel(); level != principle.Feedback.EffectivenessEMA {
 		t.Fatalf("wisdom level did not derive from recorded outcome evidence: %.2f", level)
 	}
 	if applications := ws.GetMetrics()["total_applications"].(uint64); applications != 1 {
@@ -133,13 +130,15 @@ func TestWisdomEvolutionDoesNotHoldLockOrInflateEvidenceMetrics(t *testing.T) {
 	}}
 	ws := NewWisdomSynthesis(provider)
 	observations := []WisdomApplication{
-		{Context: "run 1", Outcome: "measured", Effectiveness: 0.6},
-		{Context: "run 2", Outcome: "measured", Effectiveness: 0.6},
-		{Context: "run 3", Outcome: "measured", Effectiveness: 0.6},
+		{Context: "run 1", Outcome: "measured", Effectiveness: 0.6, Observed: true},
+		{Context: "run 2", Outcome: "measured", Effectiveness: 0.6, Observed: true},
+		{Context: "run 3", Outcome: "measured", Effectiveness: 0.6, Observed: true},
 	}
+	observed := newWisdomFeedbackEstimate()
+	observed.Observations, observed.EffectivenessSum, observed.MeanEffectiveness, observed.EffectivenessEMA = 3, 1.8, 0.6, 0.6
 	ws.mu.Lock()
 	ws.wisdomPrinciples = []WisdomPrinciple{
-		{ID: "evolvable", Content: "Original candidate", Depth: 0.4, Confidence: 0.6, Applications: observations, ApplyCount: len(observations)},
+		{ID: "evolvable", Content: "Original candidate", Depth: 0.4, Confidence: 0.6, Feedback: observed, Applications: observations, ApplyCount: len(observations)},
 		{ID: "other", Content: "Other candidate", Depth: 0.7, Confidence: 0},
 	}
 	ws.mu.Unlock()
@@ -177,8 +176,9 @@ func TestWisdomEvolutionDoesNotHoldLockOrInflateEvidenceMetrics(t *testing.T) {
 	if principle.Content != "Refined candidate based on the supplied outcomes." {
 		t.Fatalf("expected refined candidate content, got %q", principle.Content)
 	}
-	if principle.Depth != 0.4 || principle.Confidence != 0.6 {
-		t.Fatalf("generated refinement inflated evidence metrics: depth=%.2f confidence=%.2f", principle.Depth, principle.Confidence)
+	// Earlier feedback does not evaluate the refined content, so it is not carried over.
+	if principle.Depth != 0 || principle.Confidence != 0 || principle.Feedback.Observations != 0 {
+		t.Fatalf("generated refinement inflated or inherited evidence metrics: depth=%.2f confidence=%.2f feedback=%#v", principle.Depth, principle.Confidence, principle.Feedback)
 	}
 	if principle.EvolutionCount != 1 {
 		t.Fatalf("expected one outcome-gated refinement, got %d", principle.EvolutionCount)

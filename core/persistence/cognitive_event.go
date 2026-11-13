@@ -41,6 +41,7 @@ const (
 	EventTypeDreamExperience     = "dream.experience_queued"
 	EventTypeCoreObserved        = "cognitive_core.observed"
 	EventTypeReflectionProposed  = "reflection.proposed"
+	EventTypePracticeEvaluated   = "practice.evaluated"
 	EventTypeErrorRecorded       = "error.recorded"
 	EventTypeDegradedModeEntered = "degraded_mode.entered"
 	EventTypeDegradedModeExited  = "degraded_mode.exited"
@@ -104,6 +105,7 @@ var stableEventTypes = map[string]struct{}{
 	EventTypeDreamExperience:     {},
 	EventTypeCoreObserved:        {},
 	EventTypeReflectionProposed:  {},
+	EventTypePracticeEvaluated:   {},
 	EventTypeErrorRecorded:       {},
 	EventTypeDegradedModeEntered: {},
 	EventTypeDegradedModeExited:  {},

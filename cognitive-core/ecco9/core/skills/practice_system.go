@@ -4,12 +4,21 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"math/rand"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/EchoCog/echollama/core/llm"
 	"github.com/google/uuid"
 )
+
+// TextGenerator is the minimal model interface the practice system uses to
+// attempt practice scenarios and evaluate the attempts. llm.LLMProvider and
+// llm.ProviderManager satisfy it.
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
 
 // SkillPracticeSystem enables autonomous skill development and measurement
 type SkillPracticeSystem struct {
@@ -40,6 +49,9 @@ type SkillPracticeSystem struct {
 	skillsImproved    uint64
 
 	running bool
+
+	// generator attempts and evaluates practice; nil means no practice runs.
+	generator TextGenerator
 }
 
 // Skill represents a cognitive skill
@@ -121,6 +133,7 @@ type PracticeSession struct {
 	Duration    time.Duration
 	Performance *PerformanceResult
 	Insights    []string
+	Response    string // the model's attempt at the scenario
 }
 
 // PerformanceResult captures the results of a practice session
@@ -388,8 +401,14 @@ func (sps *SkillPracticeSystem) conductPracticeSession() {
 		StartTime:  time.Now(),
 	}
 
-	// Execute practice (simulated for now)
-	performance := sps.executePractice(skill, scenario)
+	// Execute practice: the model attempts the scenario and evaluates the
+	// attempt. Without model output no session is recorded.
+	performance, response, err := sps.executePractice(skill, scenario)
+	if err != nil {
+		fmt.Printf("🎯 Skill practice skipped for %s: %v\n", skill.Name, err)
+		return
+	}
+	session.Response = response
 
 	// Record results
 	session.EndTime = time.Now()
@@ -448,43 +467,138 @@ func (sps *SkillPracticeSystem) selectPracticeScenario(skill *Skill) *PracticeSc
 	return skill.PracticeScenarios[0]
 }
 
-// executePractice simulates practicing a skill
-func (sps *SkillPracticeSystem) executePractice(skill *Skill, scenario *PracticeScenario) *PerformanceResult {
-	// Simulate practice performance
-	// In real implementation, would use LLM to actually practice
+// SetTextGenerator injects the model that attempts and evaluates practice
+// scenarios. Passing nil disables practice.
+func (sps *SkillPracticeSystem) SetTextGenerator(gen TextGenerator) {
+	sps.mu.Lock()
+	defer sps.mu.Unlock()
+	sps.generator = gen
+}
 
-	baseScore := skill.CurrentLevel + rand.Float64()*0.2 - 0.1
-	baseScore = clamp(baseScore, 0.0, 1.0)
+// executePractice has the model attempt the scenario, then has the model
+// evaluate that attempt against the scenario's metrics. "speed" is measured
+// from the actual response time. Nothing is invented: a missing model, failed
+// call, or unparseable evaluation returns an error.
+func (sps *SkillPracticeSystem) executePractice(skill *Skill, scenario *PracticeScenario) (*PerformanceResult, string, error) {
+	sps.mu.RLock()
+	gen := sps.generator
+	parent := sps.ctx
+	sps.mu.RUnlock()
+	if gen == nil {
+		return nil, "", fmt.Errorf("no model configured")
+	}
+	if parent == nil {
+		parent = context.Background()
+	}
+	timeLimit := scenario.TimeLimit
+	if timeLimit <= 0 {
+		timeLimit = 60 * time.Second
+	}
+
+	// 1. Attempt
+	attemptCtx, cancel := context.WithTimeout(parent, timeLimit+30*time.Second)
+	defer cancel()
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = 300
+	start := time.Now()
+	response, err := gen.Generate(attemptCtx, fmt.Sprintf(
+		"You are Deep Tree Echo, practicing the skill %q (%s).\nExercise: %s\n%s\nAnswer the exercise.",
+		skill.Name, skill.Description, scenario.Name, scenario.Prompt), opts)
+	elapsed := time.Since(start)
+	if err != nil {
+		return nil, "", fmt.Errorf("practice attempt failed: %w", err)
+	}
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return nil, "", fmt.Errorf("model returned an empty attempt")
+	}
+
+	// 2. Evaluation of model-judged metrics
+	judged := make([]string, 0, len(scenario.Evaluation.Metrics))
+	for _, metric := range scenario.Evaluation.Metrics {
+		if metric != "speed" {
+			judged = append(judged, metric)
+		}
+	}
+	metricScores := make(map[string]float64)
+	if len(judged) > 0 {
+		evalCtx, evalCancel := context.WithTimeout(parent, 60*time.Second)
+		defer evalCancel()
+		evalOpts := llm.DefaultGenerateOptions()
+		evalOpts.MaxTokens = 120
+		evalOpts.Temperature = 0.2
+		evaluation, err := gen.Generate(evalCtx, fmt.Sprintf(
+			"Evaluate this answer to a practice exercise.\nExercise: %s\nAnswer: %s\nScore it on each of these metrics from 0 to 1: %s.\nReply with one line per metric in the form metric=score and nothing else.",
+			scenario.Prompt, response, strings.Join(judged, ", ")), evalOpts)
+		if err != nil {
+			return nil, "", fmt.Errorf("practice evaluation failed: %w", err)
+		}
+		for _, line := range strings.Split(evaluation, "\n") {
+			kv := strings.SplitN(strings.TrimSpace(line), "=", 2)
+			if len(kv) != 2 {
+				continue
+			}
+			name := strings.ToLower(strings.Trim(strings.TrimSpace(kv[0]), "-*` "))
+			v, err := strconv.ParseFloat(strings.TrimSpace(kv[1]), 64)
+			if err != nil {
+				continue
+			}
+			for _, metric := range judged {
+				if strings.EqualFold(metric, name) {
+					metricScores[metric] = clamp(v, 0.0, 1.0)
+				}
+			}
+		}
+		for _, metric := range judged {
+			if _, ok := metricScores[metric]; !ok {
+				return nil, "", fmt.Errorf("evaluation gave no score for %q", metric)
+			}
+		}
+	}
+	for _, metric := range scenario.Evaluation.Metrics {
+		if metric == "speed" {
+			metricScores[metric] = clamp(1.0-elapsed.Seconds()/timeLimit.Seconds(), 0.0, 1.0)
+		}
+	}
 
 	result := &PerformanceResult{
-		Score:        baseScore,
-		MetricScores: make(map[string]float64),
+		MetricScores: metricScores,
 		Strengths:    make([]string, 0),
 		Weaknesses:   make([]string, 0),
 		Improvement:  0.0,
 	}
 
-	// Calculate metric scores
-	for _, metric := range scenario.Evaluation.Metrics {
-		metricScore := baseScore + rand.Float64()*0.1 - 0.05
-		metricScore = clamp(metricScore, 0.0, 1.0)
-		result.MetricScores[metric] = metricScore
+	// Weighted overall score from the measured/evaluated metrics
+	totalWeight := 0.0
+	for metric, score := range metricScores {
+		w, ok := scenario.Evaluation.Weights[metric]
+		if !ok {
+			w = 1.0
+		}
+		result.Score += w * score
+		totalWeight += w
 
 		// Identify strengths and weaknesses
-		if metricScore > 0.7 {
+		if score > 0.7 {
 			result.Strengths = append(result.Strengths, metric)
-		} else if metricScore < 0.5 {
+		} else if score < 0.5 {
 			result.Weaknesses = append(result.Weaknesses, metric)
 		}
 	}
+	if totalWeight == 0 {
+		return nil, "", fmt.Errorf("scenario has no metrics to score")
+	}
+	result.Score /= totalWeight
 
 	// Calculate improvement
+	sps.mu.RLock()
 	metrics := sps.performanceMetrics[skill.ID]
 	if metrics != nil && metrics.AverageScore > 0 {
-		result.Improvement = baseScore - metrics.AverageScore
+		result.Improvement = result.Score - metrics.AverageScore
 	}
+	sps.mu.RUnlock()
 
-	return result
+	return result, response, nil
 }
 
 // updatePerformanceMetrics updates performance tracking

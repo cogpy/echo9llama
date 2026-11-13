@@ -3,7 +3,6 @@ package llm
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
 )
 
@@ -27,29 +26,30 @@ func (provider *recoveryTestProvider) Name() string    { return provider.name }
 func (provider *recoveryTestProvider) Available() bool { return provider.available }
 func (provider *recoveryTestProvider) MaxTokens() int  { return 4096 }
 
-func TestMultiProviderFallsBackToDeterministicLocalCognition(t *testing.T) {
+func TestMultiProviderFailsOverToNextModel(t *testing.T) {
 	remote := &recoveryTestProvider{name: "failing-remote", available: true, err: errors.New("temporary upstream outage")}
+	local := &recoveryTestProvider{name: "local-model", available: true, result: "wisdom from the local model"}
 	router := &MultiProviderLLM{providers: make([]Provider, 0), stats: make(map[string]*ProviderStats)}
 	router.AddProvider(remote)
-	router.AddProvider(&SimpleFallbackProvider{})
+	router.AddProvider(local)
 
 	result, err := router.Generate(context.Background(), "What wisdom is relevant now?", GenerateOptions{})
 	if err != nil {
-		t.Fatalf("expected local fallback after remote failure, got %v", err)
+		t.Fatalf("expected failover to the local model, got %v", err)
 	}
-	if !strings.Contains(strings.ToLower(result), "wisdom") {
-		t.Fatalf("unexpected fallback response: %q", result)
+	if result != "wisdom from the local model" {
+		t.Fatalf("unexpected response: %q", result)
 	}
-	if remote.calls != 1 {
-		t.Fatalf("expected one remote attempt, got %d", remote.calls)
+	if remote.calls != 1 || local.calls != 1 {
+		t.Fatalf("calls remote=%d local=%d", remote.calls, local.calls)
 	}
 
 	stats := router.GetStats()
 	if stats["failing-remote"].FailedCalls != 1 {
 		t.Fatalf("remote failure was not tracked: %#v", stats["failing-remote"])
 	}
-	if stats["SimpleFallback"].SuccessCalls != 1 {
-		t.Fatalf("fallback success was not tracked: %#v", stats["SimpleFallback"])
+	if stats["local-model"].SuccessCalls != 1 {
+		t.Fatalf("local success was not tracked: %#v", stats["local-model"])
 	}
 }
 
@@ -57,7 +57,6 @@ func TestMultiProviderHonorsCancellationBeforeFailover(t *testing.T) {
 	remote := &recoveryTestProvider{name: "remote", available: true, result: "should not run"}
 	router := &MultiProviderLLM{providers: make([]Provider, 0), stats: make(map[string]*ProviderStats)}
 	router.AddProvider(remote)
-	router.AddProvider(&SimpleFallbackProvider{})
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -72,16 +71,18 @@ func TestMultiProviderHonorsCancellationBeforeFailover(t *testing.T) {
 	}
 }
 
-func TestMultiProviderWithoutKeysStillHasAutonomousFallback(t *testing.T) {
+func TestMultiProviderWithoutModelsHasNoProvider(t *testing.T) {
 	t.Setenv("ANTHROPIC_API_KEY", "")
 	t.Setenv("OPENROUTER_API_KEY", "")
 	t.Setenv("OPENAI_API_KEY", "")
+	t.Setenv("ECHO_MODEL_PATHS", "")
+	t.Setenv("LOCAL_MODEL_PATH", "")
 
 	router := NewMultiProviderLLM()
-	if !router.Available() {
-		t.Fatal("router should remain available through deterministic local cognition")
+	if len(router.providers) != 0 {
+		t.Fatalf("expected no providers without a model, got %#v", router.providers)
 	}
-	if len(router.providers) != 1 || router.providers[0].Name() != "SimpleFallback" {
-		t.Fatalf("expected exactly one local fallback provider, got %#v", router.providers)
+	if out, err := router.Generate(context.Background(), "hello", GenerateOptions{}); err == nil {
+		t.Fatalf("expected an error without a model, got %q", out)
 	}
 }

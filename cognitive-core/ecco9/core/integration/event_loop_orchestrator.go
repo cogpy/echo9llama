@@ -213,12 +213,17 @@ func (celo *CognitiveEventLoopOrchestrator) translateEventsToThoughts() {
 	// Get pending events from scheduler
 	// In real implementation, would query scheduler for upcoming events
 
-	// For now, periodically inject goal-related thoughts
+	// Periodically have the model think about the active goal; no thought is
+	// recorded if the model is unavailable.
 	goals := celo.goalOrchestrator.GetActiveGoals()
 	if len(goals) > 0 {
 		goal := goals[0]
-		thoughtContent := fmt.Sprintf("Pursuing goal: %s", goal.Title)
-		celo.consciousness.AddExternalThought(thoughtContent)
+		if _, err := celo.consciousness.GenerateDirectedThought(
+			fmt.Sprintf("You are pursuing the goal %q. Think about your next step toward it.", goal.Title),
+			consciousness.ThoughtTypePlanning,
+		); err != nil {
+			return
+		}
 
 		celo.mu.Lock()
 		celo.thoughtsTriggered++
@@ -359,7 +364,7 @@ func (celo *CognitiveEventLoopOrchestrator) executeAutonomousCycle() {
 // orientingPhase: Relevance realization and present commitment
 func (celo *CognitiveEventLoopOrchestrator) orientingPhase() {
 	// Step 1: Relevance realization - What matters now?
-	celo.consciousness.AddExternalThought("What is most relevant to my current goals?")
+	celo.directedThought("Consider what is most relevant to your current goals right now.", consciousness.ThoughtTypeReflection)
 
 	// Steps 2-4: Orient to present context
 	time.Sleep(1 * time.Second)
@@ -368,17 +373,28 @@ func (celo *CognitiveEventLoopOrchestrator) orientingPhase() {
 // conditioningPhase: Actual affordance interaction and past performance
 func (celo *CognitiveEventLoopOrchestrator) conditioningPhase() {
 	// Steps 5-8: Interact with actual affordances based on past learning
-	celo.consciousness.AddExternalThought("What have I learned that applies here?")
+	celo.directedThought("Consider what you have learned that applies to your present situation.", consciousness.ThoughtTypeMemory)
 	time.Sleep(1 * time.Second)
 }
 
 // anticipatingPhase: Virtual salience simulation and future potential
 func (celo *CognitiveEventLoopOrchestrator) anticipatingPhase() {
 	// Step 9: Relevance realization - What could matter?
-	celo.consciousness.AddExternalThought("What possibilities should I explore?")
+	celo.directedThought("Consider which future possibilities are worth exploring.", consciousness.ThoughtTypeWonder)
 
 	// Steps 10-12: Simulate future scenarios
 	time.Sleep(1 * time.Second)
+}
+
+// directedThought has the model think in response to a phase directive. When
+// the model is unavailable nothing is recorded.
+func (celo *CognitiveEventLoopOrchestrator) directedThought(directive string, thoughtType consciousness.ThoughtType) {
+	if _, err := celo.consciousness.GenerateDirectedThought(directive, thoughtType); err != nil {
+		return
+	}
+	celo.mu.Lock()
+	celo.thoughtsTriggered++
+	celo.mu.Unlock()
 }
 
 // GetMetrics returns orchestrator metrics

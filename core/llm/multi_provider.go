@@ -113,10 +113,8 @@ func (router *MultiProviderLLM) initializeProviders() {
 		fmt.Println("✓ OpenAI provider initialized")
 	}
 
-	realProviders := len(router.providers)
-	router.AddProvider(&SimpleFallbackProvider{})
-	if realProviders == 0 {
-		fmt.Println("⚠ Using deterministic fallback provider (no safe real provider available)")
+	if len(router.providers) == 0 {
+		fmt.Println("⚠ No model provider configured: set ECHO_MODEL_PATHS or an API key; generation will fail until one is mounted")
 	}
 }
 

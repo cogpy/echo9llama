@@ -105,6 +105,7 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 
 	// EchoBeats scheduler (with 12-step loop and 3 inference engines)
 	agent.echoBeatsScheduler = echobeats.NewEnhancedScheduler()
+	agent.echoBeatsScheduler.SetTextGenerator(agent.llmProvider)
 	fmt.Println("   ✓ EchoBeats scheduler initialized")
 
 	// Wake/Rest cycle manager
@@ -119,6 +120,7 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 
 	// EchoDream knowledge consolidation
 	agent.dreamCycle = echodream.NewDreamCycleIntegration()
+	agent.dreamCycle.SetTextGenerator(agent.llmProvider)
 	fmt.Println("   ✓ EchoDream consolidation initialized")
 
 	// Goal orchestrator
@@ -131,6 +133,7 @@ func (agent *AutonomousAgent) initializeSubsystems() {
 		identityKernel,
 		"/tmp/goals.json",
 	)
+	agent.goalOrchestrator.SetGoalGenerator(agent.llmProvider)
 	fmt.Println("   ✓ Goal orchestrator initialized")
 
 	// Seven-dimensional wisdom tracker (Echo9)

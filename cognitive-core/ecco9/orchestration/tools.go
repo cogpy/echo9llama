@@ -2,20 +2,29 @@ package orchestration
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"time"
+	"strings"
 )
 
-// ExampleWebSearchTool demonstrates a web search tool integration
-type ExampleWebSearchTool struct{}
+// ExampleWebSearchTool is a web search tool slot. No search backend is
+// bundled, so it reports failure instead of returning fabricated results.
+// Set Search to plug in a real backend.
+type ExampleWebSearchTool struct {
+	// Search performs a real web search and returns its results.
+	Search func(ctx context.Context, query string) (interface{}, error)
+}
 
 func (t *ExampleWebSearchTool) Name() string {
 	return "web_search"
 }
 
 func (t *ExampleWebSearchTool) Description() string {
-	return "Performs web search queries (example implementation)"
+	return "Performs web search queries (requires a configured search backend)"
 }
+
+// ErrNoSearchBackend is returned when web_search is invoked without a backend.
+var ErrNoSearchBackend = errors.New("web_search: no search backend configured")
 
 func (t *ExampleWebSearchTool) Call(ctx context.Context, params map[string]interface{}) (*ToolResult, error) {
 	query, ok := params["query"].(string)
@@ -26,12 +35,18 @@ func (t *ExampleWebSearchTool) Call(ctx context.Context, params map[string]inter
 		}, nil
 	}
 
-	// Simulate web search
-	time.Sleep(100 * time.Millisecond)
+	if t.Search == nil {
+		return nil, ErrNoSearchBackend
+	}
+
+	results, err := t.Search(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("web_search: %w", err)
+	}
 
 	return &ToolResult{
 		Success: true,
-		Output:  fmt.Sprintf("Search results for '%s': Found 5 relevant articles on AI and orchestration", query),
+		Output:  results,
 	}, nil
 }
 
@@ -94,21 +109,22 @@ func (t *ExampleCalculatorTool) Call(ctx context.Context, params map[string]inte
 	}, nil
 }
 
-// ExampleDataAnalysisPlugin demonstrates a data analysis plugin
-type ExampleDataAnalysisPlugin struct{}
+// ExampleDataAnalysisPlugin performs basic data analysis. "summary" returns
+// measured text statistics; "sentiment" is answered by the model through the
+// engine (params["model"] selects it) and fails when no model is available.
+type ExampleDataAnalysisPlugin struct {
+	engine *Engine
+}
 
 func (p *ExampleDataAnalysisPlugin) Name() string {
 	return "data_analysis"
 }
 
 func (p *ExampleDataAnalysisPlugin) Description() string {
-	return "Performs basic data analysis and pattern recognition"
+	return "Performs basic data analysis and model-based sentiment analysis"
 }
 
 func (p *ExampleDataAnalysisPlugin) Execute(ctx context.Context, input string, params map[string]interface{}) (interface{}, error) {
-	// Simulate data analysis
-	time.Sleep(200 * time.Millisecond)
-
 	analysisType, ok := params["type"].(string)
 	if !ok {
 		analysisType = "summary"
@@ -117,21 +133,32 @@ func (p *ExampleDataAnalysisPlugin) Execute(ctx context.Context, input string, p
 	switch analysisType {
 	case "summary":
 		return map[string]interface{}{
-			"type":    "summary",
-			"input":   input,
-			"length":  len(input),
-			"words":   len(input) / 5, // rough word estimate
-			"insight": "Text appears to contain structured information suitable for further analysis",
+			"type":   "summary",
+			"input":  input,
+			"length": len(input),
+			"words":  len(strings.Fields(input)),
+			"lines":  strings.Count(input, "\n") + 1,
 		}, nil
 	case "sentiment":
+		if p.engine == nil {
+			return nil, fmt.Errorf("data_analysis: sentiment analysis requires a model engine")
+		}
+		model, _ := params["model"].(string)
+		if model == "" {
+			return nil, fmt.Errorf("data_analysis: sentiment analysis requires params[\"model\"]")
+		}
+		prompt := "Classify the sentiment of the following text as positive, negative, or neutral, and briefly justify it.\n\nText:\n" + input
+		analysis, err := p.engine.generateText(ctx, model, prompt, nil)
+		if err != nil {
+			return nil, fmt.Errorf("data_analysis: sentiment: %w", err)
+		}
 		return map[string]interface{}{
-			"type":       "sentiment",
-			"sentiment":  "neutral",
-			"confidence": 0.7,
-			"factors":    []string{"balanced_tone", "technical_content"},
+			"type":     "sentiment",
+			"model":    model,
+			"analysis": analysis,
 		}, nil
 	default:
-		return fmt.Sprintf("Unknown analysis type: %s", analysisType), nil
+		return nil, fmt.Errorf("data_analysis: unknown analysis type: %s", analysisType)
 	}
 }
 
@@ -143,5 +170,5 @@ func RegisterDefaultTools(engine *Engine) {
 
 // RegisterDefaultPlugins registers the default set of plugins with an engine
 func RegisterDefaultPlugins(engine *Engine) {
-	engine.RegisterPlugin(&ExampleDataAnalysisPlugin{})
+	engine.RegisterPlugin(&ExampleDataAnalysisPlugin{engine: engine})
 }

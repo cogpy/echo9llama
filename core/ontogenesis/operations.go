@@ -3,8 +3,11 @@ package ontogenesis
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/cogpy/echo9llama/core/llm"
 )
 
 // Operations defines the transformations that occur during cognitive development
@@ -18,6 +21,17 @@ type Operations struct {
 	integrationOperations []*IntegrationOperation
 	synthesisOperations   []*SynthesisOperation
 	operationHistory      []*OperationRecord
+
+	// generator is the model that synthesizes wisdom; without one there is
+	// no synthesis.
+	generator llm.Completer
+}
+
+// SetGenerator sets the model that writes and rates synthesized wisdom.
+func (o *Operations) SetGenerator(gen llm.Completer) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.generator = gen
 }
 
 // StageTransition represents a developmental stage change
@@ -392,33 +406,65 @@ func (o *Operations) ExecuteSynthesisOperation(ctx context.Context, knowledge, e
 	return synthesis, nil
 }
 
-// performSynthesis executes wisdom synthesis
+// performSynthesis has the model synthesize wisdom from the inputs, in the
+// manner the synthesis method names, and rate its depth, applicability and
+// confidence. Without a model there is no wisdom.
 func (o *Operations) performSynthesis(ctx context.Context, synthesis *SynthesisOperation) (*WisdomArtifact, error) {
-	// Method-specific synthesis logic
-	depth := 0.5
-	switch synthesis.SynthesisMethod {
-	case SynthesisReflective:
-		depth = 0.7
-	case SynthesisExperiential:
-		depth = 0.6
-	case SynthesisContemplative:
-		depth = 0.8
-	case SynthesisDialogical:
-		depth = 0.65
+	if o.generator == nil {
+		return nil, llm.ErrNoEdgeModel
+	}
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Synthesize one piece of practical wisdom, %s, from what you know and what you have lived.\n", synthesisManner(synthesis.SynthesisMethod))
+	if len(synthesis.InputKnowledge) > 0 {
+		sb.WriteString("Knowledge:\n- " + strings.Join(synthesis.InputKnowledge, "\n- ") + "\n")
+	}
+	if len(synthesis.InputExperiences) > 0 {
+		sb.WriteString("Experiences:\n- " + strings.Join(synthesis.InputExperiences, "\n- ") + "\n")
+	}
+	sb.WriteString("State the wisdom in one or two sentences, in your own words.")
+
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = "You are Deep Tree Echo, reflecting on your own development."
+	opts.MaxTokens = 160
+	content, err := o.generator.Generate(ctx, sb.String(), opts)
+	if err != nil {
+		return nil, err
+	}
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil, fmt.Errorf("model returned no wisdom")
+	}
+	r, err := llm.RatePercent(ctx, o.generator, opts.SystemPrompt, "Wisdom you synthesized: "+content,
+		"how deep it is", "how broadly it applies", "how confident you are in it")
+	if err != nil {
+		return nil, fmt.Errorf("wisdom not rated: %w", err)
 	}
 
-	wisdom := &WisdomArtifact{
-		ID:            fmt.Sprintf("wisdom_%d", time.Now().Unix()),
-		Content:       fmt.Sprintf("Wisdom synthesized from %d knowledge items and %d experiences", len(synthesis.InputKnowledge), len(synthesis.InputExperiences)),
+	return &WisdomArtifact{
+		ID:            fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Content:       content,
 		Type:          WisdomPractical,
-		Depth:         depth,
-		Applicability: 0.75,
-		Confidence:    0.7,
-		Sources:       append(synthesis.InputKnowledge, synthesis.InputExperiences...),
+		Depth:         r[0],
+		Applicability: r[1],
+		Confidence:    r[2],
+		Sources:       append(append([]string(nil), synthesis.InputKnowledge...), synthesis.InputExperiences...),
 		CreatedAt:     time.Now(),
-	}
+	}, nil
+}
 
-	return wisdom, nil
+// synthesisManner describes a synthesis method for the model's prompt.
+func synthesisManner(m SynthesisMethod) string {
+	switch m {
+	case SynthesisReflective:
+		return "through deep reflection"
+	case SynthesisExperiential:
+		return "from lived experience"
+	case SynthesisContemplative:
+		return "through quiet contemplation"
+	case SynthesisDialogical:
+		return "as if in dialogue with another mind"
+	}
+	return "by integrating these"
 }
 
 // recordOperation adds an operation to history

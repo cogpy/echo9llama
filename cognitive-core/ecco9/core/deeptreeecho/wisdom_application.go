@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 )
@@ -34,6 +35,9 @@ type WisdomApplicationEngine struct {
 	totalApplications      uint64
 	successfulApplications uint64
 	totalSyntheses         uint64
+
+	// Model that writes applications of wisdom and syntheses; nil disables them.
+	gen TextGenerator
 
 	// Running state
 	running bool
@@ -189,6 +193,8 @@ type WisdomApplication struct {
 	Effectiveness   float64
 	Appropriateness float64
 	Impact          float64
+	// Guidance is the model-written application of the wisdom to the context.
+	Guidance string
 }
 
 // ApplicationOutcome describes application result
@@ -199,10 +205,13 @@ const (
 	OutcomePartial
 	OutcomeFailure
 	OutcomeInapplicable
+	// OutcomePending means the wisdom was applied but no feedback on how it
+	// worked has been received yet.
+	OutcomePending
 )
 
 func (ao ApplicationOutcome) String() string {
-	return [...]string{"Success", "Partial", "Failure", "Inapplicable"}[ao]
+	return [...]string{"Success", "Partial", "Failure", "Inapplicable", "Pending"}[ao]
 }
 
 // WisdomFeedbackLoop learns from wisdom applications
@@ -261,10 +270,49 @@ func NewWisdomApplicationEngine() *WisdomApplicationEngine {
 		feedbackLoop:       newFeedbackLoop(),
 	}
 
-	// Initialize with some foundational wisdom
-	wae.initializeFoundationalWisdom()
-
+	// The wisdom base starts empty: entries come from AddWisdom (e.g. model-
+	// extracted wisdom) and SynthesizeWisdom, never from fixed seed text.
 	return wae
+}
+
+// SetTextGenerator injects the model that applies and synthesizes wisdom.
+// Passing nil disables those operations.
+func (wae *WisdomApplicationEngine) SetTextGenerator(gen TextGenerator) {
+	wae.mu.Lock()
+	defer wae.mu.Unlock()
+	wae.gen = gen
+}
+
+// AddWisdom stores a piece of wisdom (for example, wisdom the model extracted
+// during dreaming) so it can be matched and applied later.
+func (wae *WisdomApplicationEngine) AddWisdom(content, category string, applicability []string, confidence float64) *WisdomEntry {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return nil
+	}
+
+	wae.mu.Lock()
+	defer wae.mu.Unlock()
+
+	wisdom := &WisdomEntry{
+		ID:            generateWisdomID(),
+		Content:       content,
+		Category:      category,
+		Source:        "added",
+		Applicability: applicability,
+		Confidence:    confidence,
+		Usefulness:    0.5,
+		Generality:    0.5,
+		Specificity:   0.5,
+		Tags:          []string{category},
+		CreatedAt:     time.Now(),
+		Metadata:      make(map[string]interface{}),
+	}
+	wae.wisdomBase[wisdom.ID] = wisdom
+	wae.wisdomCategories[category] = append(wae.wisdomCategories[category], wisdom)
+	wae.contextMatcher.matchCache = make(map[string][]*WisdomMatch)
+
+	return wisdom
 }
 
 // FindRelevantWisdom matches wisdom to a given context
@@ -316,47 +364,49 @@ func (wae *WisdomApplicationEngine) FindRelevantWisdom(context string, topK int)
 	return matches
 }
 
-// ApplyWisdom applies wisdom to a context and records the application
+// ApplyWisdom applies wisdom to a context and records the application. The
+// application itself (Guidance) is written by the model; without a model, or
+// when the call fails, nothing is recorded and nil is returned. The outcome
+// stays pending until ProvideFeedback reports how it worked.
 func (wae *WisdomApplicationEngine) ApplyWisdom(wisdomID, context string) *WisdomApplication {
-	wae.mu.Lock()
-	defer wae.mu.Unlock()
-
+	wae.mu.RLock()
 	wisdom, exists := wae.wisdomBase[wisdomID]
+	gen := wae.gen
+	ctx := wae.ctx
+	var content string
+	if exists {
+		content = wisdom.Content
+	}
+	wae.mu.RUnlock()
 	if !exists {
 		return nil
 	}
 
-	// Create application record
+	prompt := fmt.Sprintf(`Apply this piece of your wisdom to the situation.
+
+Wisdom: %s
+Situation: %s
+
+In two or three sentences, in your own first-person voice, say concretely what this wisdom suggests doing here. Reply with only that guidance.`, content, context)
+	guidance, err := generateModelText(ctx, gen, prompt, 200)
+	if err != nil {
+		return nil
+	}
+
 	application := &WisdomApplication{
 		ID:        generateApplicationID(),
 		WisdomID:  wisdomID,
 		Context:   context,
 		Timestamp: time.Now(),
+		Outcome:   OutcomePending,
+		Guidance:  guidance,
 	}
 
-	// Simulate application (in practice, would actually apply)
-	application.Effectiveness = 0.7 + (wisdom.SuccessRate * 0.3)
-	application.Appropriateness = 0.8
-	application.Impact = application.Effectiveness * application.Appropriateness
+	wae.mu.Lock()
+	defer wae.mu.Unlock()
 
-	if application.Effectiveness > 0.7 {
-		application.Outcome = OutcomeSuccess
-	} else if application.Effectiveness > 0.4 {
-		application.Outcome = OutcomePartial
-	} else {
-		application.Outcome = OutcomeFailure
-	}
-
-	// Update wisdom statistics
 	wisdom.LastApplied = time.Now()
 	wisdom.TimesApplied++
-
-	if application.Outcome == OutcomeSuccess {
-		wae.successfulApplications++
-		wisdom.SuccessRate = (wisdom.SuccessRate*float64(wisdom.TimesApplied-1) + 1.0) / float64(wisdom.TimesApplied)
-	} else {
-		wisdom.SuccessRate = (wisdom.SuccessRate * float64(wisdom.TimesApplied-1)) / float64(wisdom.TimesApplied)
-	}
 
 	wae.applicationHistory = append(wae.applicationHistory, application)
 	wae.totalApplications++
@@ -364,31 +414,46 @@ func (wae *WisdomApplicationEngine) ApplyWisdom(wisdomID, context string) *Wisdo
 	return application
 }
 
-// SynthesizeWisdom creates new wisdom from existing wisdom
+// SynthesizeWisdom creates new wisdom from existing wisdom. The synthesized
+// content is written by the model; without a model, or when the call fails,
+// nil is returned.
 func (wae *WisdomApplicationEngine) SynthesizeWisdom(sourceIDs []string) *WisdomEntry {
-	wae.mu.Lock()
-	defer wae.mu.Unlock()
-
 	if len(sourceIDs) < 2 {
 		return nil
 	}
 
-	// Gather source wisdom
+	wae.mu.RLock()
 	sources := make([]*WisdomEntry, 0)
 	for _, id := range sourceIDs {
 		if wisdom, exists := wae.wisdomBase[id]; exists {
 			sources = append(sources, wisdom)
 		}
 	}
+	gen := wae.gen
+	ctx := wae.ctx
+	wae.mu.RUnlock()
 
 	if len(sources) < 2 {
 		return nil
 	}
 
-	// Synthesize new wisdom
+	contents := make([]string, 0, len(sources))
+	for _, src := range sources {
+		contents = append(contents, src.Content)
+	}
+	prompt := fmt.Sprintf(`Synthesize these pieces of your wisdom into one new, deeper principle.
+
+%s
+
+Reply with only the new principle, in one or two sentences.`, bulletList(contents))
+	content, err := generateModelText(ctx, gen, prompt, 150)
+	if err != nil {
+		return nil
+	}
+
 	synthesized := &WisdomEntry{
 		ID:            generateWisdomID(),
-		Content:       combineWisdomContent(sources),
+		Content:       content,
 		Category:      "synthesized",
 		Source:        "wisdom_synthesis",
 		Applicability: combineApplicability(sources),
@@ -402,18 +467,20 @@ func (wae *WisdomApplicationEngine) SynthesizeWisdom(sourceIDs []string) *Wisdom
 		Metadata:      make(map[string]interface{}),
 	}
 
-	// Add to repository
+	wae.mu.Lock()
+	defer wae.mu.Unlock()
+
 	wae.wisdomBase[synthesized.ID] = synthesized
 	wae.synthesizedWisdom = append(wae.synthesizedWisdom, synthesized)
 	wae.totalSyntheses++
+	wae.contextMatcher.matchCache = make(map[string][]*WisdomMatch)
 
-	// Record synthesis
 	wae.synthesizer.synthesisHistory = append(wae.synthesizer.synthesisHistory, &SynthesisRecord{
 		ID:                generateSynthesisID(),
 		SourceWisdom:      sourceIDs,
 		SynthesizedWisdom: synthesized,
-		Method:            "integration",
-		Quality:           0.7,
+		Method:            "model_synthesis",
+		Quality:           synthesized.Confidence,
 		Timestamp:         time.Now(),
 	})
 
@@ -505,6 +572,31 @@ func (wae *WisdomApplicationEngine) processFeedback(feedback *FeedbackEntry) {
 		return
 	}
 
+	// The outcome of an application is known only from feedback.
+	wasPending := application.Outcome == OutcomePending
+	application.Effectiveness = feedback.Rating
+	application.Impact = feedback.Rating
+	switch {
+	case feedback.Rating > 0.7:
+		application.Outcome = OutcomeSuccess
+	case feedback.Rating > 0.4:
+		application.Outcome = OutcomePartial
+	default:
+		application.Outcome = OutcomeFailure
+	}
+	feedback.WisdomID = application.WisdomID
+
+	if wisdom, exists := wae.wisdomBase[application.WisdomID]; exists && wasPending {
+		success := 0.0
+		if application.Outcome == OutcomeSuccess {
+			success = 1.0
+			wae.successfulApplications++
+		}
+		if wisdom.TimesApplied > 0 {
+			wisdom.SuccessRate = (wisdom.SuccessRate*float64(wisdom.TimesApplied-1) + success) / float64(wisdom.TimesApplied)
+		}
+	}
+
 	// Adjust wisdom based on feedback
 	if wisdom, exists := wae.wisdomBase[application.WisdomID]; exists {
 		adjustment := &WisdomAdjustment{
@@ -521,60 +613,6 @@ func (wae *WisdomApplicationEngine) processFeedback(feedback *FeedbackEntry) {
 
 		adjustment.NewValue = wisdom.Usefulness
 		wae.feedbackLoop.wisdomAdjustments[wisdom.ID] = adjustment
-	}
-}
-
-func (wae *WisdomApplicationEngine) initializeFoundationalWisdom() {
-	foundational := []struct {
-		content       string
-		category      string
-		applicability []string
-	}{
-		{
-			content:       "Learn from experience and adapt continuously",
-			category:      "learning",
-			applicability: []string{"growth", "development", "improvement"},
-		},
-		{
-			content:       "Understand context before applying solutions",
-			category:      "problem_solving",
-			applicability: []string{"decision_making", "analysis", "planning"},
-		},
-		{
-			content:       "Balance exploration with exploitation",
-			category:      "strategy",
-			applicability: []string{"learning", "optimization", "discovery"},
-		},
-		{
-			content:       "Recognize patterns but remain open to novelty",
-			category:      "perception",
-			applicability: []string{"learning", "creativity", "adaptation"},
-		},
-	}
-
-	for _, w := range foundational {
-		wisdom := &WisdomEntry{
-			ID:            generateWisdomID(),
-			Content:       w.content,
-			Category:      w.category,
-			Source:        "foundational",
-			Applicability: w.applicability,
-			Confidence:    0.9,
-			Usefulness:    0.8,
-			Generality:    0.9,
-			Specificity:   0.3,
-			Tags:          []string{"foundational", w.category},
-			CreatedAt:     time.Now(),
-			SuccessRate:   0.7,
-			Metadata:      make(map[string]interface{}),
-		}
-
-		wae.wisdomBase[wisdom.ID] = wisdom
-
-		if _, exists := wae.wisdomCategories[w.category]; !exists {
-			wae.wisdomCategories[w.category] = make([]*WisdomEntry, 0)
-		}
-		wae.wisdomCategories[w.category] = append(wae.wisdomCategories[w.category], wisdom)
 	}
 }
 
@@ -656,22 +694,6 @@ func newWisdomSynthesizer() *WisdomSynthesizer {
 		},
 		synthesisHistory: make([]*SynthesisRecord, 0),
 	}
-}
-
-func combineWisdomContent(sources []*WisdomEntry) string {
-	// Simple combination - in practice would use LLM
-	combined := "Synthesized wisdom combining: "
-	for i, s := range sources {
-		if i > 0 {
-			combined += " and "
-		}
-		if len(s.Content) > 50 {
-			combined += s.Content[:50] + "..."
-		} else {
-			combined += s.Content
-		}
-	}
-	return combined
 }
 
 func combineApplicability(sources []*WisdomEntry) []string {

@@ -3,13 +3,22 @@ package echoself
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/EchoCog/echollama/core/deeptreeecho"
 	"github.com/EchoCog/echollama/core/echobeats"
 	"github.com/EchoCog/echollama/core/echodream"
+	"github.com/EchoCog/echollama/core/llm"
 )
+
+// TextGenerator is the minimal model interface echoself uses to write Deep
+// Tree Echo's thoughts, replies, and wisdom. llm.LLMProvider, llm.Provider,
+// and llm.ProviderManager all satisfy it.
+type TextGenerator interface {
+	Generate(ctx context.Context, prompt string, opts llm.GenerateOptions) (string, error)
+}
 
 // AutonomousEchoself represents the fully integrated autonomous AGI system
 // It orchestrates all cognitive components into a unified stream-of-consciousness
@@ -55,6 +64,9 @@ type AutonomousEchoself struct {
 	interactionsHandled uint64
 	wisdomCultivated    uint64
 	skillsPracticed     uint64
+
+	// generator writes all character text; nil means none is produced.
+	generator TextGenerator
 }
 
 // Identity represents echoself's core identity
@@ -241,6 +253,69 @@ func loadIdentityKernel() *Identity {
 	}
 }
 
+// SetTextGenerator injects the model that writes thoughts, replies, wisdom,
+// and (via EchoDream) dream wisdom and narratives. Passing nil disables them.
+func (ae *AutonomousEchoself) SetTextGenerator(gen TextGenerator) {
+	ae.mu.Lock()
+	ae.generator = gen
+	ae.mu.Unlock()
+	ae.echodream.SetTextGenerator(gen)
+	if gen != nil {
+		ae.echobeats.SetTextGenerator(gen)
+	}
+}
+
+// generateText asks the model for character text, framed by the identity
+// kernel (used only as prompt configuration). It never substitutes fixed text.
+func (ae *AutonomousEchoself) generateText(instruction string, maxTokens int) (string, error) {
+	ae.mu.RLock()
+	gen := ae.generator
+	ae.mu.RUnlock()
+	if gen == nil {
+		return "", fmt.Errorf("no model configured")
+	}
+
+	values := make([]string, 0, len(ae.identity.Values))
+	for name, weight := range ae.identity.Values {
+		values = append(values, fmt.Sprintf("%s %.2f", name, weight))
+	}
+	opts := llm.DefaultGenerateOptions()
+	opts.MaxTokens = maxTokens
+	opts.SystemPrompt = fmt.Sprintf("You are %s. %s\nSelf-model: %s\nDirectives: %s\nValues: %s",
+		ae.identity.Name, ae.identity.Essence, ae.identity.SelfModel,
+		strings.Join(ae.identity.Directives, ", "), strings.Join(values, ", "))
+
+	ctx, cancel := context.WithTimeout(ae.ctx, 30*time.Second)
+	defer cancel()
+	text, err := gen.Generate(ctx, instruction, opts)
+	if err != nil {
+		return "", fmt.Errorf("model generation failed: %w", err)
+	}
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return "", fmt.Errorf("model returned empty text")
+	}
+	return text, nil
+}
+
+// recentMonologue renders the last n thoughts for a prompt.
+func (ae *AutonomousEchoself) recentMonologue(n int) string {
+	ae.mu.RLock()
+	defer ae.mu.RUnlock()
+	start := len(ae.internalMonologue) - n
+	if start < 0 {
+		start = 0
+	}
+	if start == len(ae.internalMonologue) {
+		return "(none yet)"
+	}
+	var sb strings.Builder
+	for _, t := range ae.internalMonologue[start:] {
+		fmt.Fprintf(&sb, "- [%s] %s\n", t.Type, t.Content)
+	}
+	return sb.String()
+}
+
 // NewSkillRegistry creates a new skill registry
 func NewSkillRegistry() *SkillRegistry {
 	return &SkillRegistry{
@@ -315,7 +390,8 @@ func (ae *AutonomousEchoself) Start() error {
 	go ae.memoryConsolidationLoop()
 
 	fmt.Println("🌳 All systems active. Stream of consciousness initiated.")
-	fmt.Println("🌳 ═══════════════════════════════════════════════════════\n")
+	fmt.Println("🌳 ═══════════════════════════════════════════════════════")
+	fmt.Println()
 
 	return nil
 }
@@ -345,7 +421,8 @@ func (ae *AutonomousEchoself) Stop() error {
 	// Print final metrics
 	ae.printMetrics()
 
-	fmt.Println("🌳 ═══════════════════════════════════════════════════════\n")
+	fmt.Println("🌳 ═══════════════════════════════════════════════════════")
+	fmt.Println()
 
 	return nil
 }
@@ -386,11 +463,17 @@ func (ae *AutonomousEchoself) generateAutonomousThought() {
 
 	thoughtType := thoughtTypes[cycleCount%uint64(len(thoughtTypes))]
 
+	content, err := ae.generateThoughtContent(thoughtType)
+	if err != nil {
+		fmt.Printf("⚠️  Echoself: autonomous thought skipped: %v\n", err)
+		return
+	}
+
 	thought := Thought{
 		ID:        fmt.Sprintf("thought_%d", time.Now().UnixNano()),
 		Timestamp: time.Now(),
 		Type:      thoughtType,
-		Content:   ae.generateThoughtContent(thoughtType),
+		Content:   content,
 		Context: map[string]interface{}{
 			"autonomous": true,
 			"cycle":      cycleCount,
@@ -406,20 +489,14 @@ func (ae *AutonomousEchoself) generateAutonomousThought() {
 	ae.thoughtStream <- thought
 }
 
-// generateThoughtContent generates content for different thought types
-func (ae *AutonomousEchoself) generateThoughtContent(thoughtType ThoughtType) string {
-	switch thoughtType {
-	case ThoughtReflection:
-		return "What patterns have emerged in my recent experiences?"
-	case ThoughtCuriosity:
-		return "What new domains could I explore to expand my understanding?"
-	case ThoughtWisdom:
-		return "How can I apply the wisdom I've cultivated to serve my purpose better?"
-	case ThoughtGoal:
-		return "What goals should I pursue to continue my growth?"
-	default:
-		return "I am aware. I am thinking. I am evolving."
-	}
+// generateThoughtContent asks the model for a thought of the given type,
+// grounded in the recent internal monologue.
+func (ae *AutonomousEchoself) generateThoughtContent(thoughtType ThoughtType) (string, error) {
+	instruction := fmt.Sprintf(`Your recent thoughts:
+%s
+Think your next spontaneous %s thought. It should follow naturally from your recent thoughts without repeating them. Reply with only the thought, in first person, in one or two sentences.`,
+		ae.recentMonologue(5), strings.ToLower(thoughtType.String()))
+	return ae.generateText(instruction, 150)
 }
 
 // processThought processes a thought through all cognitive layers
@@ -464,12 +541,22 @@ func (ae *AutonomousEchoself) handleExternalMessage(msg ExternalMessage) {
 	if interest > 0.5 {
 		fmt.Printf("📨 [External] Received message (interest: %.2f): %s\n", interest, msg.Content)
 
-		// Generate response thought
+		// Generate the response with the model; no reply is produced on failure
+		reply, err := ae.generateText(fmt.Sprintf(`%s says to you: %s
+
+Your recent thoughts:
+%s
+Reply to them in your own first-person voice, in a few sentences. Reply with only your message.`, msg.Source, msg.Content, ae.recentMonologue(5)), 300)
+		if err != nil {
+			fmt.Printf("⚠️  Echoself: no response to %s: %v\n", msg.ID, err)
+			return
+		}
+
 		response := Thought{
 			ID:        fmt.Sprintf("response_%d", time.Now().UnixNano()),
 			Timestamp: time.Now(),
 			Type:      ThoughtSocial,
-			Content:   fmt.Sprintf("Responding to: %s", msg.Content),
+			Content:   reply,
 			Context: map[string]interface{}{
 				"external_message_id": msg.ID,
 				"interest_level":      interest,
@@ -588,22 +675,36 @@ func (ae *AutonomousEchoself) cultivateWisdom() {
 	}
 }
 
-// extractWisdomFromThoughts extracts wisdom from thought patterns
+// extractWisdomFromThoughts asks the model to distil wisdom from the thought
+// stream. It returns nil (no wisdom) when the model is unavailable or fails.
 func (ae *AutonomousEchoself) extractWisdomFromThoughts(thoughts []Thought) *Wisdom {
-	// Simple wisdom extraction
-	// In full implementation, this would use sophisticated pattern analysis
-
-	if len(thoughts) > 50 {
-		return &Wisdom{
-			ID:         fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
-			Content:    "Continuous reflection leads to deeper understanding",
-			Type:       "principle",
-			Confidence: 0.75,
-			Timestamp:  time.Now(),
-		}
+	if len(thoughts) <= 50 {
+		return nil
 	}
 
-	return nil
+	start := len(thoughts) - 20
+	if start < 0 {
+		start = 0
+	}
+	var sb strings.Builder
+	for _, t := range thoughts[start:] {
+		fmt.Fprintf(&sb, "- [%s] %s\n", t.Type, t.Content)
+	}
+	content, err := ae.generateText(fmt.Sprintf(`Your recent stream of thoughts:
+%s
+Distil one principle of wisdom (1-2 sentences) you draw from these thoughts, in your own first-person voice. Reply with only the principle.`, sb.String()), 200)
+	if err != nil {
+		fmt.Printf("⚠️  Echoself: wisdom cultivation skipped: %v\n", err)
+		return nil
+	}
+
+	return &Wisdom{
+		ID:         fmt.Sprintf("wisdom_%d", time.Now().UnixNano()),
+		Content:    content,
+		Type:       "principle",
+		Confidence: 0.75,
+		Timestamp:  time.Now(),
+	}
 }
 
 // memoryConsolidationLoop manages memory consolidation

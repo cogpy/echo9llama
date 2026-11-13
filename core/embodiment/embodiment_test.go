@@ -128,3 +128,24 @@ func TestRoutes(t *testing.T) {
 		t.Fatalf("history = %d %s", w.Code, w.Body)
 	}
 }
+
+func TestSystemPromptStatesActionUnitsAndVoicedExpression(t *testing.T) {
+	h := NewHub(1, 4)
+	f := Frame{
+		Contract: Contract, Persona: "Lucy", Valence: 0.4, Arousal: 0.6, Flow: 0.7,
+		Expression: "quiet focus", ActionUnits: map[string]float64{"AU6": 0.52, "AU12": 0.65},
+	}
+	r, err := h.Ingest(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Facial action units: AU12 0.65, AU6 0.52.", "You last described your face as: quiet focus."} {
+		if !strings.Contains(r.SystemPrompt, want) {
+			t.Errorf("system prompt missing %q:\n%s", want, r.SystemPrompt)
+		}
+	}
+	f.ActionUnits = map[string]float64{"AU4": 1.5}
+	if _, err := h.Ingest(f); err == nil {
+		t.Fatal("action unit outside [0,1] accepted")
+	}
+}

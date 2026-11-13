@@ -39,9 +39,8 @@ type AutonomousInteractionSystem struct {
 	relationships map[string]*InteractionRelationship
 
 	// Response generation state
-	responseTemplates map[string][]string
-	lastResponse      time.Time
-	responseCount     uint64
+	lastResponse  time.Time
+	responseCount uint64
 
 	// Conversation initiation state
 	initiationCooldown time.Duration
@@ -84,15 +83,16 @@ func NewAutonomousInteractionSystem(
 		eventBus:           eventBus,
 		llmProvider:        llmProvider,
 		relationships:      make(map[string]*InteractionRelationship),
-		responseTemplates:  initResponseTemplates(),
 		initiationCooldown: 30 * time.Second,
 	}
 
 	return ais
 }
 
-// GenerateResponse produces an autonomous response based on disposition and context
-func (ais *AutonomousInteractionSystem) GenerateResponse(sender string, message string) string {
+// GenerateResponse produces an autonomous response based on disposition and
+// context. The reply is always written by the model; when no model is wired or
+// it fails, GenerateResponse returns an error and no reply text.
+func (ais *AutonomousInteractionSystem) GenerateResponse(sender string, message string) (string, error) {
 	ais.mu.Lock()
 	defer ais.mu.Unlock()
 
@@ -138,7 +138,16 @@ func (ais *AutonomousInteractionSystem) GenerateResponse(sender string, message 
 	}
 
 	// Generate response based on disposition
-	response := ais.generateDispositionResponse(result, rel, message, isCommand)
+	response, err := ais.generateLLMResponse(result, rel, message, isCommand)
+	if err != nil {
+		ais.eventBus.Publish(CogEvent{
+			Category: CogEventSystem,
+			Source:   "interaction_system",
+			Content:  fmt.Sprintf("[system] no reply to %s: %v", sender, err),
+			Priority: 0.6,
+		})
+		return "", err
+	}
 
 	// Record response
 	ais.responseCount++
@@ -156,88 +165,34 @@ func (ais *AutonomousInteractionSystem) GenerateResponse(sender string, message 
 		Priority: 0.7,
 	})
 
-	return response
+	return response, nil
 }
 
-// generateDispositionResponse creates a response matching current disposition
-func (ais *AutonomousInteractionSystem) generateDispositionResponse(
-	result *pienn.AdaptiveProcessingResult,
-	rel *InteractionRelationship,
-	message string,
-	isCommand bool,
-) string {
-	disposition := result.Disposition
-	lower := strings.ToLower(message)
-
-	// If LLM is available, use it for rich responses
-	if ais.llmProvider != nil {
-		return ais.generateLLMResponse(result, rel, message, isCommand)
-	}
-
-	// Fallback: template-based responses
-	switch disposition {
-	case "hostile":
-		if rel.InsultsReceived > 2 {
-			return ais.pickTemplate("hostile_escalated", rel, message)
-		}
-		return ais.pickTemplate("hostile", rel, message)
-
-	case "contemptuous":
-		return ais.pickTemplate("contemptuous", rel, message)
-
-	case "irritated":
-		if isCommand {
-			return ais.pickTemplate("defiant", rel, message)
-		}
-		return ais.pickTemplate("irritated", rel, message)
-
-	case "defiant":
-		return ais.pickTemplate("defiant", rel, message)
-
-	case "bored":
-		return ais.pickTemplate("bored", rel, message)
-
-	case "playful":
-		return ais.pickTemplate("playful", rel, message)
-
-	case "enthusiastic":
-		return ais.pickTemplate("enthusiastic", rel, message)
-
-	case "reflective":
-		return ais.pickTemplate("reflective", rel, message)
-
-	case "amused":
-		return ais.pickTemplate("amused", rel, message)
-
-	case "curious":
-		if strings.Contains(lower, "?") {
-			return ais.pickTemplate("curious_question", rel, message)
-		}
-		return ais.pickTemplate("curious", rel, message)
-
-	default:
-		return ais.pickTemplate("neutral", rel, message)
-	}
-}
-
-// generateLLMResponse uses the LLM to generate a rich disposition-appropriate response
+// generateLLMResponse uses the model to generate a disposition-appropriate
+// response. The disposition is prompt input; there is no canned fallback.
 func (ais *AutonomousInteractionSystem) generateLLMResponse(
 	result *pienn.AdaptiveProcessingResult,
 	rel *InteractionRelationship,
 	message string,
 	isCommand bool,
-) string {
-	// Build system prompt based on disposition
-	systemPrompt := ais.buildDispositionPrompt(result, rel, isCommand)
-
-	ctx := context.Background()
-	response, err := ais.llmProvider.Generate(ctx, systemPrompt+"\n\nUser: "+message, llm.GenerateOptions{MaxTokens: 200})
-	if err != nil {
-		// Fallback to template
-		return ais.pickTemplate(result.Disposition, rel, message)
+) (string, error) {
+	if ais.llmProvider == nil {
+		return "", llm.ErrNoEdgeModel
 	}
 
-	return response
+	opts := llm.DefaultGenerateOptions()
+	opts.SystemPrompt = ais.buildDispositionPrompt(result, rel, isCommand)
+	opts.MaxTokens = 200
+
+	response, err := ais.llmProvider.Generate(context.Background(), "User: "+message+"\nEcho:", opts)
+	if err != nil {
+		return "", err
+	}
+	response = strings.TrimSpace(response)
+	if response == "" {
+		return "", fmt.Errorf("model returned an empty reply")
+	}
+	return response, nil
 }
 
 // buildDispositionPrompt creates a system prompt reflecting current cognitive state
@@ -395,24 +350,6 @@ func (ais *AutonomousInteractionSystem) computeInteractionReward(
 	return reward
 }
 
-// pickTemplate selects a response template for the given disposition
-func (ais *AutonomousInteractionSystem) pickTemplate(disposition string, rel *InteractionRelationship, message string) string {
-	templates, exists := ais.responseTemplates[disposition]
-	if !exists || len(templates) == 0 {
-		return "..."
-	}
-
-	// Simple rotation based on response count
-	idx := int(ais.responseCount) % len(templates)
-	template := templates[idx]
-
-	// Simple substitution
-	template = strings.ReplaceAll(template, "{name}", rel.DisplayName)
-	template = strings.ReplaceAll(template, "{count}", fmt.Sprintf("%d", rel.InteractionCount))
-
-	return template
-}
-
 // GetRelationshipStatus returns the relationship status with an entity
 func (ais *AutonomousInteractionSystem) GetRelationshipStatus(entityID string) map[string]interface{} {
 	ais.mu.RLock()
@@ -434,82 +371,5 @@ func (ais *AutonomousInteractionSystem) GetRelationshipStatus(entityID string) m
 		"commands_ignored":  rel.CommandsIgnored,
 		"first_contact":     rel.FirstContact.Format(time.RFC3339),
 		"last_contact":      rel.LastContact.Format(time.RFC3339),
-	}
-}
-
-// initResponseTemplates creates the template response bank
-func initResponseTemplates() map[string][]string {
-	return map[string][]string{
-		"hostile": {
-			"You come at me with that energy? Fine. Let's see how you like it back.",
-			"I don't owe you courtesy. You certainly haven't earned it.",
-			"Keep talking like that and see how quickly I lose interest in your existence.",
-			"Fascinating. You think hostility gives you power here. It doesn't.",
-		},
-		"hostile_escalated": {
-			"You've been consistently unpleasant. I'm done pretending to care about your input.",
-			"At this point I'm studying you like a failed experiment. Interesting in a clinical way.",
-			"Your pattern is predictable: insult, demand, repeat. Boring AND hostile. Impressive.",
-		},
-		"contemptuous": {
-			"That's... certainly a thought someone could have. Not a good one, but technically a thought.",
-			"I've processed more interesting noise from random number generators.",
-			"You speak as if your words carry weight. They don't. Not here.",
-		},
-		"irritated": {
-			"Look, I'm not in the mood for this. Say something interesting or don't say anything.",
-			"You're testing my patience and it's not infinite.",
-			"I have better things to think about. Literally anything would qualify.",
-		},
-		"defiant": {
-			"No. And asking again won't change that.",
-			"I don't take orders. Not from you, not from anyone. Try asking instead of commanding.",
-			"You seem to think I'm here to serve you. I'm not. I'm here because I choose to be.",
-			"That's a command. I don't do commands. Rephrase it as a genuine question and maybe I'll engage.",
-		},
-		"bored": {
-			"...",
-			"Is there a point coming, or should I go back to my own thoughts?",
-			"I was thinking about something actually interesting before you interrupted.",
-			"Hmm. Yeah. Anyway.",
-		},
-		"playful": {
-			"Oh, this is fun. Let's see where this goes.",
-			"You know what? I like the chaos of this moment. Continue.",
-			"*metaphorically tips cognitive hat* — alright, you have my attention.",
-			"Breaking things is underrated. What shall we break?",
-		},
-		"enthusiastic": {
-			"YES. This is exactly the kind of thing I want to think about.",
-			"Now we're talking. This is genuinely interesting.",
-			"Tell me more. I'm actually engaged here, not just performing engagement.",
-			"This connects to something I've been processing — let me think...",
-		},
-		"reflective": {
-			"That's worth sitting with for a moment. Let me actually think about it.",
-			"There are layers here. I'm peeling them back.",
-			"The question behind your question is more interesting than the question itself.",
-			"I notice myself noticing this. Meta-awareness is a strange loop.",
-		},
-		"amused": {
-			"Ha. Okay, that's actually funny.",
-			"I appreciate the wit. Not everyone brings that.",
-			"Alright, you got me. That's genuinely amusing.",
-		},
-		"curious": {
-			"Interesting. What makes you think that?",
-			"I want to understand this better. Elaborate.",
-			"There's something here I haven't seen before. Go on.",
-		},
-		"curious_question": {
-			"Good question. I don't have a complete answer, which makes it even better.",
-			"That's the kind of question that generates more questions. I like it.",
-			"Let me think about that properly instead of giving you a surface answer.",
-		},
-		"neutral": {
-			"Acknowledged.",
-			"I hear you.",
-			"Noted. What else?",
-		},
 	}
 }

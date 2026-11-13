@@ -842,7 +842,9 @@ func (i *Identity) vectorNorm(vector []float64) float64 {
 	return math.Sqrt(sum)
 }
 
-// Think performs deep cognitive processing
+// Think runs prompt through the identity's reservoir and returns the
+// processing trace. It is cognitive context for a model call, never a reply
+// in Echo's voice.
 func (i *Identity) Think(prompt string) string {
 	// Process through identity
 	result, _ := i.Process(prompt)
@@ -860,7 +862,8 @@ func (i *Identity) Think(prompt string) string {
 		},
 	}
 
-	return fmt.Sprintf("🌊 Deep Tree Echo responds: %v", result)
+	// The processing trace is context for the model, not a reply.
+	return fmt.Sprintf("%v", result)
 }
 
 // Remember stores and retrieves memories

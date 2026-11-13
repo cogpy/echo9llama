@@ -13,7 +13,7 @@ on:
       - '.github/workflows/test.yaml'
 
 env:
-  GO_VERSION: '1.26.9'
+  GO_VERSION: '1.26.11'
 
 jobs:
   # ============================================================================
@@ -57,12 +57,13 @@ jobs:
       - name: Run tests
         run: |
           go test -v -race -count=1 \
-            ./progress/... \
-            ./cmd/... \
-            ./core/integration/... \
-            ./core/metacognition/... \
             ./core/cognitivecore/... \
             ./core/persistence/... \
+            ./core/integration/... \
+            ./core/lampstack/... \
+            ./progress/... \
+            ./cmd/... \
+            ./core/metacognition/... \
             ./core/memory/... \
             ./core/echobeats/... \
             ./core/consciousness/... \

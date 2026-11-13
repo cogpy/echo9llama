@@ -1056,9 +1056,12 @@ func (ri *RepositoryIntrospector) AnalyzeRepository(cognitiveLoad, recentActivit
 
 			// Read content if file is small enough
 			if info.Size() <= ri.maxFileSize {
-				// Note: In a real implementation, we would read the file content here
-				// For now, we'll simulate content based on the file name
-				salientFile.Content = fmt.Sprintf("Simulated content for %s", relPath)
+				// Read the real file content; unreadable files carry no content.
+				if data, readErr := os.ReadFile(path); readErr == nil {
+					salientFile.Content = string(data)
+				} else {
+					log.Printf("repository analysis: cannot read %s: %v", path, readErr)
+				}
 			}
 
 			salientFiles = append(salientFiles, salientFile)

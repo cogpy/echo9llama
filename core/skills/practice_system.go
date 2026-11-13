@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math"
 	"os"
 	"strings"
@@ -394,8 +395,12 @@ func (sps *SkillPracticeSystem) conductPracticeSession() {
 		StartTime:  time.Now(),
 	}
 
-	// Execute practice (simulated for now)
-	performance := sps.executePractice(skill, scenario)
+	// The model practices and grades the attempt; without it there is no session.
+	performance, err := sps.executePractice(skill, scenario)
+	if err != nil {
+		log.Printf("skill practice skipped for %s: %v", skill.Name, err)
+		return
+	}
 
 	// Record results
 	session.EndTime = time.Now()
@@ -454,18 +459,13 @@ func (sps *SkillPracticeSystem) selectPracticeScenario(skill *Skill) *PracticeSc
 	return skill.PracticeScenarios[0]
 }
 
-// executePractice practices a skill by asking the configured LLM evaluator to solve and
-// self-grade a concrete exercise. When no provider is configured, it falls back to a
-// deterministic rubric scorer derived from the scenario thresholds instead of random
-// simulation, preserving reproducible autonomous practice in offline environments.
-func (sps *SkillPracticeSystem) executePractice(skill *Skill, scenario *PracticeScenario) *PerformanceResult {
-	if sps.providerManager != nil && sps.providerManager.Available() {
-		if result, err := sps.executeLLMPractice(skill, scenario); err == nil {
-			return result
-		}
+// executePractice practices a skill by asking the configured model to solve and
+// self-grade a concrete exercise. Without a model there is no practice result.
+func (sps *SkillPracticeSystem) executePractice(skill *Skill, scenario *PracticeScenario) (*PerformanceResult, error) {
+	if sps.providerManager == nil || !sps.providerManager.Available() {
+		return nil, fmt.Errorf("no model available for skill practice")
 	}
-
-	return sps.executeRubricPractice(skill, scenario, "provider_unavailable")
+	return sps.executeLLMPractice(skill, scenario)
 }
 
 // executeLLMPractice performs a real practice attempt and expects a structured JSON
@@ -518,54 +518,6 @@ All numeric scores must be in [0,1].`,
 	}
 	result.Improvement = sps.calculateImprovement(skill.ID, result.Score)
 	return result, nil
-}
-
-// executeRubricPractice is deterministic and based on the actual exercise rubric.
-// It prevents autonomous practice from pretending to improve randomly while still
-// allowing local tests and offline agents to make measurable progress signals.
-func (sps *SkillPracticeSystem) executeRubricPractice(skill *Skill, scenario *PracticeScenario, reason string) *PerformanceResult {
-	result := &PerformanceResult{
-		Score:        0.0,
-		MetricScores: make(map[string]float64),
-		Strengths:    make([]string, 0),
-		Weaknesses:   make([]string, 0),
-	}
-
-	weightedSum := 0.0
-	totalWeight := 0.0
-	for _, metric := range scenario.Evaluation.Metrics {
-		weight := scenario.Evaluation.Weights[metric]
-		if weight <= 0 {
-			weight = 1.0
-		}
-		threshold := scenario.Evaluation.Thresholds[metric]
-		if threshold <= 0 {
-			threshold = 0.65
-		}
-
-		// Deterministic competence estimate: skill level adjusted by scenario
-		// difficulty and the metric's required threshold.
-		metricScore := skill.CurrentLevel + (0.5-scenario.Difficulty)*0.15 + (1.0-threshold)*0.10
-		metricScore = clamp(metricScore, 0.0, 1.0)
-		result.MetricScores[metric] = metricScore
-		weightedSum += metricScore * weight
-		totalWeight += weight
-
-		if metricScore >= threshold {
-			result.Strengths = append(result.Strengths, metric)
-		} else {
-			result.Weaknesses = append(result.Weaknesses, metric)
-		}
-	}
-
-	if totalWeight > 0 {
-		result.Score = clamp(weightedSum/totalWeight, 0.0, 1.0)
-	}
-	result.Improvement = sps.calculateImprovement(skill.ID, result.Score)
-	if reason != "" {
-		result.Weaknesses = append(result.Weaknesses, reason)
-	}
-	return result
 }
 
 // updatePerformanceMetrics updates performance tracking
