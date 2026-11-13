@@ -16,3 +16,4 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pkoukk/tiktoken-go v0.1.6 // indirect
 )
+
